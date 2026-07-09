@@ -41,20 +41,33 @@ function Home() {
   }, [hotels]);
 
   if (isLoading) return <HomeSkeleton />;
-  if (!trip) return <div className="pt-8 text-center text-muted-foreground">אין טיול פעיל</div>;
+  if (!trip) {
+    return (
+      <div className="pt-16 text-center space-y-4">
+        <div className="text-5xl">🧭</div>
+        <h1 className="text-2xl font-medium">אין טיול פעיל</h1>
+        <p className="text-sm text-muted-foreground">בואו ניצור טיול חדש</p>
+        <Link to="/onboarding"
+          className="inline-block px-6 h-12 leading-[3rem] rounded-lg bg-[color:var(--terracotta)] text-white font-medium">
+          צור טיול חדש
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-4 space-y-6">
       <section className="space-y-1">
-        <div className="text-3xl font-medium">{trip.title} 🇯🇵</div>
+        <div className="text-3xl font-medium">{trip.title}</div>
         {stats && (
           <p className="text-sm text-muted-foreground">
             {stats.beforeTrip
-              ? `עוד ${stats.daysToStart} ימים לטיסה`
+              ? `עוד ${stats.daysToStart} ימים ליציאה`
               : `יום ${Math.min(stats.daysPassed, stats.daysTotal)} מתוך ${stats.daysTotal}`}
           </p>
         )}
       </section>
+
 
       {stats && (
         <section className="bg-card border border-border rounded-2xl p-5">
