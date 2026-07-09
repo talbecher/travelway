@@ -35,6 +35,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<"ILS" | "JPY">("JPY");
   const [category, setCategory] = useState<"food"|"attraction"|"transport"|"shopping"|"accommodation"|"other">("food");
+  const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState(todayISO());
 
