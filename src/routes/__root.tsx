@@ -107,19 +107,26 @@ function RootComponent() {
 
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isOnboarding = pathname === "/onboarding";
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur">
         <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
-          <div className="text-xs text-muted-foreground">יפן 2026</div>
-          <ConverterPill />
+          <HeaderTitle />
+          {!isOnboarding && <ConverterPill />}
         </div>
       </header>
       <main className="max-w-md mx-auto px-4 pb-32">
         <Outlet />
       </main>
-      <GlobalFab />
+      {!isOnboarding && <GlobalFab />}
       <BottomNav />
     </div>
   );
 }
+
+function HeaderTitle() {
+  const { data: trip } = useTrip();
+  return <div className="text-xs text-muted-foreground truncate max-w-[60vw]">{trip?.title ?? "מתכנן טיולים"}</div>;
+}
+
