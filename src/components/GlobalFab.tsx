@@ -101,6 +101,11 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         </select>
       </div>
       <div>
+        <label className="text-sm text-muted-foreground">תיאור (לא חובה)</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 py-2 resize-none" />
+      </div>
+      <div>
         <label className="text-sm text-muted-foreground">מיקום (לא חובה)</label>
         <input value={location} onChange={(e) => setLocation(e.target.value)}
           className="w-full mt-1 rounded-lg bg-background border border-input px-3" />
