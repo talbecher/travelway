@@ -54,15 +54,16 @@ function DayDetail() {
       </button>
       <header className="space-y-1">
         <div className="text-xs text-muted-foreground">יום {day.day_number}</div>
-        <h1 className="text-2xl font-medium">{hebDateLong(day.date)}</h1>
+        <h1>{hebDateLong(day.date)}</h1>
         <input
           value={cityLabel}
           onChange={(e) => setCityLabel(e.target.value)}
           onBlur={saveCity}
           dir="ltr"
-          className="text-sm bg-transparent border-b border-border w-full pb-1 outline-none focus:border-[color:var(--terracotta)]"
+          className="text-sm bg-transparent border-b border-border w-full pb-1 outline-none focus:border-[color:var(--accent)]"
         />
       </header>
+
 
       {isLoading ? (
         <div className="space-y-2 animate-pulse">
@@ -115,25 +116,39 @@ function DayDetail() {
 
 function EntryCard({ entry, onDelete }: { entry: { id: string; entry_type: string; title: string; description: string | null; time_of_day: string | null; icon_emoji: string | null; google_maps_url: string | null; recommendations: { google_maps_url: string | null } | null }; onDelete: () => void }) {
   const url = entry.google_maps_url ?? entry.recommendations?.google_maps_url ?? null;
+  const typeColors: Record<string, string> = {
+    food: "var(--chart-1)",
+    attraction: "var(--chart-2)",
+    transport: "var(--chart-3)",
+    hotel_checkin: "var(--chart-5)",
+    flight: "var(--accent)",
+    note: "var(--chart-6)",
+  };
+  const tint = typeColors[entry.entry_type] ?? "var(--chart-6)";
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-lg p-3"
+      className="bg-card border border-border rounded-2xl p-3"
     >
       <div className="flex items-start gap-3">
-        <div className="text-2xl">{entry.icon_emoji || "•"}</div>
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-[16px] shrink-0"
+          style={{ background: `color-mix(in oklab, ${tint} 22%, transparent)`, color: tint }}
+        >
+          {entry.icon_emoji || "•"}
+        </div>
         <div className="flex-1 min-w-0">
           {entry.time_of_day && (
             <div className="text-xs text-muted-foreground tabular-nums">{entry.time_of_day}</div>
           )}
-          <div className="font-medium">{entry.title}</div>
+          <div className="font-medium text-[15px]">{entry.title}</div>
           {entry.description && (
             <div className="text-sm text-muted-foreground mt-0.5">{entry.description}</div>
           )}
           <div className="flex gap-3 mt-2">
             {url && (
-              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-[color:var(--terracotta)] inline-flex items-center gap-1">
+              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1">
                 <ExternalLink size={12} /> מפה
               </a>
             )}
@@ -148,11 +163,15 @@ function EntryCard({ entry, onDelete }: { entry: { id: string; entry_type: strin
 function EmptyDay() {
   return (
     <div className="text-center py-10 space-y-2">
-      <div className="text-4xl">⛩</div>
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" strokeWidth="1.4" className="mx-auto text-[color:var(--accent)]">
+        <circle cx="32" cy="34" r="10" />
+        <path d="M32 16v4M32 48v4M16 34h4M48 34h4" strokeLinecap="round" />
+      </svg>
       <p className="text-sm text-muted-foreground">אין פריטים ליום זה</p>
     </div>
   );
 }
+
 
 function EntryForm({ dayId, city, entryType, onDone, onBack }: {
   dayId: string; city: string; entryType: EntryType; onDone: () => void; onBack: () => void;
