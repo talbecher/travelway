@@ -16,6 +16,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { Toaster } from "sonner";
+import { useTrip } from "@/hooks/use-trip";
 
 function NotFoundComponent() {
   return (
