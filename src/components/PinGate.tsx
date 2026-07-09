@@ -15,7 +15,10 @@ export function PinGate({ children }: { children: React.ReactNode }) {
 
   if (unlocked) return <>{children}</>;
   if (isLoading) return <Skeleton />;
+  // If no active trip exists, skip the PIN and let the app show onboarding.
+  if (!trip) return <>{children}</>;
   return <Landing trip={trip} onUnlock={() => { sessionStorage.setItem(KEY, "1"); setUnlocked(true); }} />;
+
 }
 
 function Skeleton() {
