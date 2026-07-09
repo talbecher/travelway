@@ -1,4 +1,15 @@
-export const TRIP_ID = "11111111-1111-1111-1111-111111111111";
+const DEMO_TRIP_ID = "11111111-1111-1111-1111-111111111111";
+export const ACTIVE_TRIP_KEY = "active_trip_id";
+export const TRIP_ID: string =
+  typeof window !== "undefined"
+    ? window.localStorage.getItem(ACTIVE_TRIP_KEY) || DEMO_TRIP_ID
+    : DEMO_TRIP_ID;
+
+export function setActiveTripId(id: string) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(ACTIVE_TRIP_KEY, id);
+  }
+}
 
 export const CITIES = [
   "Tokyo",
