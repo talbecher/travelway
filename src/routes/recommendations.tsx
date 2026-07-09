@@ -9,8 +9,10 @@ import { CITIES, TRIP_ID } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
 import { BottomSheet } from "@/components/BottomSheet";
+import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { z } from "zod";
+
 
 type Tab = "food" | "attractions" | "hotels";
 
@@ -31,7 +33,7 @@ function Recs() {
 
   return (
     <div className="pt-2 space-y-4">
-      <h1 className="text-2xl font-medium">המלצות</h1>
+      <h1>המלצות</h1>
 
       <div className="flex gap-1 bg-muted rounded-lg p-1">
         <TabBtn active={tab === "food"} onClick={() => setTab("food")}>🍜 אוכל</TabBtn>
@@ -65,11 +67,12 @@ function TabBtn({ active, children, onClick }: { active: boolean; children: Reac
 function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border min-h-0 h-auto ${active ? "bg-[color:var(--terracotta)] text-white border-[color:var(--terracotta)]" : "border-border text-muted-foreground"}`}>
+      className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border min-h-0 h-auto ${active ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)] border-[color:var(--accent)]" : "border-border text-muted-foreground"}`}>
       {children}
     </button>
   );
 }
+
 
 function PlacesList({ type, cityFilter }: { type: "food" | "attraction"; cityFilter: string }) {
   const { data: recs = [], isLoading } = useRecs();
@@ -170,9 +173,10 @@ function PlaceCard({ rec, distance }: { rec: { id: string; name: string; type: s
 
   const statusBadge = {
     wishlist: { label: "רשימה", cls: "bg-muted text-muted-foreground" },
-    visited: { label: "ביקרנו", cls: "bg-[color:var(--terracotta-soft)] text-[color:var(--terracotta)]" },
+    visited: { label: "ביקרנו", cls: "text-[color:var(--accent-3)]", style: { background: "color-mix(in oklab, var(--accent-3) 18%, transparent)" } },
     skipped: { label: "דילגנו", cls: "bg-muted text-muted-foreground line-through" },
   }[rec.status as "wishlist" | "visited" | "skipped"];
+
 
   return (
     <div className="bg-card border border-border rounded-lg p-3">
@@ -189,8 +193,10 @@ function PlaceCard({ rec, distance }: { rec: { id: string; name: string; type: s
         <motion.span
           key={rec.status}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={"style" in statusBadge ? statusBadge.style : undefined}
           className={`text-[10px] px-2 py-0.5 rounded-full ${statusBadge.cls}`}
         >{statusBadge.label}</motion.span>
+
       </div>
       {rec.rating && (
         <div className="text-xs mt-1">{"★".repeat(rec.rating)}{"☆".repeat(5 - rec.rating)}</div>
@@ -460,5 +466,6 @@ function ListSkeleton() {
   return <div className="space-y-2 animate-pulse">{[0,1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-lg" />)}</div>;
 }
 function Empty({ label }: { label: string }) {
-  return <div className="text-center py-12 text-muted-foreground text-sm">{label}</div>;
+  return <EmptyState variant="recs" title={label} />;
 }
+
