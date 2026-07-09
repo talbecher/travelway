@@ -146,3 +146,19 @@ function HeaderTitle() {
   return <div className="text-xs text-muted-foreground truncate max-w-[60vw]">{trip?.title ?? "מתכנן טיולים"}</div>;
 }
 
+function TripSettingsLink() {
+  const { data: trip } = useTrip();
+  if (!trip) return null;
+  return (
+    <Link
+      to="/onboarding"
+      search={{ edit: true }}
+      aria-label="עריכת פרטי הטיול"
+      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+    >
+      <Settings size={15} />
+    </Link>
+  );
+}
+
+
