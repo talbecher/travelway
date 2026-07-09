@@ -5,9 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * יפן 2026 — wabi-sabi design tokens.
- * Warm off-white paper, near-black ink, terracotta accent.
- * No gradients, no shadows.
+ * Dark-first violet system.
+ * Neutral surfaces, electric-violet primary, coral alerts, teal success.
+ * Light mode opts in via `.light` on <html>. Legacy --terracotta etc. are
+ * aliased to the new tokens so pre-redesign class names keep working.
  */
 
 @theme inline {
@@ -35,6 +36,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-accent-2: var(--accent-2);
+  --color-accent-3: var(--accent-3);
   --color-terracotta: var(--terracotta);
   --color-terracotta-soft: var(--terracotta-soft);
   --color-warning: var(--warning);
@@ -51,83 +56,82 @@
   --color-chart-6: var(--chart-6);
 }
 
+/* Dark is default */
 :root {
-  --radius: 0.5rem;
+  --radius: 1rem;
 
-  --paper: #F7F5F0;
-  --ink: #1A1A18;
-  --ink-soft: #6B6B66;
-  --terracotta: #C25B3A;
-  --terracotta-soft: #E9C6BB;
+  /* Base palette */
+  --surface: #1A1A23;
+  --surface-2: #242430;
+  --text-primary: #F5F5F7;
+  --text-secondary: #9090A0;
+  --accent-1: #6C63FF;
+  --accent-2: #FF6B6B;
+  --accent-3: #4ECDC4;
+  --accent-4: #FFD93D;
 
-  --background: var(--paper);
-  --foreground: var(--ink);
-  --card: #FBFAF6;
-  --card-foreground: var(--ink);
-  --popover: #FBFAF6;
-  --popover-foreground: var(--ink);
-  --primary: var(--terracotta);
+  --background: #0F0F13;
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-1);
   --primary-foreground: #FFFFFF;
-  --secondary: #EEEAE0;
-  --secondary-foreground: var(--ink);
-  --muted: #EEEAE0;
-  --muted-foreground: var(--ink-soft);
-  --accent: var(--terracotta);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--accent-1);
   --accent-foreground: #FFFFFF;
-  --destructive: #B84A3A;
+  --destructive: var(--accent-2);
   --destructive-foreground: #FFFFFF;
-  --border: #E4DFD3;
-  --input: #E4DFD3;
-  --ring: var(--terracotta);
-  --warning: #C48A2C;
-  --success: #6B8E5A;
-  --danger: #B84A3A;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: var(--accent-1);
+  --warning: var(--accent-4);
+  --success: var(--accent-3);
+  --danger: var(--accent-2);
 
-  /* Muted category palette for donut/bars */
-  --chart-1: #C25B3A; /* food — terracotta */
-  --chart-2: #8B7355; /* attraction — bark */
-  --chart-3: #6B8E5A; /* transport — moss */
-  --chart-4: #A88E6C; /* shopping — sand */
-  --chart-5: #4A5D6E; /* accommodation — indigo */
-  --chart-6: #9A9088; /* other — stone */
+  /* Legacy aliases — pre-redesign class names still resolve */
+  --paper: var(--background);
+  --ink: var(--foreground);
+  --ink-soft: var(--muted-foreground);
+  --terracotta: var(--accent-1);
+  --terracotta-soft: color-mix(in oklab, var(--accent-1) 24%, transparent);
+
+  /* Category palette (matches Budget donut spec) */
+  --chart-1: #FF6B6B; /* food */
+  --chart-2: #6C63FF; /* attraction */
+  --chart-3: #4ECDC4; /* transport */
+  --chart-4: #FFD93D; /* shopping */
+  --chart-5: #A8E6CF; /* accommodation */
+  --chart-6: #9090A0; /* other */
 }
 
-.dark {
-  --paper: #14140F;
-  --ink: #F0EDE4;
-  --ink-soft: #999288;
-  --terracotta: #D77052;
-  --terracotta-soft: #4A2A20;
+/* Light-mode opt-in */
+.light {
+  --surface: #FFFFFF;
+  --surface-2: #F0EFFF;
+  --text-primary: #1A1A23;
+  --text-secondary: #6B6B7A;
 
-  --background: var(--paper);
-  --foreground: var(--ink);
-  --card: #1D1D18;
-  --card-foreground: var(--ink);
-  --popover: #1D1D18;
-  --popover-foreground: var(--ink);
-  --primary: var(--terracotta);
-  --primary-foreground: #14140F;
-  --secondary: #262620;
-  --secondary-foreground: var(--ink);
-  --muted: #262620;
-  --muted-foreground: var(--ink-soft);
-  --accent: var(--terracotta);
-  --accent-foreground: #14140F;
-  --destructive: #D77052;
-  --destructive-foreground: #14140F;
-  --border: #2F2F28;
-  --input: #2F2F28;
-  --ring: var(--terracotta);
-  --warning: #D9A64A;
-  --success: #8FAE7E;
-  --danger: #D77052;
+  --background: #F8F7FF;
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-secondary);
+  --border: rgba(15, 15, 35, 0.08);
+  --input: rgba(15, 15, 35, 0.12);
 
-  --chart-1: #D77052;
-  --chart-2: #A89479;
-  --chart-3: #8FAE7E;
-  --chart-4: #C6AC85;
-  --chart-5: #6C8298;
-  --chart-6: #B0A79E;
+  --paper: var(--background);
+  --ink: var(--foreground);
+  --ink-soft: var(--muted-foreground);
 }
 
 @layer base {
@@ -136,18 +140,27 @@
   }
   html {
     font-family: var(--font-sans);
+    color-scheme: dark;
+  }
+  html.light {
+    color-scheme: light;
   }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-weight: 400;
-    line-height: 1.7;
+    font-size: 15px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   button, [role="button"] { min-height: 44px; }
   input, select, textarea { min-height: 44px; }
-  h1, h2, h3, h4 { font-weight: 500; letter-spacing: -0.01em; line-height: 1.3; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+  h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
+  h4 { font-size: 15px; font-weight: 600; line-height: 1.4; }
 }
 
 @utility no-shadow { box-shadow: none !important; }
+@utility caption { font-size: 12px; color: var(--muted-foreground); }
