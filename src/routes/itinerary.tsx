@@ -49,8 +49,39 @@ function iconFor(t: string) {
 
 function Itinerary() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: trip } = useTrip();
   const { data: days = [], isLoading } = useDays();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const saveCity = useMutation({
+    mutationFn: async ({ id, city }: { id: string; city: string }) => {
+      const { error } = await supabase.from("itinerary_days").update({ city_label: city }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["days"] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      setEditingId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const delDay = useMutation({
+    mutationFn: async (id: string) => {
+      const { count } = await supabase
+        .from("day_entries").select("id", { count: "exact", head: true }).eq("day_id", id);
+      if ((count ?? 0) > 0) throw new Error("יש פריטים ביום זה — מחקו אותם קודם");
+      const { error } = await supabase.from("itinerary_days").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["days"] });
+      toast.success("היום נמחק");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data: entriesByDay = {} } = useQuery({
     queryKey: ["day-entries-summary"],
