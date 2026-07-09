@@ -16,6 +16,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Link } from "@tanstack/react-router";
+import { Settings } from "lucide-react";
 import { Toaster } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
 
