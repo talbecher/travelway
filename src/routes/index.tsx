@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Calendar, Wallet, Star, Hotel } from "lucide-react";
-import { useTrip, useExpenses, useHotels, useDays } from "@/hooks/use-trip";
-import { ils, hebDate, todayISO, daysBetween } from "@/lib/format";
+import { Calendar, Wallet, Star } from "lucide-react";
+import { useTrip, useExpenses, useDays } from "@/hooks/use-trip";
+import { ils, todayISO, daysBetween } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
   component: Home,
