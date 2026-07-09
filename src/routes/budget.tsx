@@ -209,7 +209,8 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
       const { error } = await supabase.from("expenses").update({
         amount_ils, amount_foreign,
         foreign_currency: currency === "FX" ? (expense.foreign_currency ?? "JPY") : null,
-        category, description: description || null,
+        category: category as "food" | "attraction" | "transport" | "shopping" | "accommodation" | "other",
+        description: description || null,
         location_name: location || null, expense_date: date,
       }).eq("id", expense.id);
       if (error) throw error;
