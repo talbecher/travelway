@@ -1,0 +1,1 @@
+TRUNCATE TABLE public.expenses, public.day_entries, public.itinerary_days, public.hotels, public.recommendations, public.settings, public.trips RESTART IDENTITY CASCADE;

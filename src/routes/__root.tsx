@@ -16,6 +16,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Link } from "@tanstack/react-router";
+import { Settings } from "lucide-react";
 import { Toaster } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
 
@@ -123,6 +125,7 @@ function AppShell() {
           <HeaderTitle />
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
+            {!isOnboarding && <TripSettingsLink />}
             <ThemeToggle />
           </div>
         </div>
@@ -142,4 +145,20 @@ function HeaderTitle() {
   const { data: trip } = useTrip();
   return <div className="text-xs text-muted-foreground truncate max-w-[60vw]">{trip?.title ?? "מתכנן טיולים"}</div>;
 }
+
+function TripSettingsLink() {
+  const { data: trip } = useTrip();
+  if (!trip) return null;
+  return (
+    <Link
+      to="/onboarding"
+      search={{ edit: true }}
+      aria-label="עריכת פרטי הטיול"
+      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+    >
+      <Settings size={15} />
+    </Link>
+  );
+}
+
 

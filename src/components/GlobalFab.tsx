@@ -35,6 +35,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<"ILS" | "JPY">("JPY");
   const [category, setCategory] = useState<"food"|"attraction"|"transport"|"shopping"|"accommodation"|"other">("food");
+  const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState(todayISO());
 
@@ -50,7 +51,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         amount_foreign,
         foreign_currency: currency === "JPY" ? "JPY" : null,
         category,
-        description: null,
+        description: description.trim() || null,
         location_name: location || null,
         expense_date: date,
       });
@@ -98,6 +99,11 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+      </div>
+      <div>
+        <label className="text-sm text-muted-foreground">תיאור (לא חובה)</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 py-2 resize-none" />
       </div>
       <div>
         <label className="text-sm text-muted-foreground">מיקום (לא חובה)</label>

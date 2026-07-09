@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Calendar, Wallet, Star, Hotel } from "lucide-react";
-import { useTrip, useExpenses, useHotels, useDays } from "@/hooks/use-trip";
-import { ils, hebDate, todayISO, daysBetween } from "@/lib/format";
+import { Calendar, Wallet, Star } from "lucide-react";
+import { useTrip, useExpenses, useDays } from "@/hooks/use-trip";
+import { ils, todayISO, daysBetween } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -12,7 +12,6 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { data: trip, isLoading } = useTrip();
   const { data: expenses = [] } = useExpenses();
-  const { data: hotels = [] } = useHotels();
   const { data: days = [] } = useDays();
 
   const stats = useMemo(() => {
@@ -31,14 +30,6 @@ function Home() {
     return { spent, budget, remaining, pct, daysTotal, daysPassed, daily, beforeTrip, daysToStart };
   }, [trip, expenses, days]);
 
-  const urgentHotels = useMemo(() => {
-    const today = todayISO();
-    return hotels.filter((h) => {
-      if (!h.cancellation_deadline) return false;
-      const dd = daysBetween(today, h.cancellation_deadline);
-      return dd >= 0 && dd <= 7;
-    });
-  }, [hotels]);
 
   if (isLoading) return <HomeSkeleton />;
   if (!trip) {
@@ -105,38 +96,10 @@ function Home() {
       )}
 
 
-      {urgentHotels.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-xs uppercase tracking-wider text-muted-foreground">התראות ביטול</h2>
-          {urgentHotels.map((h) => {
-            const dd = daysBetween(todayISO(), h.cancellation_deadline!);
-            return (
-              <div
-                key={h.id}
-                className="bg-card border border-border rounded-2xl p-3 border-r-4 border-r-[color:var(--accent-2)]"
-              >
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-[color:var(--accent-2)] mt-1 shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-medium">{h.hotel_name}</div>
-                    <div className="text-xs text-muted-foreground">{h.city}</div>
-                    <div className="text-xs mt-1">
-                      ביטול עד {hebDate(h.cancellation_deadline!)} · נותרו {dd} ימים
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-
-      <section className="grid grid-cols-2 gap-3">
-        <Tile to="/itinerary" icon={Calendar} label="מסלול הטיול" />
+      <section className="grid grid-cols-3 gap-3">
+        <Tile to="/itinerary" icon={Calendar} label="מסלול" />
         <Tile to="/budget" icon={Wallet} label="תקציב" />
         <Tile to="/recommendations" icon={Star} label="המלצות" />
-        <Tile to="/recommendations" search={{ tab: "hotels" }} icon={Hotel} label="מלונות" />
       </section>
     </div>
   );
