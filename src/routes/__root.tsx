@@ -125,6 +125,7 @@ function AppShell() {
           <HeaderTitle />
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
+            {!isOnboarding && <TripSettingsLink />}
             <ThemeToggle />
           </div>
         </div>
