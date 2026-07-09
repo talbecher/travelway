@@ -96,38 +96,10 @@ function Home() {
       )}
 
 
-      {urgentHotels.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-xs uppercase tracking-wider text-muted-foreground">התראות ביטול</h2>
-          {urgentHotels.map((h) => {
-            const dd = daysBetween(todayISO(), h.cancellation_deadline!);
-            return (
-              <div
-                key={h.id}
-                className="bg-card border border-border rounded-2xl p-3 border-r-4 border-r-[color:var(--accent-2)]"
-              >
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-[color:var(--accent-2)] mt-1 shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-medium">{h.hotel_name}</div>
-                    <div className="text-xs text-muted-foreground">{h.city}</div>
-                    <div className="text-xs mt-1">
-                      ביטול עד {hebDate(h.cancellation_deadline!)} · נותרו {dd} ימים
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-
-      <section className="grid grid-cols-2 gap-3">
-        <Tile to="/itinerary" icon={Calendar} label="מסלול הטיול" />
+      <section className="grid grid-cols-3 gap-3">
+        <Tile to="/itinerary" icon={Calendar} label="מסלול" />
         <Tile to="/budget" icon={Wallet} label="תקציב" />
         <Tile to="/recommendations" icon={Star} label="המלצות" />
-        <Tile to="/recommendations" search={{ tab: "hotels" }} icon={Hotel} label="מלונות" />
       </section>
     </div>
   );
