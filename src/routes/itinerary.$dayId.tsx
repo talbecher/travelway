@@ -25,6 +25,7 @@ function DayDetail() {
   const { data: entries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
+  const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
   const [cityLabel, setCityLabel] = useState(day?.city_label ?? "");
 
   async function saveCity() {
@@ -42,8 +43,25 @@ function DayDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("נמחק");
     },
   });
+
+  const reorder = useMutation({
+    mutationFn: async ({ id, order }: { id: string; order: number }) => {
+      const { error } = await supabase.from("day_entries").update({ display_order: order }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["day-entries", dayId] }),
+  });
+
+  function move(idx: number, dir: -1 | 1) {
+    const swap = idx + dir;
+    if (swap < 0 || swap >= entries.length) return;
+    const a = entries[idx], b = entries[swap];
+    reorder.mutate({ id: a.id, order: swap });
+    reorder.mutate({ id: b.id, order: idx });
+  }
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
