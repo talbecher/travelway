@@ -15,6 +15,19 @@ export const Route = createFileRoute("/itinerary/$dayId")({
 });
 
 type EntryType = "flight" | "hotel_checkin" | "attraction" | "food" | "transport" | "note";
+type EntryRow = {
+  id: string;
+  entry_type: string;
+  title: string;
+  description: string | null;
+  time_of_day: string | null;
+  icon_emoji: string | null;
+  google_maps_url: string | null;
+  location_name: string | null;
+  linked_recommendation_id: string | null;
+  display_order: number;
+  recommendations: { google_maps_url: string | null } | null;
+};
 
 function DayDetail() {
   const { dayId } = Route.useParams();
