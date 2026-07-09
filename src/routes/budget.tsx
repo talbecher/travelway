@@ -128,8 +128,9 @@ function Budget() {
           {filter ? `הוצאות · ${CATEGORY_LABELS[filter]}` : "כל ההוצאות"}
         </h2>
         {filtered.length === 0 ? (
-          <div className="py-4"><EmptyStateInline /></div>
+          <EmptyState variant="expenses" title="אין הוצאות עדיין" hint="הוסיפו הוצאה מהירה מהכפתור הצף" />
         ) : (
+
 
           <div className="space-y-2">
             {filtered.map((e) => (
