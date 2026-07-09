@@ -359,10 +359,22 @@ function EntryForm(props: {
   );
 }
 
+type EntryPayload = {
+  entry_type: EntryType;
+  title: string;
+  description?: string | null;
+  time_of_day?: string | null;
+  icon_emoji?: string | null;
+  location_name?: string | null;
+  google_maps_url?: string | null;
+  linked_recommendation_id?: string | null;
+  display_order?: number;
+};
+
 function useUpsert(dayId: string, existingId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: Record<string, unknown>) => {
+    mutationFn: async (payload: EntryPayload) => {
       if (existingId) {
         const { error } = await supabase.from("day_entries").update(payload).eq("id", existingId);
         if (error) throw error;
