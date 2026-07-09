@@ -104,8 +104,17 @@ function DayDetail() {
         <EmptyDay />
       ) : (
         <div className="space-y-2">
-          {entries.map((e) => (
-            <EntryCard key={e.id} entry={e} onDelete={() => del.mutate(e.id)} />
+          {entries.map((e, idx) => (
+            <EntryCard
+              key={e.id}
+              entry={e as EntryRow}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < entries.length - 1}
+              onMoveUp={() => move(idx, -1)}
+              onMoveDown={() => move(idx, 1)}
+              onEdit={() => setEditEntry(e as EntryRow)}
+              onDelete={() => { if (confirm("למחוק פריט?")) del.mutate(e.id); }}
+            />
           ))}
         </div>
       )}
@@ -140,6 +149,10 @@ function DayDetail() {
             onBack={() => setEntryType(null)}
           />
         )}
+      </BottomSheet>
+
+      <BottomSheet open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)} title="ערוך פריט">
+        {editEntry && <EditEntryForm entry={editEntry} onDone={() => setEditEntry(null)} />}
       </BottomSheet>
     </div>
   );
