@@ -140,45 +140,97 @@ function Itinerary() {
             <div className="space-y-2">
               {g.days.map((d) => {
                 const chips = entriesByDay[d.id] ?? [];
+                const isEditing = editingId === d.id;
+                const isEmpty = chips.length === 0;
                 return (
-                  <button
+                  <div
                     key={d.id}
-                    type="button"
-                    onClick={() => navigate({ to: "/itinerary/$dayId", params: { dayId: d.id } })}
-                    className="w-full text-right flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3 border-r-4 transition-colors hover:bg-[color-mix(in_oklab,var(--surface-2)_60%,var(--card))]"
+                    className="flex items-center gap-2 bg-card border border-border rounded-2xl px-3 py-2 border-r-4"
                     style={{ borderRightColor: color }}
                   >
-                    <div className="w-9 text-center">
-                      <div className="text-[20px] font-semibold tabular-nums leading-none">{d.day_number}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">יום</div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[15px] font-medium">{hebDate(d.date)}</div>
-                      <div className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</div>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      {chips.slice(0, 4).map((c, i) => {
-                        const tint = TYPE_COLOR[c.type] ?? "var(--chart-6)";
-                        return (
-                          <span
-                            key={i}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[11px]"
-                            style={{
-                              background: `color-mix(in oklab, ${tint} 22%, transparent)`,
-                              color: tint,
-                            }}
-                          >
-                            {c.icon}
-                          </span>
-                        );
-                      })}
-                      {chips.length > 4 && (
-                        <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-[10px] flex items-center justify-center">
-                          +{chips.length - 4}
-                        </span>
+                    <button
+                      type="button"
+                      onClick={() => !isEditing && navigate({ to: "/itinerary/$dayId", params: { dayId: d.id } })}
+                      className="flex-1 min-w-0 text-right flex items-center gap-3 min-h-0 h-auto py-1"
+                    >
+                      <div className="w-9 text-center shrink-0">
+                        <div className="text-[20px] font-semibold tabular-nums leading-none">{d.day_number}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">יום</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[15px] font-medium">{hebDate(d.date)}</div>
+                        {isEditing ? (
+                          <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              autoFocus
+                              value={editValue}
+                              dir="ltr"
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveCity.mutate({ id: d.id, city: editValue });
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              className="flex-1 text-xs bg-background border border-input rounded px-2 py-1 outline-none focus:border-[color:var(--accent)]"
+                              placeholder="עיר / איזור"
+                            />
+                            <button type="button" onClick={(e) => { e.stopPropagation(); saveCity.mutate({ id: d.id, city: editValue }); }}
+                              className="w-6 h-6 rounded flex items-center justify-center text-[color:var(--accent-3)] min-h-0">
+                              <Check size={14} />
+                            </button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setEditingId(null); }}
+                              className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground min-h-0">
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : isEmpty ? (
+                          <div className="text-xs text-muted-foreground">לא תוכנן עדיין — לחץ להוספה</div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</div>
+                        )}
+                      </div>
+                      {!isEditing && (
+                        <div className="flex gap-1 shrink-0">
+                          {chips.slice(0, 4).map((c, i) => {
+                            const tint = TYPE_COLOR[c.type] ?? "var(--chart-6)";
+                            return (
+                              <span
+                                key={i}
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-[11px]"
+                                style={{ background: `color-mix(in oklab, ${tint} 22%, transparent)`, color: tint }}
+                              >
+                                {c.icon}
+                              </span>
+                            );
+                          })}
+                          {chips.length > 4 && (
+                            <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-[10px] flex items-center justify-center">
+                              +{chips.length - 4}
+                            </span>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  </button>
+                    </button>
+                    {!isEditing && (
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          type="button"
+                          aria-label="ערוך שם עיר"
+                          onClick={(e) => { e.stopPropagation(); setEditValue(d.city_label ?? ""); setEditingId(d.id); }}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="מחק יום"
+                          onClick={(e) => { e.stopPropagation(); if (confirm(`למחוק את יום ${d.day_number}?`)) delDay.mutate(d.id); }}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
