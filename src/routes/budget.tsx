@@ -9,7 +9,9 @@ import { useTrip, useExpenses, useHotels, useSettings } from "@/hooks/use-trip";
 import { ils, hebDate } from "@/lib/format";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
+import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/budget")({
   component: Budget,
@@ -55,11 +57,12 @@ function Budget() {
   return (
     <div className="pt-2 space-y-5">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium">תקציב</h1>
+        <h1>תקציב</h1>
         <button onClick={() => setSettingsOpen(true)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center min-h-0">
           <Settings size={16} />
         </button>
       </header>
+
 
       <div className="bg-card border border-border rounded-2xl p-4">
         <div className="relative h-52">
@@ -96,20 +99,27 @@ function Budget() {
             <button
               key={k}
               onClick={() => setFilter(active ? null : k)}
-              className={`w-full text-right bg-card border rounded-lg p-3 ${active ? "border-[color:var(--terracotta)]" : "border-border"}`}
+              className={`w-full text-right bg-card border rounded-2xl p-3 transition-colors ${active ? "border-[color:var(--accent)]" : "border-border"}`}
             >
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{CATEGORY_ICONS[k]}</span>
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-[13px]"
+                    style={{
+                      background: `color-mix(in oklab, ${CATEGORY_COLORS[k]} 22%, transparent)`,
+                      color: CATEGORY_COLORS[k],
+                    }}
+                  >{CATEGORY_ICONS[k]}</span>
                   <span>{CATEGORY_LABELS[k]}</span>
                 </div>
                 <div className="tabular-nums">{ils(amount)} · {Math.round(pct)}%</div>
               </div>
               <div className="h-1.5 bg-muted rounded-full mt-2 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CATEGORY_COLORS[k] }} />
+                <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: CATEGORY_COLORS[k] }} />
               </div>
             </button>
           );
+
         })}
       </section>
 
@@ -118,8 +128,10 @@ function Budget() {
           {filter ? `הוצאות · ${CATEGORY_LABELS[filter]}` : "כל ההוצאות"}
         </h2>
         {filtered.length === 0 ? (
-          <div className="text-center py-8 text-sm text-muted-foreground">אין הוצאות עדיין</div>
+          <EmptyState variant="expenses" title="אין הוצאות עדיין" hint="הוסיפו הוצאה מהירה מהכפתור הצף" />
         ) : (
+
+
           <div className="space-y-2">
             {filtered.map((e) => (
               <div key={e.id} className="bg-card border border-border rounded-lg p-3 flex items-start gap-3">

@@ -70,7 +70,13 @@ function Home() {
 
 
       {stats && (
-        <section className="bg-card border border-border rounded-2xl p-5">
+        <section
+          className="border border-border rounded-2xl p-5"
+          style={{
+            background:
+              "linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, var(--card)) 0%, color-mix(in oklab, var(--accent-2) 8%, var(--card)) 100%)",
+          }}
+        >
           <div className="flex items-center gap-5">
             <BudgetRing pct={stats.pct} />
             <div className="flex-1">
@@ -79,7 +85,7 @@ function Home() {
                 key={stats.remaining}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-3xl font-medium tabular-nums"
+                className="text-[28px] font-semibold tabular-nums leading-none mt-1"
               >
                 {ils(stats.remaining)}
               </motion.div>
@@ -98,6 +104,7 @@ function Home() {
         </section>
       )}
 
+
       {urgentHotels.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground">התראות ביטול</h2>
@@ -106,10 +113,10 @@ function Home() {
             return (
               <div
                 key={h.id}
-                className="bg-card border border-border rounded-lg p-3 border-r-4 border-r-[color:var(--danger)]"
+                className="bg-card border border-border rounded-2xl p-3 border-r-4 border-r-[color:var(--accent-2)]"
               >
                 <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-[color:var(--danger)] mt-1 shrink-0" />
+                  <AlertTriangle size={16} className="text-[color:var(--accent-2)] mt-1 shrink-0" />
                   <div className="flex-1">
                     <div className="font-medium">{h.hotel_name}</div>
                     <div className="text-xs text-muted-foreground">{h.city}</div>
@@ -123,6 +130,7 @@ function Home() {
           })}
         </section>
       )}
+
 
       <section className="grid grid-cols-2 gap-3">
         <Tile to="/itinerary" icon={Calendar} label="מסלול הטיול" />
@@ -141,33 +149,35 @@ function Tile({ to, icon: Icon, label, search }: { to: string; icon: typeof Cale
       search={search as never}
       className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[110px]"
     >
-      <Icon size={26} strokeWidth={1.5} className="text-[color:var(--terracotta)]" />
-      <div className="text-sm">{label}</div>
+      <Icon size={26} strokeWidth={1.6} className="text-[color:var(--accent)]" />
+      <div className="text-[15px]">{label}</div>
     </Link>
   );
 }
 
+
 function BudgetRing({ pct }: { pct: number }) {
-  const r = 34;
+  const r = 40;
   const c = 2 * Math.PI * r;
   const off = c - (pct / 100) * c;
   return (
-    <svg width="80" height="80" viewBox="0 0 80 80">
-      <circle cx="40" cy="40" r={r} stroke="var(--border)" strokeWidth="6" fill="none" />
+    <svg width="96" height="96" viewBox="0 0 96 96">
+      <circle cx="48" cy="48" r={r} stroke="var(--border)" strokeWidth="8" fill="none" />
       <motion.circle
-        cx="40" cy="40" r={r} stroke="var(--terracotta)" strokeWidth="6" fill="none"
-        strokeLinecap="round" transform="rotate(-90 40 40)"
+        cx="48" cy="48" r={r} stroke="var(--accent)" strokeWidth="8" fill="none"
+        strokeLinecap="round" transform="rotate(-90 48 48)"
         strokeDasharray={c}
         initial={{ strokeDashoffset: c }}
         animate={{ strokeDashoffset: off }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
       />
-      <text x="40" y="45" textAnchor="middle" className="fill-foreground text-sm font-medium">
+      <text x="48" y="53" textAnchor="middle" className="fill-foreground" style={{ fontSize: 15, fontWeight: 600 }}>
         {Math.round(pct)}%
       </text>
     </svg>
   );
 }
+
 
 function HomeSkeleton() {
   return (

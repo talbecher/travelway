@@ -11,7 +11,10 @@ const tabs = [
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border">
+    <nav
+      className="fixed bottom-0 inset-x-0 z-40 border-t border-border backdrop-blur-xl"
+      style={{ background: "color-mix(in oklab, var(--surface) 72%, transparent)" }}
+    >
       <div className="max-w-md mx-auto grid grid-cols-4">
         {tabs.map((t) => {
           const active = t.to === "/" ? pathname === "/" : pathname.startsWith(t.to);
@@ -20,15 +23,15 @@ export function BottomNav() {
             <Link
               key={t.to}
               to={t.to}
-              className={`flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-[11px] transition-colors ${active ? "text-[color:var(--terracotta)]" : "text-muted-foreground"}`}
+              className={`flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-[11px] transition-colors ${active ? "text-[color:var(--accent)]" : "text-muted-foreground"}`}
             >
-              <Icon size={22} strokeWidth={1.5} />
+              <Icon size={22} strokeWidth={1.6} />
               <span>{t.label}</span>
             </Link>
           );
         })}
       </div>
-      <div className="h-[env(safe-area-inset-bottom)] bg-background" />
+      <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
 }

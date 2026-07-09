@@ -15,8 +15,14 @@ import { PinGate } from "@/components/PinGate";
 import { BottomNav } from "@/components/BottomNav";
 import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Toaster } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
+
+const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`;
+
+
+
 
 function NotFoundComponent() {
   return (
@@ -55,7 +61,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "יפן 2026 — מתכנן הטיול שלנו" },
       { name: "description", content: "מתכנן טיול פרטי — יפן 2026" },
-      { name: "theme-color", content: "#F7F5F0" },
+      { name: "theme-color", content: "#0F0F13" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "יפן 2026" },
@@ -84,6 +90,7 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="he" dir="rtl">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
         {children}
@@ -101,7 +108,7 @@ function RootComponent() {
       <PinGate>
         <AppShell />
       </PinGate>
-      <Toaster position="top-center" richColors={false} theme="light" />
+      <Toaster position="top-center" richColors={false} />
     </QueryClientProvider>
   );
 }
@@ -111,10 +118,13 @@ function AppShell() {
   const isOnboarding = pathname === "/onboarding";
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur">
-        <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
+      <header className="sticky top-0 z-30 backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
+        <div className="max-w-md mx-auto flex items-center justify-between gap-2 px-4 py-3">
           <HeaderTitle />
-          {!isOnboarding && <ConverterPill />}
+          <div className="flex items-center gap-2">
+            {!isOnboarding && <ConverterPill />}
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className="max-w-md mx-auto px-4 pb-32">
@@ -125,6 +135,8 @@ function AppShell() {
     </div>
   );
 }
+
+
 
 function HeaderTitle() {
   const { data: trip } = useTrip();
