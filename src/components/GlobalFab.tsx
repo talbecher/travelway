@@ -51,7 +51,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         amount_foreign,
         foreign_currency: currency === "JPY" ? "JPY" : null,
         category,
-        description: null,
+        description: description.trim() || null,
         location_name: location || null,
         expense_date: date,
       });
