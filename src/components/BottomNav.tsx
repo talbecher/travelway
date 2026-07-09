@@ -1,0 +1,34 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Home, Calendar, Wallet, Star } from "lucide-react";
+
+const tabs = [
+  { to: "/", icon: Home, label: "בית" },
+  { to: "/itinerary", icon: Calendar, label: "מסלול" },
+  { to: "/budget", icon: Wallet, label: "תקציב" },
+  { to: "/recommendations", icon: Star, label: "המלצות" },
+] as const;
+
+export function BottomNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border">
+      <div className="max-w-md mx-auto grid grid-cols-4">
+        {tabs.map((t) => {
+          const active = t.to === "/" ? pathname === "/" : pathname.startsWith(t.to);
+          const Icon = t.icon;
+          return (
+            <Link
+              key={t.to}
+              to={t.to}
+              className={`flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-[11px] transition-colors ${active ? "text-[color:var(--terracotta)]" : "text-muted-foreground"}`}
+            >
+              <Icon size={22} strokeWidth={1.5} />
+              <span>{t.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+      <div className="h-[env(safe-area-inset-bottom)] bg-background" />
+    </nav>
+  );
+}
