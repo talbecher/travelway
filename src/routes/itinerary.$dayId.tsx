@@ -158,7 +158,15 @@ function DayDetail() {
   );
 }
 
-function EntryCard({ entry, onDelete }: { entry: { id: string; entry_type: string; title: string; description: string | null; time_of_day: string | null; icon_emoji: string | null; google_maps_url: string | null; recommendations: { google_maps_url: string | null } | null }; onDelete: () => void }) {
+function EntryCard({ entry, onDelete, onEdit, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: {
+  entry: EntryRow;
+  onDelete: () => void;
+  onEdit: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
   const url = entry.google_maps_url ?? entry.recommendations?.google_maps_url ?? null;
   const typeColors: Record<string, string> = {
     food: "var(--chart-1)",
@@ -176,6 +184,16 @@ function EntryCard({ entry, onDelete }: { entry: { id: string; entry_type: strin
       className="bg-card border border-border rounded-2xl p-3"
     >
       <div className="flex items-start gap-3">
+        <div className="flex flex-col gap-1 shrink-0">
+          <button aria-label="הזז למעלה" disabled={!canMoveUp} onClick={onMoveUp}
+            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground disabled:opacity-30 min-h-0">
+            <ArrowUp size={12} />
+          </button>
+          <button aria-label="הזז למטה" disabled={!canMoveDown} onClick={onMoveDown}
+            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground disabled:opacity-30 min-h-0">
+            <ArrowDown size={12} />
+          </button>
+        </div>
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-[16px] shrink-0"
           style={{ background: `color-mix(in oklab, ${tint} 22%, transparent)`, color: tint }}
@@ -190,17 +208,88 @@ function EntryCard({ entry, onDelete }: { entry: { id: string; entry_type: strin
           {entry.description && (
             <div className="text-sm text-muted-foreground mt-0.5">{entry.description}</div>
           )}
-          <div className="flex gap-3 mt-2">
-            {url && (
-              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1">
-                <ExternalLink size={12} /> מפה
-              </a>
-            )}
-            <button onClick={onDelete} className="text-xs text-muted-foreground min-h-0 h-auto p-0">מחק</button>
-          </div>
+          {url && (
+            <a href={url} target="_blank" rel="noreferrer" className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1 mt-2">
+              <ExternalLink size={12} /> מפה
+            </a>
+          )}
+        </div>
+        <div className="flex flex-col gap-1 shrink-0">
+          <button onClick={onEdit} aria-label="ערוך"
+            className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0">
+            <Pencil size={13} />
+          </button>
+          <button onClick={onDelete} aria-label="מחק"
+            className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
+            <Trash2 size={13} />
+          </button>
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function EditEntryForm({ entry, onDone }: { entry: EntryRow; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [title, setTitle] = useState(entry.title);
+  const [description, setDescription] = useState(entry.description ?? "");
+  const [time, setTime] = useState(entry.time_of_day ?? "");
+  const [location, setLocation] = useState(entry.location_name ?? "");
+  const [mapsUrl, setMapsUrl] = useState(entry.google_maps_url ?? "");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!title.trim()) throw new Error("חסר שם");
+      const { error } = await supabase.from("day_entries").update({
+        title: title.trim(),
+        description: description || null,
+        time_of_day: time || null,
+        location_name: location || null,
+        google_maps_url: mapsUrl || null,
+      }).eq("id", entry.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("נשמר");
+      onDone();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 pt-2 pb-2">
+      <div>
+        <label className="text-xs text-muted-foreground">כותרת</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} required
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">שעה</label>
+        <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="09:00" dir="ltr"
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">פרטים / הערות</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 py-2 min-h-[60px]" />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">מיקום</label>
+        <input value={location} onChange={(e) => setLocation(e.target.value)}
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">Google Maps URL</label>
+        <input value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr"
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+      </div>
+      <button type="submit" disabled={save.isPending}
+        className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
+        {save.isPending ? "שומר..." : "שמור"}
+      </button>
+    </form>
   );
 }
 
