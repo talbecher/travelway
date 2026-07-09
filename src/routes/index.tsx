@@ -12,7 +12,6 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { data: trip, isLoading } = useTrip();
   const { data: expenses = [] } = useExpenses();
-  const { data: hotels = [] } = useHotels();
   const { data: days = [] } = useDays();
 
   const stats = useMemo(() => {
@@ -31,14 +30,6 @@ function Home() {
     return { spent, budget, remaining, pct, daysTotal, daysPassed, daily, beforeTrip, daysToStart };
   }, [trip, expenses, days]);
 
-  const urgentHotels = useMemo(() => {
-    const today = todayISO();
-    return hotels.filter((h) => {
-      if (!h.cancellation_deadline) return false;
-      const dd = daysBetween(today, h.cancellation_deadline);
-      return dd >= 0 && dd <= 7;
-    });
-  }, [hotels]);
 
   if (isLoading) return <HomeSkeleton />;
   if (!trip) {
