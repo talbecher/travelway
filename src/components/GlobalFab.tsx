@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/format";
 import { useSettings } from "@/hooks/use-trip";
 import { BottomSheet } from "./BottomSheet";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
+import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 
 export function GlobalFab() {
@@ -128,6 +129,11 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr"
           placeholder="https://maps.app.goo.gl/..."
           className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+        {mapsUrl.trim() && (
+          parseLatLngFromMapsUrl(mapsUrl)
+            ? <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
+            : <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — לא יופיע במפה</div>
+        )}
       </div>
       {recType && locationName.trim() && (
         <label className="flex items-center gap-2 py-1 text-sm">

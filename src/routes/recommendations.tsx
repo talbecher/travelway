@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
@@ -10,9 +10,14 @@ import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
 import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
+import { ClientOnly } from "@/components/ClientOnly";
+import { MapSkeleton } from "@/components/MapSkeleton";
 import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
+import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
+
+const RecsMap = lazy(() => import("@/components/RecsMap"));
 
 type Tab = "food" | "attractions" | "hotels";
 const searchSchema = z.object({ tab: z.enum(["food", "attractions", "hotels"]).optional() });
@@ -34,8 +39,10 @@ function Recs() {
   const search = Route.useSearch();
   const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "food");
   const [city, setCity] = useState<string>("all");
+  const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
   const [editRec, setEditRec] = useState<Rec | null>(null);
+  const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
   const { data: recs = [] } = useRecs();
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
@@ -50,10 +57,47 @@ function Recs() {
   }, [recs, tab]);
 
   useEffect(() => { setCity("all"); }, [tab]);
+  useEffect(() => { if (tab === "hotels") setView("list"); }, [tab]);
+
+  const mapPins = useMemo(() => {
+    const type = TAB_TYPE[tab];
+    return (recs as Rec[])
+      .filter((r) => r.type === type)
+      .filter((r) => city === "all" || r.city === city)
+      .filter((r) => r.latitude != null && r.longitude != null)
+      .map((r) => ({
+        id: r.id, lat: Number(r.latitude), lng: Number(r.longitude),
+        type: r.type, name: r.name,
+      }));
+  }, [recs, tab, city]);
+
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (view !== "map" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (p) => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => {},
+      { timeout: 5000, maximumAge: 60_000 },
+    );
+  }, [view]);
 
   return (
     <div className="pt-2 space-y-4 pb-4">
-      <h1>המלצות</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1>המלצות</h1>
+        {tab !== "hotels" && (
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
+              className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "list" ? "bg-card" : "text-muted-foreground"}`}>
+              <List size={16} />
+            </button>
+            <button onClick={() => setView("map")} aria-label="תצוגת מפה"
+              className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "map" ? "bg-card" : "text-muted-foreground"}`}>
+              <MapIcon size={16} />
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-1 bg-muted rounded-lg p-1">
         <TabBtn active={tab === "food"} onClick={() => setTab("food")}>🍜 אוכל</TabBtn>
@@ -70,16 +114,37 @@ function Recs() {
         </div>
       )}
 
-      {tab === "hotels"
-        ? <HotelsList onEdit={setEditRec} />
-        : <PlacesList type={TAB_TYPE[tab] as "food" | "attraction"} cityFilter={city} onEdit={setEditRec} />
-      }
+      {tab === "hotels" ? (
+        <HotelsList onEdit={setEditRec} />
+      ) : view === "map" ? (
+        <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100dvh - 260px)" }}>
+          {mapPins.length === 0 ? (
+            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
+              <MapIcon size={28} className="text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">אין המלצות עם מיקום להצגה</div>
+              <div className="text-xs text-muted-foreground">הוסף לינק גוגל מפות בעריכת ההמלצה</div>
+            </div>
+          ) : (
+            <ClientOnly fallback={<MapSkeleton />}>
+              <Suspense fallback={<MapSkeleton />}>
+                <RecsMap
+                  pins={mapPins}
+                  userPos={userPos}
+                  onPinTap={(id) => {
+                    const found = (recs as Rec[]).find((r) => r.id === id);
+                    if (found) setMapPickRec(found);
+                  }}
+                />
+              </Suspense>
+            </ClientOnly>
+          )}
+        </div>
+      ) : (
+        <PlacesList type={TAB_TYPE[tab] as "food" | "attraction"} cityFilter={city} onEdit={setEditRec} />
+      )}
 
-      <button
-        onClick={() => setAddOpen(true)}
-        aria-label="הוסף המלצה"
-        className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg"
-      >
+      <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
+        className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
         <Plus size={26} strokeWidth={1.8} />
       </button>
 
@@ -89,6 +154,63 @@ function Recs() {
 
       <BottomSheet open={!!editRec} onOpenChange={(o) => !o && setEditRec(null)} title="ערוך המלצה">
         {editRec && <RecForm defaultType={editRec.type as RecType} existing={editRec} onDone={() => setEditRec(null)} />}
+      </BottomSheet>
+
+      <BottomSheet open={!!mapPickRec} onOpenChange={(o) => !o && setMapPickRec(null)} title={mapPickRec?.name}>
+        {mapPickRec && <MapPickCard rec={mapPickRec} onDone={() => setMapPickRec(null)} />}
+      </BottomSheet>
+    </div>
+  );
+}
+
+function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
+  const qc = useQueryClient();
+  const { data: days = [] } = useDays();
+  const [dayPickerOpen, setDayPickerOpen] = useState(false);
+  const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
+  const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+  const addToDay = useMutation({
+    mutationFn: async (dayId: string) => addRecommendationToDay(rec, dayId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      toast.success("נוסף ליום");
+      setDayPickerOpen(false);
+      onDone();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <div className="pt-1 pb-2 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] px-2 py-0.5 rounded-full"
+          style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}>{typeLabel}</span>
+        {rec.city && <span className="text-xs text-muted-foreground" dir="ltr">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>}
+      </div>
+      {rec.notes && <div className="text-sm text-muted-foreground whitespace-pre-line">{rec.notes}</div>}
+      <div className="flex gap-2">
+        {rec.google_maps_url && (
+          <a href={rec.google_maps_url} target="_blank" rel="noreferrer"
+            className="flex-1 h-10 rounded-md border border-border flex items-center justify-center gap-1 text-sm">
+            <Navigation size={14} /> ניווט
+          </a>
+        )}
+        <button onClick={() => setDayPickerOpen(true)}
+          className="flex-1 h-10 rounded-md bg-[color:var(--accent)] text-white text-sm min-h-0">
+          + הוסף ליום
+        </button>
+      </div>
+      <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${rec.name} ליום`}>
+        <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
+          {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
+          {days.map((d) => (
+            <button key={d.id} onClick={() => addToDay.mutate(d.id)}
+              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0">
+              <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
+              <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
+            </button>
+          ))}
+        </div>
       </BottomSheet>
     </div>
   );
@@ -292,11 +414,14 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     mutationFn: async () => {
       if (!name.trim()) throw new Error("שם חסר");
       if (!city.trim()) throw new Error("עיר חסרה");
+      const coords = parseLatLngFromMapsUrl(url);
       const payload = {
         type, name: name.trim(), city: city.trim(),
         address: address.trim() || null,
         google_maps_url: url.trim() || null,
         notes: notes.trim() || null,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
       };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
@@ -333,7 +458,14 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       <Field label="שם"><input required value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
       <Field label="עיר"><input required value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
       <Field label="אזור / שכונה"><input value={address} onChange={(e) => setAddress(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-      <Field label="לינק גוגל מפות"><input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+      <Field label="לינק גוגל מפות">
+        <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+        {url.trim() && (
+          parseLatLngFromMapsUrl(url)
+            ? <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
+            : <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — לא יופיע במפה</div>
+        )}
+      </Field>
       <Field label="הערות"><textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[70px]" /></Field>
 
       {type === "hotel" && !existing && (
