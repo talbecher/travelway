@@ -414,11 +414,14 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     mutationFn: async () => {
       if (!name.trim()) throw new Error("שם חסר");
       if (!city.trim()) throw new Error("עיר חסרה");
+      const coords = parseLatLngFromMapsUrl(url);
       const payload = {
         type, name: name.trim(), city: city.trim(),
         address: address.trim() || null,
         google_maps_url: url.trim() || null,
         notes: notes.trim() || null,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
       };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
@@ -455,7 +458,14 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       <Field label="שם"><input required value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
       <Field label="עיר"><input required value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
       <Field label="אזור / שכונה"><input value={address} onChange={(e) => setAddress(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-      <Field label="לינק גוגל מפות"><input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+      <Field label="לינק גוגל מפות">
+        <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+        {url.trim() && (
+          parseLatLngFromMapsUrl(url)
+            ? <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
+            : <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — לא יופיע במפה</div>
+        )}
+      </Field>
       <Field label="הערות"><textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[70px]" /></Field>
 
       {type === "hotel" && !existing && (
