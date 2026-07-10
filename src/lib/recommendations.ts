@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { TRIP_ID } from "@/lib/constants";
+import { parseLatLngFromMapsUrl } from "@/lib/coords";
 
 export type RecType = "food" | "attraction" | "hotel";
 
@@ -30,6 +31,7 @@ export async function saveRecommendation(input: {
   google_maps_url?: string | null;
   notes?: string | null;
 }): Promise<string> {
+  const coords = parseLatLngFromMapsUrl(input.google_maps_url);
   const { data, error } = await supabase
     .from("recommendations")
     .insert({
@@ -40,6 +42,8 @@ export async function saveRecommendation(input: {
       address: input.address || null,
       google_maps_url: input.google_maps_url || null,
       notes: input.notes || null,
+      latitude: coords?.lat ?? null,
+      longitude: coords?.lng ?? null,
     })
     .select("id")
     .single();
@@ -53,12 +57,17 @@ export async function addRecommendationToDay(rec: {
   name: string;
   city: string | null;
   google_maps_url: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 }, dayId: string): Promise<void> {
   const entryType = recTypeToEntryType(rec.type);
   const { count } = await supabase
     .from("day_entries")
     .select("id", { count: "exact", head: true })
     .eq("day_id", dayId);
+  const coords = rec.latitude != null && rec.longitude != null
+    ? { lat: Number(rec.latitude), lng: Number(rec.longitude) }
+    : parseLatLngFromMapsUrl(rec.google_maps_url);
   const { error } = await supabase.from("day_entries").insert({
     day_id: dayId,
     entry_type: entryType,
@@ -68,6 +77,8 @@ export async function addRecommendationToDay(rec: {
     icon_emoji: recTypeIcon(rec.type),
     linked_recommendation_id: rec.id,
     display_order: count ?? 0,
+    latitude: coords?.lat ?? null,
+    longitude: coords?.lng ?? null,
   });
   if (error) throw error;
 }
