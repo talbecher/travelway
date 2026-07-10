@@ -24,8 +24,10 @@ export type Database = {
           google_maps_url: string | null
           icon_emoji: string | null
           id: string
+          latitude: number | null
           linked_recommendation_id: string | null
           location_name: string | null
+          longitude: number | null
           time_of_day: string | null
           title: string
         }
@@ -38,8 +40,10 @@ export type Database = {
           google_maps_url?: string | null
           icon_emoji?: string | null
           id?: string
+          latitude?: number | null
           linked_recommendation_id?: string | null
           location_name?: string | null
+          longitude?: number | null
           time_of_day?: string | null
           title: string
         }
@@ -52,8 +56,10 @@ export type Database = {
           google_maps_url?: string | null
           icon_emoji?: string | null
           id?: string
+          latitude?: number | null
           linked_recommendation_id?: string | null
           location_name?: string | null
+          longitude?: number | null
           time_of_day?: string | null
           title?: string
         }

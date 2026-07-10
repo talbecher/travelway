@@ -1,0 +1,1 @@
+ALTER TABLE public.day_entries ADD COLUMN IF NOT EXISTS latitude numeric, ADD COLUMN IF NOT EXISTS longitude numeric;
