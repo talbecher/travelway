@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
@@ -10,9 +10,14 @@ import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
 import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
+import { ClientOnly } from "@/components/ClientOnly";
+import { MapSkeleton } from "@/components/MapSkeleton";
 import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
+import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
+
+const RecsMap = lazy(() => import("@/components/RecsMap"));
 
 type Tab = "food" | "attractions" | "hotels";
 const searchSchema = z.object({ tab: z.enum(["food", "attractions", "hotels"]).optional() });
