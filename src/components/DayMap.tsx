@@ -51,6 +51,7 @@ export default function DayMap({
     ? [stops[0].lat, stops[0].lng]
     : [35.6812, 139.7671]; // Tokyo fallback
 
+  console.log("[DayMap] stops", stops);
   const path = stops.map((s) => [s.lat, s.lng] as [number, number]);
 
   return (
