@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,7 @@ import { useDays, dayEntriesQuery } from "@/hooks/use-trip";
 import { hebDateLong } from "@/lib/format";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
-import { ClientOnly } from "@/components/ClientOnly";
-import { MapSkeleton } from "@/components/MapSkeleton";
+import DayMap from "@/components/DayMap";
 import { saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
@@ -33,7 +32,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const DayMap = lazy(() => import("@/components/DayMap"));
 
 export const Route = createFileRoute("/itinerary/$dayId")({
   component: DayDetail,
