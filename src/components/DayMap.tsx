@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { MapSkeleton } from "@/components/MapSkeleton";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { TYPE_PIN_COLOR } from "@/lib/coords";
