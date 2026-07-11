@@ -164,3 +164,9 @@
 
 @utility no-shadow { box-shadow: none !important; }
 @utility caption { font-size: 12px; color: var(--muted-foreground); }
+
+/* Keep Leaflet's internal panes from floating over app UI (bottom sheets, nav, popovers). */
+.leaflet-container { z-index: 0 !important; }
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom { z-index: 0 !important; }
