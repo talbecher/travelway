@@ -287,22 +287,28 @@ function DayDetail() {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
+                  {directionsEnabled && (
+                    <a
+                      href={directions}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="לשינוי מצב תחבורה — השתמש בכפתורי הניווט בין הנקודות למטה"
+                      className="w-full h-9 rounded-full border border-border text-xs text-muted-foreground flex items-center justify-center gap-2 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                    >
+                      🗺 פתח את כל היום בגוגל מפות (ברגל)
+                    </a>
+                  )}
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
                     const b = coordsOf(e);
-                    let connector: string | null = null;
-                    if (a && b) {
-                      const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
-                      connector = km < 2
-                        ? `→ ${fmtDistance(km)} · ~${walkTimeMin(km)} דק׳ הליכה`
-                        : `→ ${fmtDistance(km)}`;
-                    }
                     return (
                       <div key={e.id}>
-                        {prev && connector && (
-                          <div className="text-[11px] text-muted-foreground mr-14 py-1" dir="rtl">{connector}</div>
-                        )}
+                        {prev && (a && b ? (
+                          <SegmentConnector a={a} b={b} />
+                        ) : (
+                          <div className="h-px bg-border mr-14 my-2" />
+                        ))}
                         <SortableEntry
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
@@ -322,27 +328,10 @@ function DayDetail() {
               className="w-full h-11 mt-3 rounded-xl bg-[color:var(--accent)] text-white text-sm font-medium flex items-center justify-center gap-2">
               <Plus size={16} /> הוסף פעילות
             </button>
-
-            {directionsEnabled ? (
-              <a href={directions} target="_blank" rel="noreferrer"
-                className="w-full h-11 mt-2 rounded-xl border border-[color:var(--accent-3)] text-[color:var(--accent-3)] text-sm font-medium flex items-center justify-center gap-2">
-                🗺 נווט את כל היום
-              </a>
-            ) : (
-              <button type="button" disabled
-                title="יש להוסיף לפחות 2 מיקומים עם לינק מפות"
-                className="w-full h-11 mt-2 rounded-xl border border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
-                🗺 נווט את כל היום
-              </button>
-            )}
-            {mapStops.length < 2 && hasAnyEntries && (
-              <div className="text-[11px] text-muted-foreground text-center mt-2">
-                צריך לפחות 2 פריטים עם מיקום כדי לפתוח ניווט
-              </div>
-            )}
           </div>
         </div>
       )}
+
 
       <BottomSheet open={pickerOpen} onOpenChange={setPickerOpen} title={entryType ? undefined : "בחר סוג פעילות"}>
         {!entryType ? (
