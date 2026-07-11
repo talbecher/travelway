@@ -795,7 +795,12 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [notes, setNotes] = useState(recType === "food" ? parseDesc(existing?.description, "הערות") || (existing?.description ?? "") : (existing?.description ?? ""));
   const [saveToRecs, setSaveToRecs] = useState(false);
   const mut = useUpsert(dayId, existing?.id);
-  const resolver = useResolveMapsUrl();
+  const initialCoords = existing?.latitude != null && existing?.longitude != null
+    ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
+    : null;
+  const [resolvedCoords, setResolvedCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
+  const resolver = useResolveMapsUrl(initialCoords);
+  useEffect(() => { setResolvedCoords(resolver.resolved); }, [resolver.resolved]);
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
