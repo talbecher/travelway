@@ -262,11 +262,7 @@ function DayDetail() {
           {/* Map pane */}
           <div className="relative overflow-hidden" style={{ height: `${mapPct}%` }}>
             {mapStops.length > 0 ? (
-              <ClientOnly fallback={<MapSkeleton />}>
-                <Suspense fallback={<MapSkeleton />}>
-                  <DayMap stops={mapStops} highlightId={highlightId} onPinTap={scrollToCard} />
-                </Suspense>
-              </ClientOnly>
+              <DayMap stops={mapStops} highlightId={highlightId} onPinTap={scrollToCard} />
             ) : (
               <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
                 <MapIcon size={28} className="text-muted-foreground" />
