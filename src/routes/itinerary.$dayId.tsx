@@ -682,8 +682,9 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   const [cancel, setCancel] = useState(parseDesc(existing?.description, "ביטול"));
   const [notes, setNotes] = useState(parseDesc(existing?.description, "הערות"));
   const mut = useUpsert(dayId, existing?.id);
+  const resolver = useResolveMapsUrl();
   return (
-    <form onSubmit={(e) => {
+    <form onSubmit={async (e) => {
       e.preventDefault();
       if (!name.trim()) { toast.error("שם המלון חסר"); return; }
       const description = [
@@ -692,7 +693,8 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         cancel && `ביטול: ${cancel}`,
         notes && `הערות: ${notes}`,
       ].filter(Boolean).join("\n");
-      const c = parseLatLngFromMapsUrl(mapsUrl);
+      const local = parseLatLngFromMapsUrl(mapsUrl);
+      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
       mut.mutate({
         entry_type: "hotel_checkin", title: name.trim(),
         description: description || null, time_of_day: time || null, icon_emoji: "🏨",
@@ -707,8 +709,13 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
       <div><L>לינק להזמנה</L><input type="url" value={url} onChange={(e) => setUrl(e.target.value)} dir="ltr" className={inputCls} /></div>
       <div>
         <L>לינק גוגל מפות</L>
-        <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls} />
-        <CoordStatus url={mapsUrl} />
+        <input
+          type="url" value={mapsUrl}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
+          dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
+        />
+        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
       </div>
       <div><L>תאריך ביטול חינם</L><input type="date" value={cancel} onChange={(e) => setCancel(e.target.value)} className={inputCls} /></div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
