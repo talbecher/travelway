@@ -376,6 +376,51 @@ function DayDetail() {
   );
 }
 
+function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat: number; lng: number } }) {
+  const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
+  const suggested: "walking" | "transit" | "driving" =
+    km < 1.5 ? "walking" : km <= 10 ? "transit" : "driving";
+  const base = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}`;
+  const modes: { key: "walking" | "transit" | "driving"; label: string; emoji: string }[] = [
+    { key: "walking", label: "ברגל", emoji: "🚶" },
+    { key: "transit", label: "תחבורה", emoji: "🚌" },
+    { key: "driving", label: "מכונית", emoji: "🚗" },
+  ];
+  return (
+    <div className="mr-14 my-1 flex flex-col items-start gap-1" dir="rtl">
+      <div className="w-0.5 h-3 bg-border" />
+      <div className="text-[11px] text-muted-foreground">→ {fmtDistance(km)}</div>
+      <div className="flex gap-1.5 flex-wrap">
+        {modes.map((m) => {
+          const isOn = m.key === suggested;
+          return (
+            <a
+              key={m.key}
+              href={`${base}&travelmode=${m.key}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="h-7 px-3 rounded-full text-[11px] inline-flex items-center gap-1 leading-none"
+              style={
+                isOn
+                  ? { background: "var(--accent)", color: "#fff", border: "1px solid transparent" }
+                  : { background: "transparent", color: "var(--foreground)", border: "1px solid var(--border)" }
+              }
+            >
+              <span>{m.emoji}</span>
+              <span>{m.label}</span>
+            </a>
+          );
+        })}
+      </div>
+      <div className="w-0.5 h-3 bg-border" />
+    </div>
+  );
+}
+
+
+
 function SortableEntry({
   entry, pinIndex, highlighted, setRef, onEdit, onDelete,
 }: {
