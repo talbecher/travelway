@@ -753,7 +753,10 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         notes && `הערות: ${notes}`,
       ].filter(Boolean).join("\n");
       const local = parseLatLngFromMapsUrl(mapsUrl);
-      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
+      const awaited = mapsUrl && !local && !resolvedCoords
+        ? await resolver.tryResolve(mapsUrl)
+        : null;
+      const c = local ?? resolvedCoords ?? awaited;
       mut.mutate({
         entry_type: "hotel_checkin", title: name.trim(),
         description: description || null, time_of_day: time || null, icon_emoji: "🏨",
