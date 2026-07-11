@@ -218,7 +218,8 @@ function DayDetail() {
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
   const hasAnyEntries = entries.length > 0;
-  const directions = mapStops.length >= 2 ? googleDirectionsUrl(mapStops.map((s) => ({ lat: s.lat, lng: s.lng }))) : null;
+  const directions = googleDirectionsUrl(mapStops.map((s) => ({ lat: Number(s.lat), lng: Number(s.lng) })));
+  const directionsEnabled = directions !== "";
 
   return (
     <div className="-mx-4">
