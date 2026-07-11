@@ -1,72 +1,53 @@
-## Fix 3 map/coord bugs
+## Goal
 
-Note: there is no in-form MiniMap preview in the code today, so Bug 1's markup instruction is a no-op — but the CSS half of Bug 1 (Leaflet stacking contexts leaking) is applied globally as instructed.
+Replace the single "נווט את כל היום" footer button with a per-segment navigation UX between consecutive stops, plus a compact "כל היום" walking shortcut at the top of the list.
 
-### Bug 1 — Leaflet z-index leak
+## Scope
 
-`src/styles.css` — append a small block (outside `@theme`):
+Only `src/routes/itinerary.$dayId.tsx`. No changes to map, coord flow, data, or other files.
 
-```css
-.leaflet-container { z-index: 0 !important; }
-.leaflet-pane,
-.leaflet-top,
-.leaflet-bottom { z-index: 0 !important; }
+## Changes
+
+### 1. Remove footer button
+Delete the `directionsEnabled ? <a>...</a> : <button disabled>` block (lines ~326–337) and the "צריך לפחות 2 פריטים..." hint under it. Keep the "הוסף פעילות" button.
+
+### 2. Add "כל היום" summary button at top of list
+Above the `DndContext` block (inside the list pane, before the entries map), render a compact button:
+- Label: `🗺 פתח את כל היום בגוגל מפות (ברגל)`
+- Style: outlined pill, small (h-9, text-xs), full width
+- `title` tooltip: `לשינוי מצב תחבורה — השתמש בכפתורי הניווט בין הנקודות למטה`
+- Uses existing `googleDirectionsUrl(...)` (walking, multi-waypoint).
+- Only shown when `mapStops.length >= 2`. When only 1 stop: hide entirely. When 0 stops: already gated by empty-day view.
+
+### 3. Per-segment connector component
+Replace the plain `<div>{connector}</div>` (lines 303–305) with a new inline `SegmentConnector` element rendered when both `a` (prev coords) and `b` (current coords) exist:
+
+```text
+    │  (2px vertical line, var(--border), 12px tall)
+    ├─ → 1.2 ק״מ          (muted, text-[11px])
+    │  [🚶 ברגל] [🚌 תחבורה] [🚗 מכונית]
+    │  (2px vertical line, 12px tall)
 ```
 
-This keeps Leaflet's internal panes (default z-index 400–700) from floating over the bottom sheet / nav / popovers. The DayMap parent (`#day-split > div`) creates its own stacking context via `overflow:hidden`, so pins still render correctly inside the split view.
+Layout: right-aligned to the card content (`mr-14` matches current indent). Buttons in a horizontal row, 28px height, 12px padding, rounded-full, text-[11px].
 
-### Bug 2+3 — React #418 hydration + partial marker mount
+Suggested-mode logic (based on `haversine(a, b)` km):
+- `< 1.5` → walking is suggested
+- `1.5–10` → transit is suggested
+- `> 10` → driving is suggested
 
-`src/components/DayMap.tsx`:
+Suggested pill: `background: var(--accent); color: white; border: transparent`.
+Others: `background: transparent; border: 1px solid var(--border); color: var(--foreground)`.
 
-- Add `const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), []);`
-- Before returning `<MapContainer>`, if `!mounted` return `<MapSkeleton />`.
-- Import `MapSkeleton` and `useState` at the top.
+Each pill is an `<a target="_blank" rel="noreferrer">` to:
+`https://www.google.com/maps/dir/?api=1&origin={a.lat},{a.lng}&destination={b.lat},{b.lng}&travelmode={walking|transit|driving}`
 
-`src/routes/itinerary.$dayId.tsx`:
+### 4. Fallback when either side has no coords
+Keep the current plain divider behavior: when `a` or `b` is null (i.e. previous connector logic didn't produce a value), show a plain thin 1px divider line (`<div className="h-px bg-border mr-14 my-1" />`) with no distance text and no buttons — replaces the current "no connector rendered at all" behavior only when `prev` exists.
 
-- Remove `lazy`/`Suspense` around DayMap. Change `const DayMap = lazy(...)` to a plain `import DayMap from "@/components/DayMap"`.
-- Remove the `<ClientOnly>` and `<Suspense>` wrappers around `<DayMap ...>` — the internal mount guard replaces both.
-- Drop the now-unused `lazy`, `Suspense`, `ClientOnly` imports.
+## Technical notes
 
-The mount guard runs only after hydration, so SSR emits the skeleton, client re-renders the real map — no hydration mismatch, no React #418, all markers mount.
-
-### Bug 4 — Per-form resolved coords
-
-Root cause per the report: coords should live in isolated per-form state, seeded from `existing`, and the insert payload must read from that state (not a shared closure).
-
-`src/routes/itinerary.$dayId.tsx` — in `LodgingForm` and `PlaceForm`:
-
-- Add:
-  ```ts
-  const [resolvedCoords, setResolvedCoords] = useState<{lat:number; lng:number} | null>(
-    existing?.latitude != null && existing?.longitude != null
-      ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
-      : null
-  );
-  ```
-- Wire the resolver hook to write into this state on success and clear on `idle`/`failed` (small callback prop or explicit setter after `tryResolve`/`scheduleDebounced`).
-- On submit:
-  ```ts
-  const local = parseLatLngFromMapsUrl(mapsUrl);
-  const awaited = mapsUrl && !local && !resolvedCoords
-    ? await resolver.tryResolve(mapsUrl)
-    : null;
-  const c = local ?? resolvedCoords ?? awaited;
-  mut.mutate({
-    ...,
-    latitude: c?.lat ?? null,
-    longitude: c?.lng ?? null,
-  }, ...);
-  ```
-- The insert payload reads only from this form-scoped `resolvedCoords` / `local` / `awaited` — no reference to any outer or module-level variable.
-
-Because each `EntryForm` instance is keyed (`key={entryType}` in the picker, `key={editEntry.id}` in the editor), the `useState` truly isolates each form. Edits now also correctly preload the existing entry's saved coords instead of starting `null`.
-
-### Files touched
-
-- `src/styles.css` (append CSS block)
-- `src/components/DayMap.tsx` (mount guard)
-- `src/routes/itinerary.$dayId.tsx` (drop lazy/ClientOnly wrappers; per-form `resolvedCoords` state in `LodgingForm` and `PlaceForm`)
-
-Nothing else changes.
+- All URL construction happens inline in the connector — no changes to `src/lib/coords.ts`. The existing `googleDirectionsUrl` is reused only for the top "כל היום" button.
+- `haversine` is already imported and used at line 296; reuse the same `km` value for both distance display and suggested-mode selection.
+- Buttons use `target="_blank" rel="noreferrer"` and stop click propagation so drag/reorder is not affected.
+- No changes to Supabase, hooks, DayMap, or CSS files.
