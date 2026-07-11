@@ -733,6 +733,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [notes, setNotes] = useState(recType === "food" ? parseDesc(existing?.description, "הערות") || (existing?.description ?? "") : (existing?.description ?? ""));
   const [saveToRecs, setSaveToRecs] = useState(false);
   const mut = useUpsert(dayId, existing?.id);
+  const resolver = useResolveMapsUrl();
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
@@ -749,7 +750,8 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
       const description = recType === "food"
         ? [foodType && `סוג: ${foodType}`, notes && `הערות: ${notes}`].filter(Boolean).join("\n")
         : notes;
-      const c = parseLatLngFromMapsUrl(mapsUrl);
+      const local = parseLatLngFromMapsUrl(mapsUrl);
+      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
       mut.mutate({
         entry_type: recType, title: name.trim(),
         description: description || null, time_of_day: time || null,
@@ -768,8 +770,13 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
       )}
       <div>
         <L>לינק גוגל מפות</L>
-        <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls} />
-        <CoordStatus url={mapsUrl} />
+        <input
+          type="url" value={mapsUrl}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
+          dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
+        />
+        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
       </div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
       {!existing && (
