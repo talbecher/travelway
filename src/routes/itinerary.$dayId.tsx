@@ -466,7 +466,9 @@ function SortableEntry({
               </a>
             )}
             {!hasCoords && entry.entry_type !== "note" && (
-              <div className="text-[11px] text-muted-foreground mt-1">📍 אין מיקום — הוסף לינק מפות</div>
+              <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
+                💡 {entry.google_maps_url ? "עדכן את הלינק כדי שיופיע במפה" : "אין מיקום — הוסף לינק מפות"}
+              </div>
             )}
           </div>
           <div className="flex flex-col gap-1 shrink-0">
