@@ -329,11 +329,17 @@ function DayDetail() {
               <Plus size={16} /> הוסף פעילות
             </button>
 
-            {directions && (
+            {directionsEnabled ? (
               <a href={directions} target="_blank" rel="noreferrer"
                 className="w-full h-11 mt-2 rounded-xl border border-[color:var(--accent-3)] text-[color:var(--accent-3)] text-sm font-medium flex items-center justify-center gap-2">
                 🗺 נווט את כל היום
               </a>
+            ) : (
+              <button type="button" disabled
+                title="יש להוסיף לפחות 2 מיקומים עם לינק מפות"
+                className="w-full h-11 mt-2 rounded-xl border border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+                🗺 נווט את כל היום
+              </button>
             )}
             {mapStops.length < 2 && hasAnyEntries && (
               <div className="text-[11px] text-muted-foreground text-center mt-2">
