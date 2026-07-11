@@ -33,44 +33,18 @@ export const resolveMapsUrl = createServerFn({ method: "POST" })
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      // Follow redirects. Some Google short links respond only to GET.
       const res = await fetch(url, {
         method: "GET",
         redirect: "follow",
         signal: controller.signal,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (compatible; TripNote/1.0; +https://tripnote.lovable.app)",
-        },
+        headers: { "User-Agent": "Mozilla/5.0" },
       });
       clearTimeout(timeout);
 
       const finalUrl = res.url || url;
-      let coords = parseLatLngFromMapsUrl(finalUrl);
-
-      // Fallback: sometimes the coords are only in the HTML body (meta refresh
-      // or embedded JSON). Peek at the first ~64KB.
-      if (!coords) {
-        try {
-          const reader = res.body?.getReader();
-          if (reader) {
-            const decoder = new TextDecoder();
-            let text = "";
-            for (let i = 0; i < 8; i++) {
-              const { value, done } = await reader.read();
-              if (value) text += decoder.decode(value, { stream: true });
-              if (done || text.length > 65536) break;
-            }
-            coords = parseLatLngFromMapsUrl(text);
-            reader.cancel().catch(() => {});
-          }
-        } catch {
-          /* ignore body read errors */
-        }
-      }
-
+      const coords = parseLatLngFromMapsUrl(finalUrl);
       return coords ? { ...coords, resolvedUrl: finalUrl } : null;
     } catch {
       clearTimeout(timeout);
