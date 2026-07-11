@@ -66,10 +66,19 @@ function Recs() {
       .filter((r) => city === "all" || r.city === city)
       .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
-        id: r.id, lat: Number(r.latitude), lng: Number(r.longitude),
-        type: r.type, name: r.name,
+        id: r.id,
+        lat: Number(r.latitude),
+        lng: Number(r.longitude),
+        type: r.type,
+        name: r.name,
+        city: r.city,
+        address: r.address,
+        status: r.status,
+        rating: r.rating,
+        google_maps_url: r.google_maps_url,
       }));
   }, [recs, tab, city]);
+
 
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
@@ -130,13 +139,14 @@ function Recs() {
                 <RecsMap
                   pins={mapPins}
                   userPos={userPos}
-                  onPinTap={(id) => {
+                  onAddToDay={(id: string) => {
                     const found = (recs as Rec[]).find((r) => r.id === id);
                     if (found) setMapPickRec(found);
                   }}
                 />
               </Suspense>
             </ClientOnly>
+
           )}
         </div>
       ) : (

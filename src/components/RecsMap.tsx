@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { TYPE_PIN_COLOR } from "@/lib/coords";
+import { MapSkeleton } from "@/components/MapSkeleton";
 
 export type RecPin = {
   id: string;
@@ -9,71 +9,200 @@ export type RecPin = {
   lng: number;
   type: string;
   name: string;
+  city: string | null;
+  address: string | null;
+  status: string;
+  rating: number | null;
+  google_maps_url: string | null;
 };
 
-function pinIcon(color: string): L.DivIcon {
+const TYPE_BORDER: Record<string, string> = {
+  food: "#FF6B6B",
+  attraction: "#6C63FF",
+  hotel: "#FFD93D",
+};
+
+const TYPE_EMOJI: Record<string, string> = {
+  food: "🍜",
+  attraction: "⛩",
+  hotel: "🏨",
+};
+
+function pinIcon(type: string): L.DivIcon {
+  const border = TYPE_BORDER[type] ?? "#6C63FF";
+  const emoji = TYPE_EMOJI[type] ?? "•";
   return L.divIcon({
     className: "",
-    html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:2px solid #0F0F13;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    html: `<div style="
+      width:40px;height:40px;border-radius:50%;
+      background:#fff;
+      border:2.5px solid ${border};
+      box-shadow:0 2px 8px rgba(0,0,0,0.2);
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;line-height:1;
+    ">${emoji}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 }
 
 function userIcon(): L.DivIcon {
   return L.divIcon({
     className: "",
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:#3B82F6;border:2px solid #fff;box-shadow:0 0 0 6px rgba(59,130,246,0.25);"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    html: `<div style="
+      width:16px;height:16px;border-radius:50%;
+      background:#4A90E2;
+      border:3px solid #fff;
+      box-shadow:0 0 0 4px rgba(74,144,226,0.3);
+    "></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
   });
 }
 
 function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: number } | null }) {
   const map = useMap();
   useEffect(() => {
-    const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
-    if (user) pts.push([user.lat, user.lng]);
-    if (pts.length === 0) return;
-    if (pts.length === 1) {
-      map.setView(pts[0], 13, { animate: true });
+    if (pins.length === 0) {
+      map.setView([35.6762, 139.6503], 10, { animate: true });
       return;
     }
+    if (pins.length === 1 && !user) {
+      map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
+      return;
+    }
+    const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
+    if (user) pts.push([user.lat, user.lng]);
     map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
   }, [pins, user, map]);
   return null;
 }
 
+function statusBadge(status: string) {
+  if (status === "visited") {
+    return {
+      label: "ביקרנו",
+      style: {
+        background: "color-mix(in oklab, var(--accent-3) 18%, transparent)",
+        color: "var(--accent-3)",
+      } as React.CSSProperties,
+    };
+  }
+  if (status === "skipped") {
+    return {
+      label: "דילגנו",
+      style: {
+        background: "var(--muted)",
+        color: "var(--muted-foreground)",
+        textDecoration: "line-through",
+      } as React.CSSProperties,
+    };
+  }
+  return {
+    label: "רשימה",
+    style: {
+      background: "var(--muted)",
+      color: "var(--muted-foreground)",
+    } as React.CSSProperties,
+  };
+}
+
 export default function RecsMap({
   pins,
   userPos,
-  onPinTap,
+  onAddToDay,
 }: {
   pins: RecPin[];
   userPos: { lat: number; lng: number } | null;
-  onPinTap?: (id: string) => void;
+  onAddToDay: (id: string) => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const center: [number, number] = pins[0]
     ? [pins[0].lat, pins[0].lng]
     : userPos
     ? [userPos.lat, userPos.lng]
-    : [35.6812, 139.7671];
+    : [35.6762, 139.6503];
+
+  if (!mounted) return <MapSkeleton />;
 
   return (
-    <MapContainer center={center} zoom={12} scrollWheelZoom style={{ width: "100%", height: "100%", background: "#1A1A23" }}>
+    <MapContainer
+      center={center}
+      zoom={12}
+      scrollWheelZoom
+      style={{ width: "100%", height: "100%", background: "#EDEDED" }}
+    >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; OpenStreetMap &copy; CartoDB'
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
       />
-      {pins.map((p) => (
-        <Marker
-          key={p.id}
-          position={[p.lat, p.lng]}
-          icon={pinIcon(TYPE_PIN_COLOR[p.type] ?? "#6C63FF")}
-          eventHandlers={{ click: () => onPinTap?.(p.id) }}
-        />
-      ))}
-      {userPos && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} />}
+      {pins.map((p) => {
+        const badge = statusBadge(p.status);
+        return (
+          <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type)}>
+            <Popup className="custom-popup" closeButton={false} minWidth={200}>
+              <div style={{ minWidth: 180 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }} dir="ltr">{p.name}</div>
+                {(p.city || p.address) && (
+                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }} dir="ltr">
+                    {p.city}{p.address ? ` · ${p.address}` : ""}
+                  </div>
+                )}
+                <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{
+                    fontSize: 10, padding: "2px 8px", borderRadius: 999,
+                    ...badge.style,
+                  }}>{badge.label}</span>
+                  {p.status === "visited" && p.rating && (
+                    <span style={{ fontSize: 11, color: "var(--accent-2)" }}>
+                      {"★".repeat(p.rating)}{"☆".repeat(5 - p.rating)}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  {p.google_maps_url ? (
+                    <a
+                      href={p.google_maps_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        flex: 1, height: 32, borderRadius: 6,
+                        border: "1px solid var(--border)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, textDecoration: "none", color: "inherit",
+                      }}
+                    >
+                      🗺 ניווט
+                    </a>
+                  ) : (
+                    <span style={{
+                      flex: 1, height: 32, borderRadius: 6,
+                      border: "1px solid var(--border)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, opacity: 0.4,
+                    }}>🗺 ניווט</span>
+                  )}
+                  <button
+                    onClick={() => onAddToDay(p.id)}
+                    style={{
+                      flex: 1, height: 32, borderRadius: 6,
+                      background: "var(--accent)", color: "#fff",
+                      fontSize: 12, border: "none", cursor: "pointer",
+                    }}
+                  >
+                    + הוסף ליום
+                  </button>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+      {userPos && (
+        <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
+      )}
       <FitAll pins={pins} user={userPos} />
     </MapContainer>
   );
