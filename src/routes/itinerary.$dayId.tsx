@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,7 @@ import { useDays, dayEntriesQuery } from "@/hooks/use-trip";
 import { hebDateLong } from "@/lib/format";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
-import { ClientOnly } from "@/components/ClientOnly";
-import { MapSkeleton } from "@/components/MapSkeleton";
+import DayMap from "@/components/DayMap";
 import { saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
@@ -33,7 +32,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const DayMap = lazy(() => import("@/components/DayMap"));
 
 export const Route = createFileRoute("/itinerary/$dayId")({
   component: DayDetail,
@@ -264,11 +262,7 @@ function DayDetail() {
           {/* Map pane */}
           <div className="relative overflow-hidden" style={{ height: `${mapPct}%` }}>
             {mapStops.length > 0 ? (
-              <ClientOnly fallback={<MapSkeleton />}>
-                <Suspense fallback={<MapSkeleton />}>
-                  <DayMap stops={mapStops} highlightId={highlightId} onPinTap={scrollToCard} />
-                </Suspense>
-              </ClientOnly>
+              <DayMap stops={mapStops} highlightId={highlightId} onPinTap={scrollToCard} />
             ) : (
               <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
                 <MapIcon size={28} className="text-muted-foreground" />
@@ -742,7 +736,12 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   const [cancel, setCancel] = useState(parseDesc(existing?.description, "ביטול"));
   const [notes, setNotes] = useState(parseDesc(existing?.description, "הערות"));
   const mut = useUpsert(dayId, existing?.id);
-  const resolver = useResolveMapsUrl();
+  const initialCoords = existing?.latitude != null && existing?.longitude != null
+    ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
+    : null;
+  const [resolvedCoords, setResolvedCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
+  const resolver = useResolveMapsUrl(initialCoords);
+  useEffect(() => { setResolvedCoords(resolver.resolved); }, [resolver.resolved]);
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
@@ -754,7 +753,10 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         notes && `הערות: ${notes}`,
       ].filter(Boolean).join("\n");
       const local = parseLatLngFromMapsUrl(mapsUrl);
-      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
+      const awaited = mapsUrl && !local && !resolvedCoords
+        ? await resolver.tryResolve(mapsUrl)
+        : null;
+      const c = local ?? resolvedCoords ?? awaited;
       mut.mutate({
         entry_type: "hotel_checkin", title: name.trim(),
         description: description || null, time_of_day: time || null, icon_emoji: "🏨",
@@ -793,7 +795,12 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [notes, setNotes] = useState(recType === "food" ? parseDesc(existing?.description, "הערות") || (existing?.description ?? "") : (existing?.description ?? ""));
   const [saveToRecs, setSaveToRecs] = useState(false);
   const mut = useUpsert(dayId, existing?.id);
-  const resolver = useResolveMapsUrl();
+  const initialCoords = existing?.latitude != null && existing?.longitude != null
+    ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
+    : null;
+  const [resolvedCoords, setResolvedCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
+  const resolver = useResolveMapsUrl(initialCoords);
+  useEffect(() => { setResolvedCoords(resolver.resolved); }, [resolver.resolved]);
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
@@ -811,7 +818,10 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
         ? [foodType && `סוג: ${foodType}`, notes && `הערות: ${notes}`].filter(Boolean).join("\n")
         : notes;
       const local = parseLatLngFromMapsUrl(mapsUrl);
-      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
+      const awaited = mapsUrl && !local && !resolvedCoords
+        ? await resolver.tryResolve(mapsUrl)
+        : null;
+      const c = local ?? resolvedCoords ?? awaited;
       mut.mutate({
         entry_type: recType, title: name.trim(),
         description: description || null, time_of_day: time || null,

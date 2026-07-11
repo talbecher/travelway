@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { MapSkeleton } from "@/components/MapSkeleton";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { TYPE_PIN_COLOR } from "@/lib/coords";
@@ -86,12 +87,18 @@ export default function DayMap({
   highlightId?: string | null;
   onPinTap?: (id: string) => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const center: [number, number] = stops[0]
     ? [stops[0].lat, stops[0].lng]
     : [35.6812, 139.7671];
 
   console.log("[DayMap] stops", stops.length, stops);
   const path = stops.map((s) => [s.lat, s.lng] as [number, number]);
+
+  if (!mounted) return <MapSkeleton />;
+
 
   return (
     <>
