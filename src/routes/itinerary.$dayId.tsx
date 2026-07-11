@@ -11,7 +11,9 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { saveRecommendation } from "@/lib/recommendations";
-import { parseLatLngFromMapsUrl, googleDirectionsUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
+import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
+import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { toast } from "sonner";
 import {
@@ -441,9 +443,17 @@ function SortableEntry({
             {entry.description && (
               <div className="text-sm text-muted-foreground mt-1 whitespace-pre-line line-clamp-3">{entry.description}</div>
             )}
-            {entry.google_maps_url && (
-              <a href={entry.google_maps_url} target="_blank" rel="noreferrer"
-                className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1 mt-2">
+            {(entry.google_maps_url || hasCoords) && (
+              <a
+                href={
+                  hasCoords && entry.latitude != null && entry.longitude != null
+                    ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
+                    : entry.google_maps_url!
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1 mt-2"
+              >
                 <ExternalLink size={12} /> פתח במפה
               </a>
             )}
@@ -557,14 +567,58 @@ const inputCls = "w-full mt-1 rounded-lg bg-background border border-input px-3 
 const textareaCls = "w-full mt-1 rounded-lg bg-background border border-input px-3 py-2 min-h-[70px] outline-none focus:border-[color:var(--accent)]";
 const btnCls = "w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50";
 
-function CoordStatus({ url }: { url: string }) {
+function CoordStatus({ url, resolving, resolved }: { url: string; resolving: boolean; resolved: { lat: number; lng: number } | null }) {
   if (!url.trim()) return null;
-  const c = parseLatLngFromMapsUrl(url);
-  return c ? (
-    <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
-  ) : (
-    <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — הפריט לא יופיע במפה</div>
+  const local = parseLatLngFromMapsUrl(url);
+  if (local || resolved) {
+    return <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>;
+  }
+  if (resolving) {
+    return <div className="text-[11px] text-muted-foreground mt-1">⏳ מזהה מיקום...</div>;
+  }
+  return (
+    <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
+      ⚠️ לא זוהה מיקום — נסה להעתיק את הלינק המלא (Share → Copy link, לא Short URL)
+    </div>
   );
+}
+
+function useResolveMapsUrl() {
+  const resolveFn = useServerFn(resolveMapsUrl);
+  const [resolving, setResolving] = useState(false);
+  const [resolved, setResolved] = useState<{ lat: number; lng: number } | null>(null);
+  const seq = useRef(0);
+
+  const reset = useCallback(() => setResolved(null), []);
+
+  const tryResolve = useCallback(async (url: string): Promise<{ lat: number; lng: number } | null> => {
+    const trimmed = url.trim();
+    if (!trimmed) { setResolved(null); return null; }
+    const local = parseLatLngFromMapsUrl(trimmed);
+    if (local) { setResolved(null); return local; }
+    let host = "";
+    try { host = new URL(trimmed).hostname.toLowerCase(); } catch { return null; }
+    if (!(host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith(".app.goo.gl"))) {
+      setResolved(null);
+      return null;
+    }
+    const my = ++seq.current;
+    setResolving(true);
+    try {
+      const r = await resolveFn({ data: { url: trimmed } });
+      if (my !== seq.current) return null;
+      if (r) { setResolved({ lat: r.lat, lng: r.lng }); return { lat: r.lat, lng: r.lng }; }
+      setResolved(null);
+      return null;
+    } catch {
+      if (my === seq.current) setResolved(null);
+      return null;
+    } finally {
+      if (my === seq.current) setResolving(false);
+    }
+  }, [resolveFn]);
+
+  return { resolving, resolved, tryResolve, reset };
 }
 
 type BaseFormProps = {
@@ -628,8 +682,9 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   const [cancel, setCancel] = useState(parseDesc(existing?.description, "ביטול"));
   const [notes, setNotes] = useState(parseDesc(existing?.description, "הערות"));
   const mut = useUpsert(dayId, existing?.id);
+  const resolver = useResolveMapsUrl();
   return (
-    <form onSubmit={(e) => {
+    <form onSubmit={async (e) => {
       e.preventDefault();
       if (!name.trim()) { toast.error("שם המלון חסר"); return; }
       const description = [
@@ -638,7 +693,8 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         cancel && `ביטול: ${cancel}`,
         notes && `הערות: ${notes}`,
       ].filter(Boolean).join("\n");
-      const c = parseLatLngFromMapsUrl(mapsUrl);
+      const local = parseLatLngFromMapsUrl(mapsUrl);
+      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
       mut.mutate({
         entry_type: "hotel_checkin", title: name.trim(),
         description: description || null, time_of_day: time || null, icon_emoji: "🏨",
@@ -653,8 +709,13 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
       <div><L>לינק להזמנה</L><input type="url" value={url} onChange={(e) => setUrl(e.target.value)} dir="ltr" className={inputCls} /></div>
       <div>
         <L>לינק גוגל מפות</L>
-        <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls} />
-        <CoordStatus url={mapsUrl} />
+        <input
+          type="url" value={mapsUrl}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
+          dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
+        />
+        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
       </div>
       <div><L>תאריך ביטול חינם</L><input type="date" value={cancel} onChange={(e) => setCancel(e.target.value)} className={inputCls} /></div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
@@ -672,6 +733,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [notes, setNotes] = useState(recType === "food" ? parseDesc(existing?.description, "הערות") || (existing?.description ?? "") : (existing?.description ?? ""));
   const [saveToRecs, setSaveToRecs] = useState(false);
   const mut = useUpsert(dayId, existing?.id);
+  const resolver = useResolveMapsUrl();
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
@@ -688,7 +750,8 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
       const description = recType === "food"
         ? [foodType && `סוג: ${foodType}`, notes && `הערות: ${notes}`].filter(Boolean).join("\n")
         : notes;
-      const c = parseLatLngFromMapsUrl(mapsUrl);
+      const local = parseLatLngFromMapsUrl(mapsUrl);
+      const c = local ?? resolver.resolved ?? (mapsUrl ? await resolver.tryResolve(mapsUrl) : null);
       mut.mutate({
         entry_type: recType, title: name.trim(),
         description: description || null, time_of_day: time || null,
@@ -707,8 +770,13 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
       )}
       <div>
         <L>לינק גוגל מפות</L>
-        <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls} />
-        <CoordStatus url={mapsUrl} />
+        <input
+          type="url" value={mapsUrl}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
+          dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
+        />
+        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
       </div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
       {!existing && (
