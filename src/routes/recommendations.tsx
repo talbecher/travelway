@@ -139,13 +139,14 @@ function Recs() {
                 <RecsMap
                   pins={mapPins}
                   userPos={userPos}
-                  onPinTap={(id) => {
+                  onAddToDay={(id: string) => {
                     const found = (recs as Rec[]).find((r) => r.id === id);
                     if (found) setMapPickRec(found);
                   }}
                 />
               </Suspense>
             </ClientOnly>
+
           )}
         </div>
       ) : (
