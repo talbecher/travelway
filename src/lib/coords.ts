@@ -37,8 +37,27 @@ export function parseLatLngFromMapsUrl(url: string | null | undefined): LatLng |
 }
 
 export function googleDirectionsUrl(points: LatLng[]): string {
-  const segs = points.map((p) => `${p.lat},${p.lng}`).join("/");
-  return `https://www.google.com/maps/dir/${segs}`;
+  if (points.length < 2) {
+    return points[0] ? mapsSearchUrl(points[0].lat, points[0].lng) : "https://www.google.com/maps";
+  }
+  const origin = `${points[0].lat},${points[0].lng}`;
+  const destination = `${points[points.length - 1].lat},${points[points.length - 1].lng}`;
+  const waypoints = points
+    .slice(1, -1)
+    .map((p) => `${p.lat},${p.lng}`)
+    .join("|");
+  const params = new URLSearchParams({
+    api: "1",
+    origin,
+    destination,
+    travelmode: "walking",
+  });
+  if (waypoints) params.set("waypoints", waypoints);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+export function mapsSearchUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
 
 export function walkTimeMin(km: number): number {
