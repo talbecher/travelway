@@ -165,15 +165,16 @@ function DayDetail() {
   );
 
   const mapStops = useMemo(() => {
-    const stops: { id: string; lat: number; lng: number; type: string; index: number; title: string }[] = [];
+    const stops: { id: string; lat: number; lng: number; type: string; index: number; title: string; time: string | null }[] = [];
     let idx = 0;
     for (const e of entries) {
       const c = coordsOf(e);
       if (c) {
         idx += 1;
-        stops.push({ id: e.id, lat: c.lat, lng: c.lng, type: e.entry_type, index: idx, title: e.title });
+        stops.push({ id: e.id, lat: c.lat, lng: c.lng, type: e.entry_type, index: idx, title: e.title, time: e.time_of_day });
       }
     }
+    console.log("[mapStops]", stops.length, stops);
     return stops;
   }, [entries]);
 
