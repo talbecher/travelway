@@ -832,11 +832,11 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
         <L>לינק גוגל מפות</L>
         <input
           type="url" value={mapsUrl}
-          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.scheduleDebounced(e.target.value); }}
           onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
           dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
         />
-        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
+        <CoordStatus status={resolver.status} />
       </div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
       {!existing && (
