@@ -37,15 +37,19 @@ export function parseLatLngFromMapsUrl(url: string | null | undefined): LatLng |
 }
 
 export function googleDirectionsUrl(points: LatLng[]): string {
-  if (points.length < 2) {
-    return points[0] ? mapsSearchUrl(points[0].lat, points[0].lng) : "https://www.google.com/maps";
-  }
-  const origin = `${points[0].lat},${points[0].lng}`;
-  const destination = `${points[points.length - 1].lat},${points[points.length - 1].lng}`;
-  const waypoints = points
-    .slice(1, -1)
-    .map((p) => `${p.lat},${p.lng}`)
-    .join("|");
+  if (!points || points.length < 2) return "";
+  const valid = points.filter(
+    (p) =>
+      p != null &&
+      p.lat != null &&
+      p.lng != null &&
+      Number.isFinite(Number(p.lat)) &&
+      Number.isFinite(Number(p.lng)),
+  );
+  if (valid.length < 2) return "";
+  const origin = `${valid[0].lat},${valid[0].lng}`;
+  const destination = `${valid[valid.length - 1].lat},${valid[valid.length - 1].lng}`;
+  const waypoints = valid.slice(1, -1).map((p) => `${p.lat},${p.lng}`).join("|");
   const params = new URLSearchParams({
     api: "1",
     origin,
