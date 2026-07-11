@@ -443,9 +443,17 @@ function SortableEntry({
             {entry.description && (
               <div className="text-sm text-muted-foreground mt-1 whitespace-pre-line line-clamp-3">{entry.description}</div>
             )}
-            {entry.google_maps_url && (
-              <a href={entry.google_maps_url} target="_blank" rel="noreferrer"
-                className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1 mt-2">
+            {(entry.google_maps_url || hasCoords) && (
+              <a
+                href={
+                  hasCoords && entry.latitude != null && entry.longitude != null
+                    ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
+                    : entry.google_maps_url!
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1 mt-2"
+              >
                 <ExternalLink size={12} /> פתח במפה
               </a>
             )}
