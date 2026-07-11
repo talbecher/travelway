@@ -567,14 +567,58 @@ const inputCls = "w-full mt-1 rounded-lg bg-background border border-input px-3 
 const textareaCls = "w-full mt-1 rounded-lg bg-background border border-input px-3 py-2 min-h-[70px] outline-none focus:border-[color:var(--accent)]";
 const btnCls = "w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50";
 
-function CoordStatus({ url }: { url: string }) {
+function CoordStatus({ url, resolving, resolved }: { url: string; resolving: boolean; resolved: { lat: number; lng: number } | null }) {
   if (!url.trim()) return null;
-  const c = parseLatLngFromMapsUrl(url);
-  return c ? (
-    <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
-  ) : (
-    <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — הפריט לא יופיע במפה</div>
+  const local = parseLatLngFromMapsUrl(url);
+  if (local || resolved) {
+    return <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>;
+  }
+  if (resolving) {
+    return <div className="text-[11px] text-muted-foreground mt-1">⏳ מזהה מיקום...</div>;
+  }
+  return (
+    <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
+      ⚠️ לא זוהה מיקום — נסה להעתיק את הלינק המלא (Share → Copy link, לא Short URL)
+    </div>
   );
+}
+
+function useResolveMapsUrl() {
+  const resolveFn = useServerFn(resolveMapsUrl);
+  const [resolving, setResolving] = useState(false);
+  const [resolved, setResolved] = useState<{ lat: number; lng: number } | null>(null);
+  const seq = useRef(0);
+
+  const reset = useCallback(() => setResolved(null), []);
+
+  const tryResolve = useCallback(async (url: string): Promise<{ lat: number; lng: number } | null> => {
+    const trimmed = url.trim();
+    if (!trimmed) { setResolved(null); return null; }
+    const local = parseLatLngFromMapsUrl(trimmed);
+    if (local) { setResolved(null); return local; }
+    let host = "";
+    try { host = new URL(trimmed).hostname.toLowerCase(); } catch { return null; }
+    if (!(host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith(".app.goo.gl"))) {
+      setResolved(null);
+      return null;
+    }
+    const my = ++seq.current;
+    setResolving(true);
+    try {
+      const r = await resolveFn({ data: { url: trimmed } });
+      if (my !== seq.current) return null;
+      if (r) { setResolved({ lat: r.lat, lng: r.lng }); return { lat: r.lat, lng: r.lng }; }
+      setResolved(null);
+      return null;
+    } catch {
+      if (my === seq.current) setResolved(null);
+      return null;
+    } finally {
+      if (my === seq.current) setResolving(false);
+    }
+  }, [resolveFn]);
+
+  return { resolving, resolved, tryResolve, reset };
 }
 
 type BaseFormProps = {
