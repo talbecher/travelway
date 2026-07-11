@@ -165,15 +165,16 @@ function DayDetail() {
   );
 
   const mapStops = useMemo(() => {
-    const stops: { id: string; lat: number; lng: number; type: string; index: number; title: string }[] = [];
+    const stops: { id: string; lat: number; lng: number; type: string; index: number; title: string; time: string | null }[] = [];
     let idx = 0;
     for (const e of entries) {
       const c = coordsOf(e);
       if (c) {
         idx += 1;
-        stops.push({ id: e.id, lat: c.lat, lng: c.lng, type: e.entry_type, index: idx, title: e.title });
+        stops.push({ id: e.id, lat: c.lat, lng: c.lng, type: e.entry_type, index: idx, title: e.title, time: e.time_of_day });
       }
     }
+    console.log("[mapStops]", stops.length, stops);
     return stops;
   }, [entries]);
 
@@ -217,7 +218,8 @@ function DayDetail() {
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
   const hasAnyEntries = entries.length > 0;
-  const directions = mapStops.length >= 2 ? googleDirectionsUrl(mapStops.map((s) => ({ lat: s.lat, lng: s.lng }))) : null;
+  const directions = googleDirectionsUrl(mapStops.map((s) => ({ lat: Number(s.lat), lng: Number(s.lng) })));
+  const directionsEnabled = directions !== "";
 
   return (
     <div className="-mx-4">
@@ -327,11 +329,17 @@ function DayDetail() {
               <Plus size={16} /> הוסף פעילות
             </button>
 
-            {directions && (
+            {directionsEnabled ? (
               <a href={directions} target="_blank" rel="noreferrer"
                 className="w-full h-11 mt-2 rounded-xl border border-[color:var(--accent-3)] text-[color:var(--accent-3)] text-sm font-medium flex items-center justify-center gap-2">
                 🗺 נווט את כל היום
               </a>
+            ) : (
+              <button type="button" disabled
+                title="יש להוסיף לפחות 2 מיקומים עם לינק מפות"
+                className="w-full h-11 mt-2 rounded-xl border border-border text-muted-foreground text-sm font-medium flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+                🗺 נווט את כל היום
+              </button>
             )}
             {mapStops.length < 2 && hasAnyEntries && (
               <div className="text-[11px] text-muted-foreground text-center mt-2">
@@ -458,7 +466,9 @@ function SortableEntry({
               </a>
             )}
             {!hasCoords && entry.entry_type !== "note" && (
-              <div className="text-[11px] text-muted-foreground mt-1">📍 אין מיקום — הוסף לינק מפות</div>
+              <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
+                💡 {entry.google_maps_url ? "עדכן את הלינק כדי שיופיע במפה" : "אין מיקום — הוסף לינק מפות"}
+              </div>
             )}
           </div>
           <div className="flex flex-col gap-1 shrink-0">
@@ -567,14 +577,20 @@ const inputCls = "w-full mt-1 rounded-lg bg-background border border-input px-3 
 const textareaCls = "w-full mt-1 rounded-lg bg-background border border-input px-3 py-2 min-h-[70px] outline-none focus:border-[color:var(--accent)]";
 const btnCls = "w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50";
 
-function CoordStatus({ url, resolving, resolved }: { url: string; resolving: boolean; resolved: { lat: number; lng: number } | null }) {
-  if (!url.trim()) return null;
-  const local = parseLatLngFromMapsUrl(url);
-  if (local || resolved) {
-    return <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>;
+type CoordState = "idle" | "loading" | "found" | "failed";
+
+function CoordStatus({ status }: { status: CoordState }) {
+  if (status === "idle") return null;
+  if (status === "loading") {
+    return (
+      <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" />
+        🔍 מזהה מיקום...
+      </div>
+    );
   }
-  if (resolving) {
-    return <div className="text-[11px] text-muted-foreground mt-1">⏳ מזהה מיקום...</div>;
+  if (status === "found") {
+    return <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>;
   }
   return (
     <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
@@ -583,42 +599,86 @@ function CoordStatus({ url, resolving, resolved }: { url: string; resolving: boo
   );
 }
 
-function useResolveMapsUrl() {
+function useResolveMapsUrl(initial: { lat: number; lng: number } | null = null) {
   const resolveFn = useServerFn(resolveMapsUrl);
-  const [resolving, setResolving] = useState(false);
-  const [resolved, setResolved] = useState<{ lat: number; lng: number } | null>(null);
+  const [status, setStatus] = useState<CoordState>(initial ? "found" : "idle");
+  const [resolved, setResolved] = useState<{ lat: number; lng: number } | null>(initial);
   const seq = useRef(0);
+  const pending = useRef<Promise<{ lat: number; lng: number } | null> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const reset = useCallback(() => setResolved(null), []);
+  const reset = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setStatus("idle");
+    setResolved(null);
+    pending.current = null;
+  }, []);
 
-  const tryResolve = useCallback(async (url: string): Promise<{ lat: number; lng: number } | null> => {
+  const runResolve = useCallback(async (url: string): Promise<{ lat: number; lng: number } | null> => {
     const trimmed = url.trim();
-    if (!trimmed) { setResolved(null); return null; }
+    if (!trimmed) { setStatus("idle"); setResolved(null); return null; }
+
     const local = parseLatLngFromMapsUrl(trimmed);
-    if (local) { setResolved(null); return local; }
+    if (local) {
+      setStatus("found");
+      setResolved(local);
+      return local;
+    }
+
     let host = "";
-    try { host = new URL(trimmed).hostname.toLowerCase(); } catch { return null; }
-    if (!(host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith(".app.goo.gl"))) {
+    try { host = new URL(trimmed).hostname.toLowerCase(); } catch {
+      setStatus("failed");
       setResolved(null);
       return null;
     }
+    const isShort = host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith(".app.goo.gl");
+    if (!isShort) {
+      setStatus("failed");
+      setResolved(null);
+      return null;
+    }
+
     const my = ++seq.current;
-    setResolving(true);
-    try {
-      const r = await resolveFn({ data: { url: trimmed } });
-      if (my !== seq.current) return null;
-      if (r) { setResolved({ lat: r.lat, lng: r.lng }); return { lat: r.lat, lng: r.lng }; }
-      setResolved(null);
-      return null;
-    } catch {
-      if (my === seq.current) setResolved(null);
-      return null;
-    } finally {
-      if (my === seq.current) setResolving(false);
-    }
+    setStatus("loading");
+    const task = (async () => {
+      try {
+        const r = await resolveFn({ data: { url: trimmed } });
+        if (my !== seq.current) return null;
+        if (r) {
+          const c = { lat: r.lat, lng: r.lng };
+          setResolved(c);
+          setStatus("found");
+          return c;
+        }
+        setResolved(null);
+        setStatus("failed");
+        return null;
+      } catch {
+        if (my === seq.current) { setResolved(null); setStatus("failed"); }
+        return null;
+      }
+    })();
+    pending.current = task;
+    return task;
   }, [resolveFn]);
 
-  return { resolving, resolved, tryResolve, reset };
+  const tryResolve = useCallback((url: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    return runResolve(url);
+  }, [runResolve]);
+
+  const scheduleDebounced = useCallback((url: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setStatus("idle");
+    debounceRef.current = setTimeout(() => { void runResolve(url); }, 800);
+  }, [runResolve]);
+
+  const awaitPending = useCallback(async () => {
+    if (pending.current) return pending.current;
+    return null;
+  }, []);
+
+  return { status, resolved, tryResolve, scheduleDebounced, reset, awaitPending };
 }
 
 type BaseFormProps = {
@@ -711,11 +771,11 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         <L>לינק גוגל מפות</L>
         <input
           type="url" value={mapsUrl}
-          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.scheduleDebounced(e.target.value); }}
           onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
           dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
         />
-        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
+        <CoordStatus status={resolver.status} />
       </div>
       <div><L>תאריך ביטול חינם</L><input type="date" value={cancel} onChange={(e) => setCancel(e.target.value)} className={inputCls} /></div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
@@ -772,11 +832,11 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
         <L>לינק גוגל מפות</L>
         <input
           type="url" value={mapsUrl}
-          onChange={(e) => { setMapsUrl(e.target.value); resolver.reset(); }}
+          onChange={(e) => { setMapsUrl(e.target.value); resolver.scheduleDebounced(e.target.value); }}
           onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
           dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
         />
-        <CoordStatus url={mapsUrl} resolving={resolver.resolving} resolved={resolver.resolved} />
+        <CoordStatus status={resolver.status} />
       </div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
       {!existing && (

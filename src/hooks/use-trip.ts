@@ -83,7 +83,7 @@ export function dayEntriesQuery(dayId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("day_entries")
-        .select("*, recommendations(id,name,city,google_maps_url)")
+        .select("*, latitude, longitude, recommendations(id,name,city,google_maps_url)")
         .eq("day_id", dayId)
         .order("display_order")
         .order("created_at");
