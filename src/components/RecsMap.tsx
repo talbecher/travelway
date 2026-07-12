@@ -175,7 +175,7 @@ export default function RecsMap({
         minZoom={3}
       />
 
-      {pins.map((p) => {
+      {validPins.map((p) => {
         const badge = statusBadge(p.status);
         return (
           <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type)}>
@@ -240,9 +240,9 @@ export default function RecsMap({
       {userPos && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
       )}
-      <FitAll pins={pins} user={userPos} />
+      <FitAll pins={validPins} user={userPos} />
     </MapContainer>
-    {pins.length === 0 && (
+    {validPins.length === 0 && (
       <div style={{
         position: "absolute", inset: 0, display: "flex",
         alignItems: "center", justifyContent: "center",
