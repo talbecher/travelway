@@ -16,6 +16,7 @@ import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
@@ -31,6 +32,7 @@ type Rec = {
   id: string; name: string; type: string; city: string | null; address: string | null;
   google_maps_url: string | null; status: string; rating: number | null; review: string | null;
   notes: string | null; latitude: number | string | null; longitude: number | string | null;
+  photo_url?: string | null;
 };
 
 const TAB_TYPE: Record<Tab, RecType> = { food: "food", attractions: "attraction", hotels: "hotel" };
