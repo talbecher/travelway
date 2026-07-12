@@ -308,7 +308,7 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction" 
   );
 }
 
-function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | null; onEdit: () => void }) {
+function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec; distance: number | null; onEdit: () => void; showTypeBadge?: boolean }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
@@ -343,6 +343,8 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
 
   const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
   const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+  const typeEmoji = rec.type === "food" ? "🍜" : rec.type === "hotel" ? "🏨" : "⛩";
+  const typeBg = rec.type === "food" ? "#FF6B6B22" : rec.type === "hotel" ? "#FFD93D22" : "#6C63FF22";
 
   const statusBadge = {
     wishlist: { label: "רשימה", cls: "bg-muted text-muted-foreground" },
@@ -350,8 +352,26 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
     skipped: { label: "דילגנו", cls: "bg-muted text-muted-foreground line-through" },
   }[rec.status as "wishlist" | "visited" | "skipped"];
 
-  return (
-    <div className="bg-card border border-border rounded-2xl p-3">
+  const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
+  const googleRating = rec.google_rating != null ? Number(rec.google_rating) : null;
+
+  const cardInner = (
+    <div className="bg-card border border-border rounded-2xl p-3 relative">
+      {showTypeBadge && (
+        <span
+          className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded-full font-medium"
+          style={{ background: typeBg, color: typeChipColor }}
+        >
+          {typeEmoji} {typeLabel}
+        </span>
+      )}
+      {rec.google_maps_url && (
+        <ExternalLink
+          size={12}
+          className="absolute top-2 right-2 text-muted-foreground/60 pointer-events-none"
+          style={showTypeBadge ? { top: 30 } : undefined}
+        />
+      )}
       <div className="flex items-start justify-between gap-2">
         {rec.photo_url && (
           <img
@@ -363,10 +383,12 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full"
-              style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}
-            >{typeLabel}</span>
+            {!showTypeBadge && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}
+              >{typeLabel}</span>
+            )}
             <motion.span
               key={rec.status}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -378,6 +400,11 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
           <div className="text-xs text-muted-foreground" dir="ltr">
             {rec.city}{rec.address ? ` · ${rec.address}` : ""}
           </div>
+          {googleRating != null && (
+            <div className="text-[11px] text-muted-foreground mt-0.5" dir="ltr">
+              ★ {googleRating.toFixed(1)} גוגל
+            </div>
+          )}
           {distance != null && Number.isFinite(distance) && (
             <div className="text-xs text-muted-foreground mt-0.5">{fmtDistance(distance)}</div>
           )}
@@ -389,11 +416,11 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
           )}
         </div>
         <div className="flex flex-col gap-1 shrink-0">
-          <button onClick={onEdit} aria-label="ערוך"
+          <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
             className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0">
             <Pencil size={12} />
           </button>
-          <button onClick={() => { if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
+          <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
             className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
             <Trash2 size={12} />
           </button>
@@ -401,21 +428,38 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
       </div>
       <div className="flex gap-2 mt-3">
         {rec.google_maps_url && (
-          <a href={rec.google_maps_url} target="_blank" rel="noreferrer"
+          <a href={rec.google_maps_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
             className="flex-1 h-9 rounded-md border border-border flex items-center justify-center gap-1 text-xs">
             <Navigation size={12} /> ניווט
           </a>
         )}
-        <button onClick={() => setDayPickerOpen(true)}
+        <button onClick={(e) => { stop(e); setDayPickerOpen(true); }}
           className="flex-1 h-9 rounded-md bg-[color:var(--accent)] text-white text-xs min-h-0">
           + הוסף ליום
         </button>
       </div>
       <div className="flex gap-3 mt-2 text-xs flex-wrap">
-        {rec.status !== "visited" && <button onClick={() => setStatus.mutate("visited")} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
-        {rec.status !== "skipped" && <button onClick={() => setStatus.mutate("skipped")} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
-        {rec.status !== "wishlist" && <button onClick={() => setStatus.mutate("wishlist")} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
+        {rec.status !== "visited" && <button onClick={(e) => { stop(e); setStatus.mutate("visited"); }} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
+        {rec.status !== "skipped" && <button onClick={(e) => { stop(e); setStatus.mutate("skipped"); }} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
+        {rec.status !== "wishlist" && <button onClick={(e) => { stop(e); setStatus.mutate("wishlist"); }} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
       </div>
+    </div>
+  );
+
+  return (
+    <>
+      {rec.google_maps_url ? (
+        <a
+          href={rec.google_maps_url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: "block", textDecoration: "none", color: "inherit" }}
+        >
+          {cardInner}
+        </a>
+      ) : (
+        cardInner
+      )}
 
       <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${rec.name} ליום`}>
         <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
