@@ -43,17 +43,29 @@ function pinIcon(color: string, index: number, highlighted: boolean): L.DivIcon 
 
 function FitBounds({ stops }: { stops: MapStop[] }) {
   const map = useMap();
+  const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
   useEffect(() => {
-    if (stops.length === 0) return;
-    if (stops.length === 1) {
-      map.setView([stops[0].lat, stops[0].lng], 14, { animate: true });
-      return;
-    }
-    const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
-    map.fitBounds(bounds, { padding: [40, 40] });
-  }, [stops, map]);
+    if (!map) return;
+    const timer = setTimeout(() => {
+      try {
+        if (stops.length === 0) return;
+        if (stops.length === 1) {
+          map.setView([stops[0].lat, stops[0].lng], 14, { animate: true });
+          return;
+        }
+        const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14, animate: true });
+        }
+      } catch (e) {
+        console.warn("fitBounds failed", e);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [key, map, stops]);
   return null;
 }
+
 
 const POPUP_STYLE = `
 .day-pin { transition: transform .2s ease; }
