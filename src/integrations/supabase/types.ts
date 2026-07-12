@@ -340,6 +340,9 @@ export type Database = {
           entry_pin: string
           id: string
           num_travelers: number
+          owner_id: string | null
+          share_token: string | null
+          shared_user_ids: string[]
           start_date: string
           title: string
           total_budget_ils: number
@@ -352,6 +355,9 @@ export type Database = {
           entry_pin: string
           id?: string
           num_travelers?: number
+          owner_id?: string | null
+          share_token?: string | null
+          shared_user_ids?: string[]
           start_date: string
           title: string
           total_budget_ils?: number
@@ -364,6 +370,9 @@ export type Database = {
           entry_pin?: string
           id?: string
           num_travelers?: number
+          owner_id?: string | null
+          share_token?: string | null
+          shared_user_ids?: string[]
           start_date?: string
           title?: string
           total_budget_ils?: number
@@ -375,7 +384,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_access_trip: { Args: { _trip_id: string }; Returns: boolean }
+      claim_share: { Args: { _token: string }; Returns: string }
     }
     Enums: {
       entry_type:
