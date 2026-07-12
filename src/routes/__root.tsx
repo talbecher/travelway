@@ -172,4 +172,59 @@ function TripSettingsLink() {
   );
 }
 
+function AuthListener() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        qc.invalidateQueries();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [qc]);
+  return null;
+}
+
+function SignOutButton() {
+  const qc = useQueryClient();
+  async function handleClick() {
+    await qc.cancelQueries();
+    qc.clear();
+    await signOut();
+    window.location.href = "/";
+  }
+  return (
+    <button
+      onClick={handleClick}
+      aria-label="התנתקות"
+      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+    >
+      <LogOut size={15} />
+    </button>
+  );
+}
+
+function ShareTripButton() {
+  const { data: trip } = useTrip();
+  if (!trip?.share_token) return null;
+  async function handleClick() {
+    const url = `${window.location.origin}/join/${trip!.share_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("קישור השיתוף הועתק");
+    } catch {
+      toast.message(url);
+    }
+  }
+  return (
+    <button
+      onClick={handleClick}
+      aria-label="שתף טיול"
+      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+    >
+      <Share2 size={15} />
+    </button>
+  );
+}
+
 
