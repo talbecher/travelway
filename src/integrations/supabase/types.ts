@@ -249,6 +249,8 @@ export type Database = {
           city: string | null
           created_at: string
           google_maps_url: string | null
+          google_rating: number | null
+          google_rating_count: number | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -266,6 +268,8 @@ export type Database = {
           city?: string | null
           created_at?: string
           google_maps_url?: string | null
+          google_rating?: number | null
+          google_rating_count?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -283,6 +287,8 @@ export type Database = {
           city?: string | null
           created_at?: string
           google_maps_url?: string | null
+          google_rating?: number | null
+          google_rating_count?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null

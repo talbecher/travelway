@@ -9,12 +9,33 @@ export type PlaceResult = {
   primaryType: string | null;
   photoName: string | null;
   google_maps_url: string;
+  city: string | null;
+  rating: number | null;
+  userRatingCount: number | null;
 };
 
 export type SearchPlacesResponse = {
   results: PlaceResult[];
   error?: string;
 };
+
+type AddressComponent = {
+  longText?: string;
+  shortText?: string;
+  types?: string[];
+};
+
+function extractCity(components?: AddressComponent[]): string | null {
+  if (!components) return null;
+  const byType = (t: string) =>
+    components.find((c) => (c.types ?? []).includes(t))?.longText ?? null;
+  return (
+    byType("locality") ??
+    byType("administrative_area_level_2") ??
+    byType("administrative_area_level_1") ??
+    null
+  );
+}
 
 export const searchPlaces = createServerFn({ method: "POST" })
   .inputValidator((input: { query: string }) => {
@@ -41,7 +62,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
           "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.primaryTypeDisplayName,places.photos",
+            "places.id,places.displayName,places.formattedAddress,places.location,places.primaryTypeDisplayName,places.photos,places.addressComponents,places.rating,places.userRatingCount",
         },
         body: JSON.stringify({ textQuery: query, languageCode: "he" }),
       });
@@ -61,6 +82,9 @@ export const searchPlaces = createServerFn({ method: "POST" })
           location?: { latitude: number; longitude: number };
           primaryTypeDisplayName?: { text?: string };
           photos?: Array<{ name: string }>;
+          addressComponents?: AddressComponent[];
+          rating?: number;
+          userRatingCount?: number;
         }>;
       };
 
@@ -78,6 +102,9 @@ export const searchPlaces = createServerFn({ method: "POST" })
             primaryType: p.primaryTypeDisplayName?.text ?? null,
             photoName: p.photos?.[0]?.name ?? null,
             google_maps_url: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+            city: extractCity(p.addressComponents),
+            rating: typeof p.rating === "number" ? p.rating : null,
+            userRatingCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
           };
         });
 

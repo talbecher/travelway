@@ -10,6 +10,9 @@ export type SelectedPlace = {
   longitude: number;
   google_maps_url: string;
   photo_url: string | null;
+  city: string | null;
+  rating: number | null;
+  userRatingCount: number | null;
 };
 
 export function PlacesSearch({
@@ -117,6 +120,9 @@ export function PlacesSearch({
       longitude: p.longitude,
       google_maps_url: p.google_maps_url,
       photo_url,
+      city: p.city,
+      rating: p.rating,
+      userRatingCount: p.userRatingCount,
     });
     setOpen(false);
     setQuery("");
@@ -203,6 +209,14 @@ export function PlacesSearch({
                   <div className="text-[11px] text-muted-foreground truncate" dir="ltr">
                     {r.address}
                   </div>
+                  {r.rating != null && (
+                    <div className="text-[12px] text-muted-foreground" dir="ltr">
+                      ★ {r.rating.toFixed(1)}
+                      {r.userRatingCount != null && (
+                        <span> ({r.userRatingCount.toLocaleString("he-IL")} ביקורות)</span>
+                      )}
+                    </div>
+                  )}
                   {r.primaryType && (
                     <div className="text-[10px] text-muted-foreground/80">{r.primaryType}</div>
                   )}

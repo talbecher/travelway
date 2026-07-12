@@ -62,19 +62,24 @@ function userIcon(): L.DivIcon {
 
 function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: number } | null }) {
   const map = useMap();
+  const key = pins.map((p) => p.id).join(",");
   useEffect(() => {
-    if (pins.length === 0) {
-      map.setView([35.6762, 139.6503], 10, { animate: true });
-      return;
-    }
-    if (pins.length === 1 && !user) {
-      map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
-      return;
-    }
-    const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
-    if (user) pts.push([user.lat, user.lng]);
-    map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
-  }, [pins, user, map]);
+    const timer = setTimeout(() => {
+      if (pins.length === 0) {
+        map.setView([35.6762, 139.6503], 10, { animate: true });
+        return;
+      }
+      if (pins.length === 1 && !user) {
+        map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
+        return;
+      }
+      const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
+      if (user) pts.push([user.lat, user.lng]);
+      const padding: [number, number] = pins.length <= 5 ? [60, 60] : [40, 40];
+      map.fitBounds(L.latLngBounds(pts), { padding, maxZoom: 15 });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [key, user, map, pins]);
   return null;
 }
 
@@ -119,6 +124,14 @@ export default function RecsMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => {
+    if (pins.length < 6) { setShowHint(false); return; }
+    setShowHint(true);
+    const t = setTimeout(() => setShowHint(false), 3000);
+    return () => clearTimeout(t);
+  }, [pins.length]);
+
   const center: [number, number] = pins[0]
     ? [pins[0].lat, pins[0].lng]
     : userPos
@@ -128,6 +141,7 @@ export default function RecsMap({
   if (!mounted) return <MapSkeleton />;
 
   return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
     <MapContainer
       center={center}
       zoom={12}
@@ -137,6 +151,8 @@ export default function RecsMap({
       <TileLayer
         attribution='&copy; OpenStreetMap &copy; CartoDB'
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        maxZoom={19}
+        minZoom={5}
       />
       {pins.map((p) => {
         const badge = statusBadge(p.status);
@@ -205,5 +221,33 @@ export default function RecsMap({
       )}
       <FitAll pins={pins} user={userPos} />
     </MapContainer>
+    {pins.length === 0 && (
+      <div style={{
+        position: "absolute", inset: 0, display: "flex",
+        alignItems: "center", justifyContent: "center",
+        pointerEvents: "none", padding: 24, zIndex: 500,
+      }}>
+        <div style={{
+          background: "var(--card)", color: "var(--foreground)",
+          border: "1px solid var(--border)", borderRadius: 12,
+          padding: "12px 16px", fontSize: 13, textAlign: "center",
+          maxWidth: 320, boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        }}>
+          📍 אין מיקומים שמורים — הוסף המלצות עם לינק גוגל מפות כדי שיופיעו כאן
+        </div>
+      </div>
+    )}
+    {showHint && (
+      <div style={{
+        position: "absolute", bottom: 16, left: "50%",
+        transform: "translateX(-50%)", zIndex: 500,
+        background: "rgba(0,0,0,0.75)", color: "#fff",
+        padding: "6px 12px", borderRadius: 999, fontSize: 12,
+        pointerEvents: "none", whiteSpace: "nowrap",
+      }}>
+        🔍 זום פנימה לצפייה בפינים קרובים
+      </div>
+    )}
+    </div>
   );
 }

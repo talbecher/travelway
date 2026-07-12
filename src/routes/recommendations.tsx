@@ -20,8 +20,8 @@ import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
-type Tab = "food" | "attractions" | "hotels";
-const searchSchema = z.object({ tab: z.enum(["food", "attractions", "hotels"]).optional() });
+type Tab = "all" | "food" | "attractions" | "hotels";
+const searchSchema = z.object({ tab: z.enum(["all", "food", "attractions", "hotels"]).optional() });
 
 export const Route = createFileRoute("/recommendations")({
   validateSearch: searchSchema,
@@ -33,13 +33,16 @@ type Rec = {
   google_maps_url: string | null; status: string; rating: number | null; review: string | null;
   notes: string | null; latitude: number | string | null; longitude: number | string | null;
   photo_url?: string | null;
+  google_rating?: number | string | null;
+  google_rating_count?: number | null;
+  created_at?: string;
 };
 
-const TAB_TYPE: Record<Tab, RecType> = { food: "food", attractions: "attraction", hotels: "hotel" };
+const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food", attractions: "attraction" };
 
 function Recs() {
   const search = Route.useSearch();
-  const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "food");
+  const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "all");
   const [city, setCity] = useState<string>("all");
   const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
@@ -49,22 +52,28 @@ function Recs() {
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
 
+  const typeFilter = (r: Rec): boolean => {
+    if (tab === "all") return r.type === "food" || r.type === "attraction";
+    if (tab === "food") return r.type === "food";
+    if (tab === "attractions") return r.type === "attraction";
+    return r.type === "hotel";
+  };
+
   const cities = useMemo(() => {
-    const type = TAB_TYPE[tab];
     const set = new Set<string>();
-    for (const r of recs) {
-      if (r.type === type && r.city) set.add(r.city);
+    for (const r of recs as Rec[]) {
+      if (typeFilter(r) && r.city) set.add(r.city);
     }
     return Array.from(set).sort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs, tab]);
 
   useEffect(() => { setCity("all"); }, [tab]);
   useEffect(() => { if (tab === "hotels") setView("list"); }, [tab]);
 
   const mapPins = useMemo(() => {
-    const type = TAB_TYPE[tab];
     return (recs as Rec[])
-      .filter((r) => r.type === type)
+      .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
       .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
@@ -79,6 +88,7 @@ function Recs() {
         rating: r.rating,
         google_maps_url: r.google_maps_url,
       }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs, tab, city]);
 
 
@@ -91,6 +101,10 @@ function Recs() {
       { timeout: 5000, maximumAge: 60_000 },
     );
   }, [view]);
+
+  const defaultFormType: RecType = tab === "food" ? "food" : tab === "hotels" ? "hotel" : "attraction";
+  const listType: "food" | "attraction" | "all" =
+    tab === "food" ? "food" : tab === "attractions" ? "attraction" : "all";
 
   return (
     <div className="pt-2 space-y-4 pb-4">
@@ -111,6 +125,7 @@ function Recs() {
       </div>
 
       <div className="flex gap-1 bg-muted rounded-lg p-1">
+        <TabBtn active={tab === "all"} onClick={() => setTab("all")}>הכל</TabBtn>
         <TabBtn active={tab === "food"} onClick={() => setTab("food")}>🍜 אוכל</TabBtn>
         <TabBtn active={tab === "attractions"} onClick={() => setTab("attractions")}>⛩ אטרקציות</TabBtn>
         <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 לינה</TabBtn>
@@ -128,31 +143,22 @@ function Recs() {
       {tab === "hotels" ? (
         <HotelsList onEdit={setEditRec} />
       ) : view === "map" ? (
-        <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100dvh - 260px)" }}>
-          {mapPins.length === 0 ? (
-            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
-              <MapIcon size={28} className="text-muted-foreground" />
-              <div className="text-sm text-muted-foreground">אין המלצות עם מיקום להצגה</div>
-              <div className="text-xs text-muted-foreground">הוסף לינק גוגל מפות בעריכת ההמלצה</div>
-            </div>
-          ) : (
-            <ClientOnly fallback={<MapSkeleton />}>
-              <Suspense fallback={<MapSkeleton />}>
-                <RecsMap
-                  pins={mapPins}
-                  userPos={userPos}
-                  onAddToDay={(id: string) => {
-                    const found = (recs as Rec[]).find((r) => r.id === id);
-                    if (found) setMapPickRec(found);
-                  }}
-                />
-              </Suspense>
-            </ClientOnly>
-
-          )}
+        <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
+          <ClientOnly fallback={<MapSkeleton />}>
+            <Suspense fallback={<MapSkeleton />}>
+              <RecsMap
+                pins={mapPins}
+                userPos={userPos}
+                onAddToDay={(id: string) => {
+                  const found = (recs as Rec[]).find((r) => r.id === id);
+                  if (found) setMapPickRec(found);
+                }}
+              />
+            </Suspense>
+          </ClientOnly>
         </div>
       ) : (
-        <PlacesList type={TAB_TYPE[tab] as "food" | "attraction"} cityFilter={city} onEdit={setEditRec} />
+        <PlacesList type={listType} cityFilter={city} onEdit={setEditRec} />
       )}
 
       <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
@@ -161,7 +167,7 @@ function Recs() {
       </button>
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף המלצה">
-        <RecForm defaultType={TAB_TYPE[tab]} onDone={() => setAddOpen(false)} />
+        <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
       </BottomSheet>
 
       <BottomSheet open={!!editRec} onOpenChange={(o) => !o && setEditRec(null)} title="ערוך המלצה">
@@ -246,7 +252,7 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
   );
 }
 
-function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction"; cityFilter: string; onEdit: (r: Rec) => void }) {
+function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction" | "all"; cityFilter: string; onEdit: (r: Rec) => void }) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
 
@@ -260,9 +266,13 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction";
   }, []);
 
   const list = useMemo(() => {
-    let items = (recs as Rec[]).filter((r) => r.type === type);
+    let items = (recs as Rec[]).filter((r) =>
+      type === "all" ? (r.type === "food" || r.type === "attraction") : r.type === type,
+    );
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
-    if (pos) {
+    if (type === "all") {
+      items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+    } else if (pos) {
       items = [...items].sort((a, b) => {
         const da = a.latitude && a.longitude ? haversine(pos, { lat: Number(a.latitude), lon: Number(a.longitude) }) : Infinity;
         const db = b.latitude && b.longitude ? haversine(pos, { lat: Number(b.latitude), lon: Number(b.longitude) }) : Infinity;
@@ -276,7 +286,12 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction";
   }, [recs, type, cityFilter, pos]);
 
   if (isLoading) return <ListSkeleton />;
-  if (list.length === 0) return <EmptyState variant="recs" title={type === "food" ? "אין המלצות אוכל עדיין" : "אין אטרקציות עדיין"} hint="הוסף המלצה עם הכפתור בפינה" />;
+  if (list.length === 0) {
+    const title = type === "food" ? "אין המלצות אוכל עדיין"
+      : type === "attraction" ? "אין אטרקציות עדיין"
+      : "אין המלצות עדיין";
+    return <EmptyState variant="recs" title={title} hint="הוסף המלצה עם הכפתור בפינה" />;
+  }
 
   return (
     <div className="space-y-2">
@@ -285,14 +300,15 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction";
           key={r.id}
           rec={r}
           onEdit={() => onEdit(r)}
-          distance={pos && r.latitude && r.longitude ? haversine(pos, { lat: Number(r.latitude), lon: Number(r.longitude) }) : null}
+          showTypeBadge={type === "all"}
+          distance={type !== "all" && pos && r.latitude && r.longitude ? haversine(pos, { lat: Number(r.latitude), lon: Number(r.longitude) }) : null}
         />
       ))}
     </div>
   );
 }
 
-function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | null; onEdit: () => void }) {
+function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec; distance: number | null; onEdit: () => void; showTypeBadge?: boolean }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
@@ -327,6 +343,8 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
 
   const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
   const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+  const typeEmoji = rec.type === "food" ? "🍜" : rec.type === "hotel" ? "🏨" : "⛩";
+  const typeBg = rec.type === "food" ? "#FF6B6B22" : rec.type === "hotel" ? "#FFD93D22" : "#6C63FF22";
 
   const statusBadge = {
     wishlist: { label: "רשימה", cls: "bg-muted text-muted-foreground" },
@@ -334,8 +352,26 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
     skipped: { label: "דילגנו", cls: "bg-muted text-muted-foreground line-through" },
   }[rec.status as "wishlist" | "visited" | "skipped"];
 
-  return (
-    <div className="bg-card border border-border rounded-2xl p-3">
+  const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
+  const googleRating = rec.google_rating != null ? Number(rec.google_rating) : null;
+
+  const cardInner = (
+    <div className="bg-card border border-border rounded-2xl p-3 relative">
+      {showTypeBadge && (
+        <span
+          className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded-full font-medium"
+          style={{ background: typeBg, color: typeChipColor }}
+        >
+          {typeEmoji} {typeLabel}
+        </span>
+      )}
+      {rec.google_maps_url && (
+        <ExternalLink
+          size={12}
+          className="absolute top-2 right-2 text-muted-foreground/60 pointer-events-none"
+          style={showTypeBadge ? { top: 30 } : undefined}
+        />
+      )}
       <div className="flex items-start justify-between gap-2">
         {rec.photo_url && (
           <img
@@ -347,10 +383,12 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full"
-              style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}
-            >{typeLabel}</span>
+            {!showTypeBadge && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}
+              >{typeLabel}</span>
+            )}
             <motion.span
               key={rec.status}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -362,6 +400,11 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
           <div className="text-xs text-muted-foreground" dir="ltr">
             {rec.city}{rec.address ? ` · ${rec.address}` : ""}
           </div>
+          {googleRating != null && (
+            <div className="text-[11px] text-muted-foreground mt-0.5" dir="ltr">
+              ★ {googleRating.toFixed(1)} גוגל
+            </div>
+          )}
           {distance != null && Number.isFinite(distance) && (
             <div className="text-xs text-muted-foreground mt-0.5">{fmtDistance(distance)}</div>
           )}
@@ -373,11 +416,11 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
           )}
         </div>
         <div className="flex flex-col gap-1 shrink-0">
-          <button onClick={onEdit} aria-label="ערוך"
+          <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
             className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0">
             <Pencil size={12} />
           </button>
-          <button onClick={() => { if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
+          <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
             className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
             <Trash2 size={12} />
           </button>
@@ -385,21 +428,38 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
       </div>
       <div className="flex gap-2 mt-3">
         {rec.google_maps_url && (
-          <a href={rec.google_maps_url} target="_blank" rel="noreferrer"
+          <a href={rec.google_maps_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
             className="flex-1 h-9 rounded-md border border-border flex items-center justify-center gap-1 text-xs">
             <Navigation size={12} /> ניווט
           </a>
         )}
-        <button onClick={() => setDayPickerOpen(true)}
+        <button onClick={(e) => { stop(e); setDayPickerOpen(true); }}
           className="flex-1 h-9 rounded-md bg-[color:var(--accent)] text-white text-xs min-h-0">
           + הוסף ליום
         </button>
       </div>
       <div className="flex gap-3 mt-2 text-xs flex-wrap">
-        {rec.status !== "visited" && <button onClick={() => setStatus.mutate("visited")} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
-        {rec.status !== "skipped" && <button onClick={() => setStatus.mutate("skipped")} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
-        {rec.status !== "wishlist" && <button onClick={() => setStatus.mutate("wishlist")} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
+        {rec.status !== "visited" && <button onClick={(e) => { stop(e); setStatus.mutate("visited"); }} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
+        {rec.status !== "skipped" && <button onClick={(e) => { stop(e); setStatus.mutate("skipped"); }} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
+        {rec.status !== "wishlist" && <button onClick={(e) => { stop(e); setStatus.mutate("wishlist"); }} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
       </div>
+    </div>
+  );
+
+  return (
+    <>
+      {rec.google_maps_url ? (
+        <a
+          href={rec.google_maps_url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: "block", textDecoration: "none", color: "inherit" }}
+        >
+          {cardInner}
+        </a>
+      ) : (
+        cardInner
+      )}
 
       <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${rec.name} ליום`}>
         <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
@@ -413,7 +473,7 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
           ))}
         </div>
       </BottomSheet>
-    </div>
+    </>
   );
 }
 
@@ -430,6 +490,12 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   const [url, setUrl] = useState(existing?.google_maps_url ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
+  const [googleRating, setGoogleRating] = useState<number | null>(
+    existing?.google_rating != null ? Number(existing.google_rating) : null,
+  );
+  const [googleRatingCount, setGoogleRatingCount] = useState<number | null>(
+    existing?.google_rating_count ?? null,
+  );
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
     existing?.latitude != null && existing?.longitude != null
       ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
@@ -446,6 +512,9 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     setUrl(p.google_maps_url);
     setSelectedCoords({ lat: p.latitude, lng: p.longitude });
     setPhotoUrl(p.photo_url);
+    if (p.city) setCity(p.city);
+    setGoogleRating(p.rating);
+    setGoogleRatingCount(p.userRatingCount);
     setPlaceSelected({ name: p.name, address: p.address });
   }
 
@@ -456,6 +525,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     setUrl("");
     setSelectedCoords(null);
     setPhotoUrl(null);
+    setGoogleRating(null);
+    setGoogleRatingCount(null);
   }
 
   const save = useMutation({
@@ -471,6 +542,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
         photo_url: photoUrl,
+        google_rating: googleRating,
+        google_rating_count: googleRatingCount,
       };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
