@@ -14,6 +14,7 @@ import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
+import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -52,6 +53,7 @@ type EntryRow = {
   display_order: number;
   latitude: number | string | null;
   longitude: number | string | null;
+  photo_url?: string | null;
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -574,6 +576,7 @@ type EntryPayload = {
   display_order?: number;
   latitude?: number | null;
   longitude?: number | null;
+  photo_url?: string | null;
 };
 
 function useUpsert(dayId: string, existingId?: string) {
