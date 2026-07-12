@@ -127,9 +127,13 @@ function Onboarding() {
       }
 
       // Create new trip
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) throw new Error("נדרשת התחברות");
       const { data: trip, error: tripErr } = await supabase
         .from("trips")
         .insert({
+          owner_id: uid,
           title: title.trim(),
           destination_country: destination.trim(),
           start_date: startDate,
