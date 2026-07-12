@@ -134,8 +134,10 @@ function AppShell() {
           <HeaderTitle />
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
+            {!isOnboarding && <ShareTripButton />}
             {!isOnboarding && <TripSettingsLink />}
             <ThemeToggle />
+            <SignOutButton />
           </div>
         </div>
       </header>
