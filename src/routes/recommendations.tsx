@@ -490,6 +490,12 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   const [url, setUrl] = useState(existing?.google_maps_url ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
+  const [googleRating, setGoogleRating] = useState<number | null>(
+    existing?.google_rating != null ? Number(existing.google_rating) : null,
+  );
+  const [googleRatingCount, setGoogleRatingCount] = useState<number | null>(
+    existing?.google_rating_count ?? null,
+  );
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
     existing?.latitude != null && existing?.longitude != null
       ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
@@ -506,6 +512,9 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     setUrl(p.google_maps_url);
     setSelectedCoords({ lat: p.latitude, lng: p.longitude });
     setPhotoUrl(p.photo_url);
+    if (p.city) setCity(p.city);
+    setGoogleRating(p.rating);
+    setGoogleRatingCount(p.userRatingCount);
     setPlaceSelected({ name: p.name, address: p.address });
   }
 
@@ -516,6 +525,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     setUrl("");
     setSelectedCoords(null);
     setPhotoUrl(null);
+    setGoogleRating(null);
+    setGoogleRatingCount(null);
   }
 
   const save = useMutation({
@@ -531,6 +542,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
         photo_url: photoUrl,
+        google_rating: googleRating,
+        google_rating_count: googleRatingCount,
       };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
