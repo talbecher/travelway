@@ -62,26 +62,35 @@ function userIcon(): L.DivIcon {
 
 function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: number } | null }) {
   const map = useMap();
-  const key = pins.map((p) => p.id).join(",");
+  const key = pins.map((p) => `${p.lat},${p.lng}`).join("|");
   useEffect(() => {
+    if (!map) return;
     const timer = setTimeout(() => {
-      if (pins.length === 0) {
-        map.setView([35.6762, 139.6503], 10, { animate: true });
-        return;
+      try {
+        if (pins.length === 0) {
+          map.setView([35.6762, 139.6503], 10, { animate: true });
+          return;
+        }
+        if (pins.length === 1 && !user) {
+          map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
+          return;
+        }
+        const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
+        if (user) pts.push([user.lat, user.lng]);
+        const bounds = L.latLngBounds(pts);
+        if (bounds.isValid()) {
+          const padding: [number, number] = pins.length <= 5 ? [60, 60] : [50, 50];
+          map.fitBounds(bounds, { padding, maxZoom: 14, animate: true });
+        }
+      } catch (e) {
+        console.warn("fitBounds failed", e);
       }
-      if (pins.length === 1 && !user) {
-        map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
-        return;
-      }
-      const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
-      if (user) pts.push([user.lat, user.lng]);
-      const padding: [number, number] = pins.length <= 5 ? [60, 60] : [40, 40];
-      map.fitBounds(L.latLngBounds(pts), { padding, maxZoom: 15 });
-    }, 100);
+    }, 150);
     return () => clearTimeout(timer);
   }, [key, user, map, pins]);
   return null;
 }
+
 
 function statusBadge(status: string) {
   if (status === "visited") {
@@ -124,16 +133,24 @@ export default function RecsMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const validPins = pins.filter(
+    (p) =>
+      Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
+      p.lat >= -90 && p.lat <= 90 &&
+      p.lng >= -180 && p.lng <= 180 &&
+      !(p.lat === 0 && p.lng === 0),
+  );
+
   const [showHint, setShowHint] = useState(false);
   useEffect(() => {
-    if (pins.length < 6) { setShowHint(false); return; }
+    if (validPins.length < 6) { setShowHint(false); return; }
     setShowHint(true);
     const t = setTimeout(() => setShowHint(false), 3000);
     return () => clearTimeout(t);
-  }, [pins.length]);
+  }, [validPins.length]);
 
-  const center: [number, number] = pins[0]
-    ? [pins[0].lat, pins[0].lng]
+  const center: [number, number] = validPins[0]
+    ? [validPins[0].lat, validPins[0].lng]
     : userPos
     ? [userPos.lat, userPos.lng]
     : [35.6762, 139.6503];
@@ -144,17 +161,21 @@ export default function RecsMap({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
     <MapContainer
       center={center}
-      zoom={12}
+      zoom={validPins.length === 1 ? 15 : 12}
       scrollWheelZoom
+      zoomControl
+      maxZoom={19}
+      minZoom={3}
       style={{ width: "100%", height: "100%", background: "#EDEDED" }}
     >
       <TileLayer
         attribution='&copy; OpenStreetMap &copy; CartoDB'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         maxZoom={19}
-        minZoom={5}
+        minZoom={3}
       />
-      {pins.map((p) => {
+
+      {validPins.map((p) => {
         const badge = statusBadge(p.status);
         return (
           <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type)}>
@@ -219,9 +240,9 @@ export default function RecsMap({
       {userPos && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
       )}
-      <FitAll pins={pins} user={userPos} />
+      <FitAll pins={validPins} user={userPos} />
     </MapContainer>
-    {pins.length === 0 && (
+    {validPins.length === 0 && (
       <div style={{
         position: "absolute", inset: 0, display: "flex",
         alignItems: "center", justifyContent: "center",

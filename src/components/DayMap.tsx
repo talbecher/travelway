@@ -43,17 +43,29 @@ function pinIcon(color: string, index: number, highlighted: boolean): L.DivIcon 
 
 function FitBounds({ stops }: { stops: MapStop[] }) {
   const map = useMap();
+  const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
   useEffect(() => {
-    if (stops.length === 0) return;
-    if (stops.length === 1) {
-      map.setView([stops[0].lat, stops[0].lng], 14, { animate: true });
-      return;
-    }
-    const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
-    map.fitBounds(bounds, { padding: [40, 40] });
-  }, [stops, map]);
+    if (!map) return;
+    const timer = setTimeout(() => {
+      try {
+        if (stops.length === 0) return;
+        if (stops.length === 1) {
+          map.setView([stops[0].lat, stops[0].lng], 14, { animate: true });
+          return;
+        }
+        const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14, animate: true });
+        }
+      } catch (e) {
+        console.warn("fitBounds failed", e);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [key, map, stops]);
   return null;
 }
+
 
 const POPUP_STYLE = `
 .day-pin { transition: transform .2s ease; }
@@ -90,12 +102,20 @@ export default function DayMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const center: [number, number] = stops[0]
-    ? [stops[0].lat, stops[0].lng]
+  const validStops = stops.filter(
+    (s) =>
+      Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
+      s.lat >= -90 && s.lat <= 90 &&
+      s.lng >= -180 && s.lng <= 180 &&
+      !(s.lat === 0 && s.lng === 0),
+  );
+
+  const center: [number, number] = validStops[0]
+    ? [validStops[0].lat, validStops[0].lng]
     : [35.6812, 139.7671];
 
-  console.log("[DayMap] stops", stops.length, stops);
-  const path = stops.map((s) => [s.lat, s.lng] as [number, number]);
+  console.log("[DayMap] stops", validStops.length, validStops);
+  const path = validStops.map((s) => [s.lat, s.lng] as [number, number]);
 
   if (!mounted) return <MapSkeleton />;
 
@@ -105,21 +125,27 @@ export default function DayMap({
       <style>{POPUP_STYLE}</style>
       <MapContainer
         center={center}
-        zoom={13}
+        zoom={validStops.length === 1 ? 15 : 13}
         scrollWheelZoom
+        zoomControl
+        maxZoom={19}
+        minZoom={3}
         style={{ width: "100%", height: "100%", background: "#EDEDED" }}
       >
         <TileLayer
           attribution='&copy; OpenStreetMap &copy; CartoDB'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          maxZoom={19}
+          minZoom={3}
         />
+
         {path.length >= 2 && (
           <Polyline
             positions={path}
             pathOptions={{ color: "#6C63FF", weight: 3, opacity: 0.7, dashArray: "8, 6" }}
           />
         )}
-        {stops.map((s) => {
+        {validStops.map((s) => {
           const color = TYPE_PIN_COLOR[s.type] ?? "#6C63FF";
           const emoji = TYPE_EMOJI[s.type] ?? "•";
           return (
@@ -156,7 +182,7 @@ export default function DayMap({
             </Marker>
           );
         })}
-        <FitBounds stops={stops} />
+        <FitBounds stops={validStops} />
       </MapContainer>
     </>
   );

@@ -170,3 +170,13 @@
 .leaflet-pane,
 .leaflet-top,
 .leaflet-bottom { z-index: 0 !important; }
+
+/* Ensure Leaflet zoom controls remain visible above the tile pane. */
+.leaflet-control-zoom {
+  z-index: 1 !important;
+  position: absolute !important;
+}
+.leaflet-control-zoom a {
+  background: #fff !important;
+  color: #333 !important;
+}

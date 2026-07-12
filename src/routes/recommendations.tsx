@@ -359,20 +359,23 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
     <div className="bg-card border border-border rounded-2xl p-3 relative">
       {showTypeBadge && (
         <span
-          className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded-full font-medium"
+          className="absolute top-2 right-2 z-[1] text-[11px] px-2 py-0.5 rounded-full font-medium"
           style={{ background: typeBg, color: typeChipColor }}
         >
           {typeEmoji} {typeLabel}
         </span>
       )}
-      {rec.google_maps_url && (
-        <ExternalLink
-          size={12}
-          className="absolute top-2 right-2 text-muted-foreground/60 pointer-events-none"
-          style={showTypeBadge ? { top: 30 } : undefined}
-        />
-      )}
-      <div className="flex items-start justify-between gap-2">
+      <div className="absolute top-2 left-2 z-[1] flex flex-col gap-1">
+        <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
+          className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground min-h-0">
+          <Pencil size={12} />
+        </button>
+        <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
+          className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
+          <Trash2 size={12} />
+        </button>
+      </div>
+      <div className="flex items-start gap-2 pl-10 pr-2">
         {rec.photo_url && (
           <img
             src={rec.photo_url}
@@ -415,16 +418,6 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
             <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rec.review}</div>
           )}
         </div>
-        <div className="flex flex-col gap-1 shrink-0">
-          <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
-            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0">
-            <Pencil size={12} />
-          </button>
-          <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
-            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
-            <Trash2 size={12} />
-          </button>
-        </div>
       </div>
       <div className="flex gap-2 mt-3">
         {rec.google_maps_url && (
@@ -445,6 +438,7 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
       </div>
     </div>
   );
+
 
   return (
     <>
