@@ -20,8 +20,8 @@ import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
-type Tab = "food" | "attractions" | "hotels";
-const searchSchema = z.object({ tab: z.enum(["food", "attractions", "hotels"]).optional() });
+type Tab = "all" | "food" | "attractions" | "hotels";
+const searchSchema = z.object({ tab: z.enum(["all", "food", "attractions", "hotels"]).optional() });
 
 export const Route = createFileRoute("/recommendations")({
   validateSearch: searchSchema,
@@ -33,9 +33,12 @@ type Rec = {
   google_maps_url: string | null; status: string; rating: number | null; review: string | null;
   notes: string | null; latitude: number | string | null; longitude: number | string | null;
   photo_url?: string | null;
+  google_rating?: number | string | null;
+  google_rating_count?: number | null;
+  created_at?: string;
 };
 
-const TAB_TYPE: Record<Tab, RecType> = { food: "food", attractions: "attraction", hotels: "hotel" };
+const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food", attractions: "attraction" };
 
 function Recs() {
   const search = Route.useSearch();
