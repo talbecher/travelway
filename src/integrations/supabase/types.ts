@@ -28,6 +28,7 @@ export type Database = {
           linked_recommendation_id: string | null
           location_name: string | null
           longitude: number | null
+          photo_url: string | null
           time_of_day: string | null
           title: string
         }
@@ -44,6 +45,7 @@ export type Database = {
           linked_recommendation_id?: string | null
           location_name?: string | null
           longitude?: number | null
+          photo_url?: string | null
           time_of_day?: string | null
           title: string
         }
@@ -60,6 +62,7 @@ export type Database = {
           linked_recommendation_id?: string | null
           location_name?: string | null
           longitude?: number | null
+          photo_url?: string | null
           time_of_day?: string | null
           title?: string
         }
@@ -251,6 +254,7 @@ export type Database = {
           longitude: number | null
           name: string
           notes: string | null
+          photo_url: string | null
           rating: number | null
           review: string | null
           status: Database["public"]["Enums"]["rec_status"]
@@ -267,6 +271,7 @@ export type Database = {
           longitude?: number | null
           name: string
           notes?: string | null
+          photo_url?: string | null
           rating?: number | null
           review?: string | null
           status?: Database["public"]["Enums"]["rec_status"]
@@ -283,6 +288,7 @@ export type Database = {
           longitude?: number | null
           name?: string
           notes?: string | null
+          photo_url?: string | null
           rating?: number | null
           review?: string | null
           status?: Database["public"]["Enums"]["rec_status"]
