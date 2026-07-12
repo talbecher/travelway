@@ -501,6 +501,14 @@ function SortableEntry({
               </div>
             )}
           </div>
+          {entry.photo_url && (
+            <img
+              src={entry.photo_url}
+              alt=""
+              loading="lazy"
+              className="w-[60px] h-[60px] rounded-lg object-cover shrink-0"
+            />
+          )}
           <div className="flex flex-col gap-1 shrink-0">
             <button onClick={onEdit} aria-label="ערוך"
               className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"><Pencil size={12} /></button>
