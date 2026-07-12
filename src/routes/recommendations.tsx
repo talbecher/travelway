@@ -337,6 +337,14 @@ function PlaceCard({ rec, distance, onEdit }: { rec: Rec; distance: number | nul
   return (
     <div className="bg-card border border-border rounded-2xl p-3">
       <div className="flex items-start justify-between gap-2">
+        {rec.photo_url && (
+          <img
+            src={rec.photo_url}
+            alt=""
+            loading="lazy"
+            className="w-[60px] h-[60px] rounded-lg object-cover shrink-0"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span
