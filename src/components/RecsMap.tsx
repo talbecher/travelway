@@ -133,16 +133,24 @@ export default function RecsMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const validPins = pins.filter(
+    (p) =>
+      Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
+      p.lat >= -90 && p.lat <= 90 &&
+      p.lng >= -180 && p.lng <= 180 &&
+      !(p.lat === 0 && p.lng === 0),
+  );
+
   const [showHint, setShowHint] = useState(false);
   useEffect(() => {
-    if (pins.length < 6) { setShowHint(false); return; }
+    if (validPins.length < 6) { setShowHint(false); return; }
     setShowHint(true);
     const t = setTimeout(() => setShowHint(false), 3000);
     return () => clearTimeout(t);
-  }, [pins.length]);
+  }, [validPins.length]);
 
-  const center: [number, number] = pins[0]
-    ? [pins[0].lat, pins[0].lng]
+  const center: [number, number] = validPins[0]
+    ? [validPins[0].lat, validPins[0].lng]
     : userPos
     ? [userPos.lat, userPos.lng]
     : [35.6762, 139.6503];
@@ -153,16 +161,20 @@ export default function RecsMap({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
     <MapContainer
       center={center}
-      zoom={12}
+      zoom={validPins.length === 1 ? 15 : 12}
       scrollWheelZoom
+      zoomControl
+      maxZoom={19}
+      minZoom={3}
       style={{ width: "100%", height: "100%", background: "#EDEDED" }}
     >
       <TileLayer
         attribution='&copy; OpenStreetMap &copy; CartoDB'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         maxZoom={19}
-        minZoom={5}
+        minZoom={3}
       />
+
       {pins.map((p) => {
         const badge = statusBadge(p.status);
         return (
