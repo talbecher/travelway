@@ -15,6 +15,7 @@ import { Route as ItineraryRouteImport } from './routes/itinerary'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
+import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 
 const RecommendationsRoute = RecommendationsRouteImport.update({
@@ -47,6 +48,11 @@ const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ItineraryRoute,
 } as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItineraryDayIdRoute = ItineraryDayIdRouteImport.update({
   id: '/$dayId',
   path: '/$dayId',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/recommendations': typeof RecommendationsRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
+  '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
 }
 export interface FileRoutesByTo {
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/recommendations': typeof RecommendationsRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
+  '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
 }
 export interface FileRoutesById {
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/recommendations': typeof RecommendationsRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
+  '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/recommendations'
     | '/itinerary/$dayId'
+    | '/join/$token'
     | '/itinerary/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/recommendations'
     | '/itinerary/$dayId'
+    | '/join/$token'
     | '/itinerary'
   id:
     | '__root__'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/recommendations'
     | '/itinerary/$dayId'
+    | '/join/$token'
     | '/itinerary/'
   fileRoutesById: FileRoutesById
 }
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   ItineraryRoute: typeof ItineraryRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   RecommendationsRoute: typeof RecommendationsRoute
+  JoinTokenRoute: typeof JoinTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ItineraryIndexRouteImport
       parentRoute: typeof ItineraryRoute
     }
+    '/join/$token': {
+      id: '/join/$token'
+      path: '/join/$token'
+      fullPath: '/join/$token'
+      preLoaderRoute: typeof JoinTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/itinerary/$dayId': {
       id: '/itinerary/$dayId'
       path: '/$dayId'
@@ -191,6 +211,7 @@ const rootRouteChildren: RootRouteChildren = {
   ItineraryRoute: ItineraryRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   RecommendationsRoute: RecommendationsRoute,
+  JoinTokenRoute: JoinTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

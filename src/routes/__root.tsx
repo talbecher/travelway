@@ -11,15 +11,18 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { PinGate } from "@/components/PinGate";
+import { AuthGate } from "@/components/AuthGate";
 import { BottomNav } from "@/components/BottomNav";
 import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
-import { Toaster } from "sonner";
+import { Settings, LogOut, Share2 } from "lucide-react";
+import { Toaster, toast } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
+import { signOut } from "@/hooks/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`;
 
@@ -112,9 +115,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <PinGate>
+      <AuthListener />
+      <AuthGate>
         <AppShell />
-      </PinGate>
+      </AuthGate>
       <Toaster position="top-center" richColors={false} />
     </QueryClientProvider>
   );
@@ -130,8 +134,10 @@ function AppShell() {
           <HeaderTitle />
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
+            {!isOnboarding && <ShareTripButton />}
             {!isOnboarding && <TripSettingsLink />}
             <ThemeToggle />
+            <SignOutButton />
           </div>
         </div>
       </header>
@@ -163,6 +169,61 @@ function TripSettingsLink() {
     >
       <Settings size={15} />
     </Link>
+  );
+}
+
+function AuthListener() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        qc.invalidateQueries();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [qc]);
+  return null;
+}
+
+function SignOutButton() {
+  const qc = useQueryClient();
+  async function handleClick() {
+    await qc.cancelQueries();
+    qc.clear();
+    await signOut();
+    window.location.href = "/";
+  }
+  return (
+    <button
+      onClick={handleClick}
+      aria-label="התנתקות"
+      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+    >
+      <LogOut size={15} />
+    </button>
+  );
+}
+
+function ShareTripButton() {
+  const { data: trip } = useTrip();
+  if (!trip?.share_token) return null;
+  async function handleClick() {
+    const url = `${window.location.origin}/join/${trip!.share_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("קישור השיתוף הועתק");
+    } catch {
+      toast.message(url);
+    }
+  }
+  return (
+    <button
+      onClick={handleClick}
+      aria-label="שתף טיול"
+      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+    >
+      <Share2 size={15} />
+    </button>
   );
 }
 
