@@ -42,7 +42,7 @@ const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food"
 
 function Recs() {
   const search = Route.useSearch();
-  const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "food");
+  const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "all");
   const [city, setCity] = useState<string>("all");
   const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
@@ -52,22 +52,28 @@ function Recs() {
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
 
+  const typeFilter = (r: Rec): boolean => {
+    if (tab === "all") return r.type === "food" || r.type === "attraction";
+    if (tab === "food") return r.type === "food";
+    if (tab === "attractions") return r.type === "attraction";
+    return r.type === "hotel";
+  };
+
   const cities = useMemo(() => {
-    const type = TAB_TYPE[tab];
     const set = new Set<string>();
-    for (const r of recs) {
-      if (r.type === type && r.city) set.add(r.city);
+    for (const r of recs as Rec[]) {
+      if (typeFilter(r) && r.city) set.add(r.city);
     }
     return Array.from(set).sort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs, tab]);
 
   useEffect(() => { setCity("all"); }, [tab]);
   useEffect(() => { if (tab === "hotels") setView("list"); }, [tab]);
 
   const mapPins = useMemo(() => {
-    const type = TAB_TYPE[tab];
     return (recs as Rec[])
-      .filter((r) => r.type === type)
+      .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
       .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
@@ -82,6 +88,7 @@ function Recs() {
         rating: r.rating,
         google_maps_url: r.google_maps_url,
       }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs, tab, city]);
 
 
@@ -94,6 +101,10 @@ function Recs() {
       { timeout: 5000, maximumAge: 60_000 },
     );
   }, [view]);
+
+  const defaultFormType: RecType = tab === "food" ? "food" : tab === "hotels" ? "hotel" : "attraction";
+  const listType: "food" | "attraction" | "all" =
+    tab === "food" ? "food" : tab === "attractions" ? "attraction" : "all";
 
   return (
     <div className="pt-2 space-y-4 pb-4">
@@ -114,6 +125,7 @@ function Recs() {
       </div>
 
       <div className="flex gap-1 bg-muted rounded-lg p-1">
+        <TabBtn active={tab === "all"} onClick={() => setTab("all")}>הכל</TabBtn>
         <TabBtn active={tab === "food"} onClick={() => setTab("food")}>🍜 אוכל</TabBtn>
         <TabBtn active={tab === "attractions"} onClick={() => setTab("attractions")}>⛩ אטרקציות</TabBtn>
         <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 לינה</TabBtn>
@@ -131,31 +143,22 @@ function Recs() {
       {tab === "hotels" ? (
         <HotelsList onEdit={setEditRec} />
       ) : view === "map" ? (
-        <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100dvh - 260px)" }}>
-          {mapPins.length === 0 ? (
-            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
-              <MapIcon size={28} className="text-muted-foreground" />
-              <div className="text-sm text-muted-foreground">אין המלצות עם מיקום להצגה</div>
-              <div className="text-xs text-muted-foreground">הוסף לינק גוגל מפות בעריכת ההמלצה</div>
-            </div>
-          ) : (
-            <ClientOnly fallback={<MapSkeleton />}>
-              <Suspense fallback={<MapSkeleton />}>
-                <RecsMap
-                  pins={mapPins}
-                  userPos={userPos}
-                  onAddToDay={(id: string) => {
-                    const found = (recs as Rec[]).find((r) => r.id === id);
-                    if (found) setMapPickRec(found);
-                  }}
-                />
-              </Suspense>
-            </ClientOnly>
-
-          )}
+        <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
+          <ClientOnly fallback={<MapSkeleton />}>
+            <Suspense fallback={<MapSkeleton />}>
+              <RecsMap
+                pins={mapPins}
+                userPos={userPos}
+                onAddToDay={(id: string) => {
+                  const found = (recs as Rec[]).find((r) => r.id === id);
+                  if (found) setMapPickRec(found);
+                }}
+              />
+            </Suspense>
+          </ClientOnly>
         </div>
       ) : (
-        <PlacesList type={TAB_TYPE[tab] as "food" | "attraction"} cityFilter={city} onEdit={setEditRec} />
+        <PlacesList type={listType} cityFilter={city} onEdit={setEditRec} />
       )}
 
       <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
@@ -164,7 +167,7 @@ function Recs() {
       </button>
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף המלצה">
-        <RecForm defaultType={TAB_TYPE[tab]} onDone={() => setAddOpen(false)} />
+        <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
       </BottomSheet>
 
       <BottomSheet open={!!editRec} onOpenChange={(o) => !o && setEditRec(null)} title="ערוך המלצה">
