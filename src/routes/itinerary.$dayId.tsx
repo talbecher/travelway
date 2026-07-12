@@ -839,13 +839,38 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [foodType, setFoodType] = useState(recType === "food" ? parseDesc(existing?.description, "סוג") : "");
   const [notes, setNotes] = useState(recType === "food" ? parseDesc(existing?.description, "הערות") || (existing?.description ?? "") : (existing?.description ?? ""));
   const [saveToRecs, setSaveToRecs] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const mut = useUpsert(dayId, existing?.id);
   const initialCoords = existing?.latitude != null && existing?.longitude != null
     ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
     : null;
   const [resolvedCoords, setResolvedCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
+  const [placeCoords, setPlaceCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
+  const [placeSelected, setPlaceSelected] = useState<{ name: string; address: string } | null>(
+    existing ? { name: existing.title, address: existing.location_name ?? "" } : null,
+  );
+  const [manualMode, setManualMode] = useState(!!existing);
   const resolver = useResolveMapsUrl(initialCoords);
   useEffect(() => { setResolvedCoords(resolver.resolved); }, [resolver.resolved]);
+
+  function handlePlace(p: SelectedPlace) {
+    setName(p.name);
+    setArea(p.address);
+    setMapsUrl(p.google_maps_url);
+    setPlaceCoords({ lat: p.latitude, lng: p.longitude });
+    setPhotoUrl(p.photo_url);
+    setPlaceSelected({ name: p.name, address: p.address });
+  }
+
+  function clearPlace() {
+    setPlaceSelected(null);
+    setName("");
+    setArea("");
+    setMapsUrl("");
+    setPlaceCoords(null);
+    setPhotoUrl(null);
+  }
+
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
@@ -862,11 +887,14 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
       const description = recType === "food"
         ? [foodType && `סוג: ${foodType}`, notes && `הערות: ${notes}`].filter(Boolean).join("\n")
         : notes;
-      const local = parseLatLngFromMapsUrl(mapsUrl);
-      const awaited = mapsUrl && !local && !resolvedCoords
-        ? await resolver.tryResolve(mapsUrl)
-        : null;
-      const c = local ?? resolvedCoords ?? awaited;
+      let c: { lat: number; lng: number } | null = placeCoords;
+      if (!c) {
+        const local = parseLatLngFromMapsUrl(mapsUrl);
+        const awaited = mapsUrl && !local && !resolvedCoords
+          ? await resolver.tryResolve(mapsUrl)
+          : null;
+        c = local ?? resolvedCoords ?? awaited;
+      }
       mut.mutate({
         entry_type: recType, title: name.trim(),
         description: description || null, time_of_day: time || null,
@@ -874,33 +902,67 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
         location_name: area || null, google_maps_url: mapsUrl || null,
         linked_recommendation_id: linkedId,
         latitude: c?.lat ?? null, longitude: c?.lng ?? null,
+        photo_url: photoUrl,
         display_order: existing?.display_order ?? defaultOrder,
       }, { onSuccess: onDone });
     }} className="space-y-3">
-      <div><L>{recType === "food" ? "שם המסעדה" : "שם האטרקציה"}</L><input value={name} onChange={(e) => setName(e.target.value)} required className={inputCls} /></div>
-      <div><L>שעה מתוכננת</L><input type="time" value={time} onChange={(e) => setTime(e.target.value)} dir="ltr" className={inputCls} /></div>
-      <div><L>אזור / שכונה</L><input value={area} onChange={(e) => setArea(e.target.value)} dir="ltr" className={inputCls} /></div>
-      {recType === "food" && (
-        <div><L>סוג אוכל</L><input value={foodType} onChange={(e) => setFoodType(e.target.value)} placeholder="ראמן, סושי..." className={inputCls} /></div>
+      {!manualMode && !placeSelected && (
+        <>
+          <PlacesSearch onSelect={handlePlace} placeholder={recType === "food" ? "חפש מסעדה..." : "חפש אטרקציה..."} />
+          <button type="button" onClick={() => setManualMode(true)}
+            className="text-xs text-muted-foreground underline min-h-0 h-auto p-0">
+            הוסף ידנית
+          </button>
+        </>
       )}
-      <div>
-        <L>לינק גוגל מפות</L>
-        <input
-          type="url" value={mapsUrl}
-          onChange={(e) => { setMapsUrl(e.target.value); resolver.scheduleDebounced(e.target.value); }}
-          onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
-          dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
-        />
-        <CoordStatus status={resolver.status} />
-      </div>
-      <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
-      {!existing && (
-        <label className="flex items-center gap-2 py-2 text-sm">
-          <input type="checkbox" checked={saveToRecs} onChange={(e) => setSaveToRecs(e.target.checked)} className="w-4 h-4 accent-[color:var(--accent)]" />
-          <span>שמור גם בהמלצות</span>
-        </label>
+
+      {placeSelected && (
+        <div className="rounded-lg border border-[color:var(--accent-3)]/40 bg-[color:var(--accent-3)]/10 p-2 text-xs flex items-start gap-2">
+          {photoUrl && (
+            <img src={photoUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-[color:var(--accent-3)]">✅ {placeSelected.name}</div>
+            {placeSelected.address && (
+              <div className="text-muted-foreground truncate" dir="ltr">{placeSelected.address}</div>
+            )}
+            {placeCoords && <div className="text-[10px] text-muted-foreground mt-0.5">✅ מיקום זוהה</div>}
+          </div>
+          <button type="button" onClick={clearPlace}
+            className="text-[color:var(--accent)] underline min-h-0 h-auto p-0 shrink-0">שנה</button>
+        </div>
       )}
-      <button type="submit" disabled={mut.isPending} className={btnCls}>{mut.isPending ? "שומר..." : "שמור"}</button>
+
+      {(manualMode || placeSelected) && (
+        <>
+          <div><L>{recType === "food" ? "שם המסעדה" : "שם האטרקציה"}</L><input value={name} onChange={(e) => setName(e.target.value)} required className={inputCls} /></div>
+          <div><L>שעה מתוכננת</L><input type="time" value={time} onChange={(e) => setTime(e.target.value)} dir="ltr" className={inputCls} /></div>
+          <div><L>אזור / שכונה</L><input value={area} onChange={(e) => setArea(e.target.value)} dir="ltr" className={inputCls} /></div>
+          {recType === "food" && (
+            <div><L>סוג אוכל</L><input value={foodType} onChange={(e) => setFoodType(e.target.value)} placeholder="ראמן, סושי..." className={inputCls} /></div>
+          )}
+          {manualMode && !placeSelected && (
+            <div>
+              <L>לינק גוגל מפות</L>
+              <input
+                type="url" value={mapsUrl}
+                onChange={(e) => { setMapsUrl(e.target.value); resolver.scheduleDebounced(e.target.value); }}
+                onBlur={(e) => { void resolver.tryResolve(e.target.value); }}
+                dir="ltr" placeholder="https://maps.app.goo.gl/..." className={inputCls}
+              />
+              <CoordStatus status={resolver.status} />
+            </div>
+          )}
+          <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
+          {!existing && (
+            <label className="flex items-center gap-2 py-2 text-sm">
+              <input type="checkbox" checked={saveToRecs} onChange={(e) => setSaveToRecs(e.target.checked)} className="w-4 h-4 accent-[color:var(--accent)]" />
+              <span>שמור גם בהמלצות</span>
+            </label>
+          )}
+          <button type="submit" disabled={mut.isPending} className={btnCls}>{mut.isPending ? "שומר..." : "שמור"}</button>
+        </>
+      )}
     </form>
   );
 }
