@@ -252,7 +252,7 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
   );
 }
 
-function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction"; cityFilter: string; onEdit: (r: Rec) => void }) {
+function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction" | "all"; cityFilter: string; onEdit: (r: Rec) => void }) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
 
@@ -266,9 +266,13 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction";
   }, []);
 
   const list = useMemo(() => {
-    let items = (recs as Rec[]).filter((r) => r.type === type);
+    let items = (recs as Rec[]).filter((r) =>
+      type === "all" ? (r.type === "food" || r.type === "attraction") : r.type === type,
+    );
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
-    if (pos) {
+    if (type === "all") {
+      items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+    } else if (pos) {
       items = [...items].sort((a, b) => {
         const da = a.latitude && a.longitude ? haversine(pos, { lat: Number(a.latitude), lon: Number(a.longitude) }) : Infinity;
         const db = b.latitude && b.longitude ? haversine(pos, { lat: Number(b.latitude), lon: Number(b.longitude) }) : Infinity;
@@ -282,7 +286,12 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction";
   }, [recs, type, cityFilter, pos]);
 
   if (isLoading) return <ListSkeleton />;
-  if (list.length === 0) return <EmptyState variant="recs" title={type === "food" ? "אין המלצות אוכל עדיין" : "אין אטרקציות עדיין"} hint="הוסף המלצה עם הכפתור בפינה" />;
+  if (list.length === 0) {
+    const title = type === "food" ? "אין המלצות אוכל עדיין"
+      : type === "attraction" ? "אין אטרקציות עדיין"
+      : "אין המלצות עדיין";
+    return <EmptyState variant="recs" title={title} hint="הוסף המלצה עם הכפתור בפינה" />;
+  }
 
   return (
     <div className="space-y-2">
@@ -291,7 +300,8 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction";
           key={r.id}
           rec={r}
           onEdit={() => onEdit(r)}
-          distance={pos && r.latitude && r.longitude ? haversine(pos, { lat: Number(r.latitude), lon: Number(r.longitude) }) : null}
+          showTypeBadge={type === "all"}
+          distance={type !== "all" && pos && r.latitude && r.longitude ? haversine(pos, { lat: Number(r.latitude), lon: Number(r.longitude) }) : null}
         />
       ))}
     </div>
