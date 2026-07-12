@@ -115,9 +115,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <PinGate>
+      <AuthListener />
+      <AuthGate>
         <AppShell />
-      </PinGate>
+      </AuthGate>
       <Toaster position="top-center" richColors={false} />
     </QueryClientProvider>
   );
