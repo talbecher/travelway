@@ -62,19 +62,24 @@ function userIcon(): L.DivIcon {
 
 function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: number } | null }) {
   const map = useMap();
+  const key = pins.map((p) => p.id).join(",");
   useEffect(() => {
-    if (pins.length === 0) {
-      map.setView([35.6762, 139.6503], 10, { animate: true });
-      return;
-    }
-    if (pins.length === 1 && !user) {
-      map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
-      return;
-    }
-    const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
-    if (user) pts.push([user.lat, user.lng]);
-    map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
-  }, [pins, user, map]);
+    const timer = setTimeout(() => {
+      if (pins.length === 0) {
+        map.setView([35.6762, 139.6503], 10, { animate: true });
+        return;
+      }
+      if (pins.length === 1 && !user) {
+        map.setView([pins[0].lat, pins[0].lng], 15, { animate: true });
+        return;
+      }
+      const pts: [number, number][] = pins.map((p) => [p.lat, p.lng]);
+      if (user) pts.push([user.lat, user.lng]);
+      const padding: [number, number] = pins.length <= 5 ? [60, 60] : [40, 40];
+      map.fitBounds(L.latLngBounds(pts), { padding, maxZoom: 15 });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [key, user, map, pins]);
   return null;
 }
 
