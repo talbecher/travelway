@@ -473,7 +473,7 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
           ))}
         </div>
       </BottomSheet>
-    </div>
+    </>
   );
 }
 
