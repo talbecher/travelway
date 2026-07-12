@@ -145,7 +145,7 @@ export default function DayMap({
             pathOptions={{ color: "#6C63FF", weight: 3, opacity: 0.7, dashArray: "8, 6" }}
           />
         )}
-        {stops.map((s) => {
+        {validStops.map((s) => {
           const color = TYPE_PIN_COLOR[s.type] ?? "#6C63FF";
           const emoji = TYPE_EMOJI[s.type] ?? "•";
           return (
@@ -182,7 +182,7 @@ export default function DayMap({
             </Marker>
           );
         })}
-        <FitBounds stops={stops} />
+        <FitBounds stops={validStops} />
       </MapContainer>
     </>
   );
