@@ -1,62 +1,86 @@
+
 ## Scope
-Only `src/components/RecsMap.tsx` and `src/routes/recommendations.tsx`. No other files, no data changes.
 
-## Changes
+Changes are limited to the recommendations screen and its dependencies: `src/lib/places.functions.ts`, `src/components/PlacesSearch.tsx`, `src/routes/recommendations.tsx`, `src/components/RecsMap.tsx`, plus one small migration.
 
-### 1. `recommendations.tsx` — pass richer pin data + status
-Extend `mapPins` (currently `{id, lat, lng, type, name}`) to also include the fields the popup needs:
-- `city`, `address`, `status`, `rating`, `google_maps_url`
-Keep the same `type` filter (active tab) and city pill filter and coord-not-null filter.
+## 1. Auto-fill city from Places API
 
-Update the `RecsMap` invocation to add a new `onAddToDay(id)` prop that reuses the existing `setMapPickRec` flow *only if* the popup's "+ הוסף ליום" is preferred to be handled inline. Since the spec says buttons live inside the popup itself, we'll implement them inside `RecsMap` and delete the `mapPickRec` `BottomSheet`-based `MapPickCard` path is NOT required — but to keep behavior compatible we'll:
-- Keep `onPinTap` as a no-op (or remove usage). Instead the pin popup renders the ניווט / הוסף ליום buttons directly.
-- The "+ הוסף ליום" button in the popup calls `onAddToDay(rec.id)` → parent opens the existing day-picker bottom sheet by setting `mapPickRec` to that rec (reusing existing `MapPickCard` which shows the day list).
+- Extend `X-Goog-FieldMask` in `searchPlaces` to include `places.addressComponents`.
+- Extract city from address components: prefer `locality`, then `administrative_area_level_2`, then `administrative_area_level_1` (fallback). Use `longText`.
+- Add `city: string | null` to `PlaceResult` DTO returned by `searchPlaces`.
+- Propagate through `SelectedPlace` type in `PlacesSearch.tsx`.
+- In `RecForm` (recommendations.tsx), when a place is selected, set `city` field from `place.city` (still editable).
 
-Result: tapping a pin shows the Leaflet popup with details + navigation button; tapping "+ הוסף ליום" opens the existing day-picker sheet.
+## 2. Google rating in search results + on cards
 
-### 2. `RecsMap.tsx` — full rewrite of pin + popup rendering
+Migration (new file under `supabase/migrations/`):
 
-**Props:**
-```ts
-type RecPin = {
-  id: string; lat: number; lng: number; type: string; name: string;
-  city: string | null; address: string | null;
-  status: string; rating: number | null;
-  google_maps_url: string | null;
-};
-props: { pins: RecPin[]; userPos: {lat,lng}|null;
-         onAddToDay: (id: string) => void }
+```sql
+ALTER TABLE public.recommendations
+  ADD COLUMN IF NOT EXISTS google_rating NUMERIC(2,1),
+  ADD COLUMN IF NOT EXISTS google_rating_count INTEGER;
 ```
 
-**Emoji pin (`L.divIcon`)** — 40×40 white circle, 2.5px colored border, type emoji inside:
-- food → 🍜, border `#FF6B6B`
-- attraction → ⛩, border `#6C63FF`
-- hotel → 🏨, border `#FFD93D`
-- `iconAnchor: [20,20]`, box-shadow as spec.
+No RLS/GRANT changes needed (existing table policies cover new columns).
 
-**User dot** — 16×16 `#4A90E2` circle, 3px white border, halo shadow, `iconAnchor:[8,8]`, `zIndexOffset: 1000`.
+- Extend FieldMask: `places.rating,places.userRatingCount`.
+- Add `rating: number | null`, `userRatingCount: number | null` to `PlaceResult` and `SelectedPlace`.
+- In `PlacesSearch` dropdown row (under name/address): if rating present, render `★ {rating} ({count.toLocaleString('he-IL')} ביקורות)` in muted 12px text.
+- In `RecForm` insert/update mutation: persist `google_rating` and `google_rating_count` from selected place.
+- On `PlaceCard` (list view): show `★ 4.6 גוגל` as small muted line (kept separate from user's personal `rating`/`review` block).
 
-**Popup** — Leaflet `<Popup className="custom-popup" closeButton={false}>` (style already exists in `styles.css` from DayMap work). Content:
-- Name (bold, 14px, `dir="ltr"`)
-- `city · address` muted 12px
-- Status badge: רשימה (muted) / ביקרנו (accent-3 tint) / דילגנו (muted line-through)
-- If `status === "visited"` and `rating`: ★ × rating in accent-2
-- Row of two buttons:
-  - `[🗺 ניווט]` — `<a href={google_maps_url} target="_blank">`, disabled/greyed if URL missing
-  - `[+ הוסף ליום]` — `<button onClick={() => onAddToDay(rec.id)}>`
+## 3. Tap card → open in Google Maps
 
-Popup opens by default on marker click (native Leaflet behavior). No custom onPinTap needed.
+- Wrap the entire `PlaceCard` inner content in `<a href={rec.google_maps_url} target="_blank" rel="noreferrer">` **only when** `rec.google_maps_url` exists.
+- The Edit/Delete icon buttons and "+ הוסף ליום" button must not trigger the link: attach `onClick` handlers with `e.preventDefault(); e.stopPropagation();`. The existing "ניווט" anchor stays.
+- Add a small `↗` (or `ExternalLink` from lucide) icon absolutely positioned top-left of the card when a URL exists.
+- No wrapper when URL missing.
 
-### 3. FitBounds
-Replace current `FitAll` logic with:
-- 0 pins → `map.setView([35.6762, 139.6503], 10)`
-- 1 pin → `map.setView([p.lat,p.lng], 15)`
-- ≥2 pins → `map.fitBounds(L.latLngBounds(pins), { padding: [40,40] })` (approx 15% of a phone viewport). Include `userPos` in bounds only when present (keeps current behavior).
+## 4. "הכל" tab + type badges
 
-### 4. Empty-map path
-The parent already renders an empty-state placeholder when `mapPins.length === 0`, so RecsMap always receives ≥1 pin in practice. The 0-pin branch in RecsMap remains as a safety fallback (Japan default center).
+- Extend `Tab` type to `"all" | "food" | "attractions" | "hotels"`; add to zod `searchSchema`.
+- Sub-tabs order: `הכל | 🍜 אוכל | ⛩ אטרקציות | 🏨 לינה`. Default tab becomes `"all"`.
+- `PlacesList` accepts `type: "food" | "attraction" | "all"`. When `"all"`: include food+attraction (hotels excluded to preserve existing hotel-specific behavior; matches the "map view hidden for hotels" pattern), sort by `created_at desc`.
+  - Note: `useRecs` currently returns recs; verify it exposes `created_at`. If not, extend the query select. (Field check confirmed at implementation.)
+- Cities pill row: in "all" show cities aggregated across food+attraction.
+- Map view: allowed in "all" tab (pins from both food+attraction).
+- On `PlaceCard`: pass a `showTypeBadge` prop; when true, render top-right corner badge:
+  - food → 🍜 אוכל, bg `#FF6B6B22`, text coral
+  - attraction → ⛩ אטרקציה, bg `#6C63FF22`, text violet
+  - hotel → 🏨 לינה, bg `#FFD93D22`, text amber
+  - `rounded-full px-2 py-0.5 text-[11px]`
+- In non-"all" tabs, hide the badge (redundant).
 
-## Non-goals
-- No changes to tabs (no "הכל" tab exists; current tab always filters by one type — the "all types" clause is moot with the current UI).
-- No changes to CSS files; `.custom-popup` was already added by earlier work in `styles.css`.
-- No changes to hotels list, forms, or data flow.
+## 5. Fix map view in recommendations
+
+Edit `src/components/RecsMap.tsx`:
+
+- Replace `FitAll` logic:
+  - 0 pins → `setView([35.6762, 139.6503], 10)`
+  - 1 pin → `setView([lat, lng], 15)`
+  - 2–5 pins → `fitBounds(bounds, { padding: [60,60], maxZoom: 15 })`
+  - 6+ pins → `fitBounds(bounds, { padding: [40,40], maxZoom: 15 })`
+  - Wrap fit call in `setTimeout(..., 100)` inside `useEffect`; cleanup with `clearTimeout`.
+  - Effect deps: `pins.map(p=>p.id).join(',')`, `map`.
+- `TileLayer`: add `maxZoom={19}` `minZoom={5}`.
+- Add a transient toast overlay (absolute bottom-center) when `pins.length >= 6`: `🔍 זום פנימה לצפייה בפינים קרובים`, auto-dismiss after 3s via `useState + setTimeout` inside the component.
+- Empty state overlay when `pins.length === 0`: centered card `📍 אין מיקומים שמורים — הוסף המלצות עם לינק גוגל מפות כדי שיופיעו כאן`. (In recommendations.tsx the outer 0-pin branch already handles empty; the map itself gets the overlay for defense in depth.)
+
+Edit `src/routes/recommendations.tsx`:
+
+- Map container height: `calc(100vh - 180px)` (replacing the current `calc(100dvh - 260px)`).
+
+## Technical notes
+
+- `SelectedPlace` shape becomes `{ name, address, latitude, longitude, google_maps_url, photo_url, city, rating, userRatingCount }`.
+- `PlaceCard` currently supports food/attraction; hotel tab uses a separate `HotelsList` component so type-badge logic only needs to handle food/attraction/hotel visual definitions if we ever show it in "all" — hotels excluded from "all" here to keep hotel screen behavior untouched (Hotels list has its own layout).
+- Card link wrapping: to keep interactive controls working inside an anchor, use `stopPropagation` + `preventDefault` on their click handlers rather than nesting (nested interactive elements inside `<a>` are invalid HTML). Convert action buttons to `<button>` inside the anchor and handle events.
+- Migration is additive; no data backfill.
+
+## Files touched
+
+- `src/lib/places.functions.ts` — FieldMask, DTO fields
+- `src/components/PlacesSearch.tsx` — SelectedPlace type, rating row in results
+- `src/routes/recommendations.tsx` — "all" tab, city autofill, save Google rating, tappable card + type badge, map height
+- `src/components/RecsMap.tsx` — FitBounds rewrite, TileLayer zoom, hint toast, empty overlay
+- `supabase/migrations/<new>.sql` — `google_rating`, `google_rating_count` columns
