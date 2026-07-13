@@ -648,6 +648,11 @@ type Hotel = {
   booking_platform: string | null; confirmation_url: string | null;
   cancellation_deadline: string | null; post_stay_rating: number | null; post_stay_review: string | null;
   notes: string | null;
+  address?: string | null;
+  google_maps_url?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  photo_url?: string | null;
 };
 
 function HotelsList({ onEdit: _onEdit }: { onEdit: (r: Rec) => void }) {
