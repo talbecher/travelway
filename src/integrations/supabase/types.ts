@@ -142,6 +142,7 @@ export type Database = {
       }
       hotels: {
         Row: {
+          address: string | null
           booking_platform: string | null
           cancellation_deadline: string | null
           checkin_date: string | null
@@ -149,9 +150,13 @@ export type Database = {
           city: string | null
           confirmation_url: string | null
           created_at: string
+          google_maps_url: string | null
           hotel_name: string
           id: string
+          latitude: number | null
+          longitude: number | null
           notes: string | null
+          photo_url: string | null
           post_stay_rating: number | null
           post_stay_review: string | null
           price_per_night_ils: number | null
@@ -160,6 +165,7 @@ export type Database = {
           type: Database["public"]["Enums"]["hotel_type"]
         }
         Insert: {
+          address?: string | null
           booking_platform?: string | null
           cancellation_deadline?: string | null
           checkin_date?: string | null
@@ -167,9 +173,13 @@ export type Database = {
           city?: string | null
           confirmation_url?: string | null
           created_at?: string
+          google_maps_url?: string | null
           hotel_name: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           notes?: string | null
+          photo_url?: string | null
           post_stay_rating?: number | null
           post_stay_review?: string | null
           price_per_night_ils?: number | null
@@ -178,6 +188,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["hotel_type"]
         }
         Update: {
+          address?: string | null
           booking_platform?: string | null
           cancellation_deadline?: string | null
           checkin_date?: string | null
@@ -185,9 +196,13 @@ export type Database = {
           city?: string | null
           confirmation_url?: string | null
           created_at?: string
+          google_maps_url?: string | null
           hotel_name?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           notes?: string | null
+          photo_url?: string | null
           post_stay_rating?: number | null
           post_stay_review?: string | null
           price_per_night_ils?: number | null
