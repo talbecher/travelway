@@ -15,10 +15,17 @@ export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
 });
 
+function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
 function autoTitle(destination: string, start: string) {
   const dest = destination.trim();
   if (!dest) return "";
-  const year = start ? new Date(start + "T00:00:00").getFullYear() : new Date().getFullYear();
+  const year = start ? Number(start.slice(0, 4)) : new Date().getFullYear();
   return `${dest} ${year}`;
 }
 
