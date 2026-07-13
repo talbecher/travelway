@@ -1,86 +1,61 @@
+## 3 fixes for hotels & itinerary
 
-## Scope
+### 1. HotelForm — add Google Places search (like the food/attraction form)
 
-Changes are limited to the recommendations screen and its dependencies: `src/lib/places.functions.ts`, `src/components/PlacesSearch.tsx`, `src/routes/recommendations.tsx`, `src/components/RecsMap.tsx`, plus one small migration.
+**File:** `src/routes/recommendations.tsx` (`HotelForm`)
 
-## 1. Auto-fill city from Places API
+- Add a `PlacesSearch` block at the top of the form (only when not editing, same as `RecForm` for a new record).
+- On `onSelect(place)`:
+  - Autofill `hotel_name` ← `place.name`, `city` ← `place.city`, `confirmation_url` ← `place.google_maps_url` (only if empty), and store `place.latitude/longitude` + `place.google_maps_url` for save.
+- Extend the `hotels` insert/update payload to persist `latitude`, `longitude`, `address`, `google_maps_url` (schema already has these columns per the existing hotels list of 16 fields — verify and, if missing, add them in a small migration in the same batch).
+- Keep manual entry fully working; Places search is optional.
 
-- Extend `X-Goog-FieldMask` in `searchPlaces` to include `places.addressComponents`.
-- Extract city from address components: prefer `locality`, then `administrative_area_level_2`, then `administrative_area_level_1` (fallback). Use `longText`.
-- Add `city: string | null` to `PlaceResult` DTO returned by `searchPlaces`.
-- Propagate through `SelectedPlace` type in `PlacesSearch.tsx`.
-- In `RecForm` (recommendations.tsx), when a place is selected, set `city` field from `place.city` (still editable).
+### 2. Off-by-one on trip start date
 
-## 2. Google rating in search results + on cards
+**File:** `src/routes/onboarding.tsx`
 
-Migration (new file under `supabase/migrations/`):
-
-```sql
-ALTER TABLE public.recommendations
-  ADD COLUMN IF NOT EXISTS google_rating NUMERIC(2,1),
-  ADD COLUMN IF NOT EXISTS google_rating_count INTEGER;
+Both the create and edit branches build days with:
+```ts
+const d = new Date(startDate + "T00:00:00"); d.setDate(d.getDate()+i);
+return d.toISOString().slice(0,10);
 ```
+`toISOString()` converts to UTC, so in Israel (UTC+2/+3) the ISO date shifts back one day → user picks 17.11, gets 16.11.
 
-No RLS/GRANT changes needed (existing table policies cover new columns).
+**Fix:** compute the date as a pure string (no `Date`/UTC round-trip):
+```ts
+function addDaysISO(iso: string, n: number) {
+  const [y,m,d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m-1, d));
+  dt.setUTCDate(dt.getUTCDate()+n);
+  return dt.toISOString().slice(0,10);
+}
+```
+Use it in both the "create days" and the "reconcile desired" loops. Also change `autoTitle`'s year extraction to parse `startDate.slice(0,4)` to be safe.
 
-- Extend FieldMask: `places.rating,places.userRatingCount`.
-- Add `rating: number | null`, `userRatingCount: number | null` to `PlaceResult` and `SelectedPlace`.
-- In `PlacesSearch` dropdown row (under name/address): if rating present, render `★ {rating} ({count.toLocaleString('he-IL')} ביקורות)` in muted 12px text.
-- In `RecForm` insert/update mutation: persist `google_rating` and `google_rating_count` from selected place.
-- On `PlaceCard` (list view): show `★ 4.6 גוגל` as small muted line (kept separate from user's personal `rating`/`review` block).
+### 3. "Add hotel to itinerary" — creates entries + auto-splits expense across nights
 
-## 3. Tap card → open in Google Maps
+**Files:** `src/routes/recommendations.tsx` (HotelCard), `src/hooks/use-trip.ts` (already exposes days), maybe a small helper in `src/lib/recommendations.ts` or new `src/lib/hotels.ts`.
 
-- Wrap the entire `PlaceCard` inner content in `<a href={rec.google_maps_url} target="_blank" rel="noreferrer">` **only when** `rec.google_maps_url` exists.
-- The Edit/Delete icon buttons and "+ הוסף ליום" button must not trigger the link: attach `onClick` handlers with `e.preventDefault(); e.stopPropagation();`. The existing "ניווט" anchor stays.
-- Add a small `↗` (or `ExternalLink` from lucide) icon absolutely positioned top-left of the card when a URL exists.
-- No wrapper when URL missing.
+**Button on `HotelCard`:** "➕ הוסף למסלול" (disabled if `checkin_date`/`checkout_date` missing or no matching itinerary days).
 
-## 4. "הכל" tab + type badges
+**On click:**
 
-- Extend `Tab` type to `"all" | "food" | "attractions" | "hotels"`; add to zod `searchSchema`.
-- Sub-tabs order: `הכל | 🍜 אוכל | ⛩ אטרקציות | 🏨 לינה`. Default tab becomes `"all"`.
-- `PlacesList` accepts `type: "food" | "attraction" | "all"`. When `"all"`: include food+attraction (hotels excluded to preserve existing hotel-specific behavior; matches the "map view hidden for hotels" pattern), sort by `created_at desc`.
-  - Note: `useRecs` currently returns recs; verify it exposes `created_at`. If not, extend the query select. (Field check confirmed at implementation.)
-- Cities pill row: in "all" show cities aggregated across food+attraction.
-- Map view: allowed in "all" tab (pins from both food+attraction).
-- On `PlaceCard`: pass a `showTypeBadge` prop; when true, render top-right corner badge:
-  - food → 🍜 אוכל, bg `#FF6B6B22`, text coral
-  - attraction → ⛩ אטרקציה, bg `#6C63FF22`, text violet
-  - hotel → 🏨 לינה, bg `#FFD93D22`, text amber
-  - `rounded-full px-2 py-0.5 text-[11px]`
-- In non-"all" tabs, hide the badge (redundant).
+1. Load `itinerary_days` (already via `useDays()`) and select days whose `date` is in `[checkin_date, checkout_date)` (checkout day itself excluded — user checks out that morning). If no days match, toast "התאריכים של המלון לא חופפים למסלול".
+2. For each matching day, insert a `day_entries` row:
+   - `entry_type = "hotel_checkin"` on first night, `"note"` (or a new "hotel_stay" reuse of `hotel_checkin`) for subsequent nights — simplest: use `hotel_checkin` for every night.
+   - `title = hotel_name`, `location_name = city`, `google_maps_url = confirmation_url` (only if it's a google maps link) or the hotel's stored maps url if present, `icon_emoji = "🏨"`, `latitude/longitude` from hotel if available, `display_order = existing count`, `linked_recommendation_id = null` (hotels are not in `recommendations`).
+   - Guard: skip if a day_entry with `entry_type = hotel_checkin` and the same `title` already exists for that day (idempotent — pressing twice doesn't duplicate).
+3. Auto-split the cost into `expenses`:
+   - `nights = daysBetween(checkin, checkout)` (already in code).
+   - `perNight = price_per_night_ils ?? total_cost_ils / nights`.
+   - For each linked day insert one `expenses` row: `category = "accommodation"`, `amount_ils = perNight`, `description = hotel_name`, `location_name = city`, `expense_date = day.date`.
+   - Guard against double-charging: before inserting, check that no `expenses` row exists with the same `description = hotel_name`, `category = accommodation`, `expense_date = day.date`. Also do NOT re-add if the hotel already has any linked expenses for those dates.
+4. Invalidate `["day-entries", ...]`, `["day-entries-summary"]`, `["expenses"]`, and toast `"נוסף למסלול · N לילות · Xk₪"`.
 
-## 5. Fix map view in recommendations
+**Card UI:** show a small "כבר במסלול" chip when we detect at least one matching day already has a `hotel_checkin` entry with this hotel name (cheap client-side check against days + a lightweight query, or simply toggled after successful add — good enough).
 
-Edit `src/components/RecsMap.tsx`:
+### Technical notes
 
-- Replace `FitAll` logic:
-  - 0 pins → `setView([35.6762, 139.6503], 10)`
-  - 1 pin → `setView([lat, lng], 15)`
-  - 2–5 pins → `fitBounds(bounds, { padding: [60,60], maxZoom: 15 })`
-  - 6+ pins → `fitBounds(bounds, { padding: [40,40], maxZoom: 15 })`
-  - Wrap fit call in `setTimeout(..., 100)` inside `useEffect`; cleanup with `clearTimeout`.
-  - Effect deps: `pins.map(p=>p.id).join(',')`, `map`.
-- `TileLayer`: add `maxZoom={19}` `minZoom={5}`.
-- Add a transient toast overlay (absolute bottom-center) when `pins.length >= 6`: `🔍 זום פנימה לצפייה בפינים קרובים`, auto-dismiss after 3s via `useState + setTimeout` inside the component.
-- Empty state overlay when `pins.length === 0`: centered card `📍 אין מיקומים שמורים — הוסף המלצות עם לינק גוגל מפות כדי שיופיעו כאן`. (In recommendations.tsx the outer 0-pin branch already handles empty; the map itself gets the overlay for defense in depth.)
-
-Edit `src/routes/recommendations.tsx`:
-
-- Map container height: `calc(100vh - 180px)` (replacing the current `calc(100dvh - 260px)`).
-
-## Technical notes
-
-- `SelectedPlace` shape becomes `{ name, address, latitude, longitude, google_maps_url, photo_url, city, rating, userRatingCount }`.
-- `PlaceCard` currently supports food/attraction; hotel tab uses a separate `HotelsList` component so type-badge logic only needs to handle food/attraction/hotel visual definitions if we ever show it in "all" — hotels excluded from "all" here to keep hotel screen behavior untouched (Hotels list has its own layout).
-- Card link wrapping: to keep interactive controls working inside an anchor, use `stopPropagation` + `preventDefault` on their click handlers rather than nesting (nested interactive elements inside `<a>` are invalid HTML). Convert action buttons to `<button>` inside the anchor and handle events.
-- Migration is additive; no data backfill.
-
-## Files touched
-
-- `src/lib/places.functions.ts` — FieldMask, DTO fields
-- `src/components/PlacesSearch.tsx` — SelectedPlace type, rating row in results
-- `src/routes/recommendations.tsx` — "all" tab, city autofill, save Google rating, tappable card + type badge, map height
-- `src/components/RecsMap.tsx` — FitBounds rewrite, TileLayer zoom, hint toast, empty overlay
-- `supabase/migrations/<new>.sql` — `google_rating`, `google_rating_count` columns
+- All hotel-linked expenses use existing category `accommodation` so the budget screen picks them up automatically — no schema change to `expenses` needed.
+- If the `hotels` table already has `latitude`/`longitude`/`google_maps_url`/`address` columns (needs a `psql \d public.hotels` check during build), no migration is required for #1. If any are missing, add one migration adding the columns as nullable with proper GRANTs preserved.
+- No changes to `RecsMap`, `DayMap`, budget screen, or other screens.
