@@ -688,6 +688,7 @@ function HotelsList({ onEdit: _onEdit }: { onEdit: (r: Rec) => void }) {
 
 function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   const qc = useQueryClient();
+  const { data: days = [] } = useDays();
   const today = todayISO();
   const nights = h.checkin_date && h.checkout_date ? Math.max(1, daysBetween(h.checkin_date, h.checkout_date)) : 0;
   const totalCalc = nights > 0 && h.price_per_night_ils
@@ -704,6 +705,10 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   }
   const postStay = h.checkout_date && h.checkout_date < today;
 
+  const matchingDays = h.checkin_date && h.checkout_date
+    ? days.filter((d) => d.date >= h.checkin_date! && d.date < h.checkout_date!)
+    : [];
+
   const del = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("hotels").delete().eq("id", h.id);
@@ -711,6 +716,88 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["hotels"] }); toast.success("נמחק"); },
   });
+
+  const addToItinerary = useMutation({
+    mutationFn: async () => {
+      if (matchingDays.length === 0) throw new Error("התאריכים של המלון לא חופפים למסלול");
+      const priceN = Number(h.price_per_night_ils) || (nights > 0 ? Number(h.total_cost_ils ?? 0) / nights : 0);
+      const lat = h.latitude != null ? Number(h.latitude) : null;
+      const lng = h.longitude != null ? Number(h.longitude) : null;
+
+      let addedEntries = 0, addedExpenses = 0;
+
+      for (const d of matchingDays) {
+        // day_entries: skip if this hotel is already on the day
+        const { data: existingEntries } = await supabase
+          .from("day_entries")
+          .select("id")
+          .eq("day_id", d.id)
+          .eq("entry_type", "hotel_checkin")
+          .eq("title", h.hotel_name)
+          .limit(1);
+        if (!existingEntries || existingEntries.length === 0) {
+          const { count } = await supabase
+            .from("day_entries")
+            .select("id", { count: "exact", head: true })
+            .eq("day_id", d.id);
+          const { error } = await supabase.from("day_entries").insert({
+            day_id: d.id,
+            entry_type: "hotel_checkin",
+            title: h.hotel_name,
+            location_name: h.city,
+            google_maps_url: h.google_maps_url ?? null,
+            icon_emoji: "🏨",
+            display_order: count ?? 0,
+            latitude: lat,
+            longitude: lng,
+            photo_url: h.photo_url ?? null,
+          });
+          if (error) throw error;
+          addedEntries++;
+        }
+
+        // expenses: skip if already charged
+        if (priceN > 0) {
+          const { data: existingExp } = await supabase
+            .from("expenses")
+            .select("id")
+            .eq("trip_id", TRIP_ID)
+            .eq("category", "accommodation")
+            .eq("description", h.hotel_name)
+            .eq("expense_date", d.date)
+            .limit(1);
+          if (!existingExp || existingExp.length === 0) {
+            const { error } = await supabase.from("expenses").insert({
+              trip_id: TRIP_ID,
+              category: "accommodation",
+              amount_ils: priceN,
+              description: h.hotel_name,
+              location_name: h.city,
+              expense_date: d.date,
+            });
+            if (error) throw error;
+            addedExpenses++;
+          }
+        }
+      }
+
+      return { addedEntries, addedExpenses, nights: matchingDays.length, total: priceN * matchingDays.length };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      // invalidate any per-day entry query
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      if (r.addedEntries === 0 && r.addedExpenses === 0) {
+        toast.message("המלון כבר במסלול");
+      } else {
+        toast.success(`נוסף למסלול · ${r.nights} לילות · ${ils(r.total)}`);
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const canAddToItinerary = !!(h.checkin_date && h.checkout_date) && matchingDays.length > 0;
 
   return (
     <div className={`bg-card border rounded-2xl p-3 ${urgent ? "border-[color:var(--accent-2)]" : "border-border"}`}>
@@ -748,7 +835,17 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
           <ExternalLink size={10} /> אישור הזמנה
         </a>
       )}
-      <div className="flex gap-2 mt-3 pt-2 border-t border-border/60">
+      <div className="mt-2">
+        <button
+          onClick={() => addToItinerary.mutate()}
+          disabled={!canAddToItinerary || addToItinerary.isPending}
+          className="w-full h-9 rounded-lg bg-[color:var(--accent-3)] text-white text-xs font-medium disabled:opacity-40 inline-flex items-center justify-center gap-1"
+          title={!h.checkin_date || !h.checkout_date ? "חסרים תאריכים" : matchingDays.length === 0 ? "התאריכים לא חופפים למסלול" : ""}
+        >
+          {addToItinerary.isPending ? "מוסיף..." : `➕ הוסף למסלול${matchingDays.length ? ` (${matchingDays.length} לילות)` : ""}`}
+        </button>
+      </div>
+      <div className="flex gap-2 mt-2 pt-2 border-t border-border/60">
         <button onClick={onEdit} className="flex-1 h-8 rounded-md border border-border text-xs inline-flex items-center justify-center gap-1 min-h-0">
           <Pencil size={11} /> ערוך
         </button>
