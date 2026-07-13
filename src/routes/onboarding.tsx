@@ -15,10 +15,17 @@ export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
 });
 
+function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
 function autoTitle(destination: string, start: string) {
   const dest = destination.trim();
   if (!dest) return "";
-  const year = start ? new Date(start + "T00:00:00").getFullYear() : new Date().getFullYear();
+  const year = start ? Number(start.slice(0, 4)) : new Date().getFullYear();
   return `${dest} ${year}`;
 }
 
@@ -84,9 +91,7 @@ function Onboarding() {
         if (dErr) throw dErr;
 
         const desired: { day_number: number; date: string }[] = Array.from({ length: numDays }).map((_, i) => {
-          const d = new Date(startDate + "T00:00:00");
-          d.setDate(d.getDate() + i);
-          return { day_number: i + 1, date: d.toISOString().slice(0, 10) };
+          return { day_number: i + 1, date: addDaysISO(startDate, i) };
         });
 
         // Update dates of overlapping days
@@ -148,12 +153,10 @@ function Onboarding() {
       if (tripErr) throw tripErr;
 
       const days = Array.from({ length: numDays }).map((_, i) => {
-        const d = new Date(startDate + "T00:00:00");
-        d.setDate(d.getDate() + i);
         return {
           trip_id: trip.id,
           day_number: i + 1,
-          date: d.toISOString().slice(0, 10),
+          date: addDaysISO(startDate, i),
           city_label: null,
         };
       });
