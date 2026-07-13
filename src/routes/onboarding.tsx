@@ -153,12 +153,10 @@ function Onboarding() {
       if (tripErr) throw tripErr;
 
       const days = Array.from({ length: numDays }).map((_, i) => {
-        const d = new Date(startDate + "T00:00:00");
-        d.setDate(d.getDate() + i);
         return {
           trip_id: trip.id,
           day_number: i + 1,
-          date: d.toISOString().slice(0, 10),
+          date: addDaysISO(startDate, i),
           city_label: null,
         };
       });
