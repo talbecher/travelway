@@ -91,9 +91,7 @@ function Onboarding() {
         if (dErr) throw dErr;
 
         const desired: { day_number: number; date: string }[] = Array.from({ length: numDays }).map((_, i) => {
-          const d = new Date(startDate + "T00:00:00");
-          d.setDate(d.getDate() + i);
-          return { day_number: i + 1, date: d.toISOString().slice(0, 10) };
+          return { day_number: i + 1, date: addDaysISO(startDate, i) };
         });
 
         // Update dates of overlapping days
