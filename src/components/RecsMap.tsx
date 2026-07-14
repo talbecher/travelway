@@ -214,8 +214,19 @@ export default function RecsMap({
         const badge = statusBadge(p.status);
         return (
           <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type, p.name)}>
-            <Popup className="custom-popup" closeButton={false} minWidth={200}>
-              <div style={{ minWidth: 180 }}>
+            <Popup className="custom-popup" closeButton={false} minWidth={220} maxWidth={280}>
+              <div style={{ minWidth: 200, maxWidth: 260 }}>
+                {p.photo_url && (
+                  <img
+                    src={p.photo_url}
+                    alt={p.name}
+                    style={{
+                      width: "100%", height: 100, objectFit: "cover",
+                      borderRadius: 6, marginBottom: 6, display: "block",
+                    }}
+                    loading="lazy"
+                  />
+                )}
                 <div style={{ fontWeight: 700, fontSize: 14 }} dir="ltr">{p.name}</div>
                 {(p.city || p.address) && (
                   <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }} dir="ltr">
