@@ -215,7 +215,7 @@ export default function RecsMap({
         return (
           <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type, p.name)}>
             <Popup className="custom-popup" closeButton={false} minWidth={220} maxWidth={280}>
-              <div style={{ minWidth: 200, maxWidth: 260 }}>
+              <div style={{ minWidth: 200, maxWidth: 260, color: "#1f2937" }}>
                 {p.photo_url && (
                   <img
                     src={p.photo_url}
@@ -227,9 +227,9 @@ export default function RecsMap({
                     loading="lazy"
                   />
                 )}
-                <div style={{ fontWeight: 700, fontSize: 14 }} dir="ltr">{p.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }} dir="ltr">{p.name}</div>
                 {(p.city || p.address) && (
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }} dir="ltr">
+                  <div style={{ fontSize: 12, color: "#374151", marginTop: 2 }} dir="ltr">
                     {p.city}{p.address ? ` · ${p.address}` : ""}
                   </div>
                 )}
@@ -239,7 +239,7 @@ export default function RecsMap({
                     ...badge.style,
                   }}>{badge.label}</span>
                   {p.status === "visited" && p.rating && (
-                    <span style={{ fontSize: 11, color: "var(--accent-2)" }}>
+                    <span style={{ fontSize: 11, color: "#d97706" }}>
                       {"★".repeat(p.rating)}{"☆".repeat(5 - p.rating)}
                     </span>
                   )}
@@ -247,9 +247,10 @@ export default function RecsMap({
                 {p.notes && (
                   <div style={{
                     fontSize: 12, marginTop: 8, lineHeight: 1.4,
-                    color: "var(--foreground)", opacity: 0.85,
+                    color: "#1f2937",
                     whiteSpace: "pre-line",
                     maxHeight: 120, overflowY: "auto",
+                    padding: "6px 8px", background: "#f3f4f6", borderRadius: 6,
                   }}>
                     {p.notes}
                   </div>
