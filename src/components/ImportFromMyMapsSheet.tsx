@@ -86,7 +86,7 @@ export function ImportFromMyMapsSheet({
           latitude: p.latitude,
           longitude: p.longitude,
           google_maps_url: p.google_maps_url,
-          status: "wishlist",
+          status: "wishlist" as const,
         }));
       if (rows.length === 0) throw new Error("לא נבחרו מקומות");
       const { error } = await supabase.from("recommendations").insert(rows);
