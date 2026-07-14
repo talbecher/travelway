@@ -43,6 +43,7 @@ const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food"
 
 function Recs() {
   const search = Route.useSearch();
+  const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "all");
   const [city, setCity] = useState<string>("all");
   const [view, setView] = useState<"list" | "map">("list");
@@ -50,6 +51,8 @@ function Recs() {
   const [importOpen, setImportOpen] = useState(false);
   const [editRec, setEditRec] = useState<Rec | null>(null);
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { data: recs = [] } = useRecs();
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
@@ -72,6 +75,48 @@ function Recs() {
 
   useEffect(() => { setCity("all"); }, [tab]);
   useEffect(() => { if (tab === "hotels") setView("list"); }, [tab]);
+  useEffect(() => { if (view === "map" || tab === "hotels") exitSelection(); /* eslint-disable-next-line */ }, [view, tab]);
+
+  function exitSelection() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const visibleIds = useMemo(() => {
+    if (tab === "hotels") return [] as string[];
+    return (recs as Rec[])
+      .filter(typeFilter)
+      .filter((r) => city === "all" || r.city === city)
+      .map((r) => r.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recs, tab, city]);
+
+  const selectAllVisible = () => setSelectedIds(new Set(visibleIds));
+
+  const bulkDelete = useMutation({
+    mutationFn: async () => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return 0;
+      const { error } = await supabase.from("recommendations").delete().in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["recs"] });
+      toast.success(`נמחקו ${n} המלצות`);
+      exitSelection();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const mapPins = useMemo(() => {
     return (recs as Rec[])
@@ -108,22 +153,39 @@ function Recs() {
   const listType: "food" | "attraction" | "all" =
     tab === "food" ? "food" : tab === "attractions" ? "attraction" : "all";
 
+  const selectableInList = tab !== "hotels" && view === "list";
+
   return (
     <div className="pt-2 space-y-4 pb-4">
       <div className="flex items-center justify-between gap-2">
         <h1>המלצות</h1>
-        {tab !== "hotels" && (
-          <div className="flex gap-1 bg-muted rounded-lg p-1">
-            <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
-              className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "list" ? "bg-card" : "text-muted-foreground"}`}>
-              <List size={16} />
-            </button>
-            <button onClick={() => setView("map")} aria-label="תצוגת מפה"
-              className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "map" ? "bg-card" : "text-muted-foreground"}`}>
-              <MapIcon size={16} />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {selectableInList && (
+            selectionMode ? (
+              <button onClick={exitSelection} aria-label="בטל בחירה"
+                className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
+                <X size={14} /> בטל
+              </button>
+            ) : (
+              <button onClick={() => setSelectionMode(true)} aria-label="בחירה מרובה"
+                className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
+                <CheckSquare size={14} /> בחר
+              </button>
+            )
+          )}
+          {tab !== "hotels" && !selectionMode && (
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
+                className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "list" ? "bg-card" : "text-muted-foreground"}`}>
+                <List size={16} />
+              </button>
+              <button onClick={() => setView("map")} aria-label="תצוגת מפה"
+                className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "map" ? "bg-card" : "text-muted-foreground"}`}>
+                <MapIcon size={16} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 bg-muted rounded-lg p-1">
@@ -160,17 +222,49 @@ function Recs() {
           </ClientOnly>
         </div>
       ) : (
-        <PlacesList type={listType} cityFilter={city} onEdit={setEditRec} />
+        <PlacesList
+          type={listType}
+          cityFilter={city}
+          onEdit={setEditRec}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+        />
       )}
 
-      <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
-        className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
-        <Download size={16} /> ייבוא ממפה
-      </button>
-      <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
-        className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
-        <Plus size={26} strokeWidth={1.8} />
-      </button>
+      {selectionMode && (
+        <div className="fixed bottom-[70px] inset-x-0 z-40 px-4">
+          <div className="max-w-[720px] mx-auto bg-card border border-border rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+            <span className="text-sm font-medium">נבחרו {selectedIds.size}</span>
+            <button onClick={selectAllVisible} className="text-xs text-[color:var(--accent)] min-h-0 h-auto p-0">בחר הכל</button>
+            <div className="flex-1" />
+            <button onClick={exitSelection} className="text-xs text-muted-foreground min-h-0 h-8 px-2">בטל</button>
+            <button
+              onClick={() => {
+                if (selectedIds.size === 0) return;
+                if (confirm(`למחוק ${selectedIds.size} המלצות?`)) bulkDelete.mutate();
+              }}
+              disabled={selectedIds.size === 0 || bulkDelete.isPending}
+              className="text-xs h-8 px-3 rounded-lg bg-[color:var(--accent-2)] text-white disabled:opacity-40 flex items-center gap-1 min-h-0"
+            >
+              <Trash2 size={12} /> מחק
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!selectionMode && (
+        <>
+          <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
+            className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
+            <Download size={16} /> ייבוא ממפה
+          </button>
+          <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
+            className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
+            <Plus size={26} strokeWidth={1.8} />
+          </button>
+        </>
+      )}
 
       <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
 
@@ -188,6 +282,7 @@ function Recs() {
     </div>
   );
 }
+
 
 function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
   const qc = useQueryClient();
