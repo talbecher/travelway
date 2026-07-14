@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
@@ -17,6 +17,7 @@ import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
+import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
@@ -46,6 +47,7 @@ function Recs() {
   const [city, setCity] = useState<string>("all");
   const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editRec, setEditRec] = useState<Rec | null>(null);
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
   const { data: recs = [] } = useRecs();
@@ -161,10 +163,16 @@ function Recs() {
         <PlacesList type={listType} cityFilter={city} onEdit={setEditRec} />
       )}
 
+      <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
+        className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
+        <Download size={16} /> ייבוא ממפה
+      </button>
       <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
         className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
         <Plus size={26} strokeWidth={1.8} />
       </button>
+
+      <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף המלצה">
         <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
