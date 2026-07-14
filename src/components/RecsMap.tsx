@@ -14,6 +14,8 @@ export type RecPin = {
   status: string;
   rating: number | null;
   google_maps_url: string | null;
+  notes?: string | null;
+  photo_url?: string | null;
 };
 
 const TYPE_COLOR: Record<string, { bg: string; fg: string; ring: string }> = {
