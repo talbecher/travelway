@@ -244,6 +244,16 @@ export default function RecsMap({
                     </span>
                   )}
                 </div>
+                {p.notes && (
+                  <div style={{
+                    fontSize: 12, marginTop: 8, lineHeight: 1.4,
+                    color: "var(--foreground)", opacity: 0.85,
+                    whiteSpace: "pre-line",
+                    maxHeight: 120, overflowY: "auto",
+                  }}>
+                    {p.notes}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   {p.google_maps_url ? (
                     <a
