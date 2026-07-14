@@ -134,6 +134,8 @@ function Recs() {
         status: r.status,
         rating: r.rating,
         google_maps_url: r.google_maps_url,
+        notes: r.notes,
+        photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs, tab, city]);
