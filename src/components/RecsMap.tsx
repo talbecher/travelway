@@ -16,10 +16,10 @@ export type RecPin = {
   google_maps_url: string | null;
 };
 
-const TYPE_BORDER: Record<string, string> = {
-  food: "#FF6B6B",
-  attraction: "#6C63FF",
-  hotel: "#FFD93D",
+const TYPE_COLOR: Record<string, { bg: string; fg: string; ring: string }> = {
+  food: { bg: "#FF6B6B", fg: "#fff", ring: "#B23A3A" },
+  attraction: { bg: "#6C63FF", fg: "#fff", ring: "#3E39A8" },
+  hotel: { bg: "#F5B301", fg: "#1a1a1a", ring: "#8A6400" },
 };
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -28,21 +28,54 @@ const TYPE_EMOJI: Record<string, string> = {
   hotel: "🏨",
 };
 
-function pinIcon(type: string): L.DivIcon {
-  const border = TYPE_BORDER[type] ?? "#6C63FF";
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    c === "&" ? "&amp;" :
+    c === "<" ? "&lt;" :
+    c === ">" ? "&gt;" :
+    c === '"' ? "&quot;" : "&#39;",
+  );
+}
+
+function truncate(s: string, n = 18): string {
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1) + "…";
+}
+
+function pinIcon(type: string, name: string): L.DivIcon {
+  const c = TYPE_COLOR[type] ?? TYPE_COLOR.attraction;
   const emoji = TYPE_EMOJI[type] ?? "•";
+  const label = escapeHtml(truncate(name || ""));
   return L.divIcon({
     className: "",
-    html: `<div style="
-      width:40px;height:40px;border-radius:50%;
-      background:#fff;
-      border:2.5px solid ${border};
-      box-shadow:0 2px 8px rgba(0,0,0,0.2);
-      display:flex;align-items:center;justify-content:center;
-      font-size:18px;line-height:1;
-    ">${emoji}</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+    html: `<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
+      <div style="
+        width:38px;height:38px;border-radius:50%;
+        background:${c.bg};
+        border:2.5px solid #fff;
+        outline:1.5px solid ${c.ring};
+        box-shadow:0 3px 10px rgba(0,0,0,0.35);
+        display:flex;align-items:center;justify-content:center;
+        font-size:19px;line-height:1;color:${c.fg};
+        pointer-events:auto;
+      ">${emoji}</div>
+      <div style="
+        margin-top:3px;
+        background:rgba(20,20,20,0.85);
+        color:#fff;
+        padding:2px 7px;
+        border-radius:6px;
+        font-size:11px;
+        font-weight:500;
+        white-space:nowrap;
+        box-shadow:0 1px 3px rgba(0,0,0,0.4);
+        max-width:150px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      ">${label}</div>
+    </div>`,
+    iconSize: [150, 68],
+    iconAnchor: [75, 19],
   });
 }
 
