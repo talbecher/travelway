@@ -106,8 +106,8 @@ export const fetchMyMapKml = createServerFn({ method: "POST" })
       if (!node || typeof node !== "object") return;
       const obj = node as Record<string, unknown>;
       if (obj.Placemark) {
-        for (const pm of toArray(obj.Placemark as Record<string, unknown>)) {
-          placemarks.push(pm);
+        for (const pm of toArray(obj.Placemark as Record<string, unknown> | Record<string, unknown>[])) {
+          placemarks.push(pm as Record<string, unknown>);
         }
       }
       if (obj.Folder) {
