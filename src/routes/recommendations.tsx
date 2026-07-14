@@ -163,10 +163,16 @@ function Recs() {
         <PlacesList type={listType} cityFilter={city} onEdit={setEditRec} />
       )}
 
+      <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
+        className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
+        <Download size={16} /> ייבוא ממפה
+      </button>
       <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
         className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
         <Plus size={26} strokeWidth={1.8} />
       </button>
+
+      <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף המלצה">
         <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
