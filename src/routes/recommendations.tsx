@@ -47,6 +47,7 @@ function Recs() {
   const [city, setCity] = useState<string>("all");
   const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editRec, setEditRec] = useState<Rec | null>(null);
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
   const { data: recs = [] } = useRecs();
