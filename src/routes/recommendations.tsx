@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
@@ -43,6 +43,7 @@ const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food"
 
 function Recs() {
   const search = Route.useSearch();
+  const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "all");
   const [city, setCity] = useState<string>("all");
   const [view, setView] = useState<"list" | "map">("list");
@@ -50,6 +51,8 @@ function Recs() {
   const [importOpen, setImportOpen] = useState(false);
   const [editRec, setEditRec] = useState<Rec | null>(null);
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { data: recs = [] } = useRecs();
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
@@ -72,6 +75,48 @@ function Recs() {
 
   useEffect(() => { setCity("all"); }, [tab]);
   useEffect(() => { if (tab === "hotels") setView("list"); }, [tab]);
+  useEffect(() => { if (view === "map" || tab === "hotels") exitSelection(); /* eslint-disable-next-line */ }, [view, tab]);
+
+  function exitSelection() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const visibleIds = useMemo(() => {
+    if (tab === "hotels") return [] as string[];
+    return (recs as Rec[])
+      .filter(typeFilter)
+      .filter((r) => city === "all" || r.city === city)
+      .map((r) => r.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recs, tab, city]);
+
+  const selectAllVisible = () => setSelectedIds(new Set(visibleIds));
+
+  const bulkDelete = useMutation({
+    mutationFn: async () => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return 0;
+      const { error } = await supabase.from("recommendations").delete().in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["recs"] });
+      toast.success(`נמחקו ${n} המלצות`);
+      exitSelection();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const mapPins = useMemo(() => {
     return (recs as Rec[])
@@ -108,22 +153,39 @@ function Recs() {
   const listType: "food" | "attraction" | "all" =
     tab === "food" ? "food" : tab === "attractions" ? "attraction" : "all";
 
+  const selectableInList = tab !== "hotels" && view === "list";
+
   return (
     <div className="pt-2 space-y-4 pb-4">
       <div className="flex items-center justify-between gap-2">
         <h1>המלצות</h1>
-        {tab !== "hotels" && (
-          <div className="flex gap-1 bg-muted rounded-lg p-1">
-            <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
-              className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "list" ? "bg-card" : "text-muted-foreground"}`}>
-              <List size={16} />
-            </button>
-            <button onClick={() => setView("map")} aria-label="תצוגת מפה"
-              className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "map" ? "bg-card" : "text-muted-foreground"}`}>
-              <MapIcon size={16} />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {selectableInList && (
+            selectionMode ? (
+              <button onClick={exitSelection} aria-label="בטל בחירה"
+                className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
+                <X size={14} /> בטל
+              </button>
+            ) : (
+              <button onClick={() => setSelectionMode(true)} aria-label="בחירה מרובה"
+                className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
+                <CheckSquare size={14} /> בחר
+              </button>
+            )
+          )}
+          {tab !== "hotels" && !selectionMode && (
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
+                className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "list" ? "bg-card" : "text-muted-foreground"}`}>
+                <List size={16} />
+              </button>
+              <button onClick={() => setView("map")} aria-label="תצוגת מפה"
+                className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "map" ? "bg-card" : "text-muted-foreground"}`}>
+                <MapIcon size={16} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 bg-muted rounded-lg p-1">
@@ -160,17 +222,49 @@ function Recs() {
           </ClientOnly>
         </div>
       ) : (
-        <PlacesList type={listType} cityFilter={city} onEdit={setEditRec} />
+        <PlacesList
+          type={listType}
+          cityFilter={city}
+          onEdit={setEditRec}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+        />
       )}
 
-      <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
-        className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
-        <Download size={16} /> ייבוא ממפה
-      </button>
-      <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
-        className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
-        <Plus size={26} strokeWidth={1.8} />
-      </button>
+      {selectionMode && (
+        <div className="fixed bottom-[70px] inset-x-0 z-40 px-4">
+          <div className="max-w-[720px] mx-auto bg-card border border-border rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+            <span className="text-sm font-medium">נבחרו {selectedIds.size}</span>
+            <button onClick={selectAllVisible} className="text-xs text-[color:var(--accent)] min-h-0 h-auto p-0">בחר הכל</button>
+            <div className="flex-1" />
+            <button onClick={exitSelection} className="text-xs text-muted-foreground min-h-0 h-8 px-2">בטל</button>
+            <button
+              onClick={() => {
+                if (selectedIds.size === 0) return;
+                if (confirm(`למחוק ${selectedIds.size} המלצות?`)) bulkDelete.mutate();
+              }}
+              disabled={selectedIds.size === 0 || bulkDelete.isPending}
+              className="text-xs h-8 px-3 rounded-lg bg-[color:var(--accent-2)] text-white disabled:opacity-40 flex items-center gap-1 min-h-0"
+            >
+              <Trash2 size={12} /> מחק
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!selectionMode && (
+        <>
+          <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
+            className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
+            <Download size={16} /> ייבוא ממפה
+          </button>
+          <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
+            className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
+            <Plus size={26} strokeWidth={1.8} />
+          </button>
+        </>
+      )}
 
       <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
 
@@ -188,6 +282,7 @@ function Recs() {
     </div>
   );
 }
+
 
 function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
   const qc = useQueryClient();
@@ -260,7 +355,16 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
   );
 }
 
-function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction" | "all"; cityFilter: string; onEdit: (r: Rec) => void }) {
+function PlacesList({
+  type, cityFilter, onEdit, selectionMode, selectedIds, onToggleSelect,
+}: {
+  type: "food" | "attraction" | "all";
+  cityFilter: string;
+  onEdit: (r: Rec) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+}) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
 
@@ -302,21 +406,38 @@ function PlacesList({ type, cityFilter, onEdit }: { type: "food" | "attraction" 
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {list.map((r) => (
         <PlaceCard
           key={r.id}
           rec={r}
           onEdit={() => onEdit(r)}
-          showTypeBadge={type === "all"}
           distance={type !== "all" && pos && r.latitude && r.longitude ? haversine(pos, { lat: Number(r.latitude), lon: Number(r.longitude) }) : null}
+          selectionMode={selectionMode}
+          selected={selectedIds.has(r.id)}
+          onToggleSelect={() => onToggleSelect(r.id)}
         />
       ))}
     </div>
   );
 }
 
-function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec; distance: number | null; onEdit: () => void; showTypeBadge?: boolean }) {
+const TYPE_GRADIENT: Record<string, string> = {
+  food: "linear-gradient(135deg,#FF6B6B,#FF9770)",
+  attraction: "linear-gradient(135deg,#6C63FF,#8B7FFF)",
+  hotel: "linear-gradient(135deg,#F5B301,#FFD93D)",
+};
+
+function PlaceCard({
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect,
+}: {
+  rec: Rec;
+  distance: number | null;
+  onEdit: () => void;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
+}) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
@@ -352,7 +473,6 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
   const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
   const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
   const typeEmoji = rec.type === "food" ? "🍜" : rec.type === "hotel" ? "🏨" : "⛩";
-  const typeBg = rec.type === "food" ? "#FF6B6B22" : rec.type === "hotel" ? "#FFD93D22" : "#6C63FF22";
 
   const statusBadge = {
     wishlist: { label: "רשימה", cls: "bg-muted text-muted-foreground" },
@@ -364,93 +484,131 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
   const googleRating = rec.google_rating != null ? Number(rec.google_rating) : null;
 
   const cardInner = (
-    <div className="bg-card border border-border rounded-2xl p-3 relative">
-      {showTypeBadge && (
-        <span
-          className="absolute top-2 right-2 z-[1] text-[11px] px-2 py-0.5 rounded-full font-medium"
-          style={{ background: typeBg, color: typeChipColor }}
-        >
-          {typeEmoji} {typeLabel}
-        </span>
-      )}
-      <div className="absolute top-2 left-2 z-[1] flex flex-col gap-1">
-        <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
-          className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground min-h-0">
-          <Pencil size={12} />
-        </button>
-        <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
-          className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
-          <Trash2 size={12} />
-        </button>
-      </div>
-      <div className="flex items-start gap-2 pl-10 pr-2">
-        {rec.photo_url && (
+    <div className={`bg-card border rounded-2xl overflow-hidden relative transition-all ${selected ? "border-[color:var(--accent)] ring-2 ring-[color:var(--accent)]/40" : "border-border"}`}>
+      {/* Hero */}
+      <div className="relative w-full h-32">
+        {rec.photo_url ? (
           <img
             src={rec.photo_url}
             alt=""
             loading="lazy"
-            className="w-[60px] h-[60px] rounded-lg object-cover shrink-0"
+            className="w-full h-full object-cover"
           />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center text-5xl"
+            style={{ background: TYPE_GRADIENT[rec.type] ?? TYPE_GRADIENT.attraction }}
+          >
+            <span style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.25))" }}>{typeEmoji}</span>
+          </div>
         )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {!showTypeBadge && (
-              <span
-                className="text-[10px] px-2 py-0.5 rounded-full"
-                style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}
-              >{typeLabel}</span>
-            )}
-            <motion.span
-              key={rec.status}
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              style={"style" in statusBadge ? statusBadge.style : undefined}
-              className={`text-[10px] px-2 py-0.5 rounded-full ${statusBadge.cls}`}
-            >{statusBadge.label}</motion.span>
+        {/* Gradient overlay for legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10 pointer-events-none" />
+
+        {/* Type badge — top-right */}
+        <span
+          className="absolute top-2 right-2 text-[11px] px-2 py-1 rounded-full font-medium backdrop-blur-sm"
+          style={{ background: "rgba(255,255,255,0.92)", color: typeChipColor }}
+        >
+          {typeEmoji} {typeLabel}
+        </span>
+
+        {/* Top-left: selection checkbox OR edit/delete */}
+        {selectionMode ? (
+          <button
+            onClick={(e) => { stop(e); onToggleSelect(); }}
+            aria-label={selected ? "בטל בחירה" : "בחר"}
+            className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center min-h-0"
+          >
+            {selected
+              ? <CheckSquare size={18} className="text-[color:var(--accent)]" />
+              : <Square size={18} className="text-muted-foreground" />}
+          </button>
+        ) : (
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5">
+            <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
+              className="w-8 h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-foreground min-h-0">
+              <Pencil size={13} />
+            </button>
+            <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
+              className="w-8 h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
+              <Trash2 size={13} />
+            </button>
           </div>
-          <div className="font-medium mt-1" dir="ltr">{rec.name}</div>
-          <div className="text-xs text-muted-foreground" dir="ltr">
-            {rec.city}{rec.address ? ` · ${rec.address}` : ""}
+        )}
+
+        {/* Status badge — bottom-right */}
+        <motion.span
+          key={rec.status}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={"style" in statusBadge ? statusBadge.style : undefined}
+          className={`absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded-full ${statusBadge.cls}`}
+        >{statusBadge.label}</motion.span>
+      </div>
+
+      {/* Content */}
+      <div className="p-3">
+        <div className="font-semibold text-[15px] leading-snug" dir="ltr">{rec.name}</div>
+        {(rec.city || rec.address) && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5" dir="ltr">
+            <MapPin size={11} className="shrink-0" />
+            <span className="truncate">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>
           </div>
+        )}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
           {googleRating != null && (
-            <div className="text-[11px] text-muted-foreground mt-0.5" dir="ltr">
-              ★ {googleRating.toFixed(1)} גוגל
-            </div>
+            <span className="inline-flex items-center gap-0.5" dir="ltr">
+              <Star size={11} className="text-yellow-500 fill-yellow-500" />
+              {googleRating.toFixed(1)}
+              {rec.google_rating_count ? ` (${rec.google_rating_count})` : ""}
+            </span>
           )}
           {distance != null && Number.isFinite(distance) && (
-            <div className="text-xs text-muted-foreground mt-0.5">{fmtDistance(distance)}</div>
-          )}
-          {rec.status === "visited" && rec.rating && (
-            <div className="text-xs mt-1 text-[color:var(--accent-2)]">{"★".repeat(rec.rating)}{"☆".repeat(5 - rec.rating)}</div>
-          )}
-          {rec.status === "visited" && rec.review && (
-            <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rec.review}</div>
+            <span>{fmtDistance(distance)}</span>
           )}
         </div>
-      </div>
-      <div className="flex gap-2 mt-3">
-        {rec.google_maps_url && (
-          <a href={rec.google_maps_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-            className="flex-1 h-9 rounded-md border border-border flex items-center justify-center gap-1 text-xs">
-            <Navigation size={12} /> ניווט
-          </a>
+        {rec.notes && (
+          <div className="text-xs text-muted-foreground mt-1.5 line-clamp-2 whitespace-pre-line">{rec.notes}</div>
         )}
-        <button onClick={(e) => { stop(e); setDayPickerOpen(true); }}
-          className="flex-1 h-9 rounded-md bg-[color:var(--accent)] text-white text-xs min-h-0">
-          + הוסף ליום
-        </button>
-      </div>
-      <div className="flex gap-3 mt-2 text-xs flex-wrap">
-        {rec.status !== "visited" && <button onClick={(e) => { stop(e); setStatus.mutate("visited"); }} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
-        {rec.status !== "skipped" && <button onClick={(e) => { stop(e); setStatus.mutate("skipped"); }} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
-        {rec.status !== "wishlist" && <button onClick={(e) => { stop(e); setStatus.mutate("wishlist"); }} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
+        {rec.status === "visited" && rec.rating && (
+          <div className="text-xs mt-1 text-[color:var(--accent-2)]">{"★".repeat(rec.rating)}{"☆".repeat(5 - rec.rating)}</div>
+        )}
+        {rec.status === "visited" && rec.review && (
+          <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rec.review}</div>
+        )}
+
+        {!selectionMode && (
+          <>
+            <div className="flex gap-2 mt-3">
+              {rec.google_maps_url && (
+                <a href={rec.google_maps_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                  className="flex-1 h-9 rounded-md border border-border flex items-center justify-center gap-1 text-xs">
+                  <Navigation size={12} /> ניווט
+                </a>
+              )}
+              <button onClick={(e) => { stop(e); setDayPickerOpen(true); }}
+                className="flex-1 h-9 rounded-md bg-[color:var(--accent)] text-white text-xs min-h-0">
+                + הוסף ליום
+              </button>
+            </div>
+            <div className="flex gap-3 mt-2 text-xs flex-wrap">
+              {rec.status !== "visited" && <button onClick={(e) => { stop(e); setStatus.mutate("visited"); }} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
+              {rec.status !== "skipped" && <button onClick={(e) => { stop(e); setStatus.mutate("skipped"); }} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
+              {rec.status !== "wishlist" && <button onClick={(e) => { stop(e); setStatus.mutate("wishlist"); }} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 
-
   return (
     <>
-      {rec.google_maps_url ? (
+      {selectionMode ? (
+        <div onClick={onToggleSelect} className="cursor-pointer">
+          {cardInner}
+        </div>
+      ) : rec.google_maps_url ? (
         <a
           href={rec.google_maps_url}
           target="_blank"
@@ -478,6 +636,7 @@ function PlaceCard({ rec, distance, onEdit, showTypeBadge = false }: { rec: Rec;
     </>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────────
 // Add / Edit form (food / attraction / hotel base fields)
