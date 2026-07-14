@@ -111,7 +111,7 @@ export const fetchMyMapKml = createServerFn({ method: "POST" })
         }
       }
       if (obj.Folder) {
-        for (const f of toArray(obj.Folder as Record<string, unknown>)) walk(f);
+        for (const f of toArray(obj.Folder as Record<string, unknown> | Record<string, unknown>[])) walk(f);
       }
       if (obj.Document) walk(obj.Document);
       if (obj.kml) walk(obj.kml);
