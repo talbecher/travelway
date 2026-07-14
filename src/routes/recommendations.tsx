@@ -134,6 +134,8 @@ function Recs() {
         status: r.status,
         rating: r.rating,
         google_maps_url: r.google_maps_url,
+        notes: r.notes,
+        photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs, tab, city]);
@@ -527,11 +529,13 @@ function PlaceCard({
         ) : (
           <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
-              className="w-8 h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-foreground min-h-0">
+              className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center min-h-0 border border-black/10"
+              style={{ color: "#1f2937" }}>
               <Pencil size={13} />
             </button>
             <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
-              className="w-8 h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-[color:var(--accent-2)] min-h-0">
+              className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center min-h-0 border border-black/10"
+              style={{ color: "#dc2626" }}>
               <Trash2 size={13} />
             </button>
           </div>
