@@ -8,8 +8,13 @@ import { fetchMyMapKml, type ImportedPlace } from "@/lib/maps-import.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { TRIP_ID } from "@/lib/constants";
 
-type Step = "url" | "preview" | "map";
-type RecType = "food" | "attraction" | "hotel";
+type Step = "url" | "preview";
+
+const TYPE_ICON: Record<ImportedPlace["suggested_type"], string> = {
+  food: "🍜",
+  attraction: "⛩",
+  hotel: "🏨",
+};
 
 export function ImportFromMyMapsSheet({
   open,
@@ -25,7 +30,6 @@ export function ImportFromMyMapsSheet({
   const [loading, setLoading] = useState(false);
   const [places, setPlaces] = useState<ImportedPlace[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [type, setType] = useState<RecType>("attraction");
   const [city, setCity] = useState("");
 
   const reset = () => {
@@ -52,10 +56,6 @@ export function ImportFromMyMapsSheet({
       const result = await fetchKml({ data: { url: url.trim() } });
       setPlaces(result);
       setSelected(new Set(result.map((_, i) => i)));
-      const counts = { food: 0, attraction: 0, hotel: 0 };
-      for (const p of result) counts[p.suggested_type]++;
-      const top = (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "attraction") as RecType;
-      setType(top);
       setStep("preview");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "שגיאה");
@@ -79,7 +79,7 @@ export function ImportFromMyMapsSheet({
         .filter((_, i) => selected.has(i))
         .map((p) => ({
           trip_id: TRIP_ID,
-          type,
+          type: p.suggested_type,
           city: city.trim() || null,
           name: p.name,
           notes: p.description,
@@ -128,9 +128,19 @@ export function ImportFromMyMapsSheet({
 
       {step === "preview" && (
         <div className="pt-2 space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">עיר (אופציונלי)</label>
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="לדוגמה: Tokyo"
+              className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm"
+              dir="ltr"
+            />
+          </div>
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              נמצאו {places.length} מקומות · נבחרו {selectedCount}
+              נמצאו {places.length} · נבחרו {selectedCount}
             </div>
             <div className="flex gap-2">
               <button onClick={selectAll} className="text-xs text-[color:var(--accent)]">
@@ -141,7 +151,7 @@ export function ImportFromMyMapsSheet({
               </button>
             </div>
           </div>
-          <div className="max-h-[50vh] overflow-y-auto space-y-1.5 -mx-1 px-1">
+          <div className="max-h-[45vh] overflow-y-auto space-y-1.5 -mx-1 px-1">
             {places.map((p, i) => (
               <label
                 key={i}
@@ -155,6 +165,9 @@ export function ImportFromMyMapsSheet({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-muted text-[11px] shrink-0">
+                      {TYPE_ICON[p.suggested_type]}
+                    </span>
                     <span className="text-sm font-medium truncate">{p.name}</span>
                     {p.hasCoords ? (
                       <MapPin size={12} className="text-[color:var(--accent-3)] shrink-0" />
@@ -170,64 +183,12 @@ export function ImportFromMyMapsSheet({
             ))}
           </div>
           <button
-            onClick={() => setStep("map")}
-            disabled={selectedCount === 0}
-            className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm disabled:opacity-60"
-          >
-            המשך ({selectedCount})
-          </button>
-        </div>
-      )}
-
-      {step === "map" && (
-        <div className="pt-2 space-y-4">
-          <div>
-            <div className="text-sm mb-2">לאיזה קטגוריה לשייך את המקומות?</div>
-            <div className="flex gap-2">
-              {(
-                [
-                  { v: "food", label: "🍜 אוכל" },
-                  { v: "attraction", label: "⛩ אטרקציה" },
-                  { v: "hotel", label: "🏨 לינה" },
-                ] as { v: RecType; label: string }[]
-              ).map((o) => (
-                <button
-                  key={o.v}
-                  onClick={() => setType(o.v)}
-                  className={`flex-1 h-10 rounded-full text-sm border ${
-                    type === o.v
-                      ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]"
-                      : "border-border text-muted-foreground"
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="text-sm mb-1 block">עיר (אופציונלי)</label>
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="לדוגמה: Tokyo"
-              className="w-full h-11 rounded-lg border border-border bg-background px-3 text-sm"
-              dir="ltr"
-            />
-          </div>
-          <button
             onClick={() => importMut.mutate()}
-            disabled={importMut.isPending}
+            disabled={importMut.isPending || selectedCount === 0}
             className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {importMut.isPending && <Loader2 size={16} className="animate-spin" />}
             ייבא {selectedCount} מקומות
-          </button>
-          <button
-            onClick={() => setStep("preview")}
-            className="w-full h-10 rounded-lg border border-border text-sm text-muted-foreground"
-          >
-            חזור
           </button>
         </div>
       )}

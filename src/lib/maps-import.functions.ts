@@ -28,8 +28,8 @@ function stripHtml(s: string | null | undefined): string | null {
 
 function guessType(hints: string): "food" | "attraction" | "hotel" {
   const s = hints.toLowerCase();
-  if (/(lodging|hotel|ryokan|hostel|inn|yellow)/.test(s)) return "hotel";
-  if (/(restaurant|dining|food|cafe|coffee|bar|red|orange|pink)/.test(s)) return "food";
+  if (/(lodging|hotel|ryokan|hostel|guesthouse|motel|resort|inn|yellow|1002)/.test(s)) return "hotel";
+  if (/(restaurant|dining|food|cafe|coffee|bar|bakery|bistro|pub|izakaya|sushi|ramen|red|orange|pink|1577|1578)/.test(s)) return "food";
   return "attraction";
 }
 
