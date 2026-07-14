@@ -211,7 +211,7 @@ export default function RecsMap({
       {validPins.map((p) => {
         const badge = statusBadge(p.status);
         return (
-          <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type)}>
+          <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type, p.name)}>
             <Popup className="custom-popup" closeButton={false} minWidth={200}>
               <div style={{ minWidth: 180 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }} dir="ltr">{p.name}</div>
