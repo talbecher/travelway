@@ -167,7 +167,7 @@ export default function DayMap({
 
 
   return (
-    <>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <style>{POPUP_STYLE}</style>
       <MapContainer
         center={center}
@@ -188,48 +188,64 @@ export default function DayMap({
         {path.length >= 2 && (
           <Polyline
             positions={path}
-            pathOptions={{ color: "#6C63FF", weight: 3, opacity: 0.7, dashArray: "8, 6" }}
+            pathOptions={{
+              color: "#6C63FF",
+              weight: 4,
+              opacity: 0.85,
+              lineCap: "round",
+              lineJoin: "round",
+            }}
           />
         )}
-        {validStops.map((s) => {
-          const color = TYPE_PIN_COLOR[s.type] ?? "#6C63FF";
-          const emoji = TYPE_EMOJI[s.type] ?? "•";
-          return (
-            <Marker
-              key={s.id}
-              position={[s.lat, s.lng]}
-              icon={pinIcon(color, s.index, highlightId === s.id)}
-              eventHandlers={{ click: () => onPinTap?.(s.id) }}
-            >
-              <Popup className="custom-popup" closeButton={false}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    style={{
-                      width: 22, height: 22, borderRadius: "50%",
-                      background: color, color: "#fff",
-                      fontSize: 11, fontWeight: 600,
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {s.index}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>
-                      <span style={{ marginInlineEnd: 4 }}>{emoji}</span>
-                      {s.title}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={40}
+          disableClusteringAtZoom={14}
+          spiderfyOnMaxZoom
+          showCoverageOnHover={false}
+          iconCreateFunction={clusterIcon}
+        >
+          {validStops.map((s) => {
+            const color = TYPE_PIN_COLOR[s.type] ?? "#6C63FF";
+            const emoji = TYPE_EMOJI[s.type] ?? "•";
+            return (
+              <Marker
+                key={s.id}
+                position={[s.lat, s.lng]}
+                icon={pinIcon(color, s.index, highlightId === s.id)}
+                eventHandlers={{ click: () => onPinTap?.(s.id) }}
+              >
+                <Popup className="custom-popup" closeButton={false}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        width: 22, height: 22, borderRadius: "50%",
+                        background: color, color: "#fff",
+                        fontSize: 11, fontWeight: 600,
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {s.index}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }}>
+                        <span style={{ marginInlineEnd: 4 }}>{emoji}</span>
+                        {s.title}
+                      </div>
+                      {s.time && (
+                        <div style={{ fontSize: 11, opacity: 0.7, direction: "ltr" }}>{s.time}</div>
+                      )}
                     </div>
-                    {s.time && (
-                      <div style={{ fontSize: 11, opacity: 0.7, direction: "ltr" }}>{s.time}</div>
-                    )}
                   </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MarkerClusterGroup>
         <FitBounds stops={validStops} />
+        <FocusRouteButton stops={validStops} />
       </MapContainer>
-    </>
+    </div>
   );
 }
