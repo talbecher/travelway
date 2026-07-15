@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import { Maximize2 } from "lucide-react";
 import { TYPE_PIN_COLOR } from "@/lib/coords";
 
 export type MapStop = {
@@ -67,6 +71,48 @@ function FitBounds({ stops }: { stops: MapStop[] }) {
 }
 
 
+function FocusRouteButton({ stops }: { stops: MapStop[] }) {
+  const map = useMap();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (stops.length === 0) return;
+        if (stops.length === 1) {
+          map.setView([stops[0].lat, stops[0].lng], 15, { animate: true });
+          return;
+        }
+        const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: true });
+      }}
+      aria-label="התמקד למסלול"
+      style={{
+        position: "absolute", bottom: 16, right: 12, zIndex: 500,
+        width: 40, height: 40, borderRadius: 999,
+        background: "#fff", border: "1px solid rgba(0,0,0,0.15)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "pointer", color: "#6C63FF",
+      }}
+    >
+      <Maximize2 size={16} />
+    </button>
+  );
+}
+
+function clusterIcon(cluster: { getChildCount: () => number }): L.DivIcon {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 34 : 40;
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,#6C63FF,#8B7FFF);border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,0.4);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
 const POPUP_STYLE = `
 .day-pin { transition: transform .2s ease; }
 .day-pin.is-highlighted { transform: scale(1.3); z-index: 1000; }
@@ -121,7 +167,7 @@ export default function DayMap({
 
 
   return (
-    <>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <style>{POPUP_STYLE}</style>
       <MapContainer
         center={center}
@@ -142,48 +188,64 @@ export default function DayMap({
         {path.length >= 2 && (
           <Polyline
             positions={path}
-            pathOptions={{ color: "#6C63FF", weight: 3, opacity: 0.7, dashArray: "8, 6" }}
+            pathOptions={{
+              color: "#6C63FF",
+              weight: 4,
+              opacity: 0.85,
+              lineCap: "round",
+              lineJoin: "round",
+            }}
           />
         )}
-        {validStops.map((s) => {
-          const color = TYPE_PIN_COLOR[s.type] ?? "#6C63FF";
-          const emoji = TYPE_EMOJI[s.type] ?? "•";
-          return (
-            <Marker
-              key={s.id}
-              position={[s.lat, s.lng]}
-              icon={pinIcon(color, s.index, highlightId === s.id)}
-              eventHandlers={{ click: () => onPinTap?.(s.id) }}
-            >
-              <Popup className="custom-popup" closeButton={false}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    style={{
-                      width: 22, height: 22, borderRadius: "50%",
-                      background: color, color: "#fff",
-                      fontSize: 11, fontWeight: 600,
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {s.index}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>
-                      <span style={{ marginInlineEnd: 4 }}>{emoji}</span>
-                      {s.title}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={40}
+          disableClusteringAtZoom={14}
+          spiderfyOnMaxZoom
+          showCoverageOnHover={false}
+          iconCreateFunction={clusterIcon}
+        >
+          {validStops.map((s) => {
+            const color = TYPE_PIN_COLOR[s.type] ?? "#6C63FF";
+            const emoji = TYPE_EMOJI[s.type] ?? "•";
+            return (
+              <Marker
+                key={s.id}
+                position={[s.lat, s.lng]}
+                icon={pinIcon(color, s.index, highlightId === s.id)}
+                eventHandlers={{ click: () => onPinTap?.(s.id) }}
+              >
+                <Popup className="custom-popup" closeButton={false}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        width: 22, height: 22, borderRadius: "50%",
+                        background: color, color: "#fff",
+                        fontSize: 11, fontWeight: 600,
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {s.index}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }}>
+                        <span style={{ marginInlineEnd: 4 }}>{emoji}</span>
+                        {s.title}
+                      </div>
+                      {s.time && (
+                        <div style={{ fontSize: 11, opacity: 0.7, direction: "ltr" }}>{s.time}</div>
+                      )}
                     </div>
-                    {s.time && (
-                      <div style={{ fontSize: 11, opacity: 0.7, direction: "ltr" }}>{s.time}</div>
-                    )}
                   </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MarkerClusterGroup>
         <FitBounds stops={validStops} />
+        <FocusRouteButton stops={validStops} />
       </MapContainer>
-    </>
+    </div>
   );
 }
