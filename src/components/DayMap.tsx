@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import { Maximize2 } from "lucide-react";
 import { TYPE_PIN_COLOR } from "@/lib/coords";
 
 export type MapStop = {
