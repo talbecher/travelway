@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import { Locate } from "lucide-react";
 import { MapSkeleton } from "@/components/MapSkeleton";
 
 export type RecPin = {
@@ -44,37 +48,31 @@ function truncate(s: string, n = 18): string {
   return s.slice(0, n - 1) + "…";
 }
 
-function pinIcon(type: string, name: string): L.DivIcon {
+function pinIcon(type: string, name: string, status: string): L.DivIcon {
   const c = TYPE_COLOR[type] ?? TYPE_COLOR.attraction;
   const emoji = TYPE_EMOJI[type] ?? "•";
   const label = escapeHtml(truncate(name || ""));
+
+  const isVisited = status === "visited";
+  const isSkipped = status === "skipped";
+  const pinOpacity = isVisited ? 0.9 : isSkipped ? 0.5 : 1;
+  const labelOpacity = isSkipped ? 0.55 : 1;
+  const labelDecoration = isSkipped ? "line-through" : "none";
+
+  const statusOverlay = isVisited
+    ? `<div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:#22c55e;border:2px solid #fff;color:#fff;font-size:11px;line-height:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.3);font-weight:700;">✓</div>`
+    : isSkipped
+      ? `<div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:#6b7280;border:2px solid #fff;color:#fff;font-size:12px;line-height:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.3);font-weight:700;">✕</div>`
+      : "";
+
   return L.divIcon({
     className: "",
     html: `<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
-      <div style="
-        width:38px;height:38px;border-radius:50%;
-        background:${c.bg};
-        border:2.5px solid #fff;
-        outline:1.5px solid ${c.ring};
-        box-shadow:0 3px 10px rgba(0,0,0,0.35);
-        display:flex;align-items:center;justify-content:center;
-        font-size:19px;line-height:1;color:${c.fg};
-        pointer-events:auto;
-      ">${emoji}</div>
-      <div style="
-        margin-top:3px;
-        background:rgba(20,20,20,0.85);
-        color:#fff;
-        padding:2px 7px;
-        border-radius:6px;
-        font-size:11px;
-        font-weight:500;
-        white-space:nowrap;
-        box-shadow:0 1px 3px rgba(0,0,0,0.4);
-        max-width:150px;
-        overflow:hidden;
-        text-overflow:ellipsis;
-      ">${label}</div>
+      <div style="position:relative;opacity:${pinOpacity};">
+        <div style="width:38px;height:38px;border-radius:50%;background:${c.bg};border:2.5px solid #fff;outline:1.5px solid ${c.ring};box-shadow:0 3px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:19px;line-height:1;color:${c.fg};pointer-events:auto;">${emoji}</div>
+        ${statusOverlay}
+      </div>
+      <div style="margin-top:3px;background:rgba(20,20,20,0.85);color:#fff;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4);max-width:150px;overflow:hidden;text-overflow:ellipsis;opacity:${labelOpacity};text-decoration:${labelDecoration};">${label}</div>
     </div>`,
     iconSize: [150, 68],
     iconAnchor: [75, 19],
@@ -84,14 +82,20 @@ function pinIcon(type: string, name: string): L.DivIcon {
 function userIcon(): L.DivIcon {
   return L.divIcon({
     className: "",
-    html: `<div style="
-      width:16px;height:16px;border-radius:50%;
-      background:#4A90E2;
-      border:3px solid #fff;
-      box-shadow:0 0 0 4px rgba(74,144,226,0.3);
-    "></div>`,
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:#4A90E2;border:3px solid #fff;box-shadow:0 0 0 4px rgba(74,144,226,0.3);"></div>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
+  });
+}
+
+function clusterIcon(cluster: { getChildCount: () => number }): L.DivIcon {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 36 : count < 30 ? 42 : 48;
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,#6C63FF,#8B7FFF);border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,0.4);color:#fff;font-weight:700;font-size:${count < 10 ? 13 : 14}px;display:flex;align-items:center;justify-content:center;">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 }
 
@@ -126,34 +130,102 @@ function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: numb
   return null;
 }
 
+function LocateButton({ userPos, onNoGeo }: { userPos: { lat: number; lng: number } | null; onNoGeo: () => void }) {
+  const map = useMap();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!userPos) { onNoGeo(); return; }
+        map.setView([userPos.lat, userPos.lng], 15, { animate: true });
+      }}
+      aria-label="התמקד עלי"
+      style={{
+        position: "absolute", bottom: 16, right: 12, zIndex: 500,
+        width: 40, height: 40, borderRadius: 999,
+        background: "#fff", border: "1px solid rgba(0,0,0,0.15)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "pointer",
+        color: userPos ? "#4A90E2" : "#9ca3af",
+      }}
+    >
+      <Locate size={18} />
+    </button>
+  );
+}
 
-function statusBadge(status: string) {
-  if (status === "visited") {
-    return {
-      label: "ביקרנו",
-      style: {
-        background: "color-mix(in oklab, var(--accent-3) 18%, transparent)",
-        color: "var(--accent-3)",
-      } as React.CSSProperties,
-    };
-  }
-  if (status === "skipped") {
-    return {
-      label: "דילגנו",
-      style: {
-        background: "var(--muted)",
-        color: "var(--muted-foreground)",
-        textDecoration: "line-through",
-      } as React.CSSProperties,
-    };
-  }
-  return {
-    label: "רשימה",
-    style: {
-      background: "var(--muted)",
-      color: "var(--muted-foreground)",
-    } as React.CSSProperties,
-  };
+function LegendRow({ color, emoji, label }: { color: string; emoji: string; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+      <span style={{
+        width: 16, height: 16, borderRadius: "50%",
+        background: color, border: "1.5px solid #fff",
+        outline: "1px solid rgba(0,0,0,0.2)",
+        fontSize: 10, display: "inline-flex",
+        alignItems: "center", justifyContent: "center",
+      }}>{emoji}</span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function Legend() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{
+        position: "absolute", top: 12, left: 12, zIndex: 500,
+        background: "rgba(255,255,255,0.96)",
+        border: "1px solid rgba(0,0,0,0.1)",
+        borderRadius: 10,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        fontSize: 11, lineHeight: 1.4,
+        overflow: "hidden",
+      }}
+    >
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v); }}
+        style={{
+          background: "transparent", border: "none",
+          padding: "6px 10px", fontSize: 11, cursor: "pointer",
+          color: "#1f2937", fontWeight: 600,
+          display: "flex", alignItems: "center", gap: 4,
+        }}
+      >
+        {open ? "▾" : "▸"} מקרא
+      </button>
+      {open && (
+        <div style={{ padding: "4px 10px 8px", color: "#1f2937", minWidth: 130 }}>
+          <LegendRow color="#FF6B6B" emoji="🍜" label="אוכל" />
+          <LegendRow color="#6C63FF" emoji="⛩" label="אטרקציה" />
+          <LegendRow color="#F5B301" emoji="🏨" label="לינה" />
+          <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+            <span style={{
+              width: 14, height: 14, borderRadius: "50%",
+              background: "#22c55e", color: "#fff", fontSize: 9,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 700,
+            }}>✓</span>
+            <span>ביקרנו</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+              width: 14, height: 14, borderRadius: "50%",
+              background: "#6b7280", color: "#fff", fontSize: 10,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 700,
+            }}>✕</span>
+            <span>דילגנו</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function RecsMap({
@@ -168,13 +240,13 @@ export default function RecsMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const validPins = pins.filter(
+  const validPins = useMemo(() => pins.filter(
     (p) =>
       Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
       p.lat >= -90 && p.lat <= 90 &&
       p.lng >= -180 && p.lng <= 180 &&
       !(p.lat === 0 && p.lng === 0),
-  );
+  ), [pins]);
 
   const [showHint, setShowHint] = useState(false);
   useEffect(() => {
@@ -183,6 +255,13 @@ export default function RecsMap({
     const t = setTimeout(() => setShowHint(false), 3000);
     return () => clearTimeout(t);
   }, [validPins.length]);
+
+  const [geoError, setGeoError] = useState(false);
+  useEffect(() => {
+    if (!geoError) return;
+    const t = setTimeout(() => setGeoError(false), 2500);
+    return () => clearTimeout(t);
+  }, [geoError]);
 
   const center: [number, number] = validPins[0]
     ? [validPins[0].lat, validPins[0].lng]
@@ -194,138 +273,84 @@ export default function RecsMap({
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-    <MapContainer
-      center={center}
-      zoom={validPins.length === 1 ? 15 : 12}
-      scrollWheelZoom
-      zoomControl
-      maxZoom={19}
-      minZoom={3}
-      style={{ width: "100%", height: "100%", background: "#EDEDED" }}
-    >
-      <TileLayer
-        attribution='&copy; OpenStreetMap &copy; CartoDB'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+      <MapContainer
+        center={center}
+        zoom={validPins.length === 1 ? 15 : 12}
+        scrollWheelZoom
+        zoomControl
         maxZoom={19}
         minZoom={3}
-      />
+        style={{ width: "100%", height: "100%", background: "#EDEDED" }}
+      >
+        <TileLayer
+          attribution='&copy; OpenStreetMap &copy; CartoDB'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          maxZoom={19}
+          minZoom={3}
+        />
 
-      {validPins.map((p) => {
-        const badge = statusBadge(p.status);
-        return (
-          <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.type, p.name)}>
-            <Popup className="custom-popup" closeButton={false} minWidth={220} maxWidth={280}>
-              <div style={{ minWidth: 200, maxWidth: 260, color: "#1f2937" }}>
-                {p.photo_url && (
-                  <img
-                    src={p.photo_url}
-                    alt={p.name}
-                    style={{
-                      width: "100%", height: 100, objectFit: "cover",
-                      borderRadius: 6, marginBottom: 6, display: "block",
-                    }}
-                    loading="lazy"
-                  />
-                )}
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }} dir="ltr">{p.name}</div>
-                {(p.city || p.address) && (
-                  <div style={{ fontSize: 12, color: "#374151", marginTop: 2 }} dir="ltr">
-                    {p.city}{p.address ? ` · ${p.address}` : ""}
-                  </div>
-                )}
-                <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{
-                    fontSize: 10, padding: "2px 8px", borderRadius: 999,
-                    ...badge.style,
-                  }}>{badge.label}</span>
-                  {p.status === "visited" && p.rating && (
-                    <span style={{ fontSize: 11, color: "#d97706" }}>
-                      {"★".repeat(p.rating)}{"☆".repeat(5 - p.rating)}
-                    </span>
-                  )}
-                </div>
-                {p.notes && (
-                  <div style={{
-                    fontSize: 12, marginTop: 8, lineHeight: 1.4,
-                    color: "#1f2937",
-                    whiteSpace: "pre-line",
-                    maxHeight: 120, overflowY: "auto",
-                    padding: "6px 8px", background: "#f3f4f6", borderRadius: 6,
-                  }}>
-                    {p.notes}
-                  </div>
-                )}
-                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  {p.google_maps_url ? (
-                    <a
-                      href={p.google_maps_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        flex: 1, height: 32, borderRadius: 6,
-                        border: "1px solid var(--border)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 12, textDecoration: "none", color: "inherit",
-                      }}
-                    >
-                      🗺 ניווט
-                    </a>
-                  ) : (
-                    <span style={{
-                      flex: 1, height: 32, borderRadius: 6,
-                      border: "1px solid var(--border)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, opacity: 0.4,
-                    }}>🗺 ניווט</span>
-                  )}
-                  <button
-                    onClick={() => onAddToDay(p.id)}
-                    style={{
-                      flex: 1, height: 32, borderRadius: 6,
-                      background: "var(--accent)", color: "#fff",
-                      fontSize: 12, border: "none", cursor: "pointer",
-                    }}
-                  >
-                    + הוסף ליום
-                  </button>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-      {userPos && (
-        <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
-      )}
-      <FitAll pins={validPins} user={userPos} />
-    </MapContainer>
-    {validPins.length === 0 && (
-      <div style={{
-        position: "absolute", inset: 0, display: "flex",
-        alignItems: "center", justifyContent: "center",
-        pointerEvents: "none", padding: 24, zIndex: 500,
-      }}>
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={45}
+          disableClusteringAtZoom={15}
+          spiderfyOnMaxZoom
+          showCoverageOnHover={false}
+          iconCreateFunction={clusterIcon}
+        >
+          {validPins.map((p) => (
+            <Marker
+              key={p.id}
+              position={[p.lat, p.lng]}
+              icon={pinIcon(p.type, p.name, p.status)}
+              eventHandlers={{ click: () => onAddToDay(p.id) }}
+            />
+          ))}
+        </MarkerClusterGroup>
+
+        {userPos && (
+          <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
+        )}
+        <FitAll pins={validPins} user={userPos} />
+        <LocateButton userPos={userPos} onNoGeo={() => setGeoError(true)} />
+      </MapContainer>
+      <Legend />
+      {validPins.length === 0 && (
         <div style={{
-          background: "var(--card)", color: "var(--foreground)",
-          border: "1px solid var(--border)", borderRadius: 12,
-          padding: "12px 16px", fontSize: 13, textAlign: "center",
-          maxWidth: 320, boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          position: "absolute", inset: 0, display: "flex",
+          alignItems: "center", justifyContent: "center",
+          pointerEvents: "none", padding: 24, zIndex: 500,
         }}>
-          📍 אין מיקומים שמורים — הוסף המלצות עם לינק גוגל מפות כדי שיופיעו כאן
+          <div style={{
+            background: "var(--card)", color: "var(--foreground)",
+            border: "1px solid var(--border)", borderRadius: 12,
+            padding: "12px 16px", fontSize: 13, textAlign: "center",
+            maxWidth: 320, boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          }}>
+            📍 אין מיקומים שמורים — הוסף המלצות עם לינק גוגל מפות כדי שיופיעו כאן
+          </div>
         </div>
-      </div>
-    )}
-    {showHint && (
-      <div style={{
-        position: "absolute", bottom: 16, left: "50%",
-        transform: "translateX(-50%)", zIndex: 500,
-        background: "rgba(0,0,0,0.75)", color: "#fff",
-        padding: "6px 12px", borderRadius: 999, fontSize: 12,
-        pointerEvents: "none", whiteSpace: "nowrap",
-      }}>
-        🔍 זום פנימה לצפייה בפינים קרובים
-      </div>
-    )}
+      )}
+      {showHint && (
+        <div style={{
+          position: "absolute", bottom: 16, left: "50%",
+          transform: "translateX(-50%)", zIndex: 500,
+          background: "rgba(0,0,0,0.75)", color: "#fff",
+          padding: "6px 12px", borderRadius: 999, fontSize: 12,
+          pointerEvents: "none", whiteSpace: "nowrap",
+        }}>
+          🔍 לחץ על אשכול להתפזרות · לחץ על פין לפרטים
+        </div>
+      )}
+      {geoError && (
+        <div style={{
+          position: "absolute", bottom: 64, right: 12, zIndex: 600,
+          background: "rgba(0,0,0,0.8)", color: "#fff",
+          padding: "6px 10px", borderRadius: 8, fontSize: 11,
+          pointerEvents: "none", whiteSpace: "nowrap",
+        }}>
+          אין הרשאת מיקום
+        </div>
+      )}
     </div>
   );
 }
