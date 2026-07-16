@@ -735,72 +735,79 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   );
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-2.5 pt-1 pb-2">
-      <div className="flex gap-1 bg-muted rounded-lg p-1 sticky top-0 z-10">
+    <form
+      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      className="flex flex-col min-h-[62vh] pt-1 pb-2"
+    >
+      <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3 shrink-0">
         {seg("food", "אוכל", "🍜", "var(--accent-2)")}
         {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
         {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
       </div>
 
-      {!manualMode && !placeSelected && (
-        <>
-          <PlacesSearch onSelect={handlePlace} autoFocus />
-          <button
-            type="button"
-            onClick={() => setManualMode(true)}
-            className="text-xs text-muted-foreground underline min-h-0 h-auto p-0"
-          >
-            הוסף ידנית
-          </button>
-        </>
-      )}
+      <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
+        {!manualMode && !placeSelected && (
+          <>
+            <PlacesSearch onSelect={handlePlace} autoFocus />
+            <button
+              type="button"
+              onClick={() => setManualMode(true)}
+              className="text-xs text-muted-foreground underline min-h-0 h-auto p-0"
+            >
+              הוסף ידנית
+            </button>
+          </>
+        )}
 
-      {placeSelected && (
-        <div className="rounded-lg border border-[color:var(--accent-3)]/40 bg-[color:var(--accent-3)]/10 p-2 text-xs flex items-start gap-2">
-          {photoUrl && (
-            <img src={photoUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="text-[color:var(--accent-3)]">✅ {placeSelected.name}</div>
-            {placeSelected.address && (
-              <div className="text-muted-foreground truncate" dir="ltr">{placeSelected.address}</div>
+        {placeSelected && (
+          <div className="rounded-lg border border-[color:var(--accent-3)]/40 bg-[color:var(--accent-3)]/10 py-2.5 px-3 text-xs flex items-start gap-3">
+            {photoUrl && (
+              <img src={photoUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />
             )}
+            <div className="flex-1 min-w-0">
+              <div className="text-[color:var(--accent-3)]">✅ {placeSelected.name}</div>
+              {placeSelected.address && (
+                <div className="text-muted-foreground truncate" dir="ltr">{placeSelected.address}</div>
+              )}
+            </div>
+            <button type="button" onClick={clearPlace}
+              className="text-[color:var(--accent)] underline min-h-0 h-auto p-0 shrink-0">שנה</button>
           </div>
-          <button type="button" onClick={clearPlace}
-            className="text-[color:var(--accent)] underline min-h-0 h-auto p-0 shrink-0">שנה</button>
-        </div>
-      )}
+        )}
+
+        {(manualMode || placeSelected) && (
+          <>
+            <Field label="שם"><input required value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
+            <Field label="עיר"><input required value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
+            <Field label="אזור / שכונה"><input value={address} onChange={(e) => setAddress(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
+            {manualMode && !placeSelected && (
+              <Field label="לינק גוגל מפות">
+                <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                {url.trim() && (
+                  parseLatLngFromMapsUrl(url)
+                    ? <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
+                    : <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — לא יופיע במפה</div>
+                )}
+              </Field>
+            )}
+            <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
+
+            {type === "hotel" && !existing && (
+              <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
+                פרטי שהות (תאריכים, מחיר, ביטול) יוגדרו בכרטיס המלון לאחר השמירה.
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {(manualMode || placeSelected) && (
-        <>
-          <Field label="שם"><input required value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
-          <Field label="עיר"><input required value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
-          <Field label="אזור / שכונה"><input value={address} onChange={(e) => setAddress(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
-          {manualMode && !placeSelected && (
-            <Field label="לינק גוגל מפות">
-              <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" />
-              {url.trim() && (
-                parseLatLngFromMapsUrl(url)
-                  ? <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
-                  : <div className="text-[11px] text-[color:var(--accent-2)] mt-1">⚠️ לא זוהה מיקום — לא יופיע במפה</div>
-              )}
-            </Field>
-          )}
-          <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
-
-          {type === "hotel" && !existing && (
-            <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
-              פרטי שהות (תאריכים, מחיר, ביטול) יוגדרו בכרטיס המלון לאחר השמירה.
-            </div>
-          )}
-
-          <div className="sticky bottom-0 -mx-5 px-5 pt-2 pb-1 bg-gradient-to-t from-card via-card to-transparent">
-            <button type="submit" disabled={save.isPending}
-              className="w-full h-11 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
-              {save.isPending ? "שומר..." : "שמור"}
-            </button>
-          </div>
-        </>
+        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-1 bg-card border-t border-border/60 shrink-0">
+          <button type="submit" disabled={save.isPending}
+            className="w-full h-11 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
+            {save.isPending ? "שומר..." : "שמור"}
+          </button>
+        </div>
       )}
     </form>
   );
