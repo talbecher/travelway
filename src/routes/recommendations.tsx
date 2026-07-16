@@ -714,7 +714,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("recommendations").insert({ trip_id: TRIP_ID, ...payload });
+        const { error } = await supabase.from("recommendations").insert({ trip_id: getActiveTripId(), ...payload });
         if (error) throw error;
       }
     },
@@ -932,14 +932,14 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
           const { data: existingExp } = await supabase
             .from("expenses")
             .select("id")
-            .eq("trip_id", TRIP_ID)
+            .eq("trip_id", getActiveTripId())
             .eq("category", "accommodation")
             .eq("description", h.hotel_name)
             .eq("expense_date", d.date)
             .limit(1);
           if (!existingExp || existingExp.length === 0) {
             const { error } = await supabase.from("expenses").insert({
-              trip_id: TRIP_ID,
+              trip_id: getActiveTripId(),
               category: "accommodation",
               amount_ils: priceN,
               description: h.hotel_name,
@@ -1127,7 +1127,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         const { error } = await supabase.from("hotels").update(payload).eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("hotels").insert({ trip_id: TRIP_ID, ...payload });
+        const { error } = await supabase.from("hotels").insert({ trip_id: getActiveTripId(), ...payload });
         if (error) throw error;
       }
     },
