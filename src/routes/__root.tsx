@@ -17,12 +17,17 @@ import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "@tanstack/react-router";
-import { Settings, LogOut, Share2 } from "lucide-react";
+import { Settings, LogOut, Share2, ArrowLeftRight } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
-import { signOut } from "@/hooks/use-auth";
+import { signOut, useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { BottomSheet } from "@/components/BottomSheet";
+import { TripPicker } from "@/components/TripPicker";
+import { useTripsList } from "@/hooks/use-trips-list";
+import { getActiveTripId } from "@/lib/constants";
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`;
 
