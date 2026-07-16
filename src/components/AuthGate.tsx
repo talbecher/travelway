@@ -3,11 +3,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInScreen } from "@/components/SignInScreen";
+import { TripPicker } from "@/components/TripPicker";
 import { ACTIVE_TRIP_KEY, setActiveTripId, clearActiveTripId } from "@/lib/constants";
+
+type Phase = "resolving" | "picking" | "ready";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState<Phase>("resolving");
   const claimedForUserRef = useRef<string | null>(null);
   const qc = useQueryClient();
 
@@ -15,66 +18,87 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (loading) return;
 
     if (!user) {
-      // Signed out — clear cache and active trip so nothing leaks to a new user.
       if (claimedForUserRef.current !== null) {
         qc.clear();
         clearActiveTripId();
         claimedForUserRef.current = null;
       }
-      setReady(false);
+      setPhase("resolving");
       return;
     }
 
-    // Already resolved for this user
-    if (claimedForUserRef.current === user.id) {
-      setReady(true);
-      return;
-    }
+    if (claimedForUserRef.current === user.id) return;
 
-    // A different user (or first sign-in) — wipe the previous user's cache.
     const isUserSwitch = claimedForUserRef.current !== null && claimedForUserRef.current !== user.id;
     if (isUserSwitch) {
       qc.clear();
       clearActiveTripId();
     }
     claimedForUserRef.current = user.id;
-    setReady(false);
+    setPhase("resolving");
 
     (async () => {
       try {
-        // Claim any unowned trips (idempotent — RLS lets authenticated users update owner_id IS NULL rows to themselves)
+        // Claim any unowned trips (idempotent — used for the very first sign-in with legacy demo data)
         await supabase
           .from("trips")
           .update({ owner_id: user.id })
           .is("owner_id", null);
 
-        // Ensure active trip id points to a trip we can access
+        // Load all accessible trips
+        const { data: trips } = await supabase
+          .from("trips")
+          .select("id")
+          .order("created_at", { ascending: true });
+
+        const ids = (trips ?? []).map((t) => t.id);
+        if (ids.length === 0) {
+          clearActiveTripId();
+          qc.clear();
+          setPhase("ready");
+          return;
+        }
+
         const stored = window.localStorage.getItem(ACTIVE_TRIP_KEY);
-        let active: string | null = null;
-        if (stored) {
-          const { data } = await supabase.from("trips").select("id").eq("id", stored).maybeSingle();
-          if (data?.id) active = data.id;
-        }
-        if (!active) {
-          const { data } = await supabase.from("trips").select("id").order("created_at").limit(1).maybeSingle();
-          if (data?.id) {
-            active = data.id;
-            setActiveTripId(data.id);
-          } else {
-            // Signed-in user has no accessible trip yet
-            clearActiveTripId();
+        const storedValid = stored && ids.includes(stored);
+
+        if (ids.length === 1) {
+          if (stored !== ids[0]) {
+            setActiveTripId(ids[0]);
+            qc.clear();
           }
+          setPhase("ready");
+          return;
         }
-        // Fresh cache scoped to the current user/trip
-        qc.clear();
-      } finally {
-        setReady(true);
+
+        // Multiple trips
+        if (storedValid) {
+          setPhase("ready");
+        } else {
+          clearActiveTripId();
+          qc.clear();
+          setPhase("picking");
+        }
+      } catch {
+        setPhase("ready");
       }
     })();
   }, [loading, user, qc]);
 
   if (loading) return <div className="min-h-screen bg-background" />;
   if (!user) return <SignInScreen />;
-  if (!ready) return <div className="min-h-screen bg-background" />;
+  if (phase === "resolving") return <div className="min-h-screen bg-background" />;
+  if (phase === "picking") {
+    return (
+      <div className="min-h-screen bg-background px-4 pt-10 pb-8 max-w-md mx-auto" dir="rtl">
+        <TripPicker
+          userId={user.id}
+          onPick={() => setPhase("ready")}
+          title="לאיזה טיול להיכנס?"
+          subtitle="יש לך יותר מטיול אחד. אפשר להחליף בכל רגע מההגדרות."
+        />
+      </div>
+    );
+  }
   return <>{children}</>;
 }

@@ -17,12 +17,17 @@ import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "@tanstack/react-router";
-import { Settings, LogOut, Share2 } from "lucide-react";
+import { Settings, LogOut, Share2, ArrowLeftRight } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
-import { signOut } from "@/hooks/use-auth";
+import { signOut, useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { BottomSheet } from "@/components/BottomSheet";
+import { TripPicker } from "@/components/TripPicker";
+import { useTripsList } from "@/hooks/use-trips-list";
+import { getActiveTripId } from "@/lib/constants";
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`;
 
@@ -135,6 +140,7 @@ function AppShell() {
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
             {!isOnboarding && <ShareTripButton />}
+            {!isOnboarding && <SwitchTripButton />}
             {!isOnboarding && <TripSettingsLink />}
             <ThemeToggle />
             <SignOutButton />
@@ -229,5 +235,32 @@ function ShareTripButton() {
     </button>
   );
 }
+
+function SwitchTripButton() {
+  const { user } = useAuth();
+  const { data: trips = [] } = useTripsList(user?.id);
+  const [open, setOpen] = useState(false);
+  if (trips.length < 2) return null;
+  const activeId = getActiveTripId();
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="החלפת טיול"
+        className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+      >
+        <ArrowLeftRight size={15} />
+      </button>
+      <BottomSheet open={open} onOpenChange={setOpen} title="החלפת טיול">
+        <TripPicker
+          userId={user?.id}
+          activeTripId={activeId}
+          onPick={() => setOpen(false)}
+        />
+      </BottomSheet>
+    </>
+  );
+}
+
 
 
