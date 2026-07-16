@@ -30,7 +30,7 @@ function JoinRoute() {
         return;
       }
       setActiveTripId(data as string);
-      qc.invalidateQueries();
+      qc.clear();
       toast.success("הצטרפת לטיול");
       navigate({ to: "/" });
     })();

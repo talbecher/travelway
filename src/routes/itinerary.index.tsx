@@ -22,7 +22,7 @@ import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, todayISO } from "@/lib/format";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIP_ID } from "@/lib/constants";
+import { useActiveTripId } from "@/hooks/use-active-trip";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 
@@ -90,6 +90,7 @@ function summarize(entries: EntryRow[]): string {
 function Itinerary() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const tripId = useActiveTripId();
   const { data: trip } = useTrip();
   const { data: days = [], isLoading } = useDays();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -126,12 +127,12 @@ function Itinerary() {
   });
 
   const { data: entriesByDay = {} } = useQuery<Record<string, EntryRow[]>>({
-    queryKey: ["day-entries-summary"],
+    queryKey: ["day-entries-summary", tripId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("day_entries")
         .select("id, day_id, entry_type, icon_emoji, title, location_name, latitude, longitude, time_of_day, display_order, itinerary_days!inner(trip_id)")
-        .eq("itinerary_days.trip_id", TRIP_ID)
+        .eq("itinerary_days.trip_id", tripId)
         .order("display_order")
         .order("created_at");
       if (error) throw error;

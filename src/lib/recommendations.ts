@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { TRIP_ID } from "@/lib/constants";
+import { getActiveTripId } from "@/lib/constants";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 
 export type RecType = "food" | "attraction" | "hotel";
@@ -35,7 +35,7 @@ export async function saveRecommendation(input: {
   const { data, error } = await supabase
     .from("recommendations")
     .insert({
-      trip_id: TRIP_ID,
+      trip_id: getActiveTripId(),
       type: input.type,
       name: input.name,
       city: input.city || null,

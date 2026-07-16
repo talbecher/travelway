@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIP_ID, CATEGORY_LABELS } from "@/lib/constants";
+import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
 import { useSettings } from "@/hooks/use-trip";
 import { BottomSheet } from "./BottomSheet";
@@ -64,7 +64,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
       }
 
       const { error } = await supabase.from("expenses").insert({
-        trip_id: TRIP_ID,
+        trip_id: getActiveTripId(),
         amount_ils,
         amount_foreign,
         foreign_currency: currency === "JPY" ? "JPY" : null,

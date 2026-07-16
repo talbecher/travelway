@@ -1,14 +1,32 @@
 const DEMO_TRIP_ID = "11111111-1111-1111-1111-111111111111";
 export const ACTIVE_TRIP_KEY = "active_trip_id";
-export const TRIP_ID: string =
-  typeof window !== "undefined"
-    ? window.localStorage.getItem(ACTIVE_TRIP_KEY) || DEMO_TRIP_ID
-    : DEMO_TRIP_ID;
+export const ACTIVE_TRIP_EVENT = "active-trip-changed";
+
+/**
+ * Read the currently-active trip id at call time.
+ * IMPORTANT: never cache this at module scope — the active trip can change
+ * when the user signs in/out or joins a shared trip. Callers (queryFn,
+ * insert payloads, etc.) MUST resolve it fresh on each call.
+ */
+export function getActiveTripId(): string {
+  if (typeof window === "undefined") return DEMO_TRIP_ID;
+  return window.localStorage.getItem(ACTIVE_TRIP_KEY) || DEMO_TRIP_ID;
+}
 
 export function setActiveTripId(id: string) {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(ACTIVE_TRIP_KEY, id);
+  if (typeof window === "undefined") return;
+  const prev = window.localStorage.getItem(ACTIVE_TRIP_KEY);
+  window.localStorage.setItem(ACTIVE_TRIP_KEY, id);
+  if (prev !== id) {
+    window.dispatchEvent(new CustomEvent(ACTIVE_TRIP_EVENT, { detail: id }));
   }
+}
+
+export function clearActiveTripId() {
+  if (typeof window === "undefined") return;
+  const had = window.localStorage.getItem(ACTIVE_TRIP_KEY);
+  window.localStorage.removeItem(ACTIVE_TRIP_KEY);
+  if (had) window.dispatchEvent(new CustomEvent(ACTIVE_TRIP_EVENT, { detail: null }));
 }
 
 export const CITIES = [

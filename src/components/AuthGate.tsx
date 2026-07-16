@@ -3,24 +3,42 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInScreen } from "@/components/SignInScreen";
-import { ACTIVE_TRIP_KEY, setActiveTripId } from "@/lib/constants";
+import { ACTIVE_TRIP_KEY, setActiveTripId, clearActiveTripId } from "@/lib/constants";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const [ready, setReady] = useState(false);
-  const claimedRef = useRef(false);
+  const claimedForUserRef = useRef<string | null>(null);
   const qc = useQueryClient();
 
   useEffect(() => {
-    if (loading || !user) {
+    if (loading) return;
+
+    if (!user) {
+      // Signed out — clear cache and active trip so nothing leaks to a new user.
+      if (claimedForUserRef.current !== null) {
+        qc.clear();
+        clearActiveTripId();
+        claimedForUserRef.current = null;
+      }
       setReady(false);
       return;
     }
-    if (claimedRef.current) {
+
+    // Already resolved for this user
+    if (claimedForUserRef.current === user.id) {
       setReady(true);
       return;
     }
-    claimedRef.current = true;
+
+    // A different user (or first sign-in) — wipe the previous user's cache.
+    const isUserSwitch = claimedForUserRef.current !== null && claimedForUserRef.current !== user.id;
+    if (isUserSwitch) {
+      qc.clear();
+      clearActiveTripId();
+    }
+    claimedForUserRef.current = user.id;
+    setReady(false);
 
     (async () => {
       try {
@@ -42,10 +60,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           if (data?.id) {
             active = data.id;
             setActiveTripId(data.id);
+          } else {
+            // Signed-in user has no accessible trip yet
+            clearActiveTripId();
           }
         }
-        // Invalidate so hooks re-read with the correct active trip
-        qc.invalidateQueries();
+        // Fresh cache scoped to the current user/trip
+        qc.clear();
       } finally {
         setReady(true);
       }
