@@ -1,44 +1,42 @@
-# תכנית: שדרוג מפה — clustering, קריאות ומסלול
 
-## סדר עדיפויות מאושר
-1. Clustering (הכי חשוב)
-2. פינים לפי סטטוס (ביקרנו/דילגנו)
-3. BottomSheet במובייל בלחיצה על פין
-4. כפתור "התמקד עלי"
-5. שיפור Polyline (משקל/צבע — **בלי חיצים**, כדי לא לפגוע ב-SSR)
-6. Legend (מקרא)
+## מה קורה עכשיו
 
-## שינויים
+- כשמשתמש מתחבר, AuthGate פשוט בוחר את הטיול הראשון (`order("created_at").limit(1)`) אם אין `active_trip_id` תקף ב-localStorage.
+- למשתמש כמו tal יש כבר טיול משלו + טיול שיובל שיתפה איתו → נבחר "טיול ראשון" באופן שרירותי, לכן לפעמים רואים את הטיול הישן של tal ולא את החדש של יובל.
+- אין כרגע UI לבחירת טיול מתוך רשימה.
 
-### `src/components/RecsMap.tsx` (עמוד המלצות)
-- **Clustering**: עטיפת ה-Markers ב-`MarkerClusterGroup` מ-`react-leaflet-cluster`. `maxClusterRadius: 45`, `disableClusteringAtZoom: 15`, `spiderfyOnMaxZoom: true`. אייקון cluster מותאם בגרדיאנט סגול עם ספירה.
-- **סטטוס חזותי**: `pinIcon(type, name, status)` — לפינים "ביקרנו" תוספת עיגול ירוק קטן ✓ בפינה, שקיפות 0.85. ל"דילגנו" — עיגול אפור ✕, שקיפות 0.5, תווית עם `line-through`.
-- **BottomSheet בלחיצה**: הסרת ה-Popup לחלוטין. `eventHandlers.click` על המרקר יקרא ל-`onAddToDay(id)` שכבר פותח את `MapPickCard` הקיים (עם תמונה, ניווט, הוסף ליום).
-- **כפתור "התמקד עלי"**: קומפוננטה פנימית `LocateButton` — כפתור צף בפינה ימנית-תחתונה, לחיצה `map.setView(userPos, 15)`. בלי הרשאה — מציג טוסט קצר "אין הרשאת מיקום".
-- **Legend**: כרטיס קטן קפיץ בפינה שמאלית-עליונה — צבעי סוגים ומשמעות סמלי ✓/✕. פתיחה/סגירה בקליק.
+## מה נבנה
 
-### `src/components/DayMap.tsx` (מפת יום במסלול)
-- **Clustering**: אותה עטיפה, אבל עם `disableClusteringAtZoom: 14` (כדי שהקו יראה טוב ברמת יום).
-- **Polyline משופר**: משקל 4 במקום 3, אטימות 0.85, צבע `#6C63FF` מלא (בלי `dashArray`), `lineCap: "round"`, `lineJoin: "round"`. **בלי חיצים** — הכיוון יובן מהמספור על הפינים (1→2→3…).
-- **כפתור "התמקד למסלול"**: כפתור צף שממקד מחדש את bounds של כל התחנות.
+### 1. Trip Switcher בזמן התחברות
+במקום שAuthGate יבחר לבד:
+- אם יש **טיול אחד** → נכנסים ישר אליו (כמו היום).
+- אם יש **כמה טיולים** ואין `active_trip_id` תקף → מציגים מסך בחירה (`TripPicker`) לפני שנכנסים לאפליקציה.
+- מציגים לכל טיול:
+  - שם הטיול + תאריכי יעד קצרים
+  - Badge "שלי" אם `owner_id = user.id` וב-`shared_user_ids` ריק
+  - Badge "משותף · N חברים" אם יש עוד משתתפים (ספירה מ-`shared_user_ids` + הבעלים)
+  - Badge "הצטרפת" אם `owner_id !== user.id`
+- לחיצה על טיול → `setActiveTripId(id)` + `qc.clear()` + כניסה לאפליקציה.
 
-### `src/styles.css`
-- אין תוספות — CSS של `leaflet.markercluster` יובא ישירות ב-`RecsMap.tsx` וב-`DayMap.tsx` (`import "leaflet.markercluster/dist/MarkerCluster.css"` + `MarkerCluster.Default.css`). מודולים אלה נטענים דרך `React.lazy` והם client-only.
+### 2. Trip Switcher זמין תמיד
+כפתור החלפת טיול נגיש גם אחרי הכניסה, כדי שלא צריך להתנתק כדי לעבור טיול:
+- הוספת פריט "החלפת טיול" ב-Settings (או ליד שם הטיול במסך הבית — נעדיף Settings כי זה שינוי מינימלי).
+- פותח את אותו `TripPicker` כ-BottomSheet; בחירה מחליפה active trip + `qc.clear()`.
 
-## SSR / הבנות טכניות
-- `RecsMap` ו-`DayMap` כבר נטענים דרך `React.lazy` בתוך `<ClientOnly>` — הוספת `MarkerClusterGroup` בטוחה כי היא רצה רק בצד לקוח.
-- **אין** שימוש ב-`L.polylineDecorator` (זה מה שגרם בעבר לבעיות SSR — נשמט לפי בקשת המשתמש).
+### 3. תיקון שיוך זכרון
+- AuthGate ימשיך לנקות cache בהחלפת משתמש (כבר קיים).
+- כשהמשתמש בוחר טיול מה-Picker נקרא `qc.clear()` כדי שלא יהיה ערבוב עם נתונים ממוזערים של טיול קודם — כולל המקרה שדיווחת עליו (מלון/הוצאה מהטיול הישן שנשארו בזיכרון).
+- אם ה-`active_trip_id` השמור מצביע על טיול שאינו נגיש (או שיש יותר מטיול אחד ולא בחרו במפורש בסשן הזה) — נציג את ה-Picker במקום ליפול לברירת מחדל שרירותית.
 
-## בדיקות
-- `/recommendations` → מפה: פינים מתקבצים כשקרובים; קליק על אשכול = זום/פיזור; קליק על פין בודד = פתיחת BottomSheet של המלצה; פינים "ביקרנו" עם ✓ ירוק ו"דילגנו" עם ✕ אפור; מקרא נפתח וקריא.
-- `/itinerary/{dayId}` → מפת יום: פינים ממוספרים 1→N; Polyline רציף וברור; קליק על פין גולל לכרטיס ברשימה (כבר קיים); כפתור התמקדות מחזיר את כל התחנות למסך.
-- כפתור "התמקד עלי" בשני המפות עובד או מציג הודעת חוסר הרשאה.
+## קבצים
 
-## חבילות
-כבר הותקנו:
-- `react-leaflet-cluster@4.1.3`
-- `leaflet.markercluster@1.5.3`
-- `@types/leaflet.markercluster@1.5.6`
+- `src/components/TripPicker.tsx` (חדש) — רשימת טיולים עם Badges ובחירה.
+- `src/components/AuthGate.tsx` — לוגיקת "כמה טיולים ← הצג picker".
+- `src/hooks/use-trips-list.ts` (חדש) — query לכל הטיולים הנגישים למשתמש כולל ספירת משתתפים.
+- `src/routes/settings.tsx` (אם קיים; אחרת נוסיף כפתור קטן ב-`src/routes/index.tsx` ליד שם הטיול) — כפתור "החלף טיול".
+- טקסטים בעברית, RTL, בהתאם לסגנון הקיים.
 
-## אין שינויי DB
-כל השדות (`status`, `latitude`, `longitude`, `photo_url`, `notes`) כבר קיימים.
+## מחוץ לסקופ
+
+- ללא שינויי DB / RLS — הכל frontend על סמך הטבלה `trips` הקיימת (`owner_id`, `shared_user_ids`).
+- ללא שינוי בזרימת `join.$token` — היא כבר קוראת `setActiveTripId` + `qc.clear()`.
