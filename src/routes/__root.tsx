@@ -140,6 +140,7 @@ function AppShell() {
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
             {!isOnboarding && <ShareTripButton />}
+            {!isOnboarding && <SwitchTripButton />}
             {!isOnboarding && <TripSettingsLink />}
             <ThemeToggle />
             <SignOutButton />
