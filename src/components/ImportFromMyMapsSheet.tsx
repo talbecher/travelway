@@ -6,7 +6,7 @@ import { Loader2, MapPin, AlertTriangle } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { fetchMyMapKml, type ImportedPlace } from "@/lib/maps-import.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIP_ID } from "@/lib/constants";
+import { getActiveTripId } from "@/lib/constants";
 
 type Step = "url" | "preview";
 
@@ -78,7 +78,7 @@ export function ImportFromMyMapsSheet({
       const rows = places
         .filter((_, i) => selected.has(i))
         .map((p) => ({
-          trip_id: TRIP_ID,
+          trip_id: getActiveTripId(),
           type: p.suggested_type,
           city: city.trim() || null,
           name: p.name,

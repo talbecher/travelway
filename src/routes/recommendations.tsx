@@ -5,7 +5,7 @@ import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, D
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
-import { TRIP_ID } from "@/lib/constants";
+import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
 import { BottomSheet } from "@/components/BottomSheet";

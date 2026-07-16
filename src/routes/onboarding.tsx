@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrip } from "@/hooks/use-trip";
-import { setActiveTripId, TRIP_ID } from "@/lib/constants";
+import { setActiveTripId } from "@/lib/constants";
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -263,5 +263,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-// Reference TRIP_ID for the constants module tree-shake safety
-void TRIP_ID;
