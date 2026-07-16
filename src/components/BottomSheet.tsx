@@ -15,9 +15,9 @@ export function BottomSheet({
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} direction="bottom">
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Drawer.Overlay className="fixed inset-0 z-[1000] bg-black/40" />
         <Drawer.Content
-          className="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl bg-card border-t border-border max-h-[92vh] flex flex-col outline-none"
+          className="fixed bottom-0 inset-x-0 z-[1001] rounded-t-2xl bg-card border-t border-border max-h-[92vh] flex flex-col outline-none"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <div className="pt-2.5 pb-1.5 flex justify-center shrink-0">
