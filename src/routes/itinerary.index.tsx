@@ -22,7 +22,7 @@ import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, todayISO } from "@/lib/format";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIP_ID } from "@/lib/constants";
+import { useActiveTripId } from "@/hooks/use-active-trip";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 

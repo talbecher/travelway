@@ -1,81 +1,98 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIP_ID } from "@/lib/constants";
+import { useActiveTripId } from "@/hooks/use-active-trip";
 
-export const tripQuery = queryOptions({
-  queryKey: ["trip"],
-  queryFn: async () => {
-    const { data, error } = await supabase.from("trips").select("*").eq("id", TRIP_ID).maybeSingle();
-    if (error) throw error;
-    return data;
-  },
-});
+/**
+ * All trip-scoped query keys MUST include the active tripId so cached data
+ * from another trip/user cannot bleed through when the active trip changes.
+ */
 
-export const daysQuery = queryOptions({
-  queryKey: ["days"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("itinerary_days")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .order("day_number");
-    if (error) throw error;
-    return data ?? [];
-  },
-});
+export function tripQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["trip", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("trips").select("*").eq("id", tripId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
 
-export const recsQuery = queryOptions({
-  queryKey: ["recs"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("recommendations")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .order("created_at");
-    if (error) throw error;
-    return data ?? [];
-  },
-});
+export function daysQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["days", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("itinerary_days")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("day_number");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
 
-export const hotelsQuery = queryOptions({
-  queryKey: ["hotels"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("hotels")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .order("checkin_date");
-    if (error) throw error;
-    return data ?? [];
-  },
-});
+export function recsQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["recs", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recommendations")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("created_at");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
 
-export const expensesQuery = queryOptions({
-  queryKey: ["expenses"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("expenses")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .order("expense_date", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data ?? [];
-  },
-});
+export function hotelsQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["hotels", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("hotels")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("checkin_date");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
 
-export const settingsQuery = queryOptions({
-  queryKey: ["settings"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("settings")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  },
-});
+export function expensesQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["expenses", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("expense_date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function settingsQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["settings", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("trip_id", tripId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
 
 export function dayEntriesQuery(dayId: string) {
   return queryOptions({
@@ -93,9 +110,9 @@ export function dayEntriesQuery(dayId: string) {
   });
 }
 
-export function useTrip() { return useQuery(tripQuery); }
-export function useDays() { return useQuery(daysQuery); }
-export function useRecs() { return useQuery(recsQuery); }
-export function useHotels() { return useQuery(hotelsQuery); }
-export function useExpenses() { return useQuery(expensesQuery); }
-export function useSettings() { return useQuery(settingsQuery); }
+export function useTrip() { return useQuery(tripQuery(useActiveTripId())); }
+export function useDays() { return useQuery(daysQuery(useActiveTripId())); }
+export function useRecs() { return useQuery(recsQuery(useActiveTripId())); }
+export function useHotels() { return useQuery(hotelsQuery(useActiveTripId())); }
+export function useExpenses() { return useQuery(expensesQuery(useActiveTripId())); }
+export function useSettings() { return useQuery(settingsQuery(useActiveTripId())); }
