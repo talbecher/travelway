@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearActiveTripId } from "@/lib/constants";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -30,6 +31,6 @@ export async function signOut() {
   await supabase.auth.signOut();
   if (typeof window !== "undefined") {
     window.sessionStorage.clear();
-    window.localStorage.removeItem("active_trip_id");
+    clearActiveTripId();
   }
 }
