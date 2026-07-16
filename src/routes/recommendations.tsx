@@ -735,8 +735,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   );
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 pt-2 pb-2">
-      <div className="flex gap-1 bg-muted rounded-lg p-1">
+    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-2.5 pt-1 pb-2">
+      <div className="flex gap-1 bg-muted rounded-lg p-1 sticky top-0 z-10">
         {seg("food", "אוכל", "🍜", "var(--accent-2)")}
         {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
         {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
@@ -744,7 +744,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
 
       {!manualMode && !placeSelected && (
         <>
-          <PlacesSearch onSelect={handlePlace} />
+          <PlacesSearch onSelect={handlePlace} autoFocus />
           <button
             type="button"
             onClick={() => setManualMode(true)}
@@ -773,12 +773,12 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
 
       {(manualMode || placeSelected) && (
         <>
-          <Field label="שם"><input required value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="עיר"><input required value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="אזור / שכונה"><input value={address} onChange={(e) => setAddress(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+          <Field label="שם"><input required value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
+          <Field label="עיר"><input required value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
+          <Field label="אזור / שכונה"><input value={address} onChange={(e) => setAddress(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" /></Field>
           {manualMode && !placeSelected && (
             <Field label="לינק גוגל מפות">
-              <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+              <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-10" />
               {url.trim() && (
                 parseLatLngFromMapsUrl(url)
                   ? <div className="text-[11px] text-[color:var(--accent-3)] mt-1">✅ מיקום זוהה</div>
@@ -786,7 +786,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
               )}
             </Field>
           )}
-          <Field label="הערות"><textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[70px]" /></Field>
+          <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
 
           {type === "hotel" && !existing && (
             <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
@@ -794,10 +794,12 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
             </div>
           )}
 
-          <button type="submit" disabled={save.isPending}
-            className="w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
-            {save.isPending ? "שומר..." : "שמור"}
-          </button>
+          <div className="sticky bottom-0 -mx-5 px-5 pt-2 pb-1 bg-gradient-to-t from-card via-card to-transparent">
+            <button type="submit" disabled={save.isPending}
+              className="w-full h-11 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
+              {save.isPending ? "שומר..." : "שמור"}
+            </button>
+          </div>
         </>
       )}
     </form>
