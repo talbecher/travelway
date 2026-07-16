@@ -236,4 +236,31 @@ function ShareTripButton() {
   );
 }
 
+function SwitchTripButton() {
+  const { user } = useAuth();
+  const { data: trips = [] } = useTripsList(user?.id);
+  const [open, setOpen] = useState(false);
+  if (trips.length < 2) return null;
+  const activeId = getActiveTripId();
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="החלפת טיול"
+        className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+      >
+        <ArrowLeftRight size={15} />
+      </button>
+      <BottomSheet open={open} onOpenChange={setOpen} title="החלפת טיול">
+        <TripPicker
+          userId={user?.id}
+          activeTripId={activeId}
+          onPick={() => setOpen(false)}
+        />
+      </BottomSheet>
+    </>
+  );
+}
+
+
 
