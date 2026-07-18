@@ -185,7 +185,7 @@ function Recs() {
   return (
     <div className="pt-2 space-y-4 pb-4">
       <div className="flex items-center justify-between gap-2">
-        <h1>המלצות</h1>
+        <h1>המלצות ומקומות שמורים</h1>
         <div className="flex items-center gap-2">
           {selectableInList && (
             selectionMode ? (
@@ -1211,54 +1211,63 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 pt-2 pb-2">
-      {!manualMode && !placeSelected && (
-        <>
-          <PlacesSearch onSelect={handlePlace} />
-          <button type="button" onClick={() => setManualMode(true)}
-            className="text-xs text-muted-foreground underline min-h-0 h-auto p-0">
-            הוסף ידנית
-          </button>
-        </>
-      )}
+    <form
+      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      className="flex flex-col min-h-[62vh] pt-1 pb-2"
+    >
+      <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
+        {!manualMode && !placeSelected && (
+          <>
+            <PlacesSearch onSelect={handlePlace} />
+            <button type="button" onClick={() => setManualMode(true)}
+              className="text-xs text-muted-foreground underline min-h-0 h-auto p-0">
+              הוסף ידנית
+            </button>
+          </>
+        )}
 
-      {placeSelected && (
-        <div className="rounded-lg border border-[color:var(--accent-3)]/40 bg-[color:var(--accent-3)]/10 p-2 text-xs flex items-start gap-2">
-          {photoUrl && <img src={photoUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />}
-          <div className="flex-1 min-w-0">
-            <div className="text-[color:var(--accent-3)]">✅ {placeSelected.name}</div>
-            {placeSelected.address && (
-              <div className="text-muted-foreground truncate" dir="ltr">{placeSelected.address}</div>
-            )}
+        {placeSelected && (
+          <div className="rounded-lg border border-[color:var(--accent-3)]/40 bg-[color:var(--accent-3)]/10 p-2 text-xs flex items-start gap-2">
+            {photoUrl && <img src={photoUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <div className="text-[color:var(--accent-3)]">✅ {placeSelected.name}</div>
+              {placeSelected.address && (
+                <div className="text-muted-foreground truncate" dir="ltr">{placeSelected.address}</div>
+              )}
+            </div>
+            <button type="button" onClick={clearPlace}
+              className="text-[color:var(--accent)] underline min-h-0 h-auto p-0 shrink-0">שנה</button>
           </div>
-          <button type="button" onClick={clearPlace}
-            className="text-[color:var(--accent)] underline min-h-0 h-auto p-0 shrink-0">שנה</button>
-        </div>
-      )}
+        )}
+
+        {(manualMode || placeSelected) && (
+          <>
+            <Field label="שם המלון"><input required value={hotel_name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            <Field label="סוג">
+              <select value={type} onChange={(e) => setType(e.target.value as "hotel" | "ryokan" | "other")} className="w-full rounded-lg bg-background border border-input px-3 h-11">
+                <option value="hotel">מלון</option><option value="ryokan">ריוקאן</option><option value="other">אחר</option>
+              </select>
+            </Field>
+            <Field label="עיר"><input value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="צ׳ק-אין"><input type="date" value={checkin_date} onChange={(e) => setCi(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+              <Field label="צ׳ק-אאוט"><input type="date" value={checkout_date} onChange={(e) => setCo(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            </div>
+            <Field label="מחיר ללילה (₪)"><input type="number" value={price_per_night} onChange={(e) => setPrice(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            <Field label="תאריך ביטול חינם"><input type="date" value={cancellation_deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            <Field label="פלטפורמת הזמנה"><input value={booking_platform} onChange={(e) => setPlat(e.target.value)} placeholder="Booking, Agoda..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            <Field label="לינק להזמנה"><input type="url" value={confirmation_url} onChange={(e) => setUrl(e.target.value)} dir="ltr" placeholder="https://..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
+            <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[60px]" /></Field>
+          </>
+        )}
+      </div>
 
       {(manualMode || placeSelected) && (
-        <>
-          <Field label="שם המלון"><input required value={hotel_name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="סוג">
-            <select value={type} onChange={(e) => setType(e.target.value as "hotel" | "ryokan" | "other")} className="w-full rounded-lg bg-background border border-input px-3 h-11">
-              <option value="hotel">מלון</option><option value="ryokan">ריוקאן</option><option value="other">אחר</option>
-            </select>
-          </Field>
-          <Field label="עיר"><input value={city} onChange={(e) => setCity(e.target.value)} dir="ltr" className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="צ׳ק-אין"><input type="date" value={checkin_date} onChange={(e) => setCi(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-            <Field label="צ׳ק-אאוט"><input type="date" value={checkout_date} onChange={(e) => setCo(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          </div>
-          <Field label="מחיר ללילה (₪)"><input type="number" value={price_per_night} onChange={(e) => setPrice(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="תאריך ביטול חינם"><input type="date" value={cancellation_deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="פלטפורמת הזמנה"><input value={booking_platform} onChange={(e) => setPlat(e.target.value)} placeholder="Booking, Agoda..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="לינק להזמנה"><input type="url" value={confirmation_url} onChange={(e) => setUrl(e.target.value)} dir="ltr" placeholder="https://..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
-          <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[60px]" /></Field>
-
-          <button type="submit" disabled={save.isPending} className="w-full h-12 rounded-xl bg-[color:var(--accent-3)] text-white font-medium disabled:opacity-50">
+        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-1 bg-card border-t border-border/60 shrink-0">
+          <button type="submit" disabled={save.isPending} className="w-full h-11 rounded-xl bg-[color:var(--accent-3)] text-white font-medium disabled:opacity-50">
             {save.isPending ? "שומר..." : "שמור"}
           </button>
-        </>
+        </div>
       )}
     </form>
   );
