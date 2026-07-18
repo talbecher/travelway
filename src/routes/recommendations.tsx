@@ -254,7 +254,7 @@ function Recs() {
       )}
 
       {tab === "hotels" ? (
-        <HotelsList onEdit={setEditRec} />
+        <HotelsList onEdit={setEditRec} query={q} />
       ) : view === "map" ? (
         <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
           <ClientOnly fallback={<MapSkeleton />}>
@@ -274,6 +274,7 @@ function Recs() {
         <PlacesList
           type={listType}
           cityFilter={city}
+          query={q}
           onEdit={setEditRec}
           selectionMode={selectionMode}
           selectedIds={selectedIds}
