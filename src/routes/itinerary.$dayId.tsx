@@ -102,7 +102,36 @@ function DayDetail() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
   const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
+  const [editLocationEntry, setEditLocationEntry] = useState<EntryRow | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const tripId = useActiveTripId();
+
+  const updateEntryLocation = useMutation({
+    mutationFn: async ({ entry, place }: { entry: EntryRow; place: SelectedPlace }) => {
+      const patch = {
+        latitude: place.latitude,
+        longitude: place.longitude,
+        google_maps_url: place.google_maps_url,
+      };
+      const { error } = await supabase.from("day_entries").update(patch).eq("id", entry.id);
+      if (error) throw error;
+      if (entry.linked_recommendation_id) {
+        const { error: recErr } = await supabase
+          .from("recommendations")
+          .update(patch)
+          .eq("id", entry.linked_recommendation_id);
+        if (recErr) throw recErr;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["recs", tripId] });
+      qc.invalidateQueries({ queryKey: ["recs"] });
+      toast.success("✅ מיקום עודכן");
+      setEditLocationEntry(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
