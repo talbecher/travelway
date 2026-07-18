@@ -5,6 +5,7 @@ import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertica
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, dayEntriesQuery } from "@/hooks/use-trip";
+import { useActiveTripId } from "@/hooks/use-active-trip";
 import { hebDateLong } from "@/lib/format";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
