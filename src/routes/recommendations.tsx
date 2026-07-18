@@ -1294,3 +1294,107 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
 function ListSkeleton() {
   return <div className="space-y-2 animate-pulse">{[0, 1, 2, 3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl" />)}</div>;
 }
+
+function AdminBackfillButton({ recs }: { recs: Rec[] }) {
+  const qc = useQueryClient();
+  const enrichFn = useServerFn(enrichRecommendationPhoto);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [stopRef] = useState<{ stop: boolean }>({ stop: false });
+  const [progress, setProgress] = useState<{ done: number; total: number; updated: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    setIsAdmin(p.get("admin") === "1");
+  }, []);
+
+  const targets = useMemo(
+    () =>
+      recs.filter(
+        (r) =>
+          !r.photo_url &&
+          (r.type === "food" || r.type === "attraction"),
+      ),
+    [recs],
+  );
+
+  if (!isAdmin) return null;
+
+  const run = async () => {
+    if (targets.length === 0) {
+      toast.info("אין המלצות ללא תמונה");
+      return;
+    }
+    if (!confirm(`נמצאו ${targets.length} המלצות ללא תמונה. להמשיך?`)) return;
+    setRunning(true);
+    stopRef.stop = false;
+    let done = 0;
+    let updated = 0;
+    setProgress({ done: 0, total: targets.length, updated: 0 });
+    const toastId = toast.loading(`מעדכן תמונות... 0/${targets.length}`);
+    const BATCH = 10;
+    try {
+      for (let i = 0; i < targets.length; i += BATCH) {
+        if (stopRef.stop) break;
+        const slice = targets.slice(i, i + BATCH);
+        const results = await Promise.all(
+          slice.map((r) => {
+            const lat = typeof r.latitude === "string" ? parseFloat(r.latitude) : r.latitude;
+            const lng = typeof r.longitude === "string" ? parseFloat(r.longitude) : r.longitude;
+            return enrichFn({
+              data: {
+                id: r.id,
+                name: r.name,
+                city: r.city,
+                lat: Number.isFinite(lat as number) ? (lat as number) : null,
+                lng: Number.isFinite(lng as number) ? (lng as number) : null,
+              },
+            }).catch(() => null);
+          }),
+        );
+        results.forEach((r) => {
+          if (r?.updated && r.photo_url) updated += 1;
+        });
+        done = Math.min(i + BATCH, targets.length);
+        setProgress({ done, total: targets.length, updated });
+        toast.loading(`מעדכן תמונות... ${done}/${targets.length}`, { id: toastId });
+      }
+      toast.success(`✅ עודכנו ${updated} תמונות`, { id: toastId });
+      qc.invalidateQueries({ queryKey: ["recs", getActiveTripId()] });
+      qc.invalidateQueries({ queryKey: ["recs"] });
+    } finally {
+      setRunning(false);
+      setProgress(null);
+    }
+  };
+
+  return (
+    <div className="border border-dashed border-amber-500/50 rounded-lg p-2 text-xs bg-amber-500/5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground">
+          🛠 מצב אדמין · {targets.length} המלצות ללא תמונה
+        </span>
+        <div className="flex gap-1">
+          {running && (
+            <button
+              onClick={() => {
+                stopRef.stop = true;
+              }}
+              className="h-8 px-3 rounded-md bg-[color:var(--accent-2)] text-white min-h-0"
+            >
+              עצור
+            </button>
+          )}
+          <button
+            onClick={run}
+            disabled={running || targets.length === 0}
+            className="h-8 px-3 rounded-md bg-amber-500 text-white disabled:opacity-40 min-h-0"
+          >
+            {running ? `מעדכן... ${progress?.done ?? 0}/${progress?.total ?? 0}` : "עדכן תמונות חסרות"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
