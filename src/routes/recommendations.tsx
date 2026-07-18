@@ -886,26 +886,34 @@ type Hotel = {
   photo_url?: string | null;
 };
 
-function HotelsList({ onEdit: _onEdit }: { onEdit: (r: Rec) => void }) {
+function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; query: string }) {
   const { data: hotels = [], isLoading } = useHotels();
   const [editHotel, setEditHotel] = useState<Hotel | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+
+  const filtered = useMemo(
+    () => (hotels as Hotel[]).filter((h) =>
+      matchesQuery([h.hotel_name, h.city, h.address, h.notes, h.post_stay_review, TYPE_KEYWORDS.hotel], query),
+    ),
+    [hotels, query],
+  );
 
   if (isLoading) return <ListSkeleton />;
 
   return (
     <>
-      {hotels.length === 0 ? (
-        <EmptyState variant="hotels" title="אין מלונות עדיין" hint="הוסף מלון עם הכפתור בפינה או דרך כפתור זה" cta={
+      {filtered.length === 0 ? (
+        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="הוסף מלון עם הכפתור בפינה או דרך כפתור זה" cta={
           <button onClick={() => setAddOpen(true)} className="h-11 px-5 rounded-xl bg-[color:var(--accent-3)] text-white text-sm font-medium">
             + הוסף מלון
           </button>
         } />
       ) : (
         <div className="space-y-2">
-          {(hotels as Hotel[]).map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
+          {filtered.map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
         </div>
       )}
+
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף מלון">
         <HotelForm onDone={() => setAddOpen(false)} />
