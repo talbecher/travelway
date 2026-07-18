@@ -1102,6 +1102,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
           latitude: lat,
           longitude: lng,
           photo_url: h.photo_url ?? null,
+          linked_recommendation_id: h.id,
         });
         if (error) throw error;
         addedEntries++;
