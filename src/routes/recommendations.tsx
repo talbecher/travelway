@@ -452,6 +452,9 @@ function PlacesList({
 
   if (isLoading) return <ListSkeleton />;
   if (list.length === 0) {
+    if (query.trim()) {
+      return <EmptyState variant="recs" title={`לא נמצאו תוצאות עבור "${query}"`} hint="נסה מילה אחרת או נקה את החיפוש" />;
+    }
     const title = type === "food" ? "אין המלצות אוכל עדיין"
       : type === "attraction" ? "אין אטרקציות עדיין"
       : "אין המלצות עדיין";
