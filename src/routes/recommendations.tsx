@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
@@ -41,6 +41,27 @@ type Rec = {
 
 const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food", attractions: "attraction" };
 
+const TYPE_KEYWORDS: Record<string, string> = {
+  food: "אוכל food מסעדה",
+  attraction: "אטרקציה attraction",
+  hotel: "מלון לינה hotel",
+};
+
+function matchesQuery(fields: Array<string | null | undefined>, q: string): boolean {
+  const query = q.trim().toLowerCase();
+  if (!query) return true;
+  const hay = fields.filter(Boolean).join(" \n ").toLowerCase();
+  const tokens = query.split(/\s+/).filter(Boolean);
+  return tokens.every((t) => hay.includes(t));
+}
+
+function recMatchesQuery(r: Rec, q: string): boolean {
+  return matchesQuery(
+    [r.name, r.notes, r.review, r.city, r.address, TYPE_KEYWORDS[r.type]],
+    q,
+  );
+}
+
 function Recs() {
   const search = Route.useSearch();
   const qc = useQueryClient();
@@ -53,6 +74,7 @@ function Recs() {
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [q, setQ] = useState("");
   const { data: recs = [] } = useRecs();
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
@@ -96,9 +118,10 @@ function Recs() {
     return (recs as Rec[])
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
+      .filter((r) => recMatchesQuery(r, q))
       .map((r) => r.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city]);
+  }, [recs, tab, city, q]);
 
   const selectAllVisible = () => setSelectedIds(new Set(visibleIds));
 
@@ -122,6 +145,7 @@ function Recs() {
     return (recs as Rec[])
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
+      .filter((r) => recMatchesQuery(r, q))
       .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
         id: r.id,
@@ -138,7 +162,8 @@ function Recs() {
         photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city]);
+  }, [recs, tab, city, q]);
+
 
 
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -197,6 +222,28 @@ function Recs() {
         <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 לינה</TabBtn>
       </div>
 
+      <div className="relative">
+        <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="חפש: סושי, גיוזה, מוזיאון..."
+          dir="rtl"
+          className="w-full rounded-lg bg-background border border-input pr-9 pl-9 h-10 text-sm outline-none focus:border-[color:var(--accent)]"
+        />
+        {q && (
+          <button
+            type="button"
+            aria-label="נקה חיפוש"
+            onClick={() => setQ("")}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground min-h-0"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       {tab !== "hotels" && cities.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           <Pill active={city === "all"} onClick={() => setCity("all")}>הכל</Pill>
@@ -207,7 +254,7 @@ function Recs() {
       )}
 
       {tab === "hotels" ? (
-        <HotelsList onEdit={setEditRec} />
+        <HotelsList onEdit={setEditRec} query={q} />
       ) : view === "map" ? (
         <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
           <ClientOnly fallback={<MapSkeleton />}>
@@ -227,6 +274,7 @@ function Recs() {
         <PlacesList
           type={listType}
           cityFilter={city}
+          query={q}
           onEdit={setEditRec}
           selectionMode={selectionMode}
           selectedIds={selectedIds}
@@ -358,10 +406,11 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
 }
 
 function PlacesList({
-  type, cityFilter, onEdit, selectionMode, selectedIds, onToggleSelect,
+  type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
+  query: string;
   onEdit: (r: Rec) => void;
   selectionMode: boolean;
   selectedIds: Set<string>;
@@ -384,6 +433,7 @@ function PlacesList({
       type === "all" ? (r.type === "food" || r.type === "attraction") : r.type === type,
     );
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
+    items = items.filter((r) => recMatchesQuery(r, query));
     if (type === "all") {
       items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     } else if (pos) {
@@ -397,10 +447,14 @@ function PlacesList({
       items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     }
     return items;
-  }, [recs, type, cityFilter, pos]);
+  }, [recs, type, cityFilter, pos, query]);
+
 
   if (isLoading) return <ListSkeleton />;
   if (list.length === 0) {
+    if (query.trim()) {
+      return <EmptyState variant="recs" title={`לא נמצאו תוצאות עבור "${query}"`} hint="נסה מילה אחרת או נקה את החיפוש" />;
+    }
     const title = type === "food" ? "אין המלצות אוכל עדיין"
       : type === "attraction" ? "אין אטרקציות עדיין"
       : "אין המלצות עדיין";
@@ -835,26 +889,34 @@ type Hotel = {
   photo_url?: string | null;
 };
 
-function HotelsList({ onEdit: _onEdit }: { onEdit: (r: Rec) => void }) {
+function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; query: string }) {
   const { data: hotels = [], isLoading } = useHotels();
   const [editHotel, setEditHotel] = useState<Hotel | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+
+  const filtered = useMemo(
+    () => (hotels as Hotel[]).filter((h) =>
+      matchesQuery([h.hotel_name, h.city, h.address, h.notes, h.post_stay_review, TYPE_KEYWORDS.hotel], query),
+    ),
+    [hotels, query],
+  );
 
   if (isLoading) return <ListSkeleton />;
 
   return (
     <>
-      {hotels.length === 0 ? (
-        <EmptyState variant="hotels" title="אין מלונות עדיין" hint="הוסף מלון עם הכפתור בפינה או דרך כפתור זה" cta={
+      {filtered.length === 0 ? (
+        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="הוסף מלון עם הכפתור בפינה או דרך כפתור זה" cta={
           <button onClick={() => setAddOpen(true)} className="h-11 px-5 rounded-xl bg-[color:var(--accent-3)] text-white text-sm font-medium">
             + הוסף מלון
           </button>
         } />
       ) : (
         <div className="space-y-2">
-          {(hotels as Hotel[]).map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
+          {filtered.map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
         </div>
       )}
+
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף מלון">
         <HotelForm onDone={() => setAddOpen(false)} />
