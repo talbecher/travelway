@@ -347,6 +347,7 @@ function DayDetail() {
                           highlighted={highlightId === e.id}
                           setRef={(el) => (cardRefs.current[e.id] = el)}
                           onEdit={() => setEditEntry(e)}
+                          onEditLocation={() => setEditLocationEntry(e)}
                           onDelete={() => { if (confirm("למחוק פריט?")) del.mutate(e.id); }}
                         />
                       </div>
