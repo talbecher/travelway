@@ -471,13 +471,14 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onEdit, onDelete,
+  entry, pinIndex, highlighted, setRef, onEdit, onEditLocation, onDelete,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
   onEdit: () => void;
+  onEditLocation: () => void;
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
@@ -490,6 +491,7 @@ function SortableEntry({
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
   const hasCoords = pinIndex != null;
+  const isLinked = !!entry.linked_recommendation_id;
 
   return (
     <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style}>
@@ -519,9 +521,35 @@ function SortableEntry({
             {entry.time_of_day && (
               <div className="text-xs text-muted-foreground tabular-nums" dir="ltr">{entry.time_of_day}</div>
             )}
-            <div className="font-medium text-[15px]">
-              <span className="me-1">{icon}</span>{entry.title}
+            <div className="font-medium text-[15px] flex items-center gap-1.5 flex-wrap">
+              <span className="me-1">{icon}</span>
+              <span>{entry.title}</span>
+              {hasCoords && (
+                <span
+                  aria-label="במפה"
+                  className="inline-block w-2 h-2 rounded-full shrink-0"
+                  style={{ background: pinColor }}
+                />
+              )}
+              {isLinked && (
+                <Link2
+                  size={12}
+                  className="text-[color:var(--accent-3)] shrink-0"
+                  aria-label="מסונכרן עם המלצות"
+                >
+                  <title>מסונכרן עם המלצות</title>
+                </Link2>
+              )}
             </div>
+            {!hasCoords && entry.entry_type !== "note" && (
+              <button
+                type="button"
+                onClick={onEditLocation}
+                className="text-[11px] text-muted-foreground underline mt-1 inline-flex items-center gap-1 min-h-0 h-auto p-0"
+              >
+                📍 לא זוהה מיקום — לחץ לעדכון
+              </button>
+            )}
             {entry.location_name && (
               <div className="text-xs text-muted-foreground mt-0.5" dir="ltr">{entry.location_name}</div>
             )}
@@ -541,11 +569,6 @@ function SortableEntry({
               >
                 <ExternalLink size={12} /> פתח במפה
               </a>
-            )}
-            {!hasCoords && entry.entry_type !== "note" && (
-              <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
-                💡 {entry.google_maps_url ? "עדכן את הלינק כדי שיופיע במפה" : "אין מיקום — הוסף לינק מפות"}
-              </div>
             )}
           </div>
           {entry.photo_url && (
