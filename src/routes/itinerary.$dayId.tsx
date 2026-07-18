@@ -532,13 +532,9 @@ function SortableEntry({
                 />
               )}
               {isLinked && (
-                <Link2
-                  size={12}
-                  className="text-[color:var(--accent-3)] shrink-0"
-                  aria-label="מסונכרן עם המלצות"
-                >
-                  <title>מסונכרן עם המלצות</title>
-                </Link2>
+                <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
+                  <Link2 size={12} aria-label="מסונכרן עם המלצות" />
+                </span>
               )}
             </div>
             {!hasCoords && entry.entry_type !== "note" && (
