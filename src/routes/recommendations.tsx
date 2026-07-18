@@ -771,14 +771,46 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
         if (error) throw error;
+        // Two-way sync: propagate to any linked day_entries
+        const { data: linkedEntries } = await supabase
+          .from("day_entries")
+          .select("id, day_id")
+          .eq("linked_recommendation_id", existing.id);
+        const linked = linkedEntries ?? [];
+        if (linked.length > 0) {
+          const { error: syncErr } = await supabase
+            .from("day_entries")
+            .update({
+              title: payload.name,
+              location_name: payload.address,
+              latitude: payload.latitude,
+              longitude: payload.longitude,
+              google_maps_url: payload.google_maps_url,
+              photo_url: payload.photo_url,
+            })
+            .eq("linked_recommendation_id", existing.id);
+          if (syncErr) throw syncErr;
+          const dayIds = [...new Set(linked.map((e) => e.day_id))];
+          return { syncedDays: dayIds };
+        }
+        return { syncedDays: [] as string[] };
       } else {
         const { error } = await supabase.from("recommendations").insert({ trip_id: getActiveTripId(), ...payload });
         if (error) throw error;
+        return { syncedDays: [] as string[] };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["recs"] });
-      toast.success(existing ? "נשמר" : "נוסף");
+      for (const dayId of result.syncedDays) {
+        qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      }
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      if (result.syncedDays.length > 0) {
+        toast.success(`✅ עודכן גם ב-${result.syncedDays.length} ימים במסלול`);
+      } else {
+        toast.success(existing ? "נשמר" : "נוסף");
+      }
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -1030,6 +1062,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
           latitude: lat,
           longitude: lng,
           photo_url: h.photo_url ?? null,
+          linked_recommendation_id: h.id,
         });
         if (error) throw error;
         addedEntries++;
@@ -1069,6 +1102,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
           latitude: lat,
           longitude: lng,
           photo_url: h.photo_url ?? null,
+          linked_recommendation_id: h.id,
         });
         if (error) throw error;
         addedEntries++;

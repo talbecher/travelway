@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon, Link2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, dayEntriesQuery } from "@/hooks/use-trip";
+import { useActiveTripId } from "@/hooks/use-active-trip";
 import { hebDateLong } from "@/lib/format";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -101,7 +102,36 @@ function DayDetail() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
   const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
+  const [editLocationEntry, setEditLocationEntry] = useState<EntryRow | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const tripId = useActiveTripId();
+
+  const updateEntryLocation = useMutation({
+    mutationFn: async ({ entry, place }: { entry: EntryRow; place: SelectedPlace }) => {
+      const patch = {
+        latitude: place.latitude,
+        longitude: place.longitude,
+        google_maps_url: place.google_maps_url,
+      };
+      const { error } = await supabase.from("day_entries").update(patch).eq("id", entry.id);
+      if (error) throw error;
+      if (entry.linked_recommendation_id) {
+        const { error: recErr } = await supabase
+          .from("recommendations")
+          .update(patch)
+          .eq("id", entry.linked_recommendation_id);
+        if (recErr) throw recErr;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["recs", tripId] });
+      qc.invalidateQueries({ queryKey: ["recs"] });
+      toast.success("✅ מיקום עודכן");
+      setEditLocationEntry(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
@@ -317,6 +347,7 @@ function DayDetail() {
                           highlighted={highlightId === e.id}
                           setRef={(el) => (cardRefs.current[e.id] = el)}
                           onEdit={() => setEditEntry(e)}
+                          onEditLocation={() => setEditLocationEntry(e)}
                           onDelete={() => { if (confirm("למחוק פריט?")) del.mutate(e.id); }}
                         />
                       </div>
@@ -374,6 +405,22 @@ function DayDetail() {
           />
         )}
       </BottomSheet>
+
+      <BottomSheet
+        open={!!editLocationEntry}
+        onOpenChange={(o) => !o && setEditLocationEntry(null)}
+        title={editLocationEntry ? `עדכן מיקום — ${editLocationEntry.title}` : undefined}
+      >
+        {editLocationEntry && (
+          <div className="pt-2 pb-2">
+            <PlacesSearch
+              onSelect={(place) =>
+                updateEntryLocation.mutate({ entry: editLocationEntry, place })
+              }
+            />
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }
@@ -424,13 +471,14 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onEdit, onDelete,
+  entry, pinIndex, highlighted, setRef, onEdit, onEditLocation, onDelete,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
   onEdit: () => void;
+  onEditLocation: () => void;
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
@@ -443,6 +491,7 @@ function SortableEntry({
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
   const hasCoords = pinIndex != null;
+  const isLinked = !!entry.linked_recommendation_id;
 
   return (
     <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style}>
@@ -472,9 +521,31 @@ function SortableEntry({
             {entry.time_of_day && (
               <div className="text-xs text-muted-foreground tabular-nums" dir="ltr">{entry.time_of_day}</div>
             )}
-            <div className="font-medium text-[15px]">
-              <span className="me-1">{icon}</span>{entry.title}
+            <div className="font-medium text-[15px] flex items-center gap-1.5 flex-wrap">
+              <span className="me-1">{icon}</span>
+              <span>{entry.title}</span>
+              {hasCoords && (
+                <span
+                  aria-label="במפה"
+                  className="inline-block w-2 h-2 rounded-full shrink-0"
+                  style={{ background: pinColor }}
+                />
+              )}
+              {isLinked && (
+                <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
+                  <Link2 size={12} aria-label="מסונכרן עם המלצות" />
+                </span>
+              )}
             </div>
+            {!hasCoords && entry.entry_type !== "note" && (
+              <button
+                type="button"
+                onClick={onEditLocation}
+                className="text-[11px] text-muted-foreground underline mt-1 inline-flex items-center gap-1 min-h-0 h-auto p-0"
+              >
+                📍 לא זוהה מיקום — לחץ לעדכון
+              </button>
+            )}
             {entry.location_name && (
               <div className="text-xs text-muted-foreground mt-0.5" dir="ltr">{entry.location_name}</div>
             )}
@@ -494,11 +565,6 @@ function SortableEntry({
               >
                 <ExternalLink size={12} /> פתח במפה
               </a>
-            )}
-            {!hasCoords && entry.entry_type !== "note" && (
-              <div className="text-[11px] text-[color:var(--accent-2)] mt-1">
-                💡 {entry.google_maps_url ? "עדכן את הלינק כדי שיופיע במפה" : "אין מיקום — הוסף לינק מפות"}
-              </div>
             )}
           </div>
           {entry.photo_url && (
