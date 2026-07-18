@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
+import { enrichRecommendationPhoto } from "@/lib/places.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
