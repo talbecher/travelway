@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2, MapPin, AlertTriangle } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { fetchMyMapKml, type ImportedPlace } from "@/lib/maps-import.functions";
+import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
 
@@ -16,6 +17,21 @@ const TYPE_ICON: Record<ImportedPlace["suggested_type"], string> = {
   hotel: "🏨",
 };
 
+type InsertRow = {
+  trip_id: string;
+  type: ImportedPlace["suggested_type"];
+  city: string | null;
+  name: string;
+  notes: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  google_maps_url: string | null;
+  photo_url: string | null;
+  google_rating: number | null;
+  google_rating_count: number | null;
+  status: "wishlist";
+};
+
 export function ImportFromMyMapsSheet({
   open,
   onOpenChange,
@@ -25,12 +41,14 @@ export function ImportFromMyMapsSheet({
 }) {
   const qc = useQueryClient();
   const fetchKml = useServerFn(fetchMyMapKml);
+  const enrichFn = useServerFn(enrichRecommendationPhoto);
   const [step, setStep] = useState<Step>("url");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [places, setPlaces] = useState<ImportedPlace[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [city, setCity] = useState("");
+  const [enriching, setEnriching] = useState<{ done: number; total: number } | null>(null);
 
   const reset = () => {
     setStep("url");
@@ -39,6 +57,7 @@ export function ImportFromMyMapsSheet({
     setSelected(new Set());
     setCity("");
     setLoading(false);
+    setEnriching(null);
   };
 
   const handleClose = (o: boolean) => {
@@ -75,30 +94,67 @@ export function ImportFromMyMapsSheet({
 
   const importMut = useMutation({
     mutationFn: async () => {
-      const rows = places
-        .filter((_, i) => selected.has(i))
-        .map((p) => ({
-          trip_id: getActiveTripId(),
-          type: p.suggested_type,
-          city: city.trim() || null,
-          name: p.name,
-          notes: p.description,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          google_maps_url: p.google_maps_url,
-          status: "wishlist" as const,
-        }));
-      if (rows.length === 0) throw new Error("לא נבחרו מקומות");
-      const { error } = await supabase.from("recommendations").insert(rows);
+      const chosen = places.filter((_, i) => selected.has(i));
+      if (chosen.length === 0) throw new Error("לא נבחרו מקומות");
+      const enteredCity = city.trim() || null;
+      const payloads: InsertRow[] = chosen.map((p) => ({
+        trip_id: getActiveTripId(),
+        type: p.suggested_type,
+        city: enteredCity,
+        name: p.name,
+        notes: p.description,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        google_maps_url: p.google_maps_url,
+        photo_url: null,
+        google_rating: null,
+        google_rating_count: null,
+        status: "wishlist",
+      }));
+
+      setEnriching({ done: 0, total: payloads.length });
+      const BATCH = 5;
+      for (let i = 0; i < payloads.length; i += BATCH) {
+        const sliceIdx = payloads.slice(i, i + BATCH);
+        const results = await Promise.all(
+          sliceIdx.map((p) =>
+            p.latitude != null && p.longitude != null
+              ? enrichFn({
+                  data: {
+                    name: p.name,
+                    city: p.city,
+                    lat: p.latitude,
+                    lng: p.longitude,
+                  },
+                }).catch(() => null)
+              : Promise.resolve(null),
+          ),
+        );
+        results.forEach((r, k) => {
+          if (r?.updated) {
+            const idx = i + k;
+            payloads[idx].photo_url = r.photo_url;
+            payloads[idx].google_rating = r.google_rating;
+            payloads[idx].google_rating_count = r.google_rating_count;
+          }
+        });
+        setEnriching({ done: Math.min(i + BATCH, payloads.length), total: payloads.length });
+      }
+
+      const { error } = await supabase.from("recommendations").insert(payloads);
       if (error) throw error;
-      return rows.length;
+      return payloads.length;
     },
     onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["recs", getActiveTripId()] });
       qc.invalidateQueries({ queryKey: ["recs"] });
       toast.success(`✅ יובאו ${n} המלצות בהצלחה`);
       handleClose(false);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setEnriching(null);
+      toast.error(e.message);
+    },
   });
 
   const selectedCount = selected.size;
@@ -190,6 +246,11 @@ export function ImportFromMyMapsSheet({
             {importMut.isPending && <Loader2 size={16} className="animate-spin" />}
             ייבא {selectedCount} מקומות
           </button>
+          {importMut.isPending && enriching && (
+            <div className="text-xs text-muted-foreground text-center">
+              🔍 מעשיר נתונים... {enriching.done}/{enriching.total}
+            </div>
+          )}
         </div>
       )}
     </BottomSheet>

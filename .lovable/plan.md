@@ -1,26 +1,70 @@
-## Goal
-1. Ensure every field in the "Add / Edit Hotel" form is reachable on mobile and desktop — no hidden fields, sticky save button.
-2. Rename the "Recommendations" screen title to "המלצות ומקומות שמורים".
+## 1. `enrichRecommendationPhoto` server function
 
-## 1. HotelForm — scrollable body + sticky submit
-File: `src/routes/recommendations.tsx` (function `HotelForm`, ~lines 1132-1265).
+New export in `src/lib/places.functions.ts`.
 
-Apply the same layout pattern already used by `RecForm`:
-- Change the `<form>` to `flex flex-col min-h-[62vh] pt-1 pb-2`.
-- Wrap the fields area (place search + confirmed place badge + all `Field` rows) inside a scroll container: `<div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">…</div>`.
-- Move the "שמור" submit button out of the scroll area into a sticky footer:
-  `<div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-1 bg-card border-t border-border/60 shrink-0">…</div>`.
-- Keep all existing state, mutation, and field logic unchanged.
+- Method: POST. Input validator: `{ id?: string, name: string, city?: string | null, lat?: number | null, lng?: number | null }` (id optional — the import flow doesn't have a DB row yet; the backfill flow passes id).
+- Handler:
+  1. Read `process.env.GOOGLE_PLACES_KEY`; if missing return `{ updated: false }`.
+  2. Call `places:searchText` with `textQuery = "${name}${city ? ' ' + city : ''}"`, `languageCode: "he"`, and — when lat/lng finite — `locationBias: { circle: { center: { latitude, longitude }, radius: 500 } }`. FieldMask: `places.photos,places.rating,places.userRatingCount`.
+  3. Take the first place with a photo (or first result overall for rating). If it has `photos[0].name`, call the same photo-media endpoint used by `getPlacePhotoUrl` and read `photoUri`.
+  4. If `id` provided AND at least one of `photo_url` / `rating` / `userRatingCount` resolved → `UPDATE recommendations SET photo_url = COALESCE(existing_photo_url_stays_null, new), google_rating = ..., google_rating_count = ...` via a server-only supabase client. Use the admin client via `await import("@/integrations/supabase/client.server")` inside the handler (server-fn splitting keeps it out of the client bundle). Only set columns that came back non-null (`COALESCE` in JS: skip fields we didn't find).
+  5. Return `{ updated: boolean, photo_url: string | null, google_rating: number | null, google_rating_count: number | null }`.
+- All errors caught → return `{ updated: false, photo_url: null, google_rating: null, google_rating_count: null }` (no throw). Timeouts 8s like existing calls.
 
-This ensures the last fields (הערות, לינק להזמנה, פלטפורמה) are reachable via inner scroll and the save button is always visible above the safe-area inset — matching the recommendation form that already works.
+## 2. Import flow enrichment — `src/components/ImportFromMyMapsSheet.tsx`
 
-## 2. Rename title
-File: `src/routes/recommendations.tsx`, line 188.
-- Change `<h1>המלצות</h1>` → `<h1>המלצות ומקומות שמורים</h1>`.
+Change the `importMut` mutation:
 
-Leave bottom-nav label ("המלצות"), home tile label, and other toast strings unchanged — the request is specifically to rename the page title.
+1. Build `basePayloads` from selected places (same fields as today plus `photo_url/google_rating/google_rating_count = null`).
+2. Add `enriching` state: `{ done: number, total: number }` and render, under the submit button while pending: `🔍 מעשיר נתונים... {done}/{total}` (small muted text).
+3. Enrich in batches of 5 in parallel:
+   ```ts
+   const enrichFn = useServerFn(enrichRecommendationPhoto);
+   for (let i = 0; i < payloads.length; i += 5) {
+     const slice = payloads.slice(i, i + 5);
+     const results = await Promise.all(slice.map(p =>
+       p.latitude != null && p.longitude != null
+         ? enrichFn({ data: { name: p.name, city: p.city, lat: p.latitude, lng: p.longitude } }).catch(() => null)
+         : Promise.resolve(null)
+     ));
+     results.forEach((r, k) => {
+       if (r?.updated) {
+         slice[k].photo_url = r.photo_url;
+         slice[k].google_rating = r.google_rating;
+         slice[k].google_rating_count = r.google_rating_count;
+       }
+     });
+     setEnriching({ done: Math.min(i + 5, payloads.length), total: payloads.length });
+   }
+   ```
+4. After the loop, single `supabase.from("recommendations").insert(payloads)`; then invalidate `["recs", tripId]`. `tripId` = `getActiveTripId()`.
+5. On success toast unchanged. `enriching` reset in `reset()`.
+
+Payload shape per the user's spec (adds `photo_url/google_rating/google_rating_count`; keeps `status: "wishlist"`).
+
+## 3. Admin backfill button — `src/routes/recommendations.tsx`
+
+Header area (near the existing "ייבא מ-My Maps" button):
+
+- Read `useSearch({ strict: false })` OR simply `window.location.search.includes("admin=1")` inside a `useMemo` to avoid touching the route search schema. If `admin=1` is present, render an extra button `🛠 עדכן תמונות חסרות`.
+- On click:
+  1. Query current-trip candidates: `supabase.from("recommendations").select("id,name,city,latitude,longitude").eq("trip_id", tripId).is("photo_url", null).in("type", ["food","attraction"])` → array `candidates`.
+  2. `if (!confirm(\`נמצאו ${candidates.length} המלצות ללא תמונה. להמשיך?\`)) return;`
+  3. Component-level `abortRef = useRef(false)` and `progress` state `{ done, total, updated }`.
+  4. Show a persistent progress toast via `toast.loading("מעדכן תמונות... 0/N", { id, action: { label: "עצור", onClick: () => (abortRef.current = true) } })`. Update it each batch: `toast.loading(\`מעדכן תמונות... ${done}/${total}\`, { id })`.
+  5. Loop in batches of 10 with `Promise.all` calls to `enrichFn({ data: { id, name, city, lat, lng } })`. After each batch: bump `done`, count `updated`, break the loop if `abortRef.current`.
+  6. On finish: `toast.success(\`✅ עודכנו ${updated} תמונות\`, { id })`, `qc.invalidateQueries({ queryKey: ["recs", tripId] })`. `abortRef.current` reset.
+
+The button is not shown in normal UI (no `?admin=1`).
 
 ## Verification
-- Open the hotel add sheet on the mobile viewport preview: scroll inside the sheet reaches the "שמור" button and every field between; button stays pinned.
-- Same check on desktop viewport.
-- Page header on `/recommendations` displays the new title.
+
+- `?admin=1` on `/recommendations`: click the extra button → confirm dialog with correct count → progress toast advances → recs list refreshes with new photos.
+- Import a My Maps URL with ~15 places: after clicking "ייבא N מקומות" the small progress text advances 5/15 → 10/15 → 15/15, then success toast; the newly imported cards show photos where Places matched.
+- No new columns / migrations; imports without lat/lng still save (no enrichment attempted).
+
+## Technical notes
+
+- `enrichRecommendationPhoto` lives in a client-safe `.functions.ts` file. The admin/supabase import is done inside the `.handler()` via `await import(...)` to keep the client bundle clean (per TanStack import-graph rules).
+- Uses `useServerFn(enrichRecommendationPhoto)` on the client side.
+- No changes to the existing `searchPlaces` / `getPlacePhotoUrl` signatures.
