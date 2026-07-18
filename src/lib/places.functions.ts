@@ -256,7 +256,11 @@ export const enrichRecommendationPhoto = createServerFn({ method: "POST" })
     if (data.id) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const patch: Record<string, unknown> = {};
+        const patch: {
+          photo_url?: string;
+          google_rating?: number;
+          google_rating_count?: number;
+        } = {};
         if (photo_url != null) patch.photo_url = photo_url;
         if (google_rating != null) patch.google_rating = google_rating;
         if (google_rating_count != null) patch.google_rating_count = google_rating_count;
