@@ -222,6 +222,28 @@ function Recs() {
         <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 לינה</TabBtn>
       </div>
 
+      <div className="relative">
+        <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="חפש: סושי, גיוזה, מוזיאון..."
+          dir="rtl"
+          className="w-full rounded-lg bg-background border border-input pr-9 pl-9 h-10 text-sm outline-none focus:border-[color:var(--accent)]"
+        />
+        {q && (
+          <button
+            type="button"
+            aria-label="נקה חיפוש"
+            onClick={() => setQ("")}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground min-h-0"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       {tab !== "hotels" && cities.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           <Pill active={city === "all"} onClick={() => setCity("all")}>הכל</Pill>
