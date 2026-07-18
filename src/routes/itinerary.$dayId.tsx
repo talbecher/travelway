@@ -405,6 +405,22 @@ function DayDetail() {
           />
         )}
       </BottomSheet>
+
+      <BottomSheet
+        open={!!editLocationEntry}
+        onOpenChange={(o) => !o && setEditLocationEntry(null)}
+        title={editLocationEntry ? `עדכן מיקום — ${editLocationEntry.title}` : undefined}
+      >
+        {editLocationEntry && (
+          <div className="pt-2 pb-2">
+            <PlacesSearch
+              onSelect={(place) =>
+                updateEntryLocation.mutate({ entry: editLocationEntry, place })
+              }
+            />
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }
