@@ -1,37 +1,26 @@
-## הוספת חיפוש טקסטואלי בהמלצות
+## Goal
+1. Ensure every field in the "Add / Edit Hotel" form is reachable on mobile and desktop — no hidden fields, sticky save button.
+2. Rename the "Recommendations" screen title to "המלצות ומקומות שמורים".
 
-מוסיף שדה חיפוש חופשי במסך ההמלצות כדי לסנן לפי מה שרוצים לאכול/לראות (למשל "סושי", "גיוזה", "בשר", "מוזיאון"). קובץ יחיד: `src/routes/recommendations.tsx`.
+## 1. HotelForm — scrollable body + sticky submit
+File: `src/routes/recommendations.tsx` (function `HotelForm`, ~lines 1132-1265).
 
-### מה נוסף
+Apply the same layout pattern already used by `RecForm`:
+- Change the `<form>` to `flex flex-col min-h-[62vh] pt-1 pb-2`.
+- Wrap the fields area (place search + confirmed place badge + all `Field` rows) inside a scroll container: `<div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">…</div>`.
+- Move the "שמור" submit button out of the scroll area into a sticky footer:
+  `<div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-1 bg-card border-t border-border/60 shrink-0">…</div>`.
+- Keep all existing state, mutation, and field logic unchanged.
 
-1. **State חדש**: `const [q, setQ] = useState("")` ב-`Recs`.
-2. **שדה חיפוש** בכותרת מתחת ל-tabs (ומעל שורת הערים): `input` עם אייקון זכוכית מגדלת ו-X לניקוי, `placeholder="חפש: סושי, גיוזה, מוזיאון..."`, `dir="rtl"`, `h-10`.
-3. **פונקציית סינון** `matchesQuery(r, q)`:
-   - נורמליזציה: `q.trim().toLowerCase()`, פיצול לטוקנים לפי רווח.
-   - כל טוקן חייב להימצא (AND) באחד מהשדות: `name`, `notes`, `review`, `city`, `address`, `type` (מתורגם: food→"אוכל sushi food", attraction→"אטרקציה", hotel→"מלון hotel").
-   - טקסט חיפוש ריק ⇒ מחזיר `true`.
-4. **החלת הפילטר** בשלושת המקומות שכבר מסננים לפי `typeFilter`+`city`:
-   - `visibleIds` (לבחירה מרובה — כדי ש"בחר הכל" יבחר רק מה שנראה).
-   - `mapPins` (המפה מציגה רק תוצאות תואמות).
-   - `PlacesList` — מעביר את `q` כ-prop ומחיל בתוך ה-`useMemo` של `list`.
-5. **אינדיקציה של "אין תוצאות"**: אם `q` לא ריק ואין תוצאות ⇒ Empty state עם "לא נמצאו המלצות עבור '{q}'".
-6. **איפוס**: כפתור ה-X מנקה את `q`; החלפת trip/tab לא מאפסת את החיפוש (התנהגות שקטה — קל למחוק ידנית).
+This ensures the last fields (הערות, לינק להזמנה, פלטפורמה) are reachable via inner scroll and the save button is always visible above the safe-area inset — matching the recommendation form that already works.
 
-### התנהגות במפה
+## 2. Rename title
+File: `src/routes/recommendations.tsx`, line 188.
+- Change `<h1>המלצות</h1>` → `<h1>המלצות ומקומות שמורים</h1>`.
 
-החיפוש חל גם על תצוגת מפה — הפינים מסתננים לפי אותם כללים, כך שאם מחפשים "סושי" רואים רק את הסושי על המפה.
+Leave bottom-nav label ("המלצות"), home tile label, and other toast strings unchanged — the request is specifically to rename the page title.
 
-### מה לא משתנה
-
-- אין שינוי סכמה, אין שרת, אין שינוי במקומות אחרים.
-- מלונות: החיפוש פעיל גם עבור tab "hotels" (מסנן לפי שם/עיר/כתובת/הערות של המלונות ברשימה).
-- הפילטר לפי עיר ממשיך לעבוד במקביל (AND).
-
-### קובץ
-
-- `src/routes/recommendations.tsx` — הוספת state, UI קלט, `matchesQuery`, שילוב ב-3 ה-memos + `PlacesList`.
-
-### אימות
-
-- Typecheck.
-- ידני: לחפש "סושי" → רואים רק המלצות סושי; לרוקן → הכל חוזר; להחליף ל-tab מפה → פינים מסוננים; לבחור "בחר הכל" תחת חיפוש פעיל → בוחר רק את הנראים.
+## Verification
+- Open the hotel add sheet on the mobile viewport preview: scroll inside the sheet reaches the "שמור" button and every field between; button stays pinned.
+- Same check on desktop viewport.
+- Page header on `/recommendations` displays the new title.
