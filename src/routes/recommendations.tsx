@@ -118,9 +118,10 @@ function Recs() {
     return (recs as Rec[])
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
+      .filter((r) => recMatchesQuery(r, q))
       .map((r) => r.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city]);
+  }, [recs, tab, city, q]);
 
   const selectAllVisible = () => setSelectedIds(new Set(visibleIds));
 
