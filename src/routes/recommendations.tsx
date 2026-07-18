@@ -74,6 +74,7 @@ function Recs() {
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [q, setQ] = useState("");
   const { data: recs = [] } = useRecs();
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
