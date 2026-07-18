@@ -406,10 +406,11 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
 }
 
 function PlacesList({
-  type, cityFilter, onEdit, selectionMode, selectedIds, onToggleSelect,
+  type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
+  query: string;
   onEdit: (r: Rec) => void;
   selectionMode: boolean;
   selectedIds: Set<string>;
@@ -432,6 +433,7 @@ function PlacesList({
       type === "all" ? (r.type === "food" || r.type === "attraction") : r.type === type,
     );
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
+    items = items.filter((r) => recMatchesQuery(r, query));
     if (type === "all") {
       items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     } else if (pos) {
@@ -445,7 +447,8 @@ function PlacesList({
       items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     }
     return items;
-  }, [recs, type, cityFilter, pos]);
+  }, [recs, type, cityFilter, pos, query]);
+
 
   if (isLoading) return <ListSkeleton />;
   if (list.length === 0) {
