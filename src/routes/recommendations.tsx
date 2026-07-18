@@ -41,6 +41,27 @@ type Rec = {
 
 const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food", attractions: "attraction" };
 
+const TYPE_KEYWORDS: Record<string, string> = {
+  food: "אוכל food מסעדה",
+  attraction: "אטרקציה attraction",
+  hotel: "מלון לינה hotel",
+};
+
+function matchesQuery(fields: Array<string | null | undefined>, q: string): boolean {
+  const query = q.trim().toLowerCase();
+  if (!query) return true;
+  const hay = fields.filter(Boolean).join(" \n ").toLowerCase();
+  const tokens = query.split(/\s+/).filter(Boolean);
+  return tokens.every((t) => hay.includes(t));
+}
+
+function recMatchesQuery(r: Rec, q: string): boolean {
+  return matchesQuery(
+    [r.name, r.notes, r.review, r.city, r.address, TYPE_KEYWORDS[r.type]],
+    q,
+  );
+}
+
 function Recs() {
   const search = Route.useSearch();
   const qc = useQueryClient();
