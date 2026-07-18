@@ -788,6 +788,19 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     </button>
   );
 
+  if (type === "hotel" && !existing) {
+    return (
+      <div className="flex flex-col pt-1">
+        <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3 shrink-0">
+          {seg("food", "אוכל", "🍜", "var(--accent-2)")}
+          {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
+          {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
+        </div>
+        <HotelForm onDone={onDone} />
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
@@ -798,6 +811,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
         {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
       </div>
+
 
       <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
         {!manualMode && !placeSelected && (
