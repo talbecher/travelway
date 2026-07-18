@@ -145,6 +145,7 @@ function Recs() {
     return (recs as Rec[])
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
+      .filter((r) => recMatchesQuery(r, q))
       .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
         id: r.id,
@@ -161,7 +162,8 @@ function Recs() {
         photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city]);
+  }, [recs, tab, city, q]);
+
 
 
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
