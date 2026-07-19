@@ -895,6 +895,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
               </Field>
             )}
             <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
+            <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" /></Field>
 
             {type === "hotel" && !existing && (
               <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
