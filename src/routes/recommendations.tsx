@@ -17,6 +17,7 @@ import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
+import { PhotoUploader } from "@/components/PhotoUploader";
 import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
@@ -895,6 +896,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
               </Field>
             )}
             <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
+            <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" /></Field>
 
             {type === "hotel" && !existing && (
               <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
@@ -1365,6 +1367,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
             <Field label="פלטפורמת הזמנה"><input value={booking_platform} onChange={(e) => setPlat(e.target.value)} placeholder="Booking, Agoda..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
             <Field label="לינק להזמנה"><input type="url" value={confirmation_url} onChange={(e) => setUrl(e.target.value)} dir="ltr" placeholder="https://..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
             <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[60px]" /></Field>
+            <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="hotels" /></Field>
           </>
         )}
       </div>
