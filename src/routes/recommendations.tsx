@@ -1367,6 +1367,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
             <Field label="פלטפורמת הזמנה"><input value={booking_platform} onChange={(e) => setPlat(e.target.value)} placeholder="Booking, Agoda..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
             <Field label="לינק להזמנה"><input type="url" value={confirmation_url} onChange={(e) => setUrl(e.target.value)} dir="ltr" placeholder="https://..." className="w-full rounded-lg bg-background border border-input px-3 h-11" /></Field>
             <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[60px]" /></Field>
+            <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="hotels" /></Field>
           </>
         )}
       </div>
