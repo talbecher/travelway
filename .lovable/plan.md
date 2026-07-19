@@ -1,42 +1,44 @@
-## Goal
-Enable location repair on entries missing coords, and keep recommendations ↔ day_entries in sync when either side is edited.
+## מטרה
+לאפשר להעלות תמונה מהמכשיר בעת הוספת/עריכת המלצה (אוכל, אטרקציה או מלון). אם יש כבר תמונה (למשל מגוגל), לבקש אישור לפני ההחלפה.
 
-## Verified current state
-- `src/lib/recommendations.ts` `addRecommendationToDay` already sets `linked_recommendation_id: rec.id` — no fix needed for regular recs.
-- `src/routes/recommendations.tsx` HotelCard `insertEndOfDay` and checkout insert do NOT include `linked_recommendation_id` — needs fix.
-- `src/routes/itinerary.$dayId.tsx` already selects `linked_recommendation_id` on entries (line 52), so it is available on cards.
+## שינויים
 
-## Changes
+### 1. Storage bucket
+- ליצור bucket ציבורי בשם `rec-photos` דרך `supabase--storage_create_bucket` (public=true).
+- להוסיף מדיניות RLS ב-`storage.objects` דרך migration:
+  - `SELECT` פתוח לכל (באקט ציבורי).
+  - `INSERT`/`UPDATE`/`DELETE` רק ל-`authenticated`, וגם רק כשה-`owner = auth.uid()`.
 
-### 1. `src/routes/itinerary.$dayId.tsx` — "לא זוהה מיקום" prompt
-- On each entry card where `latitude == null || longitude == null`, render a small tappable hint under the title:
-  - Text: `📍 לא זוהה מיקום — לחץ לעדכון`
-  - Style: `text-[11px] text-muted-foreground underline`
-- Clicking opens a new `BottomSheet` (local component state `editLocationEntry`).
-- Sheet title: `עדכן מיקום — <entry.title>`.
-- Body: reuse existing `PlacesSearch` component.
-- On place selected, run a mutation:
-  1. `update day_entries` row: `latitude`, `longitude`, `google_maps_url` (and `location_name` from `place.city` if empty; keep out to stay minimal — spec only lists three fields, so update only those three).
-  2. If `entry.linked_recommendation_id` is set, also `update recommendations` with the same three fields where `id = linked_recommendation_id`.
-  3. Invalidate `["day-entries", dayId]` and `["recs", tripId]`.
-  4. Toast `✅ מיקום עודכן`, close sheet.
+### 2. קומפוננטה חדשה `src/components/PhotoUploader.tsx`
+- Props: `value: string | null`, `onChange(url: string | null)`, `folder: "recs" | "hotels"`.
+- מציג:
+  - אם יש תמונה: תצוגה מקדימה (16:9), עם שני כפתורים — "החלף תמונה" ו-"הסר".
+  - אם אין: כפתור "העלה תמונה מהמכשיר" עם אייקון מצלמה.
+- `<input type="file" accept="image/*">` מוסתר.
+- לפני החלפה של תמונה קיימת, `window.confirm("להחליף את התמונה הנוכחית?")`. אישור → העלאה.
+- העלאה:
+  1. ולידציה: type=image, גודל ≤ 5MB (אחרת toast שגיאה).
+  2. שם קובץ: `{folder}/{uuid}.{ext}` (uuid ב-`crypto.randomUUID()`).
+  3. `supabase.storage.from("rec-photos").upload(path, file)`.
+  4. `getPublicUrl(path)` → `onChange(url)`.
+  5. Toast הצלחה/שגיאה, מצב loading בזמן העלאה.
+- לא מוחק את הקובץ הישן מה-Storage בהחלפה (כדי לפשט; קבצים יתומים אפשריים).
 
-### 2. Visual indicators on entry cards (itinerary.$dayId.tsx)
-- Entry has coords → small 8px accent-color dot next to title.
-- Entry has `linked_recommendation_id` → small 🔗 icon next to title with `title="מסונכרן עם המלצות"`.
+### 3. שילוב ב-`RecForm` (`src/routes/recommendations.tsx`)
+- מתחת ל"הערות", לפני כפתור השמור, להוסיף שדה: "תמונה ראשית" עם `<PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" />`.
+- זמין רק כשהטופס גלוי (`manualMode || placeSelected`).
+- אין שינוי בלוגיקת השמירה — `photoUrl` כבר נשמר ב-`payload.photo_url` וכבר מסונכרן ל-day_entries.
 
-### 3. `src/routes/recommendations.tsx` — sync on rec update
-- In the RecForm update mutation, after successful `.update()` on `recommendations`:
-  - Query `day_entries` where `linked_recommendation_id = rec.id` selecting `id, day_id`.
-  - If any exist, run one bulk `.update()` on `day_entries` filtered by `linked_recommendation_id = rec.id` setting: `title`, `location_name` (from `address`), `latitude`, `longitude`, `google_maps_url`, `photo_url`.
-  - Invalidate `["day-entries", dayId]` for each unique dayId.
-  - Toast: `✅ עודכן גם ב-<N> ימים במסלול` (only when N > 0).
+### 4. שילוב ב-`HotelForm`
+- להוסיף אותו שדה "תמונה ראשית" (`folder="hotels"`) לפני "לינק אישור/פלטפורמה" באזור הגלילה של הטופס. שדה `photo_url` כבר נשמר.
 
-### 4. `src/routes/recommendations.tsx` — HotelCard link fix
-- Add `linked_recommendation_id: h.id` to both hotel `day_entries.insert` calls (check-in/middle in `insertEndOfDay` and checkout insert). This uses the same column to reference the hotel row (per spec) so future hotel edits can sync the same way as regular recs. (Sync of hotel edits themselves is out of scope — spec only asks for the link.)
+## קבצים
+- **חדש**: `src/components/PhotoUploader.tsx`
+- **נערך**: `src/routes/recommendations.tsx` (הוספת השדה ב-RecForm ו-HotelForm)
+- **חדש**: migration RLS ל-`storage.objects` על ה-bucket `rec-photos`
+- **פעולת כלי**: יצירת bucket `rec-photos` ציבורי
 
-## Files touched
-- `src/routes/itinerary.$dayId.tsx`
-- `src/routes/recommendations.tsx`
-
-No schema or migration changes.
+## הערות טכניות
+- Bucket ציבורי כדי שהתמונות יופיעו בכרטיסים ובמפה בלי URL חתום.
+- ה-URL הציבורי נשמר ב-`recommendations.photo_url` / `hotels.photo_url` באותה עמודה שבה נשמרת תמונת Google — הכרטיסים והמפה כבר יודעים להציג אותה.
+- אין שינוי לסכימה; העמודה קיימת.
