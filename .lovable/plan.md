@@ -1,36 +1,31 @@
-## הבעיה
-יצירת bucket ציבורי חסומה ע"י מדיניות ה-workspace, וההגדרה להפעיל public buckets נמצאת ב-Workspace Settings → Privacy & Security (דורש הרשאת admin/owner ב-workspace, לא בפרויקט). אם אתה לא מוצא את זה — כנראה שאין לך הרשאה, או שאתה בתפריט הפרויקט במקום ה-workspace.
+## Goal
+בטופס "הוסף פעילות" (אוכל/אטרקציה) — להוסיף גישה מהירה להמלצות השמורות של אותה קטגוריה, עם חיפוש טקסטואלי בתוכן. החיפוש המהיר בראש היום נשאר חיפוש גוגל כללי, ללא קשר להמלצות.
 
-**פתרון מוצע**: לעקוף לגמרי — להשתמש ב-bucket **פרטי** עם URLs חתומים ארוכי-טווח, במקום bucket ציבורי. חוויית המשתמש זהה.
+## Changes
 
-## שינויים
+### 1. `src/routes/itinerary.$dayId.tsx` — טופס אוכל/אטרקציה (`RecEntryForm` בסביבות שורה 1009)
+מעל ה־`PlacesSearch` הקיים, להוסיף בלוק חדש **"הוסף פעילות מההמלצות השמורות"**:
+- שולף `recommendations` של הטיול מסוננות ל־`type === recType` (food/attraction) דרך `useRecs()` הקיים.
+- שדה חיפוש טקסטואלי (input קטן) שמסנן לפי `name`, `notes`, `city`, `address` — לוגיקה זהה למסך ההמלצות (case-insensitive, matches חלקיים).
+- רשימת תוצאות קומפקטית (עד ~5 גלויות + scroll): תמונה קטנה, שם, עיר, badge קטן שמסמן "המלצה שמורה" (`⭐` או צבע `--accent-3`), ודירוג אם קיים.
+- לחיצה על שורה = מוסיפה מיד `day_entry` המקושר להמלצה (`linked_recommendation_id`, קואורדינטות, `photo_url`, `google_maps_url`, `location_name = city`) — בלי טופס נוסף, בלי דיאלוג, כמו quick-add. סוגר את הטופס (`onDone`).
+- אם אין המלצות בקטגוריה: הודעה קצרה "אין המלצות שמורות ב<קטגוריה>". החיפוש הכללי נשאר זמין למטה.
 
-### 1. Storage bucket
-- ליצור bucket בשם `rec-photos` עם `public=false` (מותר תמיד).
-- RLS ב-`storage.objects`:
-  - `INSERT/UPDATE/DELETE` ל-`authenticated` על bucket זה.
-  - `SELECT` ל-`authenticated` (כדי לאפשר יצירת signed URLs).
+**מבנה מוצע:**
+```
+┌─ הוסף פעילות מההמלצות השמורות ─────────┐
+│ [🔍 חפש בהמלצות: סושי, מוזיאון...]     │
+│ ⭐ סושי דאיקוקויה · טוקיו · ★4.6      │
+│ ⭐ Ichiran Ramen · שיבויה · ★4.5      │
+└────────────────────────────────────────┘
+─── או חפש מקום חדש בגוגל ───
+[PlacesSearch הקיים]
+```
 
-### 2. `PhotoUploader.tsx` (חדש)
-- Props: `value: string | null`, `onChange(url: string | null)`, `folder: "recs" | "hotels"`.
-- אם כבר יש תמונה → `window.confirm("להחליף את התמונה הנוכחית?")` לפני העלאה.
-- ולידציה: image only, ≤ 5MB.
-- שם קובץ: `{folder}/{uuid}.{ext}`.
-- העלאה ל-`rec-photos`, ואז `createSignedUrl(path, 60*60*24*365*10)` (10 שנים) → `onChange(url)`.
-- Toast הצלחה/שגיאה + מצב loading.
-- כפתורים: "העלה תמונה מהמכשיר" / "החלף" / "הסר".
+### 2. אין שינוי בחיפוש המהיר בראש היום (שורה 386-387)
+`חיפוש מהיר — הוסף מקום ישירות למסלול` נשאר כמו שהוא — חיפוש גוגל טהור, ללא רכיב המלצות.
 
-### 3. שילוב
-- **`RecForm`** ב-`src/routes/recommendations.tsx`: שדה "תמונה ראשית" עם `PhotoUploader folder="recs"` מתחת ל"הערות". `photoUrl` כבר נשמר ב-payload ומסונכרן ל-day_entries.
-- **`HotelForm`**: אותו שדה עם `folder="hotels"` באזור הגלילה של הטופס.
-
-## קבצים
-- **חדש**: `src/components/PhotoUploader.tsx`
-- **נערך**: `src/routes/recommendations.tsx`
-- **חדש**: migration ל-RLS על `storage.objects` עבור `rec-photos`
-- **כלי**: יצירת bucket פרטי `rec-photos`
-
-## הערות
-- ה-signed URL נשמר בעמודה הקיימת `photo_url` — הכרטיסים והמפה כבר מציגים ממנה, בלי שינוי.
-- Signed URL ל-10 שנים אפקטיבית = "קבוע" לצרכי האפליקציה.
-- אין צורך יותר להפעיל public buckets ב-workspace.
+## Notes
+- שימוש חוזר ב־`useRecs()` שכבר קיים ומטמון עם `queryKey: ["recs", tripId]`.
+- ה־insert של `day_entry` מההמלצה משתמש באותה לוגיקה של `addRecommendationToDay` מ־`src/lib/recommendations.ts` (כולל `display_order`, אייקון, מיקום). Invalidate של `["day-entries", dayId]`.
+- לא נוגעים בטופס מלון/טיסה/תחבורה/הערה.
