@@ -1,7 +1,10 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { Check, Users, User as UserIcon } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, Trash2, Users, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
+
 import { useTripsList, tripRoleLabel, tripParticipantCount, type TripListItem } from "@/hooks/use-trips-list";
-import { setActiveTripId } from "@/lib/constants";
+import { setActiveTripId, clearActiveTripId } from "@/lib/constants";
+import { supabase } from "@/integrations/supabase/client";
 
 function formatRange(start: string, end: string): string {
   try {
@@ -18,12 +21,14 @@ export function TripPicker({
   userId,
   activeTripId,
   onPick,
+  onDeleted,
   title = "בחר טיול",
   subtitle,
 }: {
   userId: string | undefined;
   activeTripId?: string | null;
   onPick: (tripId: string) => void;
+  onDeleted?: (nextTripId: string | null) => void;
   title?: string;
   subtitle?: string;
 }) {
@@ -34,6 +39,34 @@ export function TripPicker({
     if (id !== activeTripId) qc.clear();
     setActiveTripId(id);
     onPick(id);
+  }
+
+  const del = useMutation({
+    mutationFn: async (tripId: string) => {
+      const { error } = await supabase.from("trips").delete().eq("id", tripId);
+      if (error) throw error;
+      return tripId;
+    },
+    onSuccess: async (deletedId) => {
+      const remaining = trips.filter((t) => t.id !== deletedId);
+      let nextId: string | null = null;
+      if (deletedId === activeTripId) {
+        nextId = remaining[0]?.id ?? null;
+        if (nextId) setActiveTripId(nextId);
+        else clearActiveTripId();
+      }
+      qc.clear();
+      toast.success("הטיול נמחק");
+      onDeleted?.(nextId);
+    },
+    onError: (e: Error) => toast.error(e.message || "המחיקה נכשלה"),
+  });
+
+  function handleDelete(t: TripListItem) {
+    if (del.isPending) return;
+    const ok = window.confirm(`למחוק את הטיול "${t.title}"? הפעולה בלתי הפיכה.`);
+    if (!ok) return;
+    del.mutate(t.id);
   }
 
   if (isLoading) {
@@ -60,6 +93,8 @@ export function TripPicker({
             userId={userId}
             active={t.id === activeTripId}
             onSelect={() => handlePick(t.id)}
+            onDelete={t.owner_id === userId ? () => handleDelete(t) : undefined}
+            deleting={del.isPending}
           />
         ))}
       </ul>
@@ -72,28 +107,29 @@ function TripRow({
   userId,
   active,
   onSelect,
+  onDelete,
+  deleting,
 }: {
   trip: TripListItem;
   userId: string | undefined;
   active: boolean;
   onSelect: () => void;
+  onDelete?: () => void;
+  deleting?: boolean;
 }) {
   const count = tripParticipantCount(trip);
   const label = tripRoleLabel(trip, userId);
   const Icon = count > 1 ? Users : UserIcon;
   return (
     <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-pressed={active}
-        className={`w-full text-right rounded-2xl border p-4 flex items-center gap-3 transition-colors ${
+      <div
+        className={`w-full rounded-2xl border p-4 flex items-center gap-3 transition-colors ${
           active
             ? "border-[color:var(--accent)] bg-[color:color-mix(in_oklab,var(--accent)_10%,var(--card))]"
             : "border-border bg-card"
         }`}
       >
-        <div className="flex-1 min-w-0 space-y-1">
+        <button type="button" onClick={onSelect} aria-pressed={active} className="flex-1 min-w-0 text-right space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{trip.title}</span>
             {active && <Check size={16} className="text-[color:var(--accent)] shrink-0" />}
@@ -106,8 +142,20 @@ function TripRow({
             <Icon size={12} />
             <span>{label}</span>
           </div>
-        </div>
-      </button>
+        </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleting}
+            aria-label={`מחק את הטיול ${trip.title}`}
+            className="shrink-0 w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-[color:var(--destructive)] hover:border-[color:var(--destructive)] disabled:opacity-50"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
+      </div>
     </li>
   );
 }
+

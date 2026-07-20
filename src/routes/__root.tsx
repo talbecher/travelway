@@ -238,6 +238,7 @@ function ShareTripButton() {
 function SwitchTripButton() {
   const { user } = useAuth();
   const { data: trips = [] } = useTripsList(user?.id);
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   if (trips.length < 2) return null;
   const activeId = getActiveTripId();
@@ -255,6 +256,11 @@ function SwitchTripButton() {
           userId={user?.id}
           activeTripId={activeId}
           onPick={() => setOpen(false)}
+          onDeleted={(nextId) => {
+            setOpen(false);
+            if (!nextId) router.navigate({ to: "/onboarding" });
+            else router.navigate({ to: "/" });
+          }}
         />
       </BottomSheet>
     </>

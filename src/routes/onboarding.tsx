@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrip } from "@/hooks/use-trip";
-import { setActiveTripId } from "@/lib/constants";
+import { useAuth } from "@/hooks/use-auth";
+import { useTripsList } from "@/hooks/use-trips-list";
+import { setActiveTripId, clearActiveTripId, getActiveTripId } from "@/lib/constants";
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Share2 } from "lucide-react";
+import { Share2, Trash2 } from "lucide-react";
 
 const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
 
@@ -35,7 +37,41 @@ function Onboarding() {
   const navigate = useNavigate();
   const { edit } = Route.useSearch();
   const { data: existingTrip } = useTrip();
+  const { user } = useAuth();
+  const { data: allTrips = [] } = useTripsList(user?.id);
+  const qc = useQueryClient();
   const isEditing = !!edit && !!existingTrip;
+  const isOwner = !!existingTrip && !!user && existingTrip.owner_id === user.id;
+
+  const deleteTrip = useMutation({
+    mutationFn: async () => {
+      if (!existingTrip) throw new Error("אין טיול פעיל");
+      const { error } = await supabase.from("trips").delete().eq("id", existingTrip.id);
+      if (error) throw error;
+      return existingTrip.id;
+    },
+    onSuccess: (deletedId) => {
+      const remaining = allTrips.filter((t) => t.id !== deletedId);
+      const activeId = getActiveTripId();
+      if (deletedId === activeId) {
+        const nextId = remaining[0]?.id ?? null;
+        if (nextId) setActiveTripId(nextId);
+        else clearActiveTripId();
+      }
+      qc.clear();
+      toast.success("הטיול נמחק");
+      if (remaining.length === 0) navigate({ to: "/onboarding" });
+      else navigate({ to: "/" });
+    },
+    onError: (e: Error) => toast.error(e.message || "המחיקה נכשלה"),
+  });
+
+  function handleDeleteClick() {
+    if (!existingTrip || deleteTrip.isPending) return;
+    const ok = window.confirm(`למחוק את הטיול "${existingTrip.title}"? הפעולה בלתי הפיכה.`);
+    if (!ok) return;
+    deleteTrip.mutate();
+  }
 
   const [title, setTitle] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
@@ -208,6 +244,19 @@ function Onboarding() {
                 className="flex items-center gap-2 h-9 px-3 rounded-full border border-border text-sm text-muted-foreground"
               >
                 <Share2 size={14} /> העתק קישור
+              </button>
+            </div>
+          )}
+          {isOwner && (
+            <div className="pt-2 border-t border-border flex items-center justify-between gap-3">
+              <div className="text-sm text-muted-foreground">מחיקת הטיול</div>
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                disabled={deleteTrip.isPending}
+                className="flex items-center gap-2 h-9 px-3 rounded-full border border-[color:var(--destructive)] text-sm text-[color:var(--destructive)] disabled:opacity-50"
+              >
+                <Trash2 size={14} /> {deleteTrip.isPending ? "מוחק..." : "מחק טיול זה"}
               </button>
             </div>
           )}
