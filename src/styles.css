@@ -195,6 +195,11 @@ nav[data-bottom-nav] {
 
 @utility no-shadow { box-shadow: none !important; }
 @utility caption { font-size: 12px; color: var(--muted-foreground); }
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
 
 @utility btn-primary {
   background: var(--accent);
