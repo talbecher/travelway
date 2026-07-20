@@ -37,7 +37,41 @@ function Onboarding() {
   const navigate = useNavigate();
   const { edit } = Route.useSearch();
   const { data: existingTrip } = useTrip();
+  const { user } = useAuth();
+  const { data: allTrips = [] } = useTripsList(user?.id);
+  const qc = useQueryClient();
   const isEditing = !!edit && !!existingTrip;
+  const isOwner = !!existingTrip && !!user && existingTrip.owner_id === user.id;
+
+  const deleteTrip = useMutation({
+    mutationFn: async () => {
+      if (!existingTrip) throw new Error("אין טיול פעיל");
+      const { error } = await supabase.from("trips").delete().eq("id", existingTrip.id);
+      if (error) throw error;
+      return existingTrip.id;
+    },
+    onSuccess: (deletedId) => {
+      const remaining = allTrips.filter((t) => t.id !== deletedId);
+      const activeId = getActiveTripId();
+      if (deletedId === activeId) {
+        const nextId = remaining[0]?.id ?? null;
+        if (nextId) setActiveTripId(nextId);
+        else clearActiveTripId();
+      }
+      qc.clear();
+      toast.success("הטיול נמחק");
+      if (remaining.length === 0) navigate({ to: "/onboarding" });
+      else navigate({ to: "/" });
+    },
+    onError: (e: Error) => toast.error(e.message || "המחיקה נכשלה"),
+  });
+
+  function handleDeleteClick() {
+    if (!existingTrip || deleteTrip.isPending) return;
+    const ok = window.confirm(`למחוק את הטיול "${existingTrip.title}"? הפעולה בלתי הפיכה.`);
+    if (!ok) return;
+    deleteTrip.mutate();
+  }
 
   const [title, setTitle] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
