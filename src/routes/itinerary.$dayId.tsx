@@ -931,7 +931,119 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   );
 }
 
+function SavedRecsPicker({
+  recType, dayId, onAdded,
+}: { recType: "attraction" | "food"; dayId: string; onAdded: () => void }) {
+  const qc = useQueryClient();
+  const tripId = useActiveTripId();
+  const { data: recs = [] } = useRecs();
+  const [q, setQ] = useState("");
+  const [addingId, setAddingId] = useState<string | null>(null);
+
+  const pool = useMemo(
+    () => (recs as Array<Record<string, unknown>>).filter((r) => r.type === recType),
+    [recs, recType],
+  );
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return pool;
+    return pool.filter((r) => {
+      const hay = [r.name, r.city, r.address, r.notes]
+        .filter(Boolean).map((x) => String(x).toLowerCase()).join(" ");
+      return hay.includes(s);
+    });
+  }, [pool, q]);
+
+  async function pick(r: Record<string, unknown>) {
+    if (addingId) return;
+    setAddingId(String(r.id));
+    try {
+      await addRecommendationToDay({
+        id: String(r.id),
+        type: String(r.type),
+        name: String(r.name),
+        city: (r.city as string | null) ?? null,
+        google_maps_url: (r.google_maps_url as string | null) ?? null,
+        latitude: (r.latitude as number | null) ?? null,
+        longitude: (r.longitude as number | null) ?? null,
+      }, dayId);
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary", tripId] });
+      toast.success("✅ נוסף למסלול");
+      onAdded();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAddingId(null);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-2 space-y-2">
+      <div className="text-[11px] font-medium text-muted-foreground px-1">
+        הוסף פעילות מההמלצות השמורות
+      </div>
+      {pool.length === 0 ? (
+        <div className="text-[11px] text-muted-foreground px-1 py-1">
+          אין המלצות שמורות ב{recType === "food" ? "אוכל" : "אטרקציות"}
+        </div>
+      ) : (
+        <>
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={recType === "food" ? "חפש בהמלצות: סושי, ראמן..." : "חפש בהמלצות: מוזיאון, פארק..."}
+            dir="rtl"
+            className="w-full rounded-md bg-background border border-input px-2 h-9 text-sm outline-none focus:border-[color:var(--accent)]"
+          />
+          <div className="max-h-[220px] overflow-y-auto space-y-1">
+            {filtered.length === 0 && (
+              <div className="text-[11px] text-muted-foreground px-1 py-1">לא נמצאו התאמות</div>
+            )}
+            {filtered.map((r) => {
+              const id = String(r.id);
+              const photo = (r.photo_url as string | null) ?? null;
+              const rating = typeof r.google_rating === "number" ? (r.google_rating as number) : null;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={addingId === id}
+                  onClick={() => void pick(r)}
+                  className="w-full text-right flex items-center gap-2 p-1.5 rounded-md bg-background hover:bg-muted border border-transparent hover:border-border min-h-0 disabled:opacity-60"
+                >
+                  {photo ? (
+                    <img src={photo} alt="" loading="lazy" className="w-9 h-9 rounded-md object-cover shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-md bg-muted shrink-0 flex items-center justify-center text-sm">
+                      {recType === "food" ? "🍜" : "⛩"}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate flex items-center gap-1">
+                      <span className="text-[10px] px-1 py-px rounded bg-[color:var(--accent-3)]/20 text-[color:var(--accent-3)] shrink-0">⭐ שמור</span>
+                      <span className="truncate">{String(r.name)}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                      {r.city && <span>{String(r.city)}</span>}
+                      {rating != null && <span>· ★ {rating.toFixed(1)}</span>}
+                    </div>
+                  </div>
+                  {addingId === id && <span className="text-[10px] text-muted-foreground">מוסיף...</span>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormProps & { recType: "attraction" | "food" }) {
+
   const [name, setName] = useState(existing?.title ?? "");
   const [time, setTime] = useState(existing?.time_of_day ?? "");
   const [area, setArea] = useState(existing?.location_name ?? "");
