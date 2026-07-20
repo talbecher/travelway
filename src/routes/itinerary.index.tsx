@@ -162,7 +162,7 @@ function Itinerary() {
 
       {/* City navigation strip */}
       {grouped.length > 1 && (
-        <div className="-mx-4 px-4 overflow-x-auto no-scrollbar sticky top-0 z-10 py-2 bg-background/85 backdrop-blur">
+        <div className="-mx-4 px-4 overflow-x-auto no-scrollbar sticky top-0 z-10 py-3 bg-surface border-b border-border">
           <div className="flex gap-2 w-max" dir="rtl">
             {grouped.map((g, i) => {
               const key = `${g.city || "—"}-${i}`;
@@ -172,10 +172,10 @@ function Itinerary() {
                   key={key}
                   type="button"
                   onClick={() => scrollToCity(key)}
-                  className={`rounded-full px-3 py-1.5 text-[12px] whitespace-nowrap transition-colors ${
+                  className={`rounded-full h-8 px-3 flex items-center justify-center text-[12px] whitespace-nowrap transition-colors ${
                     active
-                      ? "bg-[color:var(--accent)] text-white"
-                      : "bg-[color:var(--surface-2)] text-muted-foreground"
+                      ? "bg-accent text-white shadow-sm"
+                      : "bg-surface-2 text-muted-foreground border border-border"
                   }`}
                 >
                   <span dir="ltr" className="inline-block align-middle">
@@ -218,12 +218,15 @@ function Itinerary() {
                 return (
                   <div
                     key={d.id}
-                    className={`bg-card rounded-2xl shadow-sm p-4 transition-shadow ${
+                    className={`bg-white dark:bg-card rounded-2xl overflow-hidden transition-shadow ${
                       isEmpty
                         ? "border border-dashed border-border-strong"
                         : "border border-border"
                     }`}
+                    style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
                   >
+                    <div className="h-1 bg-[color:var(--accent)]" />
+                    <div className="p-4">
                     {/* Header row */}
                     <div className="flex items-center gap-2">
                       <button
@@ -234,7 +237,7 @@ function Itinerary() {
                         }}
                         className="flex-1 min-w-0 text-right flex items-center gap-2 min-h-0 h-auto py-0"
                       >
-                        <span className="text-[13px] font-semibold text-[color:var(--accent)] shrink-0">
+                        <span className="text-[15px] font-bold text-[color:var(--accent)] shrink-0">
                           יום {d.day_number}
                         </span>
                         <span className="text-[13px] text-muted-foreground shrink-0">·</span>
@@ -348,6 +351,7 @@ function Itinerary() {
                         </button>
                       </>
                     )}
+                    </div>
                   </div>
                 );
               })}
@@ -362,16 +366,16 @@ function Itinerary() {
 function EntryPreviewRow({ entry }: { entry: EntryRow }) {
   const emoji = entry.icon_emoji || iconFor(entry.entry_type);
   return (
-    <div className="flex items-center gap-2 h-9">
+    <div className="flex items-center gap-2 h-10">
       {entry.photo_url ? (
         <img
           src={entry.photo_url}
           alt=""
           loading="lazy"
-          className="w-8 h-8 rounded-lg object-cover shrink-0"
+          className="w-10 h-10 rounded-lg object-cover shrink-0"
         />
       ) : (
-        <div className="w-8 h-8 rounded-lg bg-[color:var(--surface-2)] flex items-center justify-center text-[14px] shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-[color:var(--surface-2)] flex items-center justify-center text-[16px] shrink-0">
           {emoji}
         </div>
       )}
