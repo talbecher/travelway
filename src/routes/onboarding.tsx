@@ -7,6 +7,8 @@ import { useTrip } from "@/hooks/use-trip";
 import { setActiveTripId } from "@/lib/constants";
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Share2 } from "lucide-react";
 
 const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
 
@@ -185,6 +187,32 @@ function Onboarding() {
         <h1 className="text-2xl font-medium">{isEditing ? "עריכת טיול" : "טיול חדש"}</h1>
         <p className="text-sm text-muted-foreground">{isEditing ? "עדכון פרטי הטיול" : "בואו נבנה את הטיול הבא"}</p>
       </header>
+
+      {isEditing && (
+        <section className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <div className="text-sm font-medium">הגדרות</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground">מצב תצוגה</div>
+            <ThemeToggle />
+          </div>
+          {existingTrip?.share_token && (
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm text-muted-foreground">שיתוף טיול</div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const url = `${window.location.origin}/join/${existingTrip.share_token}`;
+                  try { await navigator.clipboard.writeText(url); toast.success("קישור השיתוף הועתק"); }
+                  catch { toast.message(url); }
+                }}
+                className="flex items-center gap-2 h-9 px-3 rounded-full border border-border text-sm text-muted-foreground"
+              >
+                <Share2 size={14} /> העתק קישור
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       <form
         onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}

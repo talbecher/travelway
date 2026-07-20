@@ -136,13 +136,12 @@ function AppShell() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
         <div className="max-w-md mx-auto flex items-center justify-between gap-2 px-4 py-3">
-          <HeaderTitle />
+          <div className="flex items-center gap-2">
+            {!isOnboarding && <SwitchTripButton />}
+          </div>
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
-            {!isOnboarding && <ShareTripButton />}
-            {!isOnboarding && <SwitchTripButton />}
             {!isOnboarding && <TripSettingsLink />}
-            <ThemeToggle />
             <SignOutButton />
           </div>
         </div>
