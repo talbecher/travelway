@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Trash2, Users, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/use-auth";
+
 import { useTripsList, tripRoleLabel, tripParticipantCount, type TripListItem } from "@/hooks/use-trips-list";
 import { setActiveTripId, clearActiveTripId } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
