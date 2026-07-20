@@ -1,5 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+export const OPEN_QUICK_EXPENSE_EVENT = "open-quick-expense";
+export function openQuickExpense() {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(OPEN_QUICK_EXPENSE_EVENT));
+}
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
