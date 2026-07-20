@@ -179,6 +179,31 @@ function DayDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const quickAdd = useMutation({
+    mutationFn: async (place: SelectedPlace) => {
+      const { error } = await supabase.from("day_entries").insert({
+        day_id: dayId,
+        entry_type: "attraction",
+        icon_emoji: TYPE_ICON.attraction,
+        title: place.name,
+        location_name: place.address || null,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        google_maps_url: place.google_maps_url,
+        photo_url: place.photo_url,
+        display_order: entries.length,
+        time_of_day: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("✅ נוסף למסלול");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
@@ -356,6 +381,15 @@ function DayDetail() {
                 </div>
               </SortableContext>
             </DndContext>
+
+            <div className="mt-3 space-y-1">
+              <div className="text-[11px] text-muted-foreground px-1">חיפוש מהיר — הוסף מקום ישירות למסלול</div>
+              <PlacesSearch
+                key={`quick-${entries.length}`}
+                placeholder="חפש מקום בגוגל..."
+                onSelect={(place) => quickAdd.mutate(place)}
+              />
+            </div>
 
             <button onClick={openPicker}
               className="w-full h-11 mt-3 rounded-xl bg-[color:var(--accent)] text-white text-sm font-medium flex items-center justify-center gap-2">
