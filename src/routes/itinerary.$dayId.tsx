@@ -567,42 +567,49 @@ function SortableEntry({
   const isLinked = !!entry.linked_recommendation_id;
 
   return (
-    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style}>
+    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} className="relative flex items-stretch gap-2">
+      {/* Timeline connector rail */}
+      <div className="w-[22px] shrink-0 relative flex justify-center">
+        <div className="absolute inset-y-0 w-0.5 bg-border" />
+        <div
+          className="absolute top-5 w-2 h-2 rounded-full"
+          style={{ background: hasCoords ? pinColor : "var(--border-strong)" }}
+        />
+      </div>
+
       <motion.div
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="bg-card border border-border rounded-2xl p-3"
+        className="flex-1 bg-card border border-border rounded-[10px] shadow-sm py-3 px-3 my-1"
       >
-        <div className="flex items-start gap-2">
-          <button
-            {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
-            className="w-7 self-stretch flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0"
-          >
-            <GripVertical size={16} />
-          </button>
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold shrink-0"
-            style={{
-              background: hasCoords ? pinColor : `color-mix(in oklab, ${tint} 22%, transparent)`,
-              color: hasCoords ? "#0F0F13" : tint,
-              border: hasCoords ? "2px solid var(--background)" : "none",
-            }}
-          >
-            {hasCoords ? pinIndex : icon}
-          </div>
+        <div className="flex items-start gap-3">
+          {entry.photo_url ? (
+            <img
+              src={entry.photo_url}
+              alt=""
+              loading="lazy"
+              className="w-[60px] h-[60px] rounded-xl object-cover shrink-0"
+            />
+          ) : (
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0"
+              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
+            >
+              {icon}
+            </div>
+          )}
+
           <div className="flex-1 min-w-0">
-            {entry.time_of_day && (
-              <div className="text-xs text-muted-foreground tabular-nums" dir="ltr">{entry.time_of_day}</div>
-            )}
-            <div className="font-medium text-[15px] flex items-center gap-1.5 flex-wrap">
-              <span className="me-1">{icon}</span>
-              <span>{entry.title}</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[15px] font-semibold truncate">{entry.title}</span>
               {hasCoords && (
                 <span
                   aria-label="במפה"
-                  className="inline-block w-2 h-2 rounded-full shrink-0"
+                  className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold text-white shrink-0"
                   style={{ background: pinColor }}
-                />
+                >
+                  {pinIndex}
+                </span>
               )}
               {isLinked && (
                 <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
@@ -610,6 +617,27 @@ function SortableEntry({
                 </span>
               )}
             </div>
+
+            <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground flex-wrap">
+              {entry.location_name && (
+                <span className="inline-flex items-center gap-1 min-w-0">
+                  <span>📍</span>
+                  <span className="truncate" dir="ltr">{entry.location_name}</span>
+                </span>
+              )}
+              {entry.time_of_day && (
+                <>
+                  {entry.location_name && <span className="opacity-50">·</span>}
+                  <span
+                    className="rounded-full bg-[color:var(--surface-2)] text-[11px] tabular-nums px-1.5 py-0.5"
+                    dir="ltr"
+                  >
+                    {entry.time_of_day}
+                  </span>
+                </>
+              )}
+            </div>
+
             {!hasCoords && entry.entry_type !== "note" && (
               <button
                 type="button"
@@ -619,12 +647,13 @@ function SortableEntry({
                 📍 לא זוהה מיקום — לחץ לעדכון
               </button>
             )}
-            {entry.location_name && (
-              <div className="text-xs text-muted-foreground mt-0.5" dir="ltr">{entry.location_name}</div>
-            )}
+
             {entry.description && (
-              <div className="text-sm text-muted-foreground mt-1 whitespace-pre-line line-clamp-3">{entry.description}</div>
+              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-3">
+                {entry.description}
+              </div>
             )}
+
             {(entry.google_maps_url || hasCoords) && (
               <a
                 href={
@@ -634,21 +663,20 @@ function SortableEntry({
                 }
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-[color:var(--accent)] inline-flex items-center gap-1 mt-2"
+                className="text-[12px] text-[color:var(--accent)] inline-flex items-center gap-1 mt-2"
               >
                 <ExternalLink size={12} /> פתח במפה
               </a>
             )}
           </div>
-          {entry.photo_url && (
-            <img
-              src={entry.photo_url}
-              alt=""
-              loading="lazy"
-              className="w-[60px] h-[60px] rounded-lg object-cover shrink-0"
-            />
-          )}
+
           <div className="flex flex-col gap-1 shrink-0">
+            <button
+              {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
+              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0"
+            >
+              <GripVertical size={12} />
+            </button>
             <button onClick={onEdit} aria-label="ערוך"
               className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"><Pencil size={12} /></button>
             <button onClick={onDelete} aria-label="מחק"
