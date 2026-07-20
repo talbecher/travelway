@@ -1006,8 +1006,16 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
         display_order: existing?.display_order ?? defaultOrder,
       }, { onSuccess: onDone });
     }} className="space-y-3">
+      {!manualMode && !placeSelected && !existing && (
+        <SavedRecsPicker
+          recType={recType}
+          dayId={dayId}
+          onAdded={onDone}
+        />
+      )}
       {!manualMode && !placeSelected && (
         <>
+          <div className="text-[11px] text-muted-foreground px-1">או חפש מקום חדש בגוגל</div>
           <PlacesSearch onSelect={handlePlace} placeholder={recType === "food" ? "חפש מסעדה..." : "חפש אטרקציה..."} />
           <button type="button" onClick={() => setManualMode(true)}
             className="text-xs text-muted-foreground underline min-h-0 h-auto p-0">
