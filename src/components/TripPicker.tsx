@@ -159,7 +159,3 @@ function TripRow({
   );
 }
 
-export function useAuthUserId() {
-  const { user } = useAuth();
-  return user?.id;
-}
