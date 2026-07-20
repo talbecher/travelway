@@ -1027,7 +1027,7 @@ function SavedRecsPicker({
                       <span className="truncate">{String(r.name)}</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-                      {r.city && <span>{String(r.city)}</span>}
+                      {r.city ? <span>{String(r.city)}</span> : null}
                       {rating != null && <span>· ★ {rating.toFixed(1)}</span>}
                     </div>
                   </div>
