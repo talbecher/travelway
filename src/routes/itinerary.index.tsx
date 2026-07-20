@@ -195,7 +195,7 @@ function Itinerary() {
           <section
             key={key}
             data-city-key={key}
-            ref={(el) => (sectionRefs.current[key] = el)}
+            ref={(el) => { sectionRefs.current[key] = el; }}
             className="scroll-mt-16"
           >
             {/* Group divider header */}
