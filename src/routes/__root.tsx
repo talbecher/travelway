@@ -29,7 +29,7 @@ import { TripPicker } from "@/components/TripPicker";
 import { useTripsList } from "@/hooks/use-trips-list";
 import { getActiveTripId } from "@/lib/constants";
 
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`;
+const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`;
 
 
 

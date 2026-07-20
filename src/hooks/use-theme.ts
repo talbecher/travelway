@@ -4,15 +4,15 @@ export type Theme = "dark" | "light";
 const KEY = "theme";
 
 function readInitial(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   const stored = window.localStorage.getItem(KEY);
-  return stored === "light" ? "light" : "dark";
+  return stored === "dark" ? "dark" : "light";
 }
 
 function apply(theme: Theme) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.classList.toggle("light", theme === "light");
+  root.classList.toggle("dark", theme === "dark");
 }
 
 export function useTheme() {

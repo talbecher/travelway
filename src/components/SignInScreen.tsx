@@ -27,18 +27,15 @@ export function SignInScreen() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-between px-6 py-12">
       <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
-        <ToriiSvg className="w-40 h-32 text-[color:var(--terracotta)]" />
+        <TravelSvg className="w-20 h-20 text-[color:var(--accent)]" />
         <div className="space-y-2">
-          <h1 className="text-4xl font-medium tracking-tight">TripNote</h1>
+          <h1 className="text-4xl font-bold tracking-tight">TripNote</h1>
           <p className="text-muted-foreground text-sm">מתכנן הטיולים שלך</p>
         </div>
-        <p className="italic text-muted-foreground text-sm max-w-xs leading-relaxed" dir="ltr">
-          Ancient gates stand still
-          <br />
-          Two travelers pass through
-          <br />
-          The map opens wide
-        </p>
+        <div className="space-y-1 max-w-xs">
+          <p className="text-xl font-semibold">תכנן. חווה. זכור.</p>
+          <p className="text-muted-foreground text-sm">הכל במקום אחד</p>
+        </div>
       </div>
 
       <div className="w-full max-w-xs space-y-3">
@@ -69,14 +66,15 @@ function GoogleG() {
   );
 }
 
-function ToriiSvg({ className }: { className?: string }) {
+function TravelSvg({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 120 100" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M8 20 Q60 8 112 20 L110 26 Q60 16 10 26 Z" />
-      <rect x="16" y="30" width="88" height="6" />
-      <rect x="20" y="46" width="80" height="4" />
-      <rect x="26" y="26" width="8" height="72" />
-      <rect x="86" y="26" width="8" height="72" />
+    <svg viewBox="0 0 96 96" className={className} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      {/* Suitcase */}
+      <rect x="16" y="44" width="52" height="36" rx="4" />
+      <path d="M32 44 V38 a4 4 0 0 1 4 -4 h12 a4 4 0 0 1 4 4 V44" />
+      <line x1="16" y1="58" x2="68" y2="58" />
+      {/* Airplane */}
+      <path d="M58 20 l22 6 -6 8 -8 -2 -6 8 -4 -2 2 -8 -8 -4 z" fill="currentColor" stroke="none" />
     </svg>
   );
 }
