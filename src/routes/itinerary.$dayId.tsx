@@ -375,17 +375,17 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-4">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-2 relative">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
+                <div>
                   {directionsEnabled && (
                     <a
                       href={directions}
                       target="_blank"
                       rel="noreferrer"
                       title="לשינוי מצב תחבורה — השתמש בכפתורי הניווט בין הנקודות למטה"
-                      className="w-full h-9 rounded-full border border-border text-xs text-muted-foreground flex items-center justify-center gap-2 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                      className="w-full h-9 mb-2 rounded-full border border-border text-xs text-muted-foreground flex items-center justify-center gap-2 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                     >
                       🗺 פתח את כל היום בגוגל מפות (ברגל)
                     </a>
@@ -399,13 +399,13 @@ function DayDetail() {
                         {prev && (a && b ? (
                           <SegmentConnector a={a} b={b} />
                         ) : (
-                          <div className="h-px bg-border mr-14 my-2" />
+                          <div className="w-0.5 h-4 bg-border mr-[22px] my-1" />
                         ))}
                         <SortableEntry
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
-                          setRef={(el) => (cardRefs.current[e.id] = el)}
+                          setRef={(el) => { cardRefs.current[e.id] = el; }}
                           onEdit={() => setEditEntry(e)}
                           onEditLocation={() => setEditLocationEntry(e)}
                           onDelete={() => { if (confirm("למחוק פריט?")) del.mutate(e.id); }}
@@ -417,19 +417,23 @@ function DayDetail() {
               </SortableContext>
             </DndContext>
 
-            <div className="mt-3 space-y-1">
-              <div className="text-[11px] text-muted-foreground px-1">חיפוש מהיר — הוסף מקום ישירות למסלול</div>
-              <PlacesSearch
-                key={`quick-${entries.length}`}
-                placeholder="חפש מקום בגוגל..."
-                onSelect={(place) => quickAdd.mutate(place)}
-              />
+            {/* Sticky quick add bar */}
+            <div className="sticky bottom-0 -mx-4 px-3 py-2 bg-card border-t border-border flex items-center gap-2" style={{ minHeight: 56 }}>
+              <button
+                onClick={openPicker}
+                aria-label="הוסף פעילות מההמלצות"
+                className="w-10 h-10 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shrink-0 min-h-0"
+              >
+                <Plus size={18} />
+              </button>
+              <div className="flex-1 min-w-0">
+                <PlacesSearch
+                  key={`quick-${entries.length}`}
+                  placeholder="חיפוש מהיר..."
+                  onSelect={(place) => quickAdd.mutate(place)}
+                />
+              </div>
             </div>
-
-            <button onClick={openPicker}
-              className="w-full h-11 mt-3 rounded-xl bg-[color:var(--accent)] text-white text-sm font-medium flex items-center justify-center gap-2">
-              <Plus size={16} /> הוסף פעילות מההמלצות
-            </button>
           </div>
         </div>
       )}
