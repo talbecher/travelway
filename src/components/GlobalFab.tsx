@@ -18,6 +18,11 @@ import { toast } from "sonner";
 
 export function GlobalFab() {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const h = () => setOpen(true);
+    window.addEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
+    return () => window.removeEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
+  }, []);
   return (
     <>
       <motion.button
