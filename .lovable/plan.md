@@ -1,63 +1,48 @@
+## Phase 1 — Design system overhaul (styles + theme default + login illustration)
 
-## Home screen redesign (`src/routes/index.tsx`) + header cleanup (`src/routes/__root.tsx`)
+Touch only these files:
+- `src/styles.css` — full token replacement + typography + card/button/nav recipes
+- `src/hooks/use-theme.ts` — default `light`
+- `src/routes/__root.tsx` — inline theme-init script default `light`
+- `src/components/SignInScreen.tsx` — replace torii + haiku (the torii lives here, not in `AuthGate.tsx` which has no illustration)
+- `src/lib/destination-theme.ts` — new file (per spec §6)
 
-Mobile-first, RTL, dark theme, framer-motion staggered fade-in (0.1s per section). Page padding `px-4 pt-4 pb-24`, `gap-4` between sections. Any section with no data is hidden — no empty cards.
+No other files touched. No changes to queries, mutations, routing, forms, maps, charts.
 
-### Section 1 — Hero (always shown)
-- Full-width 160px card, `rounded-2xl`, gradient background `linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f3460)`.
-- Row 1: trip title (28px bold, white) + flag emoji derived from destination string (small country→flag map: יפן🇯🇵, צרפת🇫🇷, איטליה🇮🇹, ספרד🇪🇸, יוון🇬🇷, ארה״ב🇺🇸, תאילנד🇹🇭, בריטניה🇬🇧, גרמניה🇩🇪).
-- Row 2: dates `start → end` (formatted), muted white.
-- Row 3: status pill — `"עוד X ימים"` (amber) / `"יום X מתוך Y"` (green, pulsing dot) / `"הסתיים"` (muted).
-- Bottom-right: 56px circular ring (reused `BudgetRing`, extracted into a small `ProgressRing` shared component in-file) showing `daysPassed/daysTotal`.
+### Note on scope
+Your brief says "touch only styles.css / use-theme.ts / __root.tsx", but §6 requires a new file (`destination-theme.ts`) and §7 requires editing the login screen. The torii SVG + haiku live in `SignInScreen.tsx`, not `__root.tsx` or `AuthGate.tsx`. I'll edit `SignInScreen.tsx` (style-only: swap SVG + text) and add `destination-theme.ts`. Nothing else. Say the word if you'd rather skip §6/§7 and keep the file list literal.
 
-### Section 2 — Today snapshot (only if today ∈ trip range)
-- Find `itinerary_day` where `date === todayISO()`.
-- Header: `היום — יום N · city_label`.
-- List up to 4 entries (emoji + title + optional time), `+X נוספים` if more.
-- Empty: `היום ריק — רוצה לתכנן?` + button.
-- CTA button → `/itinerary/$dayId`.
+### 1. `src/styles.css`
+- Replace the `:root` block with the light-mode palette from the spec (background `#FAF7F2`, surface `#FFFFFF`, accent `#E8614D`, etc.) and add `--shadow-sm`, `--shadow-md`, `--radius`, `--radius-sm`, `--radius-lg`.
+- Replace `.light` block with `.dark` using the dark palette from the spec (background `#1A1614`, etc.). Flip the theme switch so **light is the default** and `.dark` opts in.
+- Keep `@theme inline` token→CSS-var bridge (needed for Tailwind utility generation). Add `--color-border-strong`, remove now-unused aliases (`--accent-1`, `--accent-4`, `--terracotta*`, `--paper`, `--ink*`) — legacy class names in components use `var(--terracotta)` etc., so keep those aliases pointing at `--accent` to avoid touching component files.
+- Keep chart tokens exactly per spec (`#E8614D`, `#6C63FF`, `#10B981`, `#F59E0B`, `#A8E6CF`, `#A8A09A`).
+- Update `@layer base` typography: `h1` 28px/700/-0.5px, `h2` 20px/600, `h3` 17px/600; keep body 15px/1.6 antialiased.
+- Add global card recipe via attribute/class selector: `.card, [data-card] { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }`.
+- Add bottom-nav recipe (light/dark variants with translucent bg + `backdrop-filter: blur(20px)`) targeting the existing `<nav>` in `BottomNav.tsx` via a scoped selector (`nav[aria-label], .app-bottom-nav`) — no component edits, use attribute selectors already present.
+- Add button recipes as `@utility btn-primary / btn-secondary / btn-ghost` so future work can adopt them without breaking current classNames.
+- Flip `.dark` selector variant: `@custom-variant dark (&:is(.dark, .dark *))`. Update `html { color-scheme: light }` and `html.dark { color-scheme: dark }`.
 
-### Section 3 — Next planned day (only if today < trip.start_date)
-- Find first future day with ≥1 entry.
-- Header: `היום הבא המתוכנן — יום N` + formatted date.
-- Up to 3 entry previews.
-- Tap → `/itinerary/$dayId`.
+### 2. `src/hooks/use-theme.ts`
+- `readInitial()` returns `"light"` when nothing stored.
+- `apply()` toggles `.dark` class on `<html>` (was `.light`).
+- `toggle()` unchanged in behavior.
 
-### Section 4 — Budget snapshot (always if trip exists)
-- Standard `bg-card` surface, no gradient.
-- Left: 80px donut ring. Right column: `נשאר` label + amount (large), two small stats below (`הוצאנו`, `ליום`).
+### 3. `src/routes/__root.tsx`
+- Update the inline pre-hydration `THEME_INIT` script:
+  `var t=localStorage.getItem('theme'); if(t==='dark') document.documentElement.classList.add('dark');`
+- No other edits.
 
-### Section 5 — Quick stats row
-- Horizontal chips (wrap allowed): `📍 X מקומות שמורים` → `/recommendations`, `✅ X ביקרנו` → `/recommendations?status=visited`, `📅 X ימים מתוכננים` → `/itinerary`.
-- Style: `bg-[color:var(--surface-2)] rounded-full px-3 py-1.5 text-xs`.
-- Data: counts from existing `useRecs()` + `useDays()` (planned = days with entries — batch via `useQueries` over `dayEntriesQuery`).
+### 4. `src/components/SignInScreen.tsx`
+- Remove `ToriiSvg` component + its usage.
+- Add a minimal `TravelSvg` (suitcase + airplane, `currentColor`, 80px, `text-[color:var(--accent)]`).
+- Replace haiku `<p>` with two lines: `תכנן. חווה. זכור.` (h2-ish) + `הכל במקום אחד` (muted subtitle).
+- Keep Google button + PIN flow untouched.
 
-### Section 6 — Quick actions (2×2 grid)
-- Buttons (80px tall, `rounded-xl bg-card border`, icon top / label bottom):
-  - 📅 מסלול הטיול → `/itinerary`
-  - ⭐ המלצות → `/recommendations`
-  - 💰 תקציב → `/budget`
-  - ➕ הוצאה מהירה → opens `GlobalFab` sheet directly
-- To share the sheet: lift the sheet open-state into a lightweight context (`GlobalFabContext`) exposed by `GlobalFab` (mounted in `__root.tsx`) with an `openQuickExpense()` method, consumed by the home tile. No behavior change to the floating button.
+### 5. `src/lib/destination-theme.ts` (new)
+Exact export from spec §6: `getDestinationTheme(destination)` returning `{ emoji, heroGradient, accentColor, patternEmoji }` for JP/FR/IT/TH/ES/GR/IL + default. Pure function, no imports. Not yet wired anywhere — Phase 2/3 will consume it.
 
-### Section 7 — Hotel alerts (only if any deadline ≤ 7 days)
-- Keep existing alert card list. Section title above: `⚠️ דדליינים קרובים`.
-
-### Header cleanup (`src/routes/__root.tsx`)
-- Left: `SwitchTripButton` (existing).
-- Right: `TripSettingsLink` (gear) + `ConverterPill`.
-- Remove from header: `HeaderTitle`, `ThemeToggle`, `ShareTripButton`.
-- Keep `SignOutButton` where it is (not covered by request → leave untouched to stay in scope).
-- Move `ThemeToggle` and `ShareTripButton` into the trip edit page (`src/routes/onboarding.tsx` in edit mode) — that page is what the gear currently opens and serves as the current "settings" surface. *(Flag: if you'd rather these live somewhere else, tell me before build.)*
-
-### Files touched
-- `src/routes/index.tsx` — full rewrite.
-- `src/routes/__root.tsx` — header slimming + mounting a `GlobalFabProvider` around `AppShell` so the home quick-action can open the sheet.
-- `src/components/GlobalFab.tsx` — expose an `openQuickExpense()` via context (small addition, no visual change).
-- `src/routes/onboarding.tsx` — add Theme + Share controls when `edit=true`.
-
-### Technical notes
-- Reuse `todayISO`, `daysBetween`, `ils` from `src/lib/format.ts`.
-- Days-planned count uses `useQueries` on all `days` with `dayEntriesQuery(day.id)`; light because entries are already cached when the user has visited the itinerary, and cheap otherwise.
-- Ring component extracted once, used at 56px (hero) and 80px (budget) via a `size` prop.
-- All colors via existing tokens (`--surface`, `--card`, `--border`, `--accent`, `--accent-2`, `--muted-foreground`); the hero gradient is the only hardcoded palette (explicitly requested).
+### Verification
+- `bun run build` passes.
+- Preview: light mode renders by default, dark opts in via toggle, bottom nav is translucent, cards are flat with subtle shadow, login shows generic travel SVG + Hebrew tagline.
+- No component file besides `SignInScreen.tsx` is modified; no query/route/mutation touched.
