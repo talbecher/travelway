@@ -247,6 +247,19 @@ function Onboarding() {
               </button>
             </div>
           )}
+          {isOwner && (
+            <div className="pt-2 border-t border-border flex items-center justify-between gap-3">
+              <div className="text-sm text-muted-foreground">מחיקת הטיול</div>
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                disabled={deleteTrip.isPending}
+                className="flex items-center gap-2 h-9 px-3 rounded-full border border-[color:var(--destructive)] text-sm text-[color:var(--destructive)] disabled:opacity-50"
+              >
+                <Trash2 size={14} /> {deleteTrip.isPending ? "מוחק..." : "מחק טיול זה"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
