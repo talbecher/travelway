@@ -382,6 +382,15 @@ function DayDetail() {
               </SortableContext>
             </DndContext>
 
+            <div className="mt-3 space-y-1">
+              <div className="text-[11px] text-muted-foreground px-1">חיפוש מהיר — הוסף מקום ישירות למסלול</div>
+              <PlacesSearch
+                key={`quick-${entries.length}`}
+                placeholder="חפש מקום בגוגל..."
+                onSelect={(place) => quickAdd.mutate(place)}
+              />
+            </div>
+
             <button onClick={openPicker}
               className="w-full h-11 mt-3 rounded-xl bg-[color:var(--accent)] text-white text-sm font-medium flex items-center justify-center gap-2">
               <Plus size={16} /> הוסף פעילות
