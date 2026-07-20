@@ -96,6 +96,7 @@ function DayDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
+  const { data: trip } = useTrip();
   const day = days.find((d) => d.id === dayId);
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const entries = sortEntries(rawEntries as EntryRow[]);
@@ -279,44 +280,77 @@ function DayDetail() {
 
   return (
     <div className="-mx-4">
-      {/* Header (scrollable region above split) */}
-      <div className="px-4 pt-2 pb-3 space-y-2">
-        <button onClick={() => navigate({ to: "/itinerary" })} className="flex items-center gap-1 text-sm text-muted-foreground min-h-0 h-auto py-1">
-          <ChevronRight size={16} /> חזרה למסלול
-        </button>
-        <div className="text-xs text-muted-foreground">יום {day.day_number}</div>
-        <h1>{hebDateLong(day.date)}</h1>
-        {editingCity ? (
-          <div className="flex items-center gap-2 mt-1">
-            <input
-              autoFocus value={cityValue} onChange={(e) => setCityValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveCity.mutate();
-                if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
-              }}
-              dir="ltr" placeholder="עיר / איזור"
-              className="flex-1 text-sm bg-background border border-input rounded-md px-2 py-1 outline-none focus:border-[color:var(--accent)]"
-            />
-            <button onClick={() => saveCity.mutate()} className="w-8 h-8 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center min-h-0"><Check size={14} /></button>
-            <button onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }} className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"><X size={14} /></button>
+      {/* Hero header */}
+      {(() => {
+        const theme = getDestinationTheme(trip?.destination_country ?? "");
+        return (
+          <div
+            className="relative w-full px-4 pt-3 pb-4"
+            style={{ minHeight: 120, background: theme.heroGradient }}
+          >
+            <button
+              onClick={() => navigate({ to: "/itinerary" })}
+              aria-label="חזרה למסלול"
+              className="absolute top-3 left-3 w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
+            >
+              <ChevronRight size={16} className="rotate-180" />
+            </button>
+            <div className="pt-1 pr-1">
+              <div className="text-white text-[32px] font-semibold leading-none">
+                יום {day.day_number}
+              </div>
+              <div className="text-white/70 text-[13px] mt-2">{hebDateLong(day.date)}</div>
+              <div className="mt-3">
+                {editingCity ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={cityValue}
+                      onChange={(e) => setCityValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveCity.mutate();
+                        if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
+                      }}
+                      dir="ltr"
+                      placeholder="עיר / איזור"
+                      className="flex-1 text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white"
+                    />
+                    <button
+                      onClick={() => saveCity.mutate()}
+                      className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
+                      className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/5 min-h-0 h-auto"
+                  >
+                    <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
+                    <Pencil size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        ) : (
-          <button onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground min-h-0 h-auto py-1">
-            <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
-            <Pencil size={12} />
-          </button>
-        )}
-      </div>
+        );
+      })()}
 
       {isLoading ? (
-        <div className="px-4 space-y-2 animate-pulse">
+        <div className="px-4 pt-3 space-y-2 animate-pulse">
           {[0, 1, 2].map((i) => <div key={i} className="h-20 bg-card border border-border rounded-2xl" />)}
         </div>
       ) : !hasAnyEntries ? (
-        <div className="px-4"><EmptyDay onAdd={openPicker} /></div>
+        <div className="px-4 pt-3"><EmptyDay onAdd={openPicker} /></div>
       ) : (
-        <div id="day-split" className="relative flex flex-col" style={{ height: "calc(100dvh - 220px)" }}>
+        <div id="day-split" className="relative flex flex-col" style={{ height: "calc(100dvh - 260px)" }}>
           {/* Map pane */}
           <div className="relative overflow-hidden" style={{ height: `${mapPct}%` }}>
             {mapStops.length > 0 ? (
@@ -337,7 +371,7 @@ function DayDetail() {
             onPointerDown={(e) => { draggingRef.current = true; document.body.style.cursor = "row-resize"; e.preventDefault(); }}
             className="h-3 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none"
           >
-            <div className="w-10 h-1 rounded-full bg-border" />
+            <div className="w-10 h-1 rounded-[2px] bg-border" />
           </div>
 
           {/* List pane */}
