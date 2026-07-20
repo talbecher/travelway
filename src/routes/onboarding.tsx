@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrip } from "@/hooks/use-trip";
-import { setActiveTripId } from "@/lib/constants";
+import { useAuth } from "@/hooks/use-auth";
+import { useTripsList } from "@/hooks/use-trips-list";
+import { setActiveTripId, clearActiveTripId, getActiveTripId } from "@/lib/constants";
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Share2 } from "lucide-react";
+import { Share2, Trash2 } from "lucide-react";
 
 const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
 
