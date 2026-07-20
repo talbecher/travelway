@@ -393,7 +393,7 @@ function DayDetail() {
 
             <button onClick={openPicker}
               className="w-full h-11 mt-3 rounded-xl bg-[color:var(--accent)] text-white text-sm font-medium flex items-center justify-center gap-2">
-              <Plus size={16} /> הוסף פעילות
+              <Plus size={16} /> הוסף פעילות מההמלצות
             </button>
           </div>
         </div>
@@ -1006,6 +1006,7 @@ function SavedRecsPicker({
               const id = String(r.id);
               const photo = (r.photo_url as string | null) ?? null;
               const rating = typeof r.google_rating === "number" ? (r.google_rating as number) : null;
+              const notes = (r.notes as string | null) ?? null;
               return (
                 <button
                   key={id}
@@ -1030,6 +1031,11 @@ function SavedRecsPicker({
                       {r.city ? <span>{String(r.city)}</span> : null}
                       {rating != null && <span>· ★ {rating.toFixed(1)}</span>}
                     </div>
+                    {notes && (
+                      <div className="text-[11px] text-muted-foreground/80 line-clamp-2 leading-tight mt-0.5">
+                        {notes}
+                      </div>
+                    )}
                   </div>
                   {addingId === id && <span className="text-[10px] text-muted-foreground">מוסיף...</span>}
                 </button>
