@@ -393,7 +393,7 @@ function DayDetail() {
 
             <button onClick={openPicker}
               className="w-full h-11 mt-3 rounded-xl bg-[color:var(--accent)] text-white text-sm font-medium flex items-center justify-center gap-2">
-              <Plus size={16} /> הוסף פעילות
+              <Plus size={16} /> הוסף פעילות מההמלצות
             </button>
           </div>
         </div>
