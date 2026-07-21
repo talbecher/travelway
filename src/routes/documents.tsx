@@ -312,14 +312,16 @@ function DocumentCard({
   );
 }
 
-function parseFlightSegment(title: string): { from: string; to: string; airline: string } | null {
-  const m = title.match(/([A-Z]{3})\s*(?:→|->|-|—|to| )\s*([A-Z]{3})/);
-  if (!m) return null;
-  const from = m[1];
-  const to = m[2];
-  const airline = title.replace(m[0], "").replace(/[·|,]/g, " ").trim();
-  return { from, to, airline };
+function parseSegments(title: string): { codes: string[]; airline: string } | null {
+  const codes = title.match(/\b[A-Z]{3}\b/g) ?? [];
+  if (codes.length < 2) return null;
+  // Remove all matched codes and common separators to derive airline label
+  let airline = title;
+  for (const c of codes) airline = airline.replace(c, "");
+  airline = airline.replace(/[→\->—·|,]/g, " ").replace(/\s+/g, " ").trim();
+  return { codes, airline };
 }
+
 
 /* ---------- barcode sheet ---------- */
 
