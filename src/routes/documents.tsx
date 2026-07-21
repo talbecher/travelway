@@ -490,7 +490,13 @@ function DocumentFormSheet({
             placeholder="טיסה TLV→NRT, Hotel RIO Shinjuku..."
             className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm"
           />
+          {type === "flight" && (
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              לטיסת קונקשן: כתוב את כל היעדים ברצף, למשל TLV→DXB→NRT
+            </div>
+          )}
         </Field>
+
 
         <Field label="תאריך (אופציונלי)">
           <input
