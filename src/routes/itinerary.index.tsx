@@ -266,6 +266,9 @@ function Itinerary() {
                             {d.city_label}
                           </span>
                         )}
+                        {!isEditing && (
+                          <DayWeatherBadge city={d.city_label ?? null} date={d.date} />
+                        )}
                       </button>
                       {!isEditing && (
                         <div className="flex items-center gap-1 shrink-0">
