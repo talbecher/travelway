@@ -556,30 +556,32 @@ function DayDetail() {
 
 function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat: number; lng: number } }) {
   const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
-  const suggested: "walking" | "transit" | "driving" =
-    km < 1.5 ? "walking" : km <= 10 ? "transit" : "driving";
+  const isWalk = km < 1.5;
+  const suggested: "walking" | "transit" = isWalk ? "walking" : "transit";
   const base = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}`;
-  const modes: { key: "walking" | "transit" | "driving"; label: string; emoji: string }[] = [
-    { key: "walking", label: "ברגל", emoji: "🚶" },
-    { key: "transit", label: "תחבורה", emoji: "🚌" },
-    { key: "driving", label: "מכונית", emoji: "🚗" },
-  ];
+  const modeMeta = {
+    walking: { label: "ברגל", emoji: "🚶" },
+    transit: { label: "תחבורה", emoji: "🚌" },
+  } as const;
+  const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
+  const ordered: ("walking" | "transit")[] = [suggested, alt];
   return (
-    <div className="mr-14 my-1 flex flex-col items-start gap-1" dir="rtl">
+    <div className="mr-14 my-2 flex flex-col items-start gap-1.5" dir="rtl">
       <div className="w-0.5 h-3 bg-border" />
-      <div className="text-[11px] text-muted-foreground">→ {fmtDistance(km)}</div>
-      <div className="flex gap-1.5 flex-wrap">
-        {modes.map((m) => {
-          const isOn = m.key === suggested;
+      <div className="text-[13px] text-muted-foreground">→ {fmtDistance(km)}</div>
+      <div className="flex gap-2 flex-wrap">
+        {ordered.map((key) => {
+          const m = modeMeta[key];
+          const isOn = key === suggested;
           return (
             <a
-              key={m.key}
-              href={`${base}&travelmode=${m.key}`}
+              key={key}
+              href={`${base}&travelmode=${key}`}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
-              className="h-7 px-3 rounded-full text-[11px] inline-flex items-center gap-1 leading-none"
+              className="min-h-[36px] min-w-[80px] px-3 rounded-full text-[13px] inline-flex items-center justify-center gap-1.5 leading-none"
               style={
                 isOn
                   ? { background: "var(--accent)", color: "#fff", border: "1px solid transparent" }
@@ -588,6 +590,7 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
             >
               <span>{m.emoji}</span>
               <span>{m.label}</span>
+              {isOn && <span className="opacity-90">✓</span>}
             </a>
           );
         })}
@@ -600,15 +603,13 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onEdit, onEditLocation, onDelete,
+  entry, pinIndex, highlighted, setRef, onOpenActions,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
-  onEdit: () => void;
-  onEditLocation: () => void;
-  onDelete: () => void;
+  onOpenActions: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const style: React.CSSProperties = {
@@ -636,28 +637,39 @@ function SortableEntry({
       <motion.div
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="flex-1 bg-card border border-border rounded-[10px] shadow-sm py-3 px-3 my-1"
+        className="relative flex-1 bg-card border border-border rounded-[12px] shadow-sm my-1"
+        style={{ minHeight: 72, padding: "14px 16px" }}
       >
+        {/* Time pill — top-left corner */}
+        {entry.time_of_day && (
+          <span
+            className="absolute top-2 left-2 rounded-full bg-muted/60 text-[11px] tabular-nums px-1.5 py-0.5 text-foreground/80"
+            dir="ltr"
+          >
+            {entry.time_of_day}
+          </span>
+        )}
+
         <div className="flex items-start gap-3">
           {entry.photo_url ? (
             <img
               src={entry.photo_url}
               alt=""
               loading="lazy"
-              className="w-[60px] h-[60px] rounded-xl object-cover shrink-0"
+              className="w-14 h-14 rounded-xl object-cover shrink-0"
             />
           ) : (
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0"
+              className="w-14 h-14 rounded-xl flex items-center justify-center text-[24px] shrink-0"
               style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
             >
               {icon}
             </div>
           )}
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[15px] font-semibold truncate">{entry.title}</span>
+              <span className="text-[15px] font-semibold truncate leading-tight">{entry.title}</span>
               {hasCoords && (
                 <span
                   aria-label="במפה"
@@ -674,75 +686,42 @@ function SortableEntry({
               )}
             </div>
 
-            <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground flex-wrap">
-              {entry.location_name && (
-                <span className="inline-flex items-center gap-1 min-w-0">
-                  <span>📍</span>
-                  <span className="truncate" dir="ltr">{entry.location_name}</span>
-                </span>
-              )}
-              {entry.time_of_day && (
-                <>
-                  {entry.location_name && <span className="opacity-50">·</span>}
-                  <span
-                    className="rounded-full bg-[color:var(--surface-2)] text-[11px] tabular-nums px-1.5 py-0.5"
-                    dir="ltr"
-                  >
-                    {entry.time_of_day}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {!hasCoords && entry.entry_type !== "note" && (
-              <button
-                type="button"
-                onClick={onEditLocation}
-                className="text-[11px] text-muted-foreground underline mt-1 inline-flex items-center gap-1 min-h-0 h-auto p-0"
-              >
-                📍 לא זוהה מיקום — לחץ לעדכון
-              </button>
-            )}
-
-            {entry.description && (
-              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-3">
-                {entry.description}
+            {entry.location_name && (
+              <div className="mt-1 text-[12px] text-muted-foreground truncate" dir="ltr">
+                {entry.location_name}
               </div>
             )}
 
-            {(entry.google_maps_url || hasCoords) && (
-              <a
-                href={
-                  hasCoords && entry.latitude != null && entry.longitude != null
-                    ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
-                    : entry.google_maps_url!
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="text-[12px] text-[color:var(--accent)] inline-flex items-center gap-1 mt-2"
-              >
-                <ExternalLink size={12} /> פתח במפה
-              </a>
+            {entry.description && (
+              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2">
+                {entry.description}
+              </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-1 shrink-0">
-            <button
-              {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
-              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0"
-            >
-              <GripVertical size={12} />
-            </button>
-            <button onClick={onEdit} aria-label="ערוך"
-              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"><Pencil size={12} /></button>
-            <button onClick={onDelete} aria-label="מחק"
-              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0"><Trash2 size={12} /></button>
-          </div>
+          {/* Drag handle — vertical, minimal */}
+          <button
+            {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0 shrink-0"
+          >
+            <GripVertical size={14} />
+          </button>
         </div>
+
+        {/* ⋯ menu — bottom-left corner */}
+        <button
+          type="button"
+          onClick={onOpenActions}
+          aria-label="פעולות נוספות"
+          className="absolute bottom-1.5 left-1.5 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/50 min-h-0"
+        >
+          <MoreHorizontal size={16} />
+        </button>
       </motion.div>
     </div>
   );
 }
+
 
 function EmptyDay({ onAdd }: { onAdd: () => void }) {
   return (
