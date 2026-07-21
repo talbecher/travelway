@@ -1,11 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, Wallet, Star } from "lucide-react";
+import { Home, Calendar, Wallet, Star, MessagesSquare } from "lucide-react";
 
 const tabs = [
-  { to: "/", icon: Home, label: "בית" },
-  { to: "/itinerary", icon: Calendar, label: "מסלול" },
-  { to: "/budget", icon: Wallet, label: "תקציב" },
+  { to: "/phrasebook", icon: MessagesSquare, label: "שיחון" },
   { to: "/recommendations", icon: Star, label: "המלצות" },
+  { to: "/budget", icon: Wallet, label: "תקציב" },
+  { to: "/itinerary", icon: Calendar, label: "מסלול" },
+  { to: "/", icon: Home, label: "בית" },
 ] as const;
 
 export function BottomNav() {
@@ -15,7 +16,7 @@ export function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-40 border-t border-border backdrop-blur-xl"
       style={{ background: "color-mix(in oklab, var(--surface) 72%, transparent)" }}
     >
-      <div className="max-w-md mx-auto grid grid-cols-4">
+      <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map((t) => {
           const active = t.to === "/" ? pathname === "/" : pathname.startsWith(t.to);
           const Icon = t.icon;
@@ -23,9 +24,9 @@ export function BottomNav() {
             <Link
               key={t.to}
               to={t.to}
-              className={`flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-[11px] transition-colors ${active ? "text-[color:var(--accent)]" : "text-muted-foreground"}`}
+              className={`flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-[10px] transition-colors ${active ? "text-[color:var(--accent)]" : "text-muted-foreground"}`}
             >
-              <Icon size={22} strokeWidth={1.6} />
+              <Icon size={20} strokeWidth={1.6} />
               <span>{t.label}</span>
             </Link>
           );
