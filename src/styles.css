@@ -238,3 +238,6 @@ nav[data-bottom-nav] {
   background: #fff !important;
   color: #333 !important;
 }
+
+.entry-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+.entry-subtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
