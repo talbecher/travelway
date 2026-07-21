@@ -139,7 +139,7 @@ function DayDetail() {
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
 
-  const [mapPct, setMapPct] = useState(50);
+  const [mapPct, setMapPct] = useState(40);
   const draggingRef = useRef(false);
 
   const listRef = useRef<HTMLDivElement>(null);
