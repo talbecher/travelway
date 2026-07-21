@@ -213,27 +213,35 @@ function DocumentCard({
   );
 
   if (doc.type === "flight") {
-    const seg = parseFlightSegment(doc.title);
+    const parsed = parseSegments(doc.title);
+    const codes = parsed?.codes ?? [];
+    const stops = codes.length >= 3 ? codes.length - 2 : 0;
     return (
       <section className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--accent)]/10 to-transparent">
-          <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
             <span className="text-lg">✈️</span>
-            <span className="truncate">{seg ? seg.airline || "טיסה" : doc.title}</span>
+            <span className="truncate">{parsed ? parsed.airline || "טיסה" : doc.title}</span>
+            {stops > 0 && (
+              <span className="ms-auto text-[10px] rounded-full px-2 py-0.5 bg-[color:var(--accent)]/15 text-[color:var(--accent)] font-medium">
+                קונקשן · {stops} {stops === 1 ? "עצירה" : "עצירות"}
+              </span>
+            )}
           </div>
-          {seg && (
-            <div className="mt-2 flex items-center gap-2" dir="ltr">
-              <div className="text-right">
-                <div className="text-xl font-bold tabular-nums leading-none">{seg.from}</div>
-              </div>
-              <div className="flex-1 relative h-6 flex items-center">
-                <div className="flex-1 border-t border-dashed border-border" />
-                <span className="px-1.5 text-base">✈</span>
-                <div className="flex-1 border-t border-dashed border-border" />
-              </div>
-              <div className="text-left">
-                <div className="text-xl font-bold tabular-nums leading-none">{seg.to}</div>
-              </div>
+          {codes.length >= 2 && (
+            <div className="mt-2 flex items-center gap-1 flex-wrap" dir="ltr">
+              {codes.map((code, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  <span className="text-lg font-bold tabular-nums leading-none">{code}</span>
+                  {i < codes.length - 1 && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <span className="w-3 border-t border-dashed border-border" />
+                      <span className="text-sm">✈</span>
+                      <span className="w-3 border-t border-dashed border-border" />
+                    </span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -253,6 +261,7 @@ function DocumentCard({
       </section>
     );
   }
+
 
   if (doc.type === "hotel") {
     return (
@@ -303,14 +312,16 @@ function DocumentCard({
   );
 }
 
-function parseFlightSegment(title: string): { from: string; to: string; airline: string } | null {
-  const m = title.match(/([A-Z]{3})\s*(?:→|->|-|—|to| )\s*([A-Z]{3})/);
-  if (!m) return null;
-  const from = m[1];
-  const to = m[2];
-  const airline = title.replace(m[0], "").replace(/[·|,]/g, " ").trim();
-  return { from, to, airline };
+function parseSegments(title: string): { codes: string[]; airline: string } | null {
+  const codes = title.match(/\b[A-Z]{3}\b/g) ?? [];
+  if (codes.length < 2) return null;
+  // Remove all matched codes and common separators to derive airline label
+  let airline = title;
+  for (const c of codes) airline = airline.replace(c, "");
+  airline = airline.replace(/[→\->—·|,]/g, " ").replace(/\s+/g, " ").trim();
+  return { codes, airline };
 }
+
 
 /* ---------- barcode sheet ---------- */
 
@@ -479,7 +490,13 @@ function DocumentFormSheet({
             placeholder="טיסה TLV→NRT, Hotel RIO Shinjuku..."
             className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm"
           />
+          {type === "flight" && (
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              לטיסת קונקשן: כתוב את כל היעדים ברצף, למשל TLV→DXB→NRT
+            </div>
+          )}
         </Field>
+
 
         <Field label="תאריך (אופציונלי)">
           <input
