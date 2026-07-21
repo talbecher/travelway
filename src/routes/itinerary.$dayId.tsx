@@ -593,14 +593,15 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onOpenActions,
+  entry, pinIndex, highlighted, setRef, onOpenDetails,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
-  onOpenActions: () => void;
+  onOpenDetails: () => void;
 }) {
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
