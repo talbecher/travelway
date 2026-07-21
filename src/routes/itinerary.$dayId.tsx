@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon, Link2, MoreHorizontal } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, dayEntriesQuery } from "@/hooks/use-trip";
@@ -379,21 +379,17 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[140px] relative">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div>
+                <div className="flex flex-col gap-4">
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
                     const b = coordsOf(e);
                     return (
                       <div key={e.id}>
-                        {prev && (a && b ? (
-                          <SegmentConnector a={a} b={b} />
-                        ) : (
-                          <div className="w-0.5 h-4 bg-border mr-[22px] my-1" />
-                        ))}
+                        {prev && a && b && <SegmentConnector a={a} b={b} />}
                         <SortableEntry
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
@@ -409,14 +405,15 @@ function DayDetail() {
             </DndContext>
           </div>
 
-          {/* Floating action button */}
+          {/* Floating action button — "add from favourites" pill */}
           <button
             onClick={openPicker}
-            aria-label="הוסף פעילות"
-            className="fixed right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white shadow-lg flex items-center justify-center min-h-0 active:scale-95 transition-transform"
+            aria-label="הוסף ממועדפים"
+            className="fixed right-4 z-40 h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold min-h-0 active:scale-95 transition-transform"
             style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
           >
-            <Plus size={24} />
+            <span>⭐</span>
+            <span>הוסף ממועדפים</span>
           </button>
 
           {/* Sticky quick search bar */}
@@ -566,9 +563,8 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
   const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
   const ordered: ("walking" | "transit")[] = [suggested, alt];
   return (
-    <div className="mr-14 my-2 flex flex-col items-start gap-1.5" dir="rtl">
-      <div className="w-0.5 h-3 bg-border" />
-      <div className="text-[13px] text-muted-foreground">→ {fmtDistance(km)}</div>
+    <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
+      <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
       <div className="flex gap-2 flex-wrap">
         {ordered.map((key) => {
           const m = modeMeta[key];
@@ -595,7 +591,6 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
           );
         })}
       </div>
-      <div className="w-0.5 h-3 bg-border" />
     </div>
   );
 }
@@ -624,52 +619,38 @@ function SortableEntry({
   const isLinked = !!entry.linked_recommendation_id;
 
   return (
-    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} className="relative flex items-stretch gap-2">
-      {/* Timeline connector rail */}
-      <div className="w-[22px] shrink-0 relative flex justify-center">
-        <div className="absolute inset-y-0 w-0.5 bg-border" />
+    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="relative flex items-stretch gap-2">
+      {/* Timeline rail (right in RTL) */}
+      <div className="w-[72px] shrink-0 relative flex flex-col items-center pt-1">
+        {/* Dashed line running through the rail */}
         <div
-          className="absolute top-5 w-2 h-2 rounded-full"
+          className="absolute right-1/2 translate-x-1/2 top-0 bottom-[-16px] w-0"
+          style={{ borderRight: "2px dashed var(--border-strong)" }}
+          aria-hidden
+        />
+        <span
+          className="relative text-[13px] font-semibold text-foreground tabular-nums bg-background px-1"
+          dir="ltr"
+        >
+          {entry.time_of_day || "—"}
+        </span>
+        <span
+          className="relative mt-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-background"
           style={{ background: hasCoords ? pinColor : "var(--border-strong)" }}
         />
       </div>
 
       <motion.div
+        {...attributes}
+        {...listeners}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 bg-card border border-border rounded-[12px] shadow-sm my-1"
-        style={{ minHeight: 72, padding: "14px 16px" }}
+        className="relative flex-1 min-w-0 bg-card border border-border rounded-[12px] shadow-sm p-3 touch-none cursor-grab active:cursor-grabbing"
       >
-        {/* Time pill — top-left corner */}
-        {entry.time_of_day && (
-          <span
-            className="absolute top-2 left-2 rounded-full bg-muted/60 text-[11px] tabular-nums px-1.5 py-0.5 text-foreground/80"
-            dir="ltr"
-          >
-            {entry.time_of_day}
-          </span>
-        )}
-
         <div className="flex items-start gap-3">
-          {entry.photo_url ? (
-            <img
-              src={entry.photo_url}
-              alt=""
-              loading="lazy"
-              className="w-14 h-14 rounded-xl object-cover shrink-0"
-            />
-          ) : (
-            <div
-              className="w-14 h-14 rounded-xl flex items-center justify-center text-[24px] shrink-0"
-              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
-            >
-              {icon}
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0 pr-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[15px] font-semibold truncate leading-tight">{entry.title}</span>
+              <span className="entry-title text-[15px] font-semibold leading-tight text-right">{entry.title}</span>
               {hasCoords && (
                 <span
                   aria-label="במפה"
@@ -687,35 +668,45 @@ function SortableEntry({
             </div>
 
             {entry.location_name && (
-              <div className="mt-1 text-[12px] text-muted-foreground truncate" dir="ltr">
-                {entry.location_name}
+              <div className="entry-subtitle mt-1 text-[12px] text-muted-foreground">
+                <span>📍 </span>
+                <span dir="ltr">{entry.location_name}</span>
               </div>
             )}
 
             {entry.description && (
-              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2">
+              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2 break-words">
                 {entry.description}
               </div>
             )}
           </div>
 
-          {/* Drag handle — vertical, minimal */}
-          <button
-            {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
-            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0 shrink-0"
-          >
-            <GripVertical size={14} />
-          </button>
+          {entry.photo_url ? (
+            <img
+              src={entry.photo_url}
+              alt=""
+              loading="lazy"
+              className="w-16 h-16 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-lg flex items-center justify-center text-[26px] shrink-0"
+              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
+            >
+              {icon}
+            </div>
+          )}
         </div>
 
-        {/* ⋯ menu — bottom-left corner */}
+        {/* "לפרטים ›" — opens the ⋯ actions sheet */}
         <button
           type="button"
-          onClick={onOpenActions}
-          aria-label="פעולות נוספות"
-          className="absolute bottom-1.5 left-1.5 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/50 min-h-0"
+          onClick={(e) => { e.stopPropagation(); onOpenActions(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label="פרטים ופעולות"
+          className="mt-2 text-[12px] text-[color:var(--accent)] font-medium inline-flex items-center min-h-0"
         >
-          <MoreHorizontal size={16} />
+          לפרטים ›
         </button>
       </motion.div>
     </div>
