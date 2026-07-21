@@ -47,3 +47,25 @@ export function useDayWeather(
   if (!date) return null;
   return days.find((d) => d.date === date) ?? null;
 }
+
+export function useCurrentWeather(cityLabel: string | null | undefined): CurrentWeather | null {
+  const city = cityLabel?.trim() || null;
+  const geo = useQuery({
+    queryKey: ["geocode", city],
+    queryFn: () => geocodeCity(city!),
+    enabled: !!city,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
+  });
+  const lat = geo.data?.lat;
+  const lng = geo.data?.lng;
+  const current = useQuery({
+    queryKey: ["current-weather", lat, lng],
+    queryFn: () => fetchCurrentWeather(lat!, lng!),
+    enabled: lat != null && lng != null,
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60 * 2,
+  });
+  return current.data ?? null;
+}
+
