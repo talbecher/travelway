@@ -1,45 +1,42 @@
-# תיקוני עמוד יום — לפי צילום המסך
+# תיקוני מובייל לעמוד היום — סגנון בלבד
 
-מהצילום המובייל מזוהות שלוש בעיות מוחשיות. נגע רק בקבצי ה-UI של עמוד היום — `src/routes/itinerary.$dayId.tsx` (+ `src/components/DayMap.tsx` לתיקון legend/controls במידת הצורך). ללא שינויי לוגיקה.
+טווח: `src/routes/itinerary.$dayId.tsx` בלבד. אין שינוי בהאנדלרים, mutations, ניתוב, PlacesSearch או בניית URL של מפות.
 
-## 1. יישור ותצוגה במובייל
+## 1. כרטיס פעילות — פריסה נקייה
+- גובה מינ' 72px, padding `14px 16px`, `flex items-start gap-3`.
+- תמונה/אמוג'י בצד ימין (RTL start) בגודל `56×56`, rounded, shrink-0.
+- כותרת: `text-[15px] font-semibold`. מיקום מתחת: `text-xs text-muted-foreground truncate`.
+- Time pill: מעבר לפינה עליונה-שמאלית של הכרטיס (`absolute top-2 left-2`), רקע `bg-muted/60`.
+- הסרה מפני הכרטיס: `ערוך`, `מחק`, `פתח במפה`.
+- הוספת כפתור ⋯ (3 נקודות) בפינה תחתונה-שמאלית של הכרטיס. Tap פותח `BottomSheet` קטן עם 3 פריטים: `ערוך` · `פתח במפה` · `מחק` (אדום). כל פריט קורא לאותו handler קיים.
 
-מה רואים בצילום:
-- ה-sticky bottom bar ("חיפוש מהיר…" + כפתור +) חופף לכרטיס האחרון (Hotel RIO Shinjuku נחתך באמצע).
-- כפתורי מצב תחבורה (🚶 · 🚆 · 🚗) יוצאים מרוחב המסך — הכפתור האדום מימין נחתך.
-- שורת ה-city-chip ("טוקיו · עריכה") מיושרת שמאלה במקום ימין (RTL שבור באזור ה-hero).
-- ה-Legend/Focus button של המפה יושבים בפינה — לא נראה בעייתי בצילום זה, אבל ה-zoom control של Leaflet כן חופף.
+## 2. Segment connector בין כרטיסים
+- כפתורים בגובה מינ' `36px`, רוחב מינ' `80px`, `text-[13px]`, `gap-2`.
+- להראות רק 2 כפתורים לפי מרחק:
+  - `< 1.5km`: `[🚶 ברגל ✓]` (מודגש accent) + `[🚌 תחבורה]`.
+  - `≥ 1.5km`: `[🚌 תחבורה ✓]` + `[🚶 ברגל]`.
+- להסיר את כפתור הרכב לחלוטין מה-connector.
+- טקסט המרחק מעל הכפתורים: `text-[13px] text-muted-foreground`.
 
-מה נעשה:
-- **Sticky bar** ב-`itinerary.$dayId.tsx`:
-  - להפוך את `pb-2` של פאנל הרשימה ל-`pb-[72px]` כדי שהכרטיס האחרון לא ייחתך על ידי ה-bar.
-  - להוסיף `pb-[env(safe-area-inset-bottom)]` ל-bar עצמו ולוודא `bg-card` אטום מלא (לא שקוף) כך שלא נראה טקסט "מתחת".
-  - להוריד את גובה ה-`PlacesSearch` בתוך ה-bar (input קטן יותר, `h-9` במקום ברירת המחדל) כדי שהכל ייכנס לשורה אחת גם ב-iPhone SE.
-- **כפתורי transport** (הבלוק שכולל את "פתח את כל היום בגוגל מפות"):
-  - להעביר ל-container `flex-wrap justify-end gap-1.5` כך שכשאין מקום — הכפתורים עוברים לשורה שנייה במקום להיחתך.
-  - להקטין padding לכפתורי אייקון (`px-2.5 h-8`) ולהסתיר את הטקסט מתחת ל-`xs` (רק אייקון + tooltip).
-- **Hero — city chip RTL**:
-  - להוסיף `dir="rtl"` מפורש על ה-wrapper של ה-chip ולוודא שהיישור באמצעות `justify-start` (במקום `inline-flex` שיוצא לשמאל ב-RTL).
-- **מפה — zoom control**:
-  - ב-`DayMap.tsx`, להעביר את ה-Zoom control ל-`topright` כדי שלא יתנגש עם ה-Focus/Legend buttons שיושבים ב-`bottom-right`.
+## 3. שורת תחתית — לפצל
+הסרה מוחלטת של כפתורי `ברגל/תחבורה/מכונית` מה-bar (הם רק ב-connector).
 
-## 2. בחירת מצב תחבורה (רכב / תחבורה ציבורית / אופניים / רגל)
+א) **FAB צף** — `fixed bottom-[80px] right-4 z-40`, עיגול `56px`, `bg-[color:var(--accent)] text-white shadow-lg`, אייקון `+` בגודל 24. Tap פותח את picker סוג הפעילות הקיים (`openPicker`). להסיר כל FAB כתום קיים שגולש על התוכן.
 
-בצילום רואים שהתחלנו לממש את זה (יש כפתורים "מכונית" ו-"תחבורה") אבל הם לא מסתדרים לרוחב ולא ברור לאיזה link כל אחד מפנה. נשלים:
+ב) **Quick search sticky** — גובה `52px`, `bg-card border-t border-border`, `sticky bottom-0` (מעל bottom nav), padding עם `env(safe-area-inset-bottom)`. בפנים רק `PlacesSearch` ברוחב מלא עם placeholder "חיפוש מהיר בגוגל...". כפתור "⭐ המלצות" מוסר מכאן (הוא מכוסה ע"י ה-FAB → picker → "מההמלצות").
 
-- **`src/lib/coords.ts`**: לוודא ש-`googleDirectionsUrl` מקבל פרמטר `mode: 'walking' | 'transit' | 'driving' | 'bicycling'` ומצרף `travelmode=<mode>` ל-URL.
-- **`src/routes/itinerary.$dayId.tsx`**: 4 כפתורים (🚶 ברגל · 🚆 תח״צ · 🚗 רכב · 🚴 אופניים). כל אחד `<a target="_blank">` ישיר, בלי state. הטקסט של הכפתור הראשי הכללי יוסר (הוא מיותר עכשיו כשיש כפתורים ספציפיים) — הכפתורים עצמם יהיו tooltip + emoji + label במקום המבנה הכפול הנוכחי.
+עדכון `pb` של רשימת הכרטיסים כך שהכרטיס האחרון לא ייחתך ע"י ה-search bar + FAB (`pb-[120px]`).
 
-## 3. החזרת label לכפתור "הוסף מההמלצות"
+## 4. פאנל מפה — יחסים
+- גובה ברירת מחדל `40vh` במקום `50vh`.
+- Drag handle: `w-12 h-[5px] rounded-[3px] bg-[color:var(--border-strong)] mx-auto`.
+- הוספת `shadow-[0_-4px_12px_rgba(0,0,0,0.06)]` מתחת/מעל לפאנל המפה כהפרדה.
 
-הכפתור הפך ל-"+" בלבד בתוך ה-sticky bar, וזה נבלע ליד ה-PlacesSearch (המשתמש חושב ששניהם אותו דבר).
+## 5. Hero header
+- גובה גובה מוגבל ל-`100px` (במקום 120).
+- כפתור חזרה: touch target `40×40`, `rounded-full`.
+- City pill (`עיר · עריכה`) עובר ל-`absolute bottom-2 right-3` של ה-hero (RTL start-bottom), במקום ליצוף באמצע.
+- אחרי ה-hero: `border-b border-border` מפורש כמפריד מהמפה.
 
-- להחליף את כפתור ה-"+" בכפתור עם אייקון ⭐ + טקסט "המלצות" (רוחב מינימלי ~92px, `shrink-0`, `bg-[color:var(--accent)] text-white`).
-- ה-PlacesSearch לצדו ב-`flex-1`.
-- Layout סופי של ה-bar (RTL): `[⭐ המלצות] [חיפוש מהיר בגוגל...]` — שני מרכיבים ברורים, כל אחד עם ייעוד שונה.
-
-## קבצים שיושפעו
-
-- `src/routes/itinerary.$dayId.tsx` — sticky bar, transport buttons, label, padding
-- `src/lib/coords.ts` — פרמטר `mode` ב-`googleDirectionsUrl` (אם עוד לא קיים)
-- `src/components/DayMap.tsx` — מיקום zoom control
+## מה לא נוגעים
+mutations, DnD, PlacesSearch, `googleDirectionsUrl`, ניתוב, `DayMap`.
