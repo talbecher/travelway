@@ -178,6 +178,8 @@ export default function DayMap({
         minZoom={3}
         style={{ width: "100%", height: "100%", background: "#EDEDED" }}
       >
+        <ZoomControl position="topright" />
+
 
         <TileLayer
           attribution='&copy; OpenStreetMap &copy; CartoDB'
