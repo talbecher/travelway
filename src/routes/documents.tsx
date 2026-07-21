@@ -213,27 +213,35 @@ function DocumentCard({
   );
 
   if (doc.type === "flight") {
-    const seg = parseFlightSegment(doc.title);
+    const parsed = parseSegments(doc.title);
+    const codes = parsed?.codes ?? [];
+    const stops = codes.length >= 3 ? codes.length - 2 : 0;
     return (
       <section className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--accent)]/10 to-transparent">
-          <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
             <span className="text-lg">✈️</span>
-            <span className="truncate">{seg ? seg.airline || "טיסה" : doc.title}</span>
+            <span className="truncate">{parsed ? parsed.airline || "טיסה" : doc.title}</span>
+            {stops > 0 && (
+              <span className="ms-auto text-[10px] rounded-full px-2 py-0.5 bg-[color:var(--accent)]/15 text-[color:var(--accent)] font-medium">
+                קונקשן · {stops} {stops === 1 ? "עצירה" : "עצירות"}
+              </span>
+            )}
           </div>
-          {seg && (
-            <div className="mt-2 flex items-center gap-2" dir="ltr">
-              <div className="text-right">
-                <div className="text-xl font-bold tabular-nums leading-none">{seg.from}</div>
-              </div>
-              <div className="flex-1 relative h-6 flex items-center">
-                <div className="flex-1 border-t border-dashed border-border" />
-                <span className="px-1.5 text-base">✈</span>
-                <div className="flex-1 border-t border-dashed border-border" />
-              </div>
-              <div className="text-left">
-                <div className="text-xl font-bold tabular-nums leading-none">{seg.to}</div>
-              </div>
+          {codes.length >= 2 && (
+            <div className="mt-2 flex items-center gap-1 flex-wrap" dir="ltr">
+              {codes.map((code, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  <span className="text-lg font-bold tabular-nums leading-none">{code}</span>
+                  {i < codes.length - 1 && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <span className="w-3 border-t border-dashed border-border" />
+                      <span className="text-sm">✈</span>
+                      <span className="w-3 border-t border-dashed border-border" />
+                    </span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -253,6 +261,7 @@ function DocumentCard({
       </section>
     );
   }
+
 
   if (doc.type === "hotel") {
     return (
