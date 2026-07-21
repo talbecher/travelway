@@ -433,21 +433,26 @@ function DayDetail() {
             </DndContext>
 
             {/* Sticky quick add bar */}
-            <div className="sticky bottom-0 -mx-4 px-3 py-2 bg-card border-t border-border flex items-center gap-2" style={{ minHeight: 56 }}>
+            <div
+              className="sticky bottom-0 -mx-4 px-3 py-2 bg-card border-t border-border flex items-center gap-2"
+              style={{ minHeight: 56, paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+            >
               <button
                 onClick={openPicker}
                 aria-label="הוסף פעילות מההמלצות"
-                className="w-10 h-10 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shrink-0 min-h-0"
+                className="h-10 px-3 rounded-full bg-[color:var(--accent)] text-white text-xs font-medium flex items-center gap-1.5 shrink-0 min-h-0"
               >
-                <Plus size={18} />
+                <span aria-hidden>⭐</span>
+                <span>המלצות</span>
               </button>
               <div className="flex-1 min-w-0">
                 <PlacesSearch
                   key={`quick-${entries.length}`}
-                  placeholder="חיפוש מהיר..."
+                  placeholder="חיפוש מהיר בגוגל..."
                   onSelect={(place) => quickAdd.mutate(place)}
                 />
               </div>
+
             </div>
           </div>
         </div>
