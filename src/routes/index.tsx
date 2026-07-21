@@ -8,6 +8,25 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
 import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
+import { useDayWeather } from "@/hooks/use-weather";
+import { WeatherIcon } from "@/components/WeatherIcon";
+import { WEATHER_LABELS_HE } from "@/lib/weather";
+
+function HomeWeatherChip({ city, date }: { city: string | null; date: string | null }) {
+  const w = useDayWeather(city, date);
+  if (!w) return null;
+  const label = WEATHER_LABELS_HE[w.condition];
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border"
+      style={{ background: "color-mix(in oklab, var(--card) 60%, transparent)" }}
+    >
+      <WeatherIcon condition={w.condition} size="sm" />
+      <span className="font-semibold tabular-nums" dir="ltr">{w.tempMax}°</span>
+      {label && <span className="text-muted-foreground">{label}</span>}
+    </span>
+  );
+}
 
 export const Route = createFileRoute("/")({
   component: Home,
