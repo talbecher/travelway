@@ -1,76 +1,36 @@
 ## Scope
-Style-only changes across 3 files. Zero logic edits (mutations, DnD, PlacesSearch, SegmentConnector URL building, routing, forms — untouched).
+Two UX changes in `src/routes/itinerary.$dayId.tsx` only. No schema/logic changes elsewhere.
 
-## 1. Hide global expense FAB on `/itinerary/$dayId`
-File: `src/components/GlobalFab.tsx`
-- Add at top of `GlobalFab()`:
-  ```
-  const pathname = useRouterState({ select: s => s.location.pathname });
-  const onDayDetail = pathname.startsWith("/itinerary/") && pathname !== "/itinerary";
-  if (onDayDetail) return null;
-  ```
-- Import `useRouterState` from `@tanstack/react-router`.
-- (`__root.tsx` unchanged.)
+## 1. Quick "note" entry (no location required)
 
-## 2. "Add from favourites" FAB — pill with label
-File: `src/routes/itinerary.$dayId.tsx` (~line 413)
-- Replace the circular `+` button with a pill:
-  - Content: `⭐ הוסף ממועדפים`
-  - Classes: `fixed bottom-[80px] right-4 z-40 h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold`
-  - Same `onClick={openPicker}`.
+The `note` entry type already exists in the picker and `NoteForm` doesn't require a location — it just isn't easy to discover. The current FAB is labeled "⭐ הוסף ממועדפים" but actually opens the full type picker (all 6 types incl. note), which is confusing.
 
-## 3. Journal timeline layout
-File: `src/routes/itinerary.$dayId.tsx` — restyle `SortableEntry` (605-720) and its wrapper loop (382-410).
+Changes:
+- Rename the FAB to `➕ הוסף פריט` (opens the existing type picker with all 6 types incl. `note`). Same `openPicker` handler.
+- Add a small secondary pill directly under the FAB: `📝 הערה מהירה` that opens a new `BottomSheet` with `NoteForm` pre-selected (skips the type grid). Same tone, `bg-card border` style so it's clearly secondary.
+- New local state `noteOpen`; sheet renders `<EntryForm entryType="note" .../>` and closes on save/back.
 
-New row structure (RTL, per entry):
-```text
-┌───────── row (flex, dir=rtl) ─────────┐
-│ [Rail 72px]         │ [Card flex-1]   │
-│   HH:MM (13/600)    │  title  [photo] │
-│   ● dot 10px        │  📍 location    │
-│   │  dashed         │  לפרטים ›       │
-└───────────────────────────────────────┘
-```
+Result: adding a planning note / reminder is one tap away and doesn't go through the type-selection grid.
 
-Rail (right, RTL start): fixed `w-[72px] shrink-0 flex flex-col items-center pt-1`
-- Time text (or `—` placeholder) `text-[13px] font-semibold text-foreground` (LTR span).
-- Colored dot `w-2.5 h-2.5 rounded-full mt-1.5` using existing `TYPE_PIN_COLOR` map (fallback muted).
-- Absolute-positioned vertical dashed line behind the dot column: `border-r-2 border-dashed border-[color:var(--border-strong)]` spanning full row height, drawn via a sibling absolute div in each entry row (top:0 bottom:-16px so it visually joins to next card). Alternatively use `background-image: repeating-linear-gradient` on the rail column.
+## 2. "לפרטים" opens a real Details sheet (not the actions menu)
 
-Card (left, flex-1):
-- `bg-card border border-border rounded-[12px] p-3 shadow-sm` (shadow-sm var).
-- Row: title block flex-1 min-w-0, photo 64×64 `rounded-lg object-cover` on LTR-end (RTL end = left).
-- Title `.entry-title text-[15px] font-semibold` (line-clamp-2, break-word).
-- Location `.entry-subtitle text-[12px] text-muted-foreground` with `📍 ` prefix.
-- Bottom-left: tappable `לפרטים ›` `text-[12px] text-[color:var(--accent)]` → `onClick={onOpenActions}` (opens existing ⋯ sheet).
-- Remove: internal time pill, drag handle chip visual, ⋯ button. DnD listeners move to the whole card wrapper (`{...attributes} {...listeners}` on the card container). Actions still reachable via `לפרטים ›`.
-- Keep highlight `motion.div` shadow ring behavior.
+Currently `לפרטים ›` opens the actions BottomSheet (edit / open in maps / update location / delete). We split this in two:
 
-Loop container (382-410):
-- `px-4 pt-3 pb-[160px]`
-- Wrap entries in `flex flex-col gap-4`.
-- Between cards render `SegmentConnector` when both coords present; simplified styling (see §5).
+- **New `detailsFor` state + Details BottomSheet** — this is what `לפרטים` now opens. Shows:
+  - Large photo (or emoji tile fallback) at top.
+  - Title + type badge (colored dot + label) + time pill.
+  - Location line (`📍 <location_name>`) — tap opens Google Maps if coords/URL exist.
+  - Description (full text, `whitespace-pre-line`, no line clamp).
+  - Linked recommendation info when `linked_recommendation_id` set: fetched once via a small `useQuery` for the rec row → shows rating (★), city, notes, "פתח בהמלצות" link. (Read-only; uses existing `recommendations` table.)
+  - Bottom action row: `ערוך`, `פתח במפה` (if coords or maps URL), `עדכן מיקום` (if no coords and not a note), `מחק` — same handlers as today, just relocated. Closing the sheet routes into `setEditEntry` / `setEditLocationEntry` / `del.mutate` as before.
+- Keep the existing `actionsFor` BottomSheet code path but stop using it from the card. `⋯` is no longer needed on the card. (We can delete `actionsFor` state and sheet entirely — actions live in the Details sheet now.)
 
-## 4. Text overflow utility classes
-File: `src/styles.css` — append near other utilities:
-```
-.entry-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
-.entry-subtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-```
-Apply to card title/subtitle in `SortableEntry`. (Description keeps existing `line-clamp-2`.)
-
-## 5. Segment connector — simplify
-File: `src/routes/itinerary.$dayId.tsx` (~557-601)
-- Drop the surrounding `mr-14`/vertical bar decorations.
-- Container: `pl-[72px] pr-1 my-1 flex items-center gap-2` (padding aligns with card's left edge; RTL: the 72px offset stays on the rail side).
-  Since parent is RTL, use `ps-[72px]` equivalent: `style={{ paddingInlineStart: 72 }}`.
-- Distance text: `text-[12px] text-muted-foreground`.
-- 2 pill buttons unchanged in URL/logic; strip vertical bar divs (`w-0.5 h-3 bg-border`).
-
-## 6. Untouched
-Handlers, mutations, DnD data flow, `DayMap`, `PlacesSearch`, `SegmentConnector` URL, routing, `EntryForm`, sticky quick-search bar, hero header, bottom sheets.
+Wiring:
+- `SortableEntry` prop renamed `onOpenActions` → `onOpenDetails`. Card `לפרטים ›` button calls it.
+- Parent passes `() => setDetailsFor(e)`.
 
 ## Files touched
-- `src/components/GlobalFab.tsx` — early return on day detail route.
-- `src/routes/itinerary.$dayId.tsx` — FAB pill, `SortableEntry` redesign, list container spacing, `SegmentConnector` styling.
-- `src/styles.css` — 2 utility classes.
+- `src/routes/itinerary.$dayId.tsx` — add `noteOpen` + Note sheet + `📝 הערה מהירה` pill; replace actions sheet with a Details sheet that shows full info and hosts the actions row; rename main FAB to `➕ הוסף פריט`.
+
+## Not touched
+- Schema, mutations, DnD, map, PlacesSearch, SegmentConnector, routing, other routes, styles.css.
