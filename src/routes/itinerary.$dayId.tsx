@@ -276,14 +276,7 @@ function DayDetail() {
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
   const hasAnyEntries = entries.length > 0;
-  const routePoints = mapStops.map((s) => ({ lat: Number(s.lat), lng: Number(s.lng) }));
-  const directionsEnabled = routePoints.length >= 2;
-  const travelModes: { mode: "walking" | "transit" | "driving" | "bicycling"; label: string; emoji: string }[] = [
-    { mode: "walking", label: "ברגל", emoji: "🚶" },
-    { mode: "transit", label: "תח״צ", emoji: "🚆" },
-    { mode: "driving", label: "רכב", emoji: "🚗" },
-    { mode: "bicycling", label: "אופניים", emoji: "🚴" },
-  ];
+
 
 
   return (
