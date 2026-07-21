@@ -619,52 +619,38 @@ function SortableEntry({
   const isLinked = !!entry.linked_recommendation_id;
 
   return (
-    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} className="relative flex items-stretch gap-2">
-      {/* Timeline connector rail */}
-      <div className="w-[22px] shrink-0 relative flex justify-center">
-        <div className="absolute inset-y-0 w-0.5 bg-border" />
+    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="relative flex items-stretch gap-2">
+      {/* Timeline rail (right in RTL) */}
+      <div className="w-[72px] shrink-0 relative flex flex-col items-center pt-1">
+        {/* Dashed line running through the rail */}
         <div
-          className="absolute top-5 w-2 h-2 rounded-full"
+          className="absolute right-1/2 translate-x-1/2 top-0 bottom-[-16px] w-0"
+          style={{ borderRight: "2px dashed var(--border-strong)" }}
+          aria-hidden
+        />
+        <span
+          className="relative text-[13px] font-semibold text-foreground tabular-nums bg-background px-1"
+          dir="ltr"
+        >
+          {entry.time_of_day || "—"}
+        </span>
+        <span
+          className="relative mt-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-background"
           style={{ background: hasCoords ? pinColor : "var(--border-strong)" }}
         />
       </div>
 
       <motion.div
+        {...attributes}
+        {...listeners}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 bg-card border border-border rounded-[12px] shadow-sm my-1"
-        style={{ minHeight: 72, padding: "14px 16px" }}
+        className="relative flex-1 min-w-0 bg-card border border-border rounded-[12px] shadow-sm p-3 touch-none cursor-grab active:cursor-grabbing"
       >
-        {/* Time pill — top-left corner */}
-        {entry.time_of_day && (
-          <span
-            className="absolute top-2 left-2 rounded-full bg-muted/60 text-[11px] tabular-nums px-1.5 py-0.5 text-foreground/80"
-            dir="ltr"
-          >
-            {entry.time_of_day}
-          </span>
-        )}
-
         <div className="flex items-start gap-3">
-          {entry.photo_url ? (
-            <img
-              src={entry.photo_url}
-              alt=""
-              loading="lazy"
-              className="w-14 h-14 rounded-xl object-cover shrink-0"
-            />
-          ) : (
-            <div
-              className="w-14 h-14 rounded-xl flex items-center justify-center text-[24px] shrink-0"
-              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
-            >
-              {icon}
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0 pr-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[15px] font-semibold truncate leading-tight">{entry.title}</span>
+              <span className="entry-title text-[15px] font-semibold leading-tight text-right">{entry.title}</span>
               {hasCoords && (
                 <span
                   aria-label="במפה"
@@ -682,35 +668,45 @@ function SortableEntry({
             </div>
 
             {entry.location_name && (
-              <div className="mt-1 text-[12px] text-muted-foreground truncate" dir="ltr">
-                {entry.location_name}
+              <div className="entry-subtitle mt-1 text-[12px] text-muted-foreground">
+                <span>📍 </span>
+                <span dir="ltr">{entry.location_name}</span>
               </div>
             )}
 
             {entry.description && (
-              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2">
+              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2 break-words">
                 {entry.description}
               </div>
             )}
           </div>
 
-          {/* Drag handle — vertical, minimal */}
-          <button
-            {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
-            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0 shrink-0"
-          >
-            <GripVertical size={14} />
-          </button>
+          {entry.photo_url ? (
+            <img
+              src={entry.photo_url}
+              alt=""
+              loading="lazy"
+              className="w-16 h-16 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-lg flex items-center justify-center text-[26px] shrink-0"
+              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
+            >
+              {icon}
+            </div>
+          )}
         </div>
 
-        {/* ⋯ menu — bottom-left corner */}
+        {/* "לפרטים ›" — opens the ⋯ actions sheet */}
         <button
           type="button"
-          onClick={onOpenActions}
-          aria-label="פעולות נוספות"
-          className="absolute bottom-1.5 left-1.5 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/50 min-h-0"
+          onClick={(e) => { e.stopPropagation(); onOpenActions(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label="פרטים ופעולות"
+          className="mt-2 text-[12px] text-[color:var(--accent)] font-medium inline-flex items-center min-h-0"
         >
-          <MoreHorizontal size={16} />
+          לפרטים ›
         </button>
       </motion.div>
     </div>
