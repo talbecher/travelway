@@ -379,21 +379,17 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[140px] relative">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div>
+                <div className="flex flex-col gap-4">
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
                     const b = coordsOf(e);
                     return (
                       <div key={e.id}>
-                        {prev && (a && b ? (
-                          <SegmentConnector a={a} b={b} />
-                        ) : (
-                          <div className="w-0.5 h-4 bg-border mr-[22px] my-1" />
-                        ))}
+                        {prev && a && b && <SegmentConnector a={a} b={b} />}
                         <SortableEntry
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
@@ -409,14 +405,15 @@ function DayDetail() {
             </DndContext>
           </div>
 
-          {/* Floating action button */}
+          {/* Floating action button — "add from favourites" pill */}
           <button
             onClick={openPicker}
-            aria-label="הוסף פעילות"
-            className="fixed right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white shadow-lg flex items-center justify-center min-h-0 active:scale-95 transition-transform"
+            aria-label="הוסף ממועדפים"
+            className="fixed right-4 z-40 h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold min-h-0 active:scale-95 transition-transform"
             style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
           >
-            <Plus size={24} />
+            <span>⭐</span>
+            <span>הוסף ממועדפים</span>
           </button>
 
           {/* Sticky quick search bar */}
