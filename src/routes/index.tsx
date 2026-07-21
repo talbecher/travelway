@@ -353,14 +353,16 @@ function HeroCard(props: {
   status: "future" | "active" | "past";
   daysToStart: number; daysPassed: number; daysTotal: number; tripProgressPct: number;
   weatherCity: string | null;
+  weatherFallback: string | null;
 }) {
-  const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity } = props;
+  const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity, weatherFallback } = props;
   const today = todayISO();
-  const forecast = useDayWeather(weatherCity, today);
-  const current = useCurrentWeather(weatherCity);
+  const forecast = useDayWeather(weatherCity ?? weatherFallback, today);
+  const current = useCurrentWeather(weatherCity, weatherFallback);
   const wCondition = forecast?.condition ?? current?.condition ?? null;
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
+  const forecastUrl = current ? openMeteoForecastUrl(current.lat, current.lng) : null;
 
   const pill =
     status === "future"
@@ -377,13 +379,21 @@ function HeroCard(props: {
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
       }}
     >
-      {wCondition && wTemp != null && (
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm">
+      {wCondition && wTemp != null && forecastUrl && (
+        <a
+          href={forecastUrl}
+          target="_blank"
+          rel="noreferrer"
+          title="לתחזית מלאה קדימה"
+          className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20 transition-colors"
+        >
           <WeatherIcon condition={wCondition} size="sm" />
           <span className="text-sm font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
           {wLabel && <span className="text-[11px] text-white/70 leading-none">{wLabel}</span>}
-        </div>
+          <ExternalLink size={11} className="text-white/60" />
+        </a>
       )}
+
       <div className="flex flex-col justify-between h-full">
         <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[96px]">
           <div className="text-[28px] font-bold leading-tight truncate">{title}</div>
