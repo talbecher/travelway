@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Trash2, QrCode, Paperclip, ExternalLink, Loader2, Upload, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -383,20 +383,19 @@ function DocumentFormSheet({
   const [isPaid, setIsPaid] = useState(editing?.is_paid ?? false);
 
   // Reset when editing target changes / sheet reopens
-  useState(() => {
-    if (open) {
-      setType(editing?.type ?? "flight");
-      setTitle(editing?.title ?? "");
-      setValidDate(editing?.valid_date ?? "");
-      setNotes(editing?.notes ?? "");
-      setBarcodeValue(editing?.barcode_value ?? "");
-      setBarcodeType(editing?.barcode_type ?? "qr");
-      setFileUrl(editing?.file_url ?? null);
-      setFileName(null);
-      setAmount(editing?.amount_ils != null ? String(editing.amount_ils) : "");
-      setIsPaid(editing?.is_paid ?? false);
-    }
-  });
+  useEffect(() => {
+    if (!open) return;
+    setType(editing?.type ?? "flight");
+    setTitle(editing?.title ?? "");
+    setValidDate(editing?.valid_date ?? "");
+    setNotes(editing?.notes ?? "");
+    setBarcodeValue(editing?.barcode_value ?? "");
+    setBarcodeType(editing?.barcode_type ?? "qr");
+    setFileUrl(editing?.file_url ?? null);
+    setFileName(null);
+    setAmount(editing?.amount_ils != null ? String(editing.amount_ils) : "");
+    setIsPaid(editing?.is_paid ?? false);
+  }, [open, editing?.id]);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
