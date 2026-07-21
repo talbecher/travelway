@@ -8,6 +8,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
+import { useDayWeather } from "@/hooks/use-weather";
+import { WeatherIcon } from "@/components/WeatherIcon";
+
+function DayWeatherBadge({ city, date }: { city: string | null; date: string }) {
+  const w = useDayWeather(city, date);
+  if (!w) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums shrink-0" dir="ltr">
+      <WeatherIcon condition={w.condition} size="sm" />
+      {w.tempMax}°/{w.tempMin}°
+      {w.precipitation > 5 && <span>💧</span>}
+    </span>
+  );
+}
 
 export const Route = createFileRoute("/itinerary/")({
   component: Itinerary,
