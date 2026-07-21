@@ -57,7 +57,7 @@ function PartlyCloudy() {
       <g transform="translate(28 8)">
         <circle cx="12" cy="12" r="9" fill="#FFC531" />
       </g>
-      <Cloud x="10" y="26" scale={1} fill="#F3F4F6" className="wi-float" />
+      <Cloud x={10} y={26} scale={1} fill="#F3F4F6" className="wi-float" />
     </g>
   );
 }
@@ -65,8 +65,8 @@ function PartlyCloudy() {
 function Cloudy() {
   return (
     <g>
-      <Cloud x="20" y="20" scale={0.9} fill="#D1D5DB" className="wi-float-2" />
-      <Cloud x="6" y="28" scale={1.1} fill="#F3F4F6" className="wi-float" />
+      <Cloud x={20} y={20} scale={0.9} fill="#D1D5DB" className="wi-float-2" />
+      <Cloud x={6} y={28} scale={1.1} fill="#F3F4F6" className="wi-float" />
     </g>
   );
 }
@@ -106,7 +106,7 @@ function RainDrops({ color = "#60A5FA", count = 5 }: { color?: string; count?: n
 function Drizzle() {
   return (
     <g>
-      <Cloud x="10" y="18" scale={1.1} fill="#D1D5DB" />
+      <Cloud x={10} y={18} scale={1.1} fill="#D1D5DB" />
       <RainDrops count={4} color="#93C5FD" />
     </g>
   );
@@ -115,7 +115,7 @@ function Drizzle() {
 function Rain() {
   return (
     <g>
-      <Cloud x="10" y="18" scale={1.1} fill="#9CA3AF" />
+      <Cloud x={10} y={18} scale={1.1} fill="#9CA3AF" />
       <RainDrops count={6} color="#3B82F6" />
     </g>
   );
@@ -124,7 +124,7 @@ function Rain() {
 function Snow() {
   return (
     <g>
-      <Cloud x="10" y="18" scale={1.1} fill="#E5E7EB" />
+      <Cloud x={10} y={18} scale={1.1} fill="#E5E7EB" />
       {[16, 26, 36, 46].map((x, i) => (
         <text
           key={i}
@@ -145,7 +145,7 @@ function Snow() {
 function Storm() {
   return (
     <g>
-      <Cloud x="10" y="16" scale={1.15} fill="#6B7280" />
+      <Cloud x={10} y={16} scale={1.15} fill="#6B7280" />
       <RainDrops count={4} color="#3B82F6" />
       <polygon
         points="30,38 26,50 32,50 28,60 40,46 34,46 38,38"
