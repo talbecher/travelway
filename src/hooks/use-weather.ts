@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchWeather, geocodeCity, type WeatherDay } from "@/lib/weather";
+import { fetchCurrentWeather, fetchWeather, geocodeCity, type CurrentWeather, type WeatherDay } from "@/lib/weather";
+
 
 function isoOffset(days: number): string {
   const d = new Date();
