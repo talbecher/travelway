@@ -303,6 +303,7 @@ function DayDetail() {
                 יום {day.day_number}
               </div>
               <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
+              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
             </div>
 
             {/* City chip — anchored bottom-right (RTL start) */}
