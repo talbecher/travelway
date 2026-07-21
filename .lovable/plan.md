@@ -1,46 +1,48 @@
-# Phrasebook (שיחון) — new tab
+## Weather forecast with animated icons
 
-Add a static phrasebook screen with per-language phrases, TTS via Web Speech API, category filter, and search. Language auto-detected from the active trip's `destination_country`.
+Add weather display across itinerary and home screens using Open-Meteo (free, no API key).
 
-## New files
+### New files
 
-### `src/lib/phrases.ts`
-- Export `Phrase` type: `{ id, category, hebrew, transliteration, native }`.
-- Export `CATEGORIES` = `["נימוסים","מסעדה","תחבורה","קניות","מלון","חירום"]`.
-- Export `LANGUAGES` map keyed by code: `{ code, hebrewName, flag, bcp47 }` for `ja`, `fr`, `it`, `es`, `th`, `el`, `en`.
-- Export `PHRASES: Record<LangCode, Phrase[]>`:
-  - Japanese: full spec content (8+ per category as provided).
-  - French / Italian / Spanish / Thai / Greek: ≥5 per category, native script appropriate to each.
-  - English: fallback set (≥5 per category).
-- Export `detectLanguage(destinationCountry: string | null | undefined): LangCode` — mirrors `getDestinationTheme` matching (Hebrew + English keywords per country), default `en`.
+**`src/lib/weather.ts`**
+- Types: `WeatherCondition`, `WeatherDay`.
+- `getCondition(code)` — WMO code → condition (mapping per spec).
+- `WEATHER_LABELS_HE` — Hebrew label map.
+- `geocodeCity(name)` — GET `https://geocoding-api.open-meteo.com/v1/search?name=…&count=1&language=en`, returns `{lat,lng}` or `null`.
+- `fetchWeather(lat, lng, startDate, endDate)` — GET `https://api.open-meteo.com/v1/forecast` with daily temps + weathercode + precipitation_sum + `timezone=auto`. Maps arrays → `WeatherDay[]`. Errors → `[]`.
 
-### `src/routes/phrasebook.tsx`
-- `createFileRoute("/phrasebook")` with `head()` setting title/description "שיחון".
-- Component:
-  - Read active trip via `useActiveTripId()` + existing `useTrip()` hook (see `src/hooks/use-trip.ts`) to get `destination_country`.
-  - `const lang = detectLanguage(trip?.destination_country)`.
-  - Header: title "שיחון", subtitle = `LANGUAGES[lang].hebrewName`, flag emoji.
-  - Horizontal scroll category pills styled like existing city-chip strip in itinerary (surface bg + border-bottom, active pill uses `--accent`).
-  - Search input "חפש ביטוי..." — filters all categories across `hebrew`, `transliteration`, `native` (case-insensitive). When search is non-empty, ignore category filter.
-  - Phrase list: cards per spec (Hebrew right 16px/600, 🔊 top-left 36×36, transliteration 13px italic muted, native 15px `var(--accent)`, badge row with `[עברית] [תעתיק] [מקור]`).
-  - `speak(phrase)`: use `SpeechSynthesisUtterance`, set `.lang = LANGUAGES[lang].bcp47`, `speechSynthesis.cancel()` before speak. Track `speakingId` state via `onstart` / `onend` / `onerror` to drive a pulse animation on the active 🔊 icon (Tailwind `animate-pulse`).
-  - Guard TTS with `typeof window !== "undefined" && "speechSynthesis" in window`; hide button otherwise.
-  - Container has `pb-[96px]` so BottomNav doesn't cover last card.
-- No data fetching, no DB, no auth changes.
+**`src/hooks/use-weather.ts`**
+- `useWeather(cityLabel)` — chained `useQuery`s:
+  - geocode: `["geocode", cityLabel]`, `staleTime: Infinity`, enabled when city present.
+  - forecast: `["weather", lat, lng]`, `staleTime: 3h`, fetches today → today+16d, enabled when coords present.
+  - Returns `{ days, loading }`.
+- `useDayWeather(cityLabel, date)` — wraps `useWeather`, finds matching day, returns `WeatherDay | null`.
 
-## Edited files
+**`src/components/WeatherIcon.tsx`**
+- Props `{ condition, size?: "sm"|"md"|"lg" }` (24/40/64 px).
+- Inline SVG per condition (sunny, partly-cloudy, cloudy, fog, drizzle, rain, snow, storm, unknown).
+- Animations via inline `<style>` scoped to component: `spin-slow`, `float`, `fog-fade`, `rain-fall`, `snow-fall`, `lightning` — with staggered `animation-delay` on drops/flakes.
+- Respect `prefers-reduced-motion`.
 
-### `src/components/BottomNav.tsx`
-- Add 5th tab `{ to: "/phrasebook", icon: MessagesSquare, label: "שיחון" }` at the start (so RTL visual order matches spec: שיחון | המלצות | תקציב | מסלול | בית).
-- Grid: `grid-cols-5`.
-- Icon size `20`, label text `text-[10px]`.
+### Edited files (presentation-only)
 
-### `src/routes/index.tsx`
-- In the existing quick-actions 2×2 grid, expand to a 2-column × 3-row grid (`grid-cols-2` with 6 items) adding:
-  - `🗣 שיחון` → `/phrasebook`
-  - `📄 מסמכים` placeholder tile (disabled / no navigation, muted styling).
-- Preserve existing tiles (מסלול, המלצות, תקציב, הוצאה מהירה) and their handlers.
+**`src/routes/itinerary.index.tsx`**
+- For each day card, call `useDayWeather(day.city_label, day.date)`.
+- In the card header top-right (LTR corner in RTL layout): small `<WeatherIcon size="sm">` + `{tempMax}°/{tempMin}°`, plus `💧` when `precipitation > 5`.
+- Render nothing while loading/absent.
+- To keep hooks stable inside the list, wrap the per-card weather in a small child component `DayWeatherBadge({city,date})`.
 
-## Non-goals
-- No DB migration, no auth changes, no changes to other routes or global FAB behavior.
-- Badge row is display-only for now (no toggle logic).
+**`src/routes/itinerary.$dayId.tsx`**
+- In the hero, below the date: `<WeatherIcon size="md">` + `{label} · {tempMax}°C / {tempMin}°C`.
+- If `precipitation > 5`, small warning pill: `💧 צפוי גשם — בדוק פעילויות חוץ` styled with a subtle accent background.
+
+**`src/routes/index.tsx`**
+- Derive city from the trip's first itinerary day's `city_label` and today's date (or trip start date if in future).
+- Only render when target date is within 16 days from today.
+- Add a chip to the quick stats row: `<WeatherIcon size="sm">` + `{tempMax}° {label}`.
+
+### Guarantees
+
+- No DB, auth, mutation, or existing-query changes.
+- Weather is purely additive; API failure leaves the UI unchanged.
+- All network calls are unauthenticated public Open-Meteo endpoints; no secrets.

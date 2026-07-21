@@ -18,6 +18,29 @@ import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
+import { useDayWeather } from "@/hooks/use-weather";
+import { WeatherIcon } from "@/components/WeatherIcon";
+import { WEATHER_LABELS_HE } from "@/lib/weather";
+
+function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
+  const w = useDayWeather(city, date);
+  if (!w) return null;
+  const label = WEATHER_LABELS_HE[w.condition];
+  return (
+    <div className="mt-2 flex flex-col gap-1.5 items-start">
+      <div className="inline-flex items-center gap-1.5 text-white/90 text-[13px]">
+        <WeatherIcon condition={w.condition} size="sm" />
+        <span dir="ltr" className="tabular-nums">{w.tempMax}°C / {w.tempMin}°C</span>
+        {label && <span className="text-white/70">· {label}</span>}
+      </div>
+      {w.precipitation > 5 && (
+        <div className="inline-flex items-center gap-1 text-[11px] text-white bg-white/15 border border-white/25 rounded-full px-2 py-0.5">
+          💧 צפוי גשם — בדוק פעילויות חוץ
+        </div>
+      )}
+    </div>
+  );
+}
 import {
   DndContext,
   PointerSensor,
@@ -303,6 +326,7 @@ function DayDetail() {
                 יום {day.day_number}
               </div>
               <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
+              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
             </div>
 
             {/* City chip — anchored bottom-right (RTL start) */}
