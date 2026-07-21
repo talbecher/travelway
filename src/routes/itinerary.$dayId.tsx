@@ -507,62 +507,41 @@ function DayDetail() {
         )}
       </BottomSheet>
 
-      {/* Entry actions sheet (··· menu) */}
-      <BottomSheet
-        open={!!actionsFor}
-        onOpenChange={(o) => !o && setActionsFor(null)}
-        title={actionsFor?.title}
-      >
-        {actionsFor && (() => {
-          const e = actionsFor;
-          const hasCoords = coordsOf(e) != null;
-          const mapHref = hasCoords && e.latitude != null && e.longitude != null
-            ? mapsSearchUrl(Number(e.latitude), Number(e.longitude))
-            : e.google_maps_url;
-          return (
-            <div className="pt-2 pb-4 flex flex-col">
-              <button
-                onClick={() => { setEditEntry(e); setActionsFor(null); }}
-                className="flex items-center gap-3 py-3 px-2 text-right border-b border-border min-h-0"
-              >
-                <Pencil size={16} className="text-muted-foreground" />
-                <span className="text-sm">ערוך</span>
-              </button>
-              {mapHref && (
-                <a
-                  href={mapHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setActionsFor(null)}
-                  className="flex items-center gap-3 py-3 px-2 text-right border-b border-border min-h-0"
-                >
-                  <ExternalLink size={16} className="text-muted-foreground" />
-                  <span className="text-sm">פתח במפה</span>
-                </a>
-              )}
-              {!hasCoords && e.entry_type !== "note" && (
-                <button
-                  onClick={() => { setEditLocationEntry(e); setActionsFor(null); }}
-                  className="flex items-center gap-3 py-3 px-2 text-right border-b border-border min-h-0"
-                >
-                  <MapIcon size={16} className="text-muted-foreground" />
-                  <span className="text-sm">עדכן מיקום</span>
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  if (confirm("למחוק פריט?")) del.mutate(e.id);
-                  setActionsFor(null);
-                }}
-                className="flex items-center gap-3 py-3 px-2 text-right min-h-0"
-              >
-                <Trash2 size={16} className="text-[color:var(--accent-2)]" />
-                <span className="text-sm text-[color:var(--accent-2)]">מחק</span>
-              </button>
-            </div>
-          );
-        })()}
+      {/* Quick note sheet */}
+      <BottomSheet open={noteOpen} onOpenChange={setNoteOpen} title="הערה מהירה">
+        {noteOpen && (
+          <EntryForm
+            key="quick-note"
+            dayId={day.id}
+            entryType="note"
+            defaultOrder={entries.length}
+            onDone={() => setNoteOpen(false)}
+          />
+        )}
       </BottomSheet>
+
+      {/* Entry details sheet */}
+      <BottomSheet
+        open={!!detailsFor}
+        onOpenChange={(o) => !o && setDetailsFor(null)}
+        title={detailsFor?.title}
+      >
+        {detailsFor && (
+          <EntryDetails
+            entry={detailsFor}
+            onEdit={() => { setEditEntry(detailsFor); setDetailsFor(null); }}
+            onUpdateLocation={() => { setEditLocationEntry(detailsFor); setDetailsFor(null); }}
+            onDelete={() => {
+              if (confirm("למחוק פריט?")) {
+                del.mutate(detailsFor.id);
+                setDetailsFor(null);
+              }
+            }}
+            onClose={() => setDetailsFor(null)}
+          />
+        )}
+      </BottomSheet>
+
     </div>
   );
 }
