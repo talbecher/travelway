@@ -104,3 +104,37 @@ export async function fetchWeather(
     return [];
   }
 }
+
+export type CurrentWeather = {
+  temp: number;
+  weatherCode: number;
+  condition: WeatherCondition;
+};
+
+export async function fetchCurrentWeather(
+  lat: number,
+  lng: number
+): Promise<CurrentWeather | null> {
+  try {
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${lat}&longitude=${lng}` +
+      `&current=temperature_2m,weathercode&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      current?: { temperature_2m?: number; weathercode?: number };
+    };
+    const c = json.current;
+    if (!c) return null;
+    const code = c.weathercode ?? -1;
+    return {
+      temp: Math.round(c.temperature_2m ?? 0),
+      weatherCode: code,
+      condition: getCondition(code),
+    };
+  } catch {
+    return null;
+  }
+}
+

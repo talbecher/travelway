@@ -8,9 +8,10 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
 import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
-import { useDayWeather } from "@/hooks/use-weather";
+import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE } from "@/lib/weather";
+
 
 function HomeWeatherChip({ city, date }: { city: string | null; date: string | null }) {
   const w = useDayWeather(city, date);
@@ -168,6 +169,8 @@ function Home() {
   const sections: Array<{ key: string; node: React.ReactNode }> = [];
 
   // 1. HERO
+  const heroWeatherCity =
+    days.find((d) => d.city_label)?.city_label ?? trip.destination_country ?? null;
   sections.push({
     key: "hero",
     node: (
@@ -181,9 +184,11 @@ function Home() {
         daysPassed={stats?.daysPassed ?? 0}
         daysTotal={stats?.daysTotal ?? 0}
         tripProgressPct={stats?.tripProgressPct ?? 0}
+        weatherCity={heroWeatherCity}
       />
     ),
   });
+
 
   // 2 or 3. TODAY / NEXT
   if (todayDay && stats && !stats.beforeTrip && !stats.afterTrip) {
@@ -344,8 +349,16 @@ function HeroCard(props: {
   title: string; flag: string; startDate: string; endDate: string;
   status: "future" | "active" | "past";
   daysToStart: number; daysPassed: number; daysTotal: number; tripProgressPct: number;
+  weatherCity: string | null;
 }) {
-  const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct } = props;
+  const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity } = props;
+  const today = todayISO();
+  const forecast = useDayWeather(weatherCity, today);
+  const current = useCurrentWeather(weatherCity);
+  const wCondition = forecast?.condition ?? current?.condition ?? null;
+  const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
+  const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
+
   const pill =
     status === "future"
       ? { text: `עוד ${daysToStart} ימים`, cls: "bg-amber-400/20 text-amber-300 border-amber-300/30", dot: false }
@@ -361,8 +374,15 @@ function HeroCard(props: {
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
       }}
     >
+      {wCondition && wTemp != null && (
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm">
+          <WeatherIcon condition={wCondition} size="sm" />
+          <span className="text-sm font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
+          {wLabel && <span className="text-[11px] text-white/70 leading-none">{wLabel}</span>}
+        </div>
+      )}
       <div className="flex flex-col justify-between h-full">
-        <div className="flex items-start gap-2 min-w-0 pr-[76px]">
+        <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[96px]">
           <div className="text-[28px] font-bold leading-tight truncate">{title}</div>
           <div className="text-[26px] leading-tight shrink-0">{flag}</div>
         </div>
@@ -385,6 +405,7 @@ function HeroCard(props: {
     </section>
   );
 }
+
 
 function DayPreviewCard(props: {
   heading: string;
