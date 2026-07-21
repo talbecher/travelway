@@ -83,6 +83,62 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          amount_ils: number | null
+          barcode_type: string | null
+          barcode_value: string | null
+          created_at: string
+          display_order: number
+          file_url: string | null
+          id: string
+          is_paid: boolean
+          notes: string | null
+          title: string
+          trip_id: string
+          type: string
+          valid_date: string | null
+        }
+        Insert: {
+          amount_ils?: number | null
+          barcode_type?: string | null
+          barcode_value?: string | null
+          created_at?: string
+          display_order?: number
+          file_url?: string | null
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          title: string
+          trip_id: string
+          type: string
+          valid_date?: string | null
+        }
+        Update: {
+          amount_ils?: number | null
+          barcode_type?: string | null
+          barcode_value?: string | null
+          created_at?: string
+          display_order?: number
+          file_url?: string | null
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          title?: string
+          trip_id?: string
+          type?: string
+          valid_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount_foreign: number | null
