@@ -380,35 +380,16 @@ function DayDetail() {
             role="separator"
             aria-orientation="horizontal"
             onPointerDown={(e) => { draggingRef.current = true; document.body.style.cursor = "row-resize"; e.preventDefault(); }}
-            className="h-3 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none"
+            className="h-4 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
           >
-            <div className="w-10 h-1 rounded-[2px] bg-border" />
+            <div className="w-12 h-[5px] rounded-[3px] bg-[color:var(--border-strong)]" />
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[72px] relative">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[140px] relative">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div>
-                  {directionsEnabled && (
-                    <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5">
-                      <span className="text-[11px] text-muted-foreground ml-1">פתח בגוגל מפות:</span>
-                      {travelModes.map((t) => (
-                        <a
-                          key={t.mode}
-                          href={googleDirectionsUrl(routePoints, t.mode)}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={t.label}
-                          className="h-8 px-2.5 rounded-full border border-border text-[11px] text-foreground/80 inline-flex items-center gap-1 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                        >
-                          <span>{t.emoji}</span>
-                          <span>{t.label}</span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
@@ -425,9 +406,7 @@ function DayDetail() {
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
-                          onEdit={() => setEditEntry(e)}
-                          onEditLocation={() => setEditLocationEntry(e)}
-                          onDelete={() => { if (confirm("למחוק פריט?")) del.mutate(e.id); }}
+                          onOpenActions={() => setActionsFor(e)}
                         />
                       </div>
                     );
@@ -435,32 +414,35 @@ function DayDetail() {
                 </div>
               </SortableContext>
             </DndContext>
+          </div>
 
-            {/* Sticky quick add bar */}
-            <div
-              className="sticky bottom-0 -mx-4 px-3 py-2 bg-card border-t border-border flex items-center gap-2"
-              style={{ minHeight: 56, paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-            >
-              <button
-                onClick={openPicker}
-                aria-label="הוסף פעילות מההמלצות"
-                className="h-10 px-3 rounded-full bg-[color:var(--accent)] text-white text-xs font-medium flex items-center gap-1.5 shrink-0 min-h-0"
-              >
-                <span aria-hidden>⭐</span>
-                <span>המלצות</span>
-              </button>
-              <div className="flex-1 min-w-0">
-                <PlacesSearch
-                  key={`quick-${entries.length}`}
-                  placeholder="חיפוש מהיר בגוגל..."
-                  onSelect={(place) => quickAdd.mutate(place)}
-                />
-              </div>
+          {/* Floating action button */}
+          <button
+            onClick={openPicker}
+            aria-label="הוסף פעילות"
+            className="fixed right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white shadow-lg flex items-center justify-center min-h-0 active:scale-95 transition-transform"
+            style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
+          >
+            <Plus size={24} />
+          </button>
 
+          {/* Sticky quick search bar */}
+          <div
+            className="sticky bottom-0 -mx-4 bg-card border-t border-border px-3 flex items-center"
+            style={{ minHeight: 52, paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))", paddingTop: "0.25rem" }}
+          >
+            <div className="flex-1 min-w-0">
+              <PlacesSearch
+                key={`quick-${entries.length}`}
+                placeholder="חיפוש מהיר בגוגל..."
+                onSelect={(place) => quickAdd.mutate(place)}
+              />
             </div>
           </div>
         </div>
       )}
+
+
 
 
       <BottomSheet open={pickerOpen} onOpenChange={setPickerOpen} title={entryType ? undefined : "בחר סוג פעילות"}>
