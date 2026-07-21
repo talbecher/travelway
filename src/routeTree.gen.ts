@@ -13,6 +13,7 @@ import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ItineraryRouteImport } from './routes/itinerary'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
@@ -37,6 +38,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const ItineraryRoute = ItineraryRouteImport.update({
   id: '/itinerary',
   path: '/itinerary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BudgetRoute = BudgetRouteImport.update({
@@ -68,6 +74,7 @@ const ItineraryDayIdRoute = ItineraryDayIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
+  '/documents': typeof DocumentsRoute
   '/itinerary': typeof ItineraryRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
+  '/documents': typeof DocumentsRoute
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
+  '/documents': typeof DocumentsRoute
   '/itinerary': typeof ItineraryRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/budget'
+    | '/documents'
     | '/itinerary'
     | '/onboarding'
     | '/phrasebook'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/budget'
+    | '/documents'
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/budget'
+    | '/documents'
     | '/itinerary'
     | '/onboarding'
     | '/phrasebook'
@@ -136,6 +148,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BudgetRoute: typeof BudgetRoute
+  DocumentsRoute: typeof DocumentsRoute
   ItineraryRoute: typeof ItineraryRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   PhrasebookRoute: typeof PhrasebookRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       path: '/itinerary'
       fullPath: '/itinerary'
       preLoaderRoute: typeof ItineraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/budget': {
@@ -228,6 +248,7 @@ const ItineraryRouteWithChildren = ItineraryRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BudgetRoute: BudgetRoute,
+  DocumentsRoute: DocumentsRoute,
   ItineraryRoute: ItineraryRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   PhrasebookRoute: PhrasebookRoute,
