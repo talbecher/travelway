@@ -170,8 +170,8 @@ function Home() {
   const sections: Array<{ key: string; node: React.ReactNode }> = [];
 
   // 1. HERO
-  const heroWeatherCity =
-    days.find((d) => d.city_label)?.city_label ?? trip.destination_country ?? null;
+  const heroWeatherCity = days.find((d) => d.city_label)?.city_label ?? null;
+  const heroWeatherFallback = trip.destination_country ?? null;
   sections.push({
     key: "hero",
     node: (
@@ -186,9 +186,11 @@ function Home() {
         daysTotal={stats?.daysTotal ?? 0}
         tripProgressPct={stats?.tripProgressPct ?? 0}
         weatherCity={heroWeatherCity}
+        weatherFallback={heroWeatherFallback}
       />
     ),
   });
+
 
 
   // 2 or 3. TODAY / NEXT
