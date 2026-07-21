@@ -162,8 +162,8 @@ export async function geocodeCity(
   }
 }
 
-export function openMeteoForecastUrl(lat: number, lng: number): string {
-  return `https://open-meteo.com/en/docs?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`;
+export function weatherForecastUrl(lat: number, lng: number): string {
+  return `https://www.windy.com/?${lat},${lng},11`;
 }
 
 

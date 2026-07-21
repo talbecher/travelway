@@ -10,7 +10,7 @@ import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
-import { WEATHER_LABELS_HE, openMeteoForecastUrl } from "@/lib/weather";
+import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 
 
 
@@ -362,7 +362,7 @@ function HeroCard(props: {
   const wCondition = forecast?.condition ?? current?.condition ?? null;
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
-  const forecastUrl = current ? openMeteoForecastUrl(current.lat, current.lng) : null;
+  const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
 
   const pill =
     status === "future"
