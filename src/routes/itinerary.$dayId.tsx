@@ -336,14 +336,17 @@ function DayDetail() {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/5 min-h-0 h-auto"
-                  >
-                    <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
-                    <Pencil size={11} />
-                  </button>
+                  <div className="flex justify-start">
+                    <button
+                      onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/5 min-h-0 h-auto"
+                    >
+                      <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
+                      <Pencil size={11} />
+                    </button>
+                  </div>
                 )}
+
               </div>
             </div>
           </div>
