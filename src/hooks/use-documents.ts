@@ -59,7 +59,7 @@ export function useDocuments(tripId: string | undefined) {
     enabled: !!tripId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("documents" as never)
+        .from("documents")
         .select("*")
         .eq("trip_id", tripId!)
         .order("display_order")
@@ -88,7 +88,7 @@ export function useAddDocument(tripId: string | undefined) {
     mutationFn: async (input: DocumentInput) => {
       if (!tripId) throw new Error("No trip");
       const { data, error } = await supabase
-        .from("documents" as never)
+        .from("documents")
         .insert({ ...input, trip_id: tripId })
         .select()
         .single();
@@ -117,7 +117,7 @@ export function useUpdateDocument(tripId: string | undefined) {
   return useMutation({
     mutationFn: async ({ id, patch, prevIsPaid }: { id: string; patch: Partial<DocumentInput>; prevIsPaid: boolean }) => {
       const { data, error } = await supabase
-        .from("documents" as never)
+        .from("documents")
         .update(patch)
         .eq("id", id)
         .select()
@@ -149,7 +149,7 @@ export function useDeleteDocument(tripId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("documents" as never).delete().eq("id", id);
+      const { error } = await supabase.from("documents").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
