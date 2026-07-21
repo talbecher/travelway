@@ -711,6 +711,165 @@ function SortableEntry({
 }
 
 
+function EntryDetails({
+  entry, onEdit, onUpdateLocation, onDelete, onClose,
+}: {
+  entry: EntryRow;
+  onEdit: () => void;
+  onUpdateLocation: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
+  const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
+  const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
+  const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? entry.entry_type;
+  const hasCoords = coordsOf(entry) != null;
+  const mapHref = hasCoords && entry.latitude != null && entry.longitude != null
+    ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
+    : entry.google_maps_url;
+
+  const { data: linkedRec } = useQuery({
+    queryKey: ["rec-linked", entry.linked_recommendation_id],
+    enabled: !!entry.linked_recommendation_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recommendations")
+        .select("id, name, city, notes, google_rating, google_maps_url, photo_url")
+        .eq("id", entry.linked_recommendation_id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  return (
+    <div className="pt-1 pb-4 space-y-4" dir="rtl">
+      {/* Media */}
+      {entry.photo_url ? (
+        <img
+          src={entry.photo_url}
+          alt=""
+          className="w-full h-44 rounded-xl object-cover"
+        />
+      ) : (
+        <div
+          className="w-full h-32 rounded-xl flex items-center justify-center text-5xl"
+          style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
+        >
+          {icon}
+        </div>
+      )}
+
+      {/* Meta row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span
+          className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-1 rounded-full text-white"
+          style={{ background: pinColor }}
+        >
+          <span>{icon}</span>
+          <span>{typeLabel}</span>
+        </span>
+        {entry.time_of_day && (
+          <span className="inline-flex items-center text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground" dir="ltr">
+            {entry.time_of_day}
+          </span>
+        )}
+        {entry.linked_recommendation_id && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-[color:var(--accent-3)]">
+            <Link2 size={12} /> מסונכרן עם המלצות
+          </span>
+        )}
+      </div>
+
+      {/* Location */}
+      {entry.location_name && (
+        mapHref ? (
+          <a
+            href={mapHref}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-start gap-2 text-[13px] text-foreground hover:text-[color:var(--accent)]"
+          >
+            <span>📍</span>
+            <span className="flex-1 min-w-0" dir="ltr">{entry.location_name}</span>
+            <ExternalLink size={14} className="mt-0.5 opacity-60 shrink-0" />
+          </a>
+        ) : (
+          <div className="flex items-start gap-2 text-[13px] text-muted-foreground">
+            <span>📍</span>
+            <span className="flex-1 min-w-0" dir="ltr">{entry.location_name}</span>
+          </div>
+        )
+      )}
+
+      {/* Description */}
+      {entry.description && (
+        <div className="text-[14px] leading-relaxed text-foreground whitespace-pre-line break-words">
+          {entry.description}
+        </div>
+      )}
+
+      {/* Linked recommendation info */}
+      {linkedRec && (
+        <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
+          <div className="text-[11px] font-medium text-muted-foreground">⭐ מתוך ההמלצות שלך</div>
+          <div className="flex items-center gap-2 flex-wrap text-[12px]">
+            {typeof linkedRec.google_rating === "number" && (
+              <span className="font-semibold">★ {linkedRec.google_rating.toFixed(1)}</span>
+            )}
+            {linkedRec.city && <span className="text-muted-foreground">· {linkedRec.city}</span>}
+          </div>
+          {linkedRec.notes && (
+            <div className="text-[13px] text-foreground whitespace-pre-line">{linkedRec.notes}</div>
+          )}
+        </div>
+      )}
+
+      {!hasCoords && entry.entry_type !== "note" && !entry.location_name && (
+        <div className="text-[12px] text-muted-foreground italic">אין מיקום שמור לפריט זה</div>
+      )}
+
+      {/* Actions */}
+      <div className="pt-2 border-t border-border grid grid-cols-2 gap-2">
+        <button
+          onClick={onEdit}
+          className="h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
+        >
+          <Pencil size={14} /> ערוך
+        </button>
+        {mapHref ? (
+          <a
+            href={mapHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={onClose}
+            className="h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
+          >
+            <ExternalLink size={14} /> פתח במפה
+          </a>
+        ) : entry.entry_type !== "note" ? (
+          <button
+            onClick={onUpdateLocation}
+            className="h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
+          >
+            <MapIcon size={14} /> עדכן מיקום
+          </button>
+        ) : (
+          <span />
+        )}
+        <button
+          onClick={onDelete}
+          className="col-span-2 h-11 rounded-lg border border-[color:var(--accent-2)]/40 text-[color:var(--accent-2)] flex items-center justify-center gap-2 text-sm min-h-0"
+        >
+          <Trash2 size={14} /> מחק
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 function EmptyDay({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="text-center py-14 space-y-4 flex flex-col items-center">
