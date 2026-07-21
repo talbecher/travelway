@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, MessagesSquare, FileText } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
@@ -255,7 +255,9 @@ function Home() {
         <ActionTile icon={Calendar} label="מסלול הטיול" to="/itinerary" />
         <ActionTile icon={Star} label="המלצות" to="/recommendations" />
         <ActionTile icon={Wallet} label="תקציב" to="/budget" />
+        <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
         <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
+        <ActionTile icon={FileText} label="מסמכים" disabled />
       </section>
     ),
   });
@@ -419,13 +421,15 @@ function StatChip({ icon, value, label, to }: { icon: React.ReactNode; value: nu
 }
 
 function ActionTile({
-  icon: Icon, label, to, onClick, accent,
+  icon: Icon, label, to, onClick, accent, disabled,
 }: {
-  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean;
+  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean; disabled?: boolean;
 }) {
   const cls = `rounded-xl border h-20 flex flex-col items-center justify-center gap-1.5 transition-colors ${
     accent
       ? "bg-[color:var(--accent-2)] text-white border-transparent"
+      : disabled
+      ? "bg-card border-border opacity-50"
       : "bg-card border-border"
   }`;
   const content = (
@@ -434,6 +438,7 @@ function ActionTile({
       <div className="text-[13px]">{label}</div>
     </>
   );
+  if (disabled) return <div className={cls} aria-disabled>{content}</div>;
   if (to) return <Link to={to} className={cls}>{content}</Link>;
   return <button type="button" onClick={onClick} className={cls}>{content}</button>;
 }

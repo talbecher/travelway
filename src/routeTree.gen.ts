@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
+import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ItineraryRouteImport } from './routes/itinerary'
 import { Route as BudgetRouteImport } from './routes/budget'
@@ -21,6 +22,11 @@ import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 const RecommendationsRoute = RecommendationsRouteImport.update({
   id: '/recommendations',
   path: '/recommendations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PhrasebookRoute = PhrasebookRouteImport.update({
+  id: '/phrasebook',
+  path: '/phrasebook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/budget': typeof BudgetRoute
   '/itinerary': typeof ItineraryRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
   '/onboarding': typeof OnboardingRoute
+  '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/budget': typeof BudgetRoute
   '/itinerary': typeof ItineraryRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/budget'
     | '/itinerary'
     | '/onboarding'
+    | '/phrasebook'
     | '/recommendations'
     | '/itinerary/$dayId'
     | '/join/$token'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/'
     | '/budget'
     | '/onboarding'
+    | '/phrasebook'
     | '/recommendations'
     | '/itinerary/$dayId'
     | '/join/$token'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/budget'
     | '/itinerary'
     | '/onboarding'
+    | '/phrasebook'
     | '/recommendations'
     | '/itinerary/$dayId'
     | '/join/$token'
@@ -126,6 +138,7 @@ export interface RootRouteChildren {
   BudgetRoute: typeof BudgetRoute
   ItineraryRoute: typeof ItineraryRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  PhrasebookRoute: typeof PhrasebookRoute
   RecommendationsRoute: typeof RecommendationsRoute
   JoinTokenRoute: typeof JoinTokenRoute
 }
@@ -137,6 +150,13 @@ declare module '@tanstack/react-router' {
       path: '/recommendations'
       fullPath: '/recommendations'
       preLoaderRoute: typeof RecommendationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/phrasebook': {
+      id: '/phrasebook'
+      path: '/phrasebook'
+      fullPath: '/phrasebook'
+      preLoaderRoute: typeof PhrasebookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -210,19 +230,10 @@ const rootRouteChildren: RootRouteChildren = {
   BudgetRoute: BudgetRoute,
   ItineraryRoute: ItineraryRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  PhrasebookRoute: PhrasebookRoute,
   RecommendationsRoute: RecommendationsRoute,
   JoinTokenRoute: JoinTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
