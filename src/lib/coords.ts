@@ -36,7 +36,9 @@ export function parseLatLngFromMapsUrl(url: string | null | undefined): LatLng |
   return null;
 }
 
-export function googleDirectionsUrl(points: LatLng[]): string {
+export type TravelMode = "walking" | "transit" | "driving" | "bicycling";
+
+export function googleDirectionsUrl(points: LatLng[], mode: TravelMode = "walking"): string {
   if (!points || points.length < 2) return "";
   const valid = points.filter(
     (p) =>
@@ -54,11 +56,12 @@ export function googleDirectionsUrl(points: LatLng[]): string {
     api: "1",
     origin,
     destination,
-    travelmode: "walking",
+    travelmode: mode,
   });
   if (waypoints) params.set("waypoints", waypoints);
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
+
 
 export function mapsSearchUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
