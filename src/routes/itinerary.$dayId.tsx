@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon, Link2 } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon, Link2, MoreHorizontal } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, dayEntriesQuery } from "@/hooks/use-trip";
@@ -105,6 +105,7 @@ function DayDetail() {
   const [entryType, setEntryType] = useState<EntryType | null>(null);
   const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
   const [editLocationEntry, setEditLocationEntry] = useState<EntryRow | null>(null);
+  const [actionsFor, setActionsFor] = useState<EntryRow | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
@@ -138,7 +139,7 @@ function DayDetail() {
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
 
-  const [mapPct, setMapPct] = useState(50);
+  const [mapPct, setMapPct] = useState(40);
   const draggingRef = useRef(false);
 
   const listRef = useRef<HTMLDivElement>(null);
@@ -275,14 +276,7 @@ function DayDetail() {
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
   const hasAnyEntries = entries.length > 0;
-  const routePoints = mapStops.map((s) => ({ lat: Number(s.lat), lng: Number(s.lng) }));
-  const directionsEnabled = routePoints.length >= 2;
-  const travelModes: { mode: "walking" | "transit" | "driving" | "bicycling"; label: string; emoji: string }[] = [
-    { mode: "walking", label: "ברגל", emoji: "🚶" },
-    { mode: "transit", label: "תח״צ", emoji: "🚆" },
-    { mode: "driving", label: "רכב", emoji: "🚗" },
-    { mode: "bicycling", label: "אופניים", emoji: "🚴" },
-  ];
+
 
 
   return (
@@ -292,66 +286,66 @@ function DayDetail() {
         const theme = getDestinationTheme(trip?.destination_country ?? "");
         return (
           <div
-            className="relative w-full px-4 pt-3 pb-4"
-            style={{ minHeight: 120, background: theme.heroGradient }}
+            className="relative w-full px-4 pt-3 pb-3 border-b border-border"
+            style={{ minHeight: 100, background: theme.heroGradient }}
           >
             <button
               onClick={() => navigate({ to: "/itinerary" })}
               aria-label="חזרה למסלול"
-              className="absolute top-3 left-3 w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
+              className="absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
             >
-              <ChevronRight size={16} className="rotate-180" />
+              <ChevronRight size={18} className="rotate-180" />
             </button>
             <div className="pt-1 pr-1">
-              <div className="text-white text-[32px] font-semibold leading-none">
+              <div className="text-white text-[28px] font-semibold leading-none">
                 יום {day.day_number}
               </div>
-              <div className="text-white/70 text-[13px] mt-2">{hebDateLong(day.date)}</div>
-              <div className="mt-3">
-                {editingCity ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      value={cityValue}
-                      onChange={(e) => setCityValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveCity.mutate();
-                        if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
-                      }}
-                      dir="ltr"
-                      placeholder="עיר / איזור"
-                      className="flex-1 text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white"
-                    />
-                    <button
-                      onClick={() => saveCity.mutate()}
-                      className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0"
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
-                      className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex justify-start">
-                    <button
-                      onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/5 min-h-0 h-auto"
-                    >
-                      <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
-                      <Pencil size={11} />
-                    </button>
-                  </div>
-                )}
+              <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
+            </div>
 
-              </div>
+            {/* City chip — anchored bottom-right (RTL start) */}
+            <div className="absolute bottom-2 right-3">
+              {editingCity ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={cityValue}
+                    onChange={(e) => setCityValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveCity.mutate();
+                      if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
+                    }}
+                    dir="ltr"
+                    placeholder="עיר / איזור"
+                    className="text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white"
+                  />
+                  <button
+                    onClick={() => saveCity.mutate()}
+                    className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0"
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
+                    className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/10 min-h-0 h-auto"
+                >
+                  <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
+                  <Pencil size={11} />
+                </button>
+              )}
             </div>
           </div>
         );
       })()}
+
 
       {isLoading ? (
         <div className="px-4 pt-3 space-y-2 animate-pulse">
@@ -379,35 +373,16 @@ function DayDetail() {
             role="separator"
             aria-orientation="horizontal"
             onPointerDown={(e) => { draggingRef.current = true; document.body.style.cursor = "row-resize"; e.preventDefault(); }}
-            className="h-3 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none"
+            className="h-4 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
           >
-            <div className="w-10 h-1 rounded-[2px] bg-border" />
+            <div className="w-12 h-[5px] rounded-[3px] bg-[color:var(--border-strong)]" />
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[72px] relative">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[140px] relative">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div>
-                  {directionsEnabled && (
-                    <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5">
-                      <span className="text-[11px] text-muted-foreground ml-1">פתח בגוגל מפות:</span>
-                      {travelModes.map((t) => (
-                        <a
-                          key={t.mode}
-                          href={googleDirectionsUrl(routePoints, t.mode)}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={t.label}
-                          className="h-8 px-2.5 rounded-full border border-border text-[11px] text-foreground/80 inline-flex items-center gap-1 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                        >
-                          <span>{t.emoji}</span>
-                          <span>{t.label}</span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
@@ -424,9 +399,7 @@ function DayDetail() {
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
-                          onEdit={() => setEditEntry(e)}
-                          onEditLocation={() => setEditLocationEntry(e)}
-                          onDelete={() => { if (confirm("למחוק פריט?")) del.mutate(e.id); }}
+                          onOpenActions={() => setActionsFor(e)}
                         />
                       </div>
                     );
@@ -434,32 +407,35 @@ function DayDetail() {
                 </div>
               </SortableContext>
             </DndContext>
+          </div>
 
-            {/* Sticky quick add bar */}
-            <div
-              className="sticky bottom-0 -mx-4 px-3 py-2 bg-card border-t border-border flex items-center gap-2"
-              style={{ minHeight: 56, paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-            >
-              <button
-                onClick={openPicker}
-                aria-label="הוסף פעילות מההמלצות"
-                className="h-10 px-3 rounded-full bg-[color:var(--accent)] text-white text-xs font-medium flex items-center gap-1.5 shrink-0 min-h-0"
-              >
-                <span aria-hidden>⭐</span>
-                <span>המלצות</span>
-              </button>
-              <div className="flex-1 min-w-0">
-                <PlacesSearch
-                  key={`quick-${entries.length}`}
-                  placeholder="חיפוש מהיר בגוגל..."
-                  onSelect={(place) => quickAdd.mutate(place)}
-                />
-              </div>
+          {/* Floating action button */}
+          <button
+            onClick={openPicker}
+            aria-label="הוסף פעילות"
+            className="fixed right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white shadow-lg flex items-center justify-center min-h-0 active:scale-95 transition-transform"
+            style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
+          >
+            <Plus size={24} />
+          </button>
 
+          {/* Sticky quick search bar */}
+          <div
+            className="sticky bottom-0 -mx-4 bg-card border-t border-border px-3 flex items-center"
+            style={{ minHeight: 52, paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))", paddingTop: "0.25rem" }}
+          >
+            <div className="flex-1 min-w-0">
+              <PlacesSearch
+                key={`quick-${entries.length}`}
+                placeholder="חיפוש מהיר בגוגל..."
+                onSelect={(place) => quickAdd.mutate(place)}
+              />
             </div>
           </div>
         </div>
       )}
+
+
 
 
       <BottomSheet open={pickerOpen} onOpenChange={setPickerOpen} title={entryType ? undefined : "בחר סוג פעילות"}>
@@ -517,36 +493,95 @@ function DayDetail() {
           </div>
         )}
       </BottomSheet>
+
+      {/* Entry actions sheet (··· menu) */}
+      <BottomSheet
+        open={!!actionsFor}
+        onOpenChange={(o) => !o && setActionsFor(null)}
+        title={actionsFor?.title}
+      >
+        {actionsFor && (() => {
+          const e = actionsFor;
+          const hasCoords = coordsOf(e) != null;
+          const mapHref = hasCoords && e.latitude != null && e.longitude != null
+            ? mapsSearchUrl(Number(e.latitude), Number(e.longitude))
+            : e.google_maps_url;
+          return (
+            <div className="pt-2 pb-4 flex flex-col">
+              <button
+                onClick={() => { setEditEntry(e); setActionsFor(null); }}
+                className="flex items-center gap-3 py-3 px-2 text-right border-b border-border min-h-0"
+              >
+                <Pencil size={16} className="text-muted-foreground" />
+                <span className="text-sm">ערוך</span>
+              </button>
+              {mapHref && (
+                <a
+                  href={mapHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setActionsFor(null)}
+                  className="flex items-center gap-3 py-3 px-2 text-right border-b border-border min-h-0"
+                >
+                  <ExternalLink size={16} className="text-muted-foreground" />
+                  <span className="text-sm">פתח במפה</span>
+                </a>
+              )}
+              {!hasCoords && e.entry_type !== "note" && (
+                <button
+                  onClick={() => { setEditLocationEntry(e); setActionsFor(null); }}
+                  className="flex items-center gap-3 py-3 px-2 text-right border-b border-border min-h-0"
+                >
+                  <MapIcon size={16} className="text-muted-foreground" />
+                  <span className="text-sm">עדכן מיקום</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (confirm("למחוק פריט?")) del.mutate(e.id);
+                  setActionsFor(null);
+                }}
+                className="flex items-center gap-3 py-3 px-2 text-right min-h-0"
+              >
+                <Trash2 size={16} className="text-[color:var(--accent-2)]" />
+                <span className="text-sm text-[color:var(--accent-2)]">מחק</span>
+              </button>
+            </div>
+          );
+        })()}
+      </BottomSheet>
     </div>
   );
 }
 
 function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat: number; lng: number } }) {
   const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
-  const suggested: "walking" | "transit" | "driving" =
-    km < 1.5 ? "walking" : km <= 10 ? "transit" : "driving";
+  const isWalk = km < 1.5;
+  const suggested: "walking" | "transit" = isWalk ? "walking" : "transit";
   const base = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}`;
-  const modes: { key: "walking" | "transit" | "driving"; label: string; emoji: string }[] = [
-    { key: "walking", label: "ברגל", emoji: "🚶" },
-    { key: "transit", label: "תחבורה", emoji: "🚌" },
-    { key: "driving", label: "מכונית", emoji: "🚗" },
-  ];
+  const modeMeta = {
+    walking: { label: "ברגל", emoji: "🚶" },
+    transit: { label: "תחבורה", emoji: "🚌" },
+  } as const;
+  const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
+  const ordered: ("walking" | "transit")[] = [suggested, alt];
   return (
-    <div className="mr-14 my-1 flex flex-col items-start gap-1" dir="rtl">
+    <div className="mr-14 my-2 flex flex-col items-start gap-1.5" dir="rtl">
       <div className="w-0.5 h-3 bg-border" />
-      <div className="text-[11px] text-muted-foreground">→ {fmtDistance(km)}</div>
-      <div className="flex gap-1.5 flex-wrap">
-        {modes.map((m) => {
-          const isOn = m.key === suggested;
+      <div className="text-[13px] text-muted-foreground">→ {fmtDistance(km)}</div>
+      <div className="flex gap-2 flex-wrap">
+        {ordered.map((key) => {
+          const m = modeMeta[key];
+          const isOn = key === suggested;
           return (
             <a
-              key={m.key}
-              href={`${base}&travelmode=${m.key}`}
+              key={key}
+              href={`${base}&travelmode=${key}`}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
-              className="h-7 px-3 rounded-full text-[11px] inline-flex items-center gap-1 leading-none"
+              className="min-h-[36px] min-w-[80px] px-3 rounded-full text-[13px] inline-flex items-center justify-center gap-1.5 leading-none"
               style={
                 isOn
                   ? { background: "var(--accent)", color: "#fff", border: "1px solid transparent" }
@@ -555,6 +590,7 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
             >
               <span>{m.emoji}</span>
               <span>{m.label}</span>
+              {isOn && <span className="opacity-90">✓</span>}
             </a>
           );
         })}
@@ -567,15 +603,13 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onEdit, onEditLocation, onDelete,
+  entry, pinIndex, highlighted, setRef, onOpenActions,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
-  onEdit: () => void;
-  onEditLocation: () => void;
-  onDelete: () => void;
+  onOpenActions: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const style: React.CSSProperties = {
@@ -603,28 +637,39 @@ function SortableEntry({
       <motion.div
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="flex-1 bg-card border border-border rounded-[10px] shadow-sm py-3 px-3 my-1"
+        className="relative flex-1 bg-card border border-border rounded-[12px] shadow-sm my-1"
+        style={{ minHeight: 72, padding: "14px 16px" }}
       >
+        {/* Time pill — top-left corner */}
+        {entry.time_of_day && (
+          <span
+            className="absolute top-2 left-2 rounded-full bg-muted/60 text-[11px] tabular-nums px-1.5 py-0.5 text-foreground/80"
+            dir="ltr"
+          >
+            {entry.time_of_day}
+          </span>
+        )}
+
         <div className="flex items-start gap-3">
           {entry.photo_url ? (
             <img
               src={entry.photo_url}
               alt=""
               loading="lazy"
-              className="w-[60px] h-[60px] rounded-xl object-cover shrink-0"
+              className="w-14 h-14 rounded-xl object-cover shrink-0"
             />
           ) : (
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0"
+              className="w-14 h-14 rounded-xl flex items-center justify-center text-[24px] shrink-0"
               style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
             >
               {icon}
             </div>
           )}
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[15px] font-semibold truncate">{entry.title}</span>
+              <span className="text-[15px] font-semibold truncate leading-tight">{entry.title}</span>
               {hasCoords && (
                 <span
                   aria-label="במפה"
@@ -641,75 +686,42 @@ function SortableEntry({
               )}
             </div>
 
-            <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground flex-wrap">
-              {entry.location_name && (
-                <span className="inline-flex items-center gap-1 min-w-0">
-                  <span>📍</span>
-                  <span className="truncate" dir="ltr">{entry.location_name}</span>
-                </span>
-              )}
-              {entry.time_of_day && (
-                <>
-                  {entry.location_name && <span className="opacity-50">·</span>}
-                  <span
-                    className="rounded-full bg-[color:var(--surface-2)] text-[11px] tabular-nums px-1.5 py-0.5"
-                    dir="ltr"
-                  >
-                    {entry.time_of_day}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {!hasCoords && entry.entry_type !== "note" && (
-              <button
-                type="button"
-                onClick={onEditLocation}
-                className="text-[11px] text-muted-foreground underline mt-1 inline-flex items-center gap-1 min-h-0 h-auto p-0"
-              >
-                📍 לא זוהה מיקום — לחץ לעדכון
-              </button>
-            )}
-
-            {entry.description && (
-              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-3">
-                {entry.description}
+            {entry.location_name && (
+              <div className="mt-1 text-[12px] text-muted-foreground truncate" dir="ltr">
+                {entry.location_name}
               </div>
             )}
 
-            {(entry.google_maps_url || hasCoords) && (
-              <a
-                href={
-                  hasCoords && entry.latitude != null && entry.longitude != null
-                    ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
-                    : entry.google_maps_url!
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="text-[12px] text-[color:var(--accent)] inline-flex items-center gap-1 mt-2"
-              >
-                <ExternalLink size={12} /> פתח במפה
-              </a>
+            {entry.description && (
+              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2">
+                {entry.description}
+              </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-1 shrink-0">
-            <button
-              {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
-              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0"
-            >
-              <GripVertical size={12} />
-            </button>
-            <button onClick={onEdit} aria-label="ערוך"
-              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"><Pencil size={12} /></button>
-            <button onClick={onDelete} aria-label="מחק"
-              className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0"><Trash2 size={12} /></button>
-          </div>
+          {/* Drag handle — vertical, minimal */}
+          <button
+            {...attributes} {...listeners} type="button" aria-label="גרור לשינוי סדר"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing min-h-0 shrink-0"
+          >
+            <GripVertical size={14} />
+          </button>
         </div>
+
+        {/* ⋯ menu — bottom-left corner */}
+        <button
+          type="button"
+          onClick={onOpenActions}
+          aria-label="פעולות נוספות"
+          className="absolute bottom-1.5 left-1.5 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/50 min-h-0"
+        >
+          <MoreHorizontal size={16} />
+        </button>
       </motion.div>
     </div>
   );
 }
+
 
 function EmptyDay({ onAdd }: { onAdd: () => void }) {
   return (
