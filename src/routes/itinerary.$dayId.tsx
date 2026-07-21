@@ -397,8 +397,9 @@ function DayDetail() {
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
-                          onOpenActions={() => setActionsFor(e)}
+                          onOpenDetails={() => setDetailsFor(e)}
                         />
+
                       </div>
                     );
                   })}
