@@ -44,12 +44,110 @@ export const WEATHER_LABELS_HE: Record<WeatherCondition, string> = {
   unknown: "",
 };
 
+const HE_PLACE_ALIASES: Record<string, string> = {
+  "יפן": "Japan",
+  "טוקיו": "Tokyo",
+  "קיוטו": "Kyoto",
+  "אוסקה": "Osaka",
+  "נארה": "Nara",
+  "הירושימה": "Hiroshima",
+  "סאפורו": "Sapporo",
+  "יוקוהמה": "Yokohama",
+  "איטליה": "Italy",
+  "רומא": "Rome",
+  "מילאנו": "Milan",
+  "מילאן": "Milan",
+  "פירנצה": "Florence",
+  "פלורנס": "Florence",
+  "ונציה": "Venice",
+  "נאפולי": "Naples",
+  "צרפת": "France",
+  "פריז": "Paris",
+  "ניס": "Nice",
+  "ליון": "Lyon",
+  "מרסיי": "Marseille",
+  "ספרד": "Spain",
+  "ברצלונה": "Barcelona",
+  "מדריד": "Madrid",
+  "סביליה": "Seville",
+  "ולנסיה": "Valencia",
+  "יוון": "Greece",
+  "אתונה": "Athens",
+  "סנטוריני": "Santorini",
+  "מיקונוס": "Mykonos",
+  "כרתים": "Crete",
+  "תאילנד": "Thailand",
+  "בנגקוק": "Bangkok",
+  "פוקט": "Phuket",
+  "צ׳אנג מאי": "Chiang Mai",
+  "צ'אנג מאי": "Chiang Mai",
+  "וייטנאם": "Vietnam",
+  "האנוי": "Hanoi",
+  "הו צ'י מין": "Ho Chi Minh City",
+  "הו צי מין": "Ho Chi Minh City",
+  "טורקיה": "Turkey",
+  "איסטנבול": "Istanbul",
+  "אנטליה": "Antalya",
+  "בריטניה": "England",
+  "אנגליה": "England",
+  "לונדון": "London",
+  "מנצ'סטר": "Manchester",
+  "גרמניה": "Germany",
+  "ברלין": "Berlin",
+  "מינכן": "Munich",
+  "המבורג": "Hamburg",
+  "הולנד": "Netherlands",
+  "אמסטרדם": "Amsterdam",
+  "פורטוגל": "Portugal",
+  "ליסבון": "Lisbon",
+  "פורטו": "Porto",
+  "הודו": "India",
+  "דלהי": "Delhi",
+  "מומבאי": "Mumbai",
+  "סין": "China",
+  "בייג'ינג": "Beijing",
+  "שנחאי": "Shanghai",
+  'ארה"ב': "USA",
+  "ארהב": "USA",
+  "ארצות הברית": "USA",
+  "ניו יורק": "New York",
+  "לוס אנג'לס": "Los Angeles",
+  "לוס אנג׳לס": "Los Angeles",
+  "מיאמי": "Miami",
+  "לאס וגאס": "Las Vegas",
+  "שיקגו": "Chicago",
+  "תל אביב": "Tel Aviv",
+  "ירושלים": "Jerusalem",
+  "דובאי": "Dubai",
+  "אבו דאבי": "Abu Dhabi",
+  "צ'כיה": "Czechia",
+  "פראג": "Prague",
+  "הונגריה": "Hungary",
+  "בודפשט": "Budapest",
+  "אוסטריה": "Austria",
+  "וינה": "Vienna",
+  "שוויץ": "Switzerland",
+  "ציריך": "Zurich",
+};
+
+function normalizePlace(name: string): string {
+  const trimmed = name.trim();
+  if (HE_PLACE_ALIASES[trimmed]) return HE_PLACE_ALIASES[trimmed];
+  // try case-insensitive lookup for latin variants
+  const lower = trimmed.toLowerCase();
+  for (const [k, v] of Object.entries(HE_PLACE_ALIASES)) {
+    if (k.toLowerCase() === lower) return v;
+  }
+  return trimmed;
+}
+
 export async function geocodeCity(
   name: string
 ): Promise<{ lat: number; lng: number } | null> {
   try {
+    const q = normalizePlace(name);
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-      name
+      q
     )}&count=1&language=en`;
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -63,6 +161,11 @@ export async function geocodeCity(
     return null;
   }
 }
+
+export function openMeteoForecastUrl(lat: number, lng: number): string {
+  return `https://open-meteo.com/en/docs?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`;
+}
+
 
 export async function fetchWeather(
   lat: number,

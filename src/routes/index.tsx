@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, MessagesSquare, FileText } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, MessagesSquare, FileText, ExternalLink } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,8 @@ import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
-import { WEATHER_LABELS_HE } from "@/lib/weather";
+import { WEATHER_LABELS_HE, openMeteoForecastUrl } from "@/lib/weather";
+
 
 
 function HomeWeatherChip({ city, date }: { city: string | null; date: string | null }) {
@@ -169,8 +170,8 @@ function Home() {
   const sections: Array<{ key: string; node: React.ReactNode }> = [];
 
   // 1. HERO
-  const heroWeatherCity =
-    days.find((d) => d.city_label)?.city_label ?? trip.destination_country ?? null;
+  const heroWeatherCity = days.find((d) => d.city_label)?.city_label ?? null;
+  const heroWeatherFallback = trip.destination_country ?? null;
   sections.push({
     key: "hero",
     node: (
@@ -185,9 +186,11 @@ function Home() {
         daysTotal={stats?.daysTotal ?? 0}
         tripProgressPct={stats?.tripProgressPct ?? 0}
         weatherCity={heroWeatherCity}
+        weatherFallback={heroWeatherFallback}
       />
     ),
   });
+
 
 
   // 2 or 3. TODAY / NEXT
@@ -350,14 +353,16 @@ function HeroCard(props: {
   status: "future" | "active" | "past";
   daysToStart: number; daysPassed: number; daysTotal: number; tripProgressPct: number;
   weatherCity: string | null;
+  weatherFallback: string | null;
 }) {
-  const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity } = props;
+  const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity, weatherFallback } = props;
   const today = todayISO();
-  const forecast = useDayWeather(weatherCity, today);
-  const current = useCurrentWeather(weatherCity);
+  const forecast = useDayWeather(weatherCity ?? weatherFallback, today);
+  const current = useCurrentWeather(weatherCity, weatherFallback);
   const wCondition = forecast?.condition ?? current?.condition ?? null;
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
+  const forecastUrl = current ? openMeteoForecastUrl(current.lat, current.lng) : null;
 
   const pill =
     status === "future"
@@ -374,13 +379,21 @@ function HeroCard(props: {
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
       }}
     >
-      {wCondition && wTemp != null && (
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm">
+      {wCondition && wTemp != null && forecastUrl && (
+        <a
+          href={forecastUrl}
+          target="_blank"
+          rel="noreferrer"
+          title="לתחזית מלאה קדימה"
+          className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20 transition-colors"
+        >
           <WeatherIcon condition={wCondition} size="sm" />
           <span className="text-sm font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
           {wLabel && <span className="text-[11px] text-white/70 leading-none">{wLabel}</span>}
-        </div>
+          <ExternalLink size={11} className="text-white/60" />
+        </a>
       )}
+
       <div className="flex flex-col justify-between h-full">
         <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[96px]">
           <div className="text-[28px] font-bold leading-tight truncate">{title}</div>

@@ -48,17 +48,35 @@ export function useDayWeather(
   return days.find((d) => d.date === date) ?? null;
 }
 
-export function useCurrentWeather(cityLabel: string | null | undefined): CurrentWeather | null {
-  const city = cityLabel?.trim() || null;
-  const geo = useQuery({
-    queryKey: ["geocode", city],
-    queryFn: () => geocodeCity(city!),
-    enabled: !!city,
+export function useCurrentWeather(
+  cityLabel: string | null | undefined,
+  fallbackLabel?: string | null | undefined
+): (CurrentWeather & { lat: number; lng: number }) | null {
+  const primary = cityLabel?.trim() || null;
+  const fallback = fallbackLabel?.trim() || null;
+
+  const geoPrimary = useQuery({
+    queryKey: ["geocode", primary],
+    queryFn: () => geocodeCity(primary!),
+    enabled: !!primary,
     staleTime: Infinity,
     gcTime: 1000 * 60 * 60 * 24,
   });
-  const lat = geo.data?.lat;
-  const lng = geo.data?.lng;
+
+  const needsFallback = !!fallback && geoPrimary.isFetched && !geoPrimary.data;
+
+  const geoFallback = useQuery({
+    queryKey: ["geocode", fallback],
+    queryFn: () => geocodeCity(fallback!),
+    enabled: needsFallback,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
+  });
+
+  const geo = geoPrimary.data ?? geoFallback.data ?? null;
+  const lat = geo?.lat;
+  const lng = geo?.lng;
+
   const current = useQuery({
     queryKey: ["current-weather", lat, lng],
     queryFn: () => fetchCurrentWeather(lat!, lng!),
@@ -66,6 +84,9 @@ export function useCurrentWeather(cityLabel: string | null | undefined): Current
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60 * 2,
   });
-  return current.data ?? null;
+
+  if (!current.data || lat == null || lng == null) return null;
+  return { ...current.data, lat, lng };
 }
+
 
