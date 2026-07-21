@@ -409,15 +409,28 @@ function DayDetail() {
           </div>
 
           {/* Floating action button — "add from favourites" pill */}
-          <button
-            onClick={openPicker}
-            aria-label="הוסף ממועדפים"
-            className="fixed right-4 z-40 h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold min-h-0 active:scale-95 transition-transform"
+          <div
+            className="fixed right-4 z-40 flex flex-col items-end gap-2"
             style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
           >
-            <span>⭐</span>
-            <span>הוסף ממועדפים</span>
-          </button>
+            <button
+              onClick={openPicker}
+              aria-label="הוסף פריט"
+              className="h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold min-h-0 active:scale-95 transition-transform"
+            >
+              <Plus size={16} />
+              <span>הוסף פריט</span>
+            </button>
+            <button
+              onClick={() => setNoteOpen(true)}
+              aria-label="הערה מהירה"
+              className="h-9 px-3 rounded-full bg-card border border-border text-foreground shadow-sm flex items-center gap-1.5 text-[12px] font-medium min-h-0 active:scale-95 transition-transform"
+            >
+              <span>📝</span>
+              <span>הערה מהירה</span>
+            </button>
+          </div>
+
 
           {/* Sticky quick search bar */}
           <div
