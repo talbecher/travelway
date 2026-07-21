@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { MapSkeleton } from "@/components/MapSkeleton";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, ZoomControl, useMap } from "react-leaflet";
 import L from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -173,11 +173,14 @@ export default function DayMap({
         center={center}
         zoom={validStops.length === 1 ? 15 : 13}
         scrollWheelZoom
-        zoomControl
+        zoomControl={false}
         maxZoom={19}
         minZoom={3}
         style={{ width: "100%", height: "100%", background: "#EDEDED" }}
       >
+        <ZoomControl position="topright" />
+
+
         <TileLayer
           attribution='&copy; OpenStreetMap &copy; CartoDB'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
