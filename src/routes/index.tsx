@@ -421,13 +421,15 @@ function StatChip({ icon, value, label, to }: { icon: React.ReactNode; value: nu
 }
 
 function ActionTile({
-  icon: Icon, label, to, onClick, accent,
+  icon: Icon, label, to, onClick, accent, disabled,
 }: {
-  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean;
+  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean; disabled?: boolean;
 }) {
   const cls = `rounded-xl border h-20 flex flex-col items-center justify-center gap-1.5 transition-colors ${
     accent
       ? "bg-[color:var(--accent-2)] text-white border-transparent"
+      : disabled
+      ? "bg-card border-border opacity-50"
       : "bg-card border-border"
   }`;
   const content = (
@@ -436,6 +438,7 @@ function ActionTile({
       <div className="text-[13px]">{label}</div>
     </>
   );
+  if (disabled) return <div className={cls} aria-disabled>{content}</div>;
   if (to) return <Link to={to} className={cls}>{content}</Link>;
   return <button type="button" onClick={onClick} className={cls}>{content}</button>;
 }
