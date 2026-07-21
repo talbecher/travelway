@@ -563,9 +563,8 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
   const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
   const ordered: ("walking" | "transit")[] = [suggested, alt];
   return (
-    <div className="mr-14 my-2 flex flex-col items-start gap-1.5" dir="rtl">
-      <div className="w-0.5 h-3 bg-border" />
-      <div className="text-[13px] text-muted-foreground">→ {fmtDistance(km)}</div>
+    <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
+      <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
       <div className="flex gap-2 flex-wrap">
         {ordered.map((key) => {
           const m = modeMeta[key];
@@ -592,7 +591,6 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
           );
         })}
       </div>
-      <div className="w-0.5 h-3 bg-border" />
     </div>
   );
 }
