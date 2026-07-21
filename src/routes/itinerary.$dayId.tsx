@@ -694,16 +694,17 @@ function SortableEntry({
           )}
         </div>
 
-        {/* "לפרטים ›" — opens the ⋯ actions sheet */}
+        {/* "לפרטים ›" — opens the details sheet */}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onOpenActions(); }}
+          onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
           onPointerDown={(e) => e.stopPropagation()}
-          aria-label="פרטים ופעולות"
+          aria-label="פרטים"
           className="mt-2 text-[12px] text-[color:var(--accent)] font-medium inline-flex items-center min-h-0"
         >
           לפרטים ›
         </button>
+
       </motion.div>
     </div>
   );
