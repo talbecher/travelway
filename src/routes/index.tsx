@@ -8,9 +8,10 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
 import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
-import { useDayWeather } from "@/hooks/use-weather";
+import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE } from "@/lib/weather";
+
 
 function HomeWeatherChip({ city, date }: { city: string | null; date: string | null }) {
   const w = useDayWeather(city, date);
