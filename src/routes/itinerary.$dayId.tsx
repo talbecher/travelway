@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, GripVertical, Map as MapIcon, Link2, MoreHorizontal } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, dayEntriesQuery } from "@/hooks/use-trip";
