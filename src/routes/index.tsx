@@ -294,7 +294,7 @@ function Home() {
         <ActionTile icon={Wallet} label="תקציב" to="/budget" />
         <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
         <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
-        <ActionTile icon={FileText} label="מסמכים" disabled />
+        <ActionTile icon={FileText} label="מסמכים" to="/documents" />
       </section>
     ),
   });
