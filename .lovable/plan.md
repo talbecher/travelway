@@ -1,36 +1,46 @@
-## Scope
-Two UX changes in `src/routes/itinerary.$dayId.tsx` only. No schema/logic changes elsewhere.
+# Phrasebook (שיחון) — new tab
 
-## 1. Quick "note" entry (no location required)
+Add a static phrasebook screen with per-language phrases, TTS via Web Speech API, category filter, and search. Language auto-detected from the active trip's `destination_country`.
 
-The `note` entry type already exists in the picker and `NoteForm` doesn't require a location — it just isn't easy to discover. The current FAB is labeled "⭐ הוסף ממועדפים" but actually opens the full type picker (all 6 types incl. note), which is confusing.
+## New files
 
-Changes:
-- Rename the FAB to `➕ הוסף פריט` (opens the existing type picker with all 6 types incl. `note`). Same `openPicker` handler.
-- Add a small secondary pill directly under the FAB: `📝 הערה מהירה` that opens a new `BottomSheet` with `NoteForm` pre-selected (skips the type grid). Same tone, `bg-card border` style so it's clearly secondary.
-- New local state `noteOpen`; sheet renders `<EntryForm entryType="note" .../>` and closes on save/back.
+### `src/lib/phrases.ts`
+- Export `Phrase` type: `{ id, category, hebrew, transliteration, native }`.
+- Export `CATEGORIES` = `["נימוסים","מסעדה","תחבורה","קניות","מלון","חירום"]`.
+- Export `LANGUAGES` map keyed by code: `{ code, hebrewName, flag, bcp47 }` for `ja`, `fr`, `it`, `es`, `th`, `el`, `en`.
+- Export `PHRASES: Record<LangCode, Phrase[]>`:
+  - Japanese: full spec content (8+ per category as provided).
+  - French / Italian / Spanish / Thai / Greek: ≥5 per category, native script appropriate to each.
+  - English: fallback set (≥5 per category).
+- Export `detectLanguage(destinationCountry: string | null | undefined): LangCode` — mirrors `getDestinationTheme` matching (Hebrew + English keywords per country), default `en`.
 
-Result: adding a planning note / reminder is one tap away and doesn't go through the type-selection grid.
+### `src/routes/phrasebook.tsx`
+- `createFileRoute("/phrasebook")` with `head()` setting title/description "שיחון".
+- Component:
+  - Read active trip via `useActiveTripId()` + existing `useTrip()` hook (see `src/hooks/use-trip.ts`) to get `destination_country`.
+  - `const lang = detectLanguage(trip?.destination_country)`.
+  - Header: title "שיחון", subtitle = `LANGUAGES[lang].hebrewName`, flag emoji.
+  - Horizontal scroll category pills styled like existing city-chip strip in itinerary (surface bg + border-bottom, active pill uses `--accent`).
+  - Search input "חפש ביטוי..." — filters all categories across `hebrew`, `transliteration`, `native` (case-insensitive). When search is non-empty, ignore category filter.
+  - Phrase list: cards per spec (Hebrew right 16px/600, 🔊 top-left 36×36, transliteration 13px italic muted, native 15px `var(--accent)`, badge row with `[עברית] [תעתיק] [מקור]`).
+  - `speak(phrase)`: use `SpeechSynthesisUtterance`, set `.lang = LANGUAGES[lang].bcp47`, `speechSynthesis.cancel()` before speak. Track `speakingId` state via `onstart` / `onend` / `onerror` to drive a pulse animation on the active 🔊 icon (Tailwind `animate-pulse`).
+  - Guard TTS with `typeof window !== "undefined" && "speechSynthesis" in window`; hide button otherwise.
+  - Container has `pb-[96px]` so BottomNav doesn't cover last card.
+- No data fetching, no DB, no auth changes.
 
-## 2. "לפרטים" opens a real Details sheet (not the actions menu)
+## Edited files
 
-Currently `לפרטים ›` opens the actions BottomSheet (edit / open in maps / update location / delete). We split this in two:
+### `src/components/BottomNav.tsx`
+- Add 5th tab `{ to: "/phrasebook", icon: MessagesSquare, label: "שיחון" }` at the start (so RTL visual order matches spec: שיחון | המלצות | תקציב | מסלול | בית).
+- Grid: `grid-cols-5`.
+- Icon size `20`, label text `text-[10px]`.
 
-- **New `detailsFor` state + Details BottomSheet** — this is what `לפרטים` now opens. Shows:
-  - Large photo (or emoji tile fallback) at top.
-  - Title + type badge (colored dot + label) + time pill.
-  - Location line (`📍 <location_name>`) — tap opens Google Maps if coords/URL exist.
-  - Description (full text, `whitespace-pre-line`, no line clamp).
-  - Linked recommendation info when `linked_recommendation_id` set: fetched once via a small `useQuery` for the rec row → shows rating (★), city, notes, "פתח בהמלצות" link. (Read-only; uses existing `recommendations` table.)
-  - Bottom action row: `ערוך`, `פתח במפה` (if coords or maps URL), `עדכן מיקום` (if no coords and not a note), `מחק` — same handlers as today, just relocated. Closing the sheet routes into `setEditEntry` / `setEditLocationEntry` / `del.mutate` as before.
-- Keep the existing `actionsFor` BottomSheet code path but stop using it from the card. `⋯` is no longer needed on the card. (We can delete `actionsFor` state and sheet entirely — actions live in the Details sheet now.)
+### `src/routes/index.tsx`
+- In the existing quick-actions 2×2 grid, expand to a 2-column × 3-row grid (`grid-cols-2` with 6 items) adding:
+  - `🗣 שיחון` → `/phrasebook`
+  - `📄 מסמכים` placeholder tile (disabled / no navigation, muted styling).
+- Preserve existing tiles (מסלול, המלצות, תקציב, הוצאה מהירה) and their handlers.
 
-Wiring:
-- `SortableEntry` prop renamed `onOpenActions` → `onOpenDetails`. Card `לפרטים ›` button calls it.
-- Parent passes `() => setDetailsFor(e)`.
-
-## Files touched
-- `src/routes/itinerary.$dayId.tsx` — add `noteOpen` + Note sheet + `📝 הערה מהירה` pill; replace actions sheet with a Details sheet that shows full info and hosts the actions row; rename main FAB to `➕ הוסף פריט`.
-
-## Not touched
-- Schema, mutations, DnD, map, PlacesSearch, SegmentConnector, routing, other routes, styles.css.
+## Non-goals
+- No DB migration, no auth changes, no changes to other routes or global FAB behavior.
+- Badge row is display-only for now (no toggle logic).
