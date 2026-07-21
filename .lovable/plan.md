@@ -1,42 +1,76 @@
-# תיקוני מובייל לעמוד היום — סגנון בלבד
+## Scope
+Style-only changes across 3 files. Zero logic edits (mutations, DnD, PlacesSearch, SegmentConnector URL building, routing, forms — untouched).
 
-טווח: `src/routes/itinerary.$dayId.tsx` בלבד. אין שינוי בהאנדלרים, mutations, ניתוב, PlacesSearch או בניית URL של מפות.
+## 1. Hide global expense FAB on `/itinerary/$dayId`
+File: `src/components/GlobalFab.tsx`
+- Add at top of `GlobalFab()`:
+  ```
+  const pathname = useRouterState({ select: s => s.location.pathname });
+  const onDayDetail = pathname.startsWith("/itinerary/") && pathname !== "/itinerary";
+  if (onDayDetail) return null;
+  ```
+- Import `useRouterState` from `@tanstack/react-router`.
+- (`__root.tsx` unchanged.)
 
-## 1. כרטיס פעילות — פריסה נקייה
-- גובה מינ' 72px, padding `14px 16px`, `flex items-start gap-3`.
-- תמונה/אמוג'י בצד ימין (RTL start) בגודל `56×56`, rounded, shrink-0.
-- כותרת: `text-[15px] font-semibold`. מיקום מתחת: `text-xs text-muted-foreground truncate`.
-- Time pill: מעבר לפינה עליונה-שמאלית של הכרטיס (`absolute top-2 left-2`), רקע `bg-muted/60`.
-- הסרה מפני הכרטיס: `ערוך`, `מחק`, `פתח במפה`.
-- הוספת כפתור ⋯ (3 נקודות) בפינה תחתונה-שמאלית של הכרטיס. Tap פותח `BottomSheet` קטן עם 3 פריטים: `ערוך` · `פתח במפה` · `מחק` (אדום). כל פריט קורא לאותו handler קיים.
+## 2. "Add from favourites" FAB — pill with label
+File: `src/routes/itinerary.$dayId.tsx` (~line 413)
+- Replace the circular `+` button with a pill:
+  - Content: `⭐ הוסף ממועדפים`
+  - Classes: `fixed bottom-[80px] right-4 z-40 h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold`
+  - Same `onClick={openPicker}`.
 
-## 2. Segment connector בין כרטיסים
-- כפתורים בגובה מינ' `36px`, רוחב מינ' `80px`, `text-[13px]`, `gap-2`.
-- להראות רק 2 כפתורים לפי מרחק:
-  - `< 1.5km`: `[🚶 ברגל ✓]` (מודגש accent) + `[🚌 תחבורה]`.
-  - `≥ 1.5km`: `[🚌 תחבורה ✓]` + `[🚶 ברגל]`.
-- להסיר את כפתור הרכב לחלוטין מה-connector.
-- טקסט המרחק מעל הכפתורים: `text-[13px] text-muted-foreground`.
+## 3. Journal timeline layout
+File: `src/routes/itinerary.$dayId.tsx` — restyle `SortableEntry` (605-720) and its wrapper loop (382-410).
 
-## 3. שורת תחתית — לפצל
-הסרה מוחלטת של כפתורי `ברגל/תחבורה/מכונית` מה-bar (הם רק ב-connector).
+New row structure (RTL, per entry):
+```text
+┌───────── row (flex, dir=rtl) ─────────┐
+│ [Rail 72px]         │ [Card flex-1]   │
+│   HH:MM (13/600)    │  title  [photo] │
+│   ● dot 10px        │  📍 location    │
+│   │  dashed         │  לפרטים ›       │
+└───────────────────────────────────────┘
+```
 
-א) **FAB צף** — `fixed bottom-[80px] right-4 z-40`, עיגול `56px`, `bg-[color:var(--accent)] text-white shadow-lg`, אייקון `+` בגודל 24. Tap פותח את picker סוג הפעילות הקיים (`openPicker`). להסיר כל FAB כתום קיים שגולש על התוכן.
+Rail (right, RTL start): fixed `w-[72px] shrink-0 flex flex-col items-center pt-1`
+- Time text (or `—` placeholder) `text-[13px] font-semibold text-foreground` (LTR span).
+- Colored dot `w-2.5 h-2.5 rounded-full mt-1.5` using existing `TYPE_PIN_COLOR` map (fallback muted).
+- Absolute-positioned vertical dashed line behind the dot column: `border-r-2 border-dashed border-[color:var(--border-strong)]` spanning full row height, drawn via a sibling absolute div in each entry row (top:0 bottom:-16px so it visually joins to next card). Alternatively use `background-image: repeating-linear-gradient` on the rail column.
 
-ב) **Quick search sticky** — גובה `52px`, `bg-card border-t border-border`, `sticky bottom-0` (מעל bottom nav), padding עם `env(safe-area-inset-bottom)`. בפנים רק `PlacesSearch` ברוחב מלא עם placeholder "חיפוש מהיר בגוגל...". כפתור "⭐ המלצות" מוסר מכאן (הוא מכוסה ע"י ה-FAB → picker → "מההמלצות").
+Card (left, flex-1):
+- `bg-card border border-border rounded-[12px] p-3 shadow-sm` (shadow-sm var).
+- Row: title block flex-1 min-w-0, photo 64×64 `rounded-lg object-cover` on LTR-end (RTL end = left).
+- Title `.entry-title text-[15px] font-semibold` (line-clamp-2, break-word).
+- Location `.entry-subtitle text-[12px] text-muted-foreground` with `📍 ` prefix.
+- Bottom-left: tappable `לפרטים ›` `text-[12px] text-[color:var(--accent)]` → `onClick={onOpenActions}` (opens existing ⋯ sheet).
+- Remove: internal time pill, drag handle chip visual, ⋯ button. DnD listeners move to the whole card wrapper (`{...attributes} {...listeners}` on the card container). Actions still reachable via `לפרטים ›`.
+- Keep highlight `motion.div` shadow ring behavior.
 
-עדכון `pb` של רשימת הכרטיסים כך שהכרטיס האחרון לא ייחתך ע"י ה-search bar + FAB (`pb-[120px]`).
+Loop container (382-410):
+- `px-4 pt-3 pb-[160px]`
+- Wrap entries in `flex flex-col gap-4`.
+- Between cards render `SegmentConnector` when both coords present; simplified styling (see §5).
 
-## 4. פאנל מפה — יחסים
-- גובה ברירת מחדל `40vh` במקום `50vh`.
-- Drag handle: `w-12 h-[5px] rounded-[3px] bg-[color:var(--border-strong)] mx-auto`.
-- הוספת `shadow-[0_-4px_12px_rgba(0,0,0,0.06)]` מתחת/מעל לפאנל המפה כהפרדה.
+## 4. Text overflow utility classes
+File: `src/styles.css` — append near other utilities:
+```
+.entry-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+.entry-subtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+```
+Apply to card title/subtitle in `SortableEntry`. (Description keeps existing `line-clamp-2`.)
 
-## 5. Hero header
-- גובה גובה מוגבל ל-`100px` (במקום 120).
-- כפתור חזרה: touch target `40×40`, `rounded-full`.
-- City pill (`עיר · עריכה`) עובר ל-`absolute bottom-2 right-3` של ה-hero (RTL start-bottom), במקום ליצוף באמצע.
-- אחרי ה-hero: `border-b border-border` מפורש כמפריד מהמפה.
+## 5. Segment connector — simplify
+File: `src/routes/itinerary.$dayId.tsx` (~557-601)
+- Drop the surrounding `mr-14`/vertical bar decorations.
+- Container: `pl-[72px] pr-1 my-1 flex items-center gap-2` (padding aligns with card's left edge; RTL: the 72px offset stays on the rail side).
+  Since parent is RTL, use `ps-[72px]` equivalent: `style={{ paddingInlineStart: 72 }}`.
+- Distance text: `text-[12px] text-muted-foreground`.
+- 2 pill buttons unchanged in URL/logic; strip vertical bar divs (`w-0.5 h-3 bg-border`).
 
-## מה לא נוגעים
-mutations, DnD, PlacesSearch, `googleDirectionsUrl`, ניתוב, `DayMap`.
+## 6. Untouched
+Handlers, mutations, DnD data flow, `DayMap`, `PlacesSearch`, `SegmentConnector` URL, routing, `EntryForm`, sticky quick-search bar, hero header, bottom sheets.
+
+## Files touched
+- `src/components/GlobalFab.tsx` — early return on day detail route.
+- `src/routes/itinerary.$dayId.tsx` — FAB pill, `SortableEntry` redesign, list container spacing, `SegmentConnector` styling.
+- `src/styles.css` — 2 utility classes.
