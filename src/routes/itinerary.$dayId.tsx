@@ -387,16 +387,24 @@ function DayDetail() {
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div>
                   {directionsEnabled && (
-                    <a
-                      href={directions}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="לשינוי מצב תחבורה — השתמש בכפתורי הניווט בין הנקודות למטה"
-                      className="w-full h-9 mb-2 rounded-full border border-border text-xs text-muted-foreground flex items-center justify-center gap-2 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                    >
-                      🗺 פתח את כל היום בגוגל מפות (ברגל)
-                    </a>
+                    <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5">
+                      <span className="text-[11px] text-muted-foreground ml-1">פתח בגוגל מפות:</span>
+                      {travelModes.map((t) => (
+                        <a
+                          key={t.mode}
+                          href={googleDirectionsUrl(routePoints, t.mode)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={t.label}
+                          className="h-8 px-2.5 rounded-full border border-border text-[11px] text-foreground/80 inline-flex items-center gap-1 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                        >
+                          <span>{t.emoji}</span>
+                          <span>{t.label}</span>
+                        </a>
+                      ))}
+                    </div>
                   )}
+
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
