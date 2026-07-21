@@ -384,21 +384,21 @@ function HeroCard(props: {
           href={forecastUrl}
           target="_blank"
           rel="noreferrer"
-          title="לתחזית מלאה קדימה"
-          className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20 transition-colors"
+          title={wLabel ? `${wLabel} · לתחזית מלאה` : "לתחזית מלאה"}
+          aria-label={wLabel ? `${wTemp}° ${wLabel}` : `${wTemp}°`}
+          className="absolute top-2 left-2 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20 transition-colors"
         >
           <WeatherIcon condition={wCondition} size="sm" />
-          <span className="text-sm font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
-          {wLabel && <span className="text-[11px] text-white/70 leading-none">{wLabel}</span>}
-          <ExternalLink size={11} className="text-white/60" />
+          <span className="text-[11px] font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
         </a>
       )}
 
       <div className="flex flex-col justify-between h-full">
-        <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[96px]">
+        <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[52px]">
           <div className="text-[28px] font-bold leading-tight truncate">{title}</div>
           <div className="text-[26px] leading-tight shrink-0">{flag}</div>
         </div>
+
         <div className="text-sm text-white/70" dir="ltr">
           {hebDate(startDate)} → {hebDate(endDate)}
         </div>
