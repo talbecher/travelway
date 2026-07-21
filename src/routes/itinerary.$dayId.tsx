@@ -293,66 +293,66 @@ function DayDetail() {
         const theme = getDestinationTheme(trip?.destination_country ?? "");
         return (
           <div
-            className="relative w-full px-4 pt-3 pb-4"
-            style={{ minHeight: 120, background: theme.heroGradient }}
+            className="relative w-full px-4 pt-3 pb-3 border-b border-border"
+            style={{ minHeight: 100, background: theme.heroGradient }}
           >
             <button
               onClick={() => navigate({ to: "/itinerary" })}
               aria-label="חזרה למסלול"
-              className="absolute top-3 left-3 w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
+              className="absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
             >
-              <ChevronRight size={16} className="rotate-180" />
+              <ChevronRight size={18} className="rotate-180" />
             </button>
             <div className="pt-1 pr-1">
-              <div className="text-white text-[32px] font-semibold leading-none">
+              <div className="text-white text-[28px] font-semibold leading-none">
                 יום {day.day_number}
               </div>
-              <div className="text-white/70 text-[13px] mt-2">{hebDateLong(day.date)}</div>
-              <div className="mt-3">
-                {editingCity ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      value={cityValue}
-                      onChange={(e) => setCityValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveCity.mutate();
-                        if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
-                      }}
-                      dir="ltr"
-                      placeholder="עיר / איזור"
-                      className="flex-1 text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white"
-                    />
-                    <button
-                      onClick={() => saveCity.mutate()}
-                      className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0"
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
-                      className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex justify-start">
-                    <button
-                      onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/5 min-h-0 h-auto"
-                    >
-                      <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
-                      <Pencil size={11} />
-                    </button>
-                  </div>
-                )}
+              <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
+            </div>
 
-              </div>
+            {/* City chip — anchored bottom-right (RTL start) */}
+            <div className="absolute bottom-2 right-3">
+              {editingCity ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={cityValue}
+                    onChange={(e) => setCityValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveCity.mutate();
+                      if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
+                    }}
+                    dir="ltr"
+                    placeholder="עיר / איזור"
+                    className="text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white"
+                  />
+                  <button
+                    onClick={() => saveCity.mutate()}
+                    className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0"
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
+                    className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/10 min-h-0 h-auto"
+                >
+                  <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
+                  <Pencil size={11} />
+                </button>
+              )}
             </div>
           </div>
         );
       })()}
+
 
       {isLoading ? (
         <div className="px-4 pt-3 space-y-2 animate-pulse">
