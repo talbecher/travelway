@@ -1,43 +1,27 @@
-## מסך מסמכים — תוכנית מלאה
+## תמיכה בטיסות קונקשן (Multi-leg)
 
-### 1. מיגרציה — טבלה `documents`
-- שדות: `trip_id` (FK→trips, CASCADE), `title`, `type` (enum check: flight/hotel/attraction/insurance/visa/transport/other), `file_url`, `barcode_value`, `barcode_type` (qr/barcode128), `notes`, `amount_ils`, `is_paid`, `valid_date`, `display_order`, `created_at`.
-- GRANTs: `SELECT,INSERT,UPDATE,DELETE` ל-`authenticated`; `ALL` ל-`service_role`.
-- RLS: הפעלה + פוליסי אחד `FOR ALL` שמשתמש ב-`public.can_access_trip(trip_id)` (קיים כבר בפרויקט — עקבי עם שאר הטבלאות).
+בלי שינויי סכימה — משתמשים בשדה `title` הקיים.
 
-### 2. חבילות
-- `bun add qrcode.react react-barcode`
+### פורמט כותרת
+- מזהים chain בכותרת לפי כל אחד מהמפרידים: `→`, `->`, `-`, ` ` (רווח).
+- דוגמאות תקינות: `TLV→DXB→NRT`, `TLV-DXB-NRT`, `TLV DXB NRT`, `TLV→DXB→DOH→NRT`.
+- מינימום 2 קודים → נחשב טיסה עם מסלול. 3+ → קונקשן.
 
-### 3. Hook חדש — `src/hooks/use-documents.ts`
-- `useDocuments(tripId)` — `queryKey: ["documents", tripId]`, סדר לפי `display_order, created_at`.
-- `useAddDocument` / `useUpdateDocument` / `useDeleteDocument` — invalidate `["documents", tripId]`.
-- כאשר מעדכנים ל-`is_paid=true` עם `amount_ils`: insert ל-`expenses` (category ממופה מסוג המסמך: flight→transport, hotel→hotel, attraction→attraction, transport→transport, השאר→other), description=title, ואז toast `"✅ הוצאה נוספה לתקציב"` + invalidate expenses.
+### עדכון `src/routes/documents.tsx` (FlightCard בלבד)
+- להחליף את הפונקציה `parseRoute` שמחזירה `{from, to}` בפונקציה `parseSegments(title): string[]` שמחזירה מערך קודים (2 או יותר).
+- Rendering:
+  - 2 קודים: כמו היום `TLV ──✈── NRT`.
+  - 3+ קודים: לרנדר שרשרת רספונסיבית — `TLV ─ ✈ ─ DXB ─ ✈ ─ NRT`, עם `flex-wrap` ו־`gap` קטן, כך שבמסך צר זה יורד לשורה שנייה בלי לשבור עיצוב.
+  - אם יש 3+: להוסיף `Badge` קטן ליד הכותרת: `קונקשן · N עצירות` (N = segments.length − 2 בין־ביניים, כלומר `codes.length − 2`).
+- שאר הכרטיס (תאריך, סכום, פעולות ברקוד/קובץ/מחיקה) נשאר זהה.
 
-### 4. Route חדש — `src/routes/documents.tsx`
-- `createFileRoute("/documents")` עם head (title/description).
-- שימוש ב-`useActiveTripId` + `useDocuments`.
-- Header: כותרת "מסמכים", subtitle "כרטיסים, אישורים והזמנות", כפתור "+ הוסף מסמך" בפינה.
-- פילטר סוגים אופקי-סקרוליבל: הכל / ✈️ טיסות / 🏨 מלונות / 🎭 אטרקציות / 🛡 ביטוח / 📋 ויזה / 🚆 תחבורה / 📄 אחר.
-- רשימת כרטיסים לפי סוג:
-  - **Flight** — סגנון boarding pass: כותרת עם ✈️, שורת TLV──✈──NRT (מנותח מ-title בפורמט `TLV→NRT` / `TLV-NRT` / `TLV NRT`; אם אין — מציגים רק את הכותרת), תאריך, badge תשלום, פעולות.
-  - **Hotel** — סגנון room-key: 🏨 + שם, "צ'ק-אין: [date]", badge/סכום, פעולות.
-  - **Other** — כרטיס נקי עם אימוג'י סוג, כותרת, notes, valid_date, badge, פעולות.
-- Badge תשלום: ירוק `✓ שולם` (+סכום) / כתום `ממתין לתשלום`.
-- פעולות בכל כרטיס: `💳 הצג ברקוד` (אם יש barcode_value), `📎 קובץ` (אם יש file_url — פותח בטאב חדש), `🗑 מחק` (עם confirm).
+### עזרה למשתמש בטופס
+- ב־`DocumentFormSheet`, כשסוג=flight, להוסיף `helperText` מתחת לשדה הכותרת:  
+  `לטיסת קונקשן: כתוב את כל היעדים ברצף, למשל TLV→DXB→NRT`.
 
-### 5. תת-קומפוננטות באותו קובץ
-- **`BarcodeSheet`** (BottomSheet): רקע לבן מלא, מציג `<QRCodeSVG value size={280} />` או `<Barcode value format="CODE128" />`, כותרת המסמך למעלה, טקסט קטן "בהירות מסך מלאה" למטה, כפתור סגירה.
-- **`DocumentForm`** (BottomSheet): שדות לפי הספק — סוג (segmented pills), כותרת, תאריך, הערות, ברקוד (input + toggle QR/Barcode128), קובץ מצורף (מעלה ל-bucket `rec-photos` תחת `documents/` כמו PhotoUploader אך גם PDF; שם קובץ + לינק אחרי העלאה), סכום ₪, טוגל "שולם?". כפתור שמירה sticky למטה.
-
-### 6. חיווט מסך הבית
-- `src/routes/index.tsx`: להפוך את הטייל "📄 מסמכים" ל-`<Link to="/documents">` פעיל (להסיר disabled/muted).
-
-### 7. Route tree
-- הקובץ החדש יירשם אוטומטית ב-`routeTree.gen.ts` על ידי הפלאגין.
+### ללא שינוי
+- DB / RLS / expenses / barcode sheet — אין נגיעה.
+- כרטיסי hotel/other — לא משתנים.
 
 ### קבצים
-- מיגרציה (טבלה + GRANT + RLS)
-- `src/hooks/use-documents.ts` (חדש)
-- `src/routes/documents.tsx` (חדש, כולל BarcodeSheet + DocumentForm)
-- `src/routes/index.tsx` (חיווט טייל)
-- `package.json` — הוספת `qrcode.react`, `react-barcode`
+- `src/routes/documents.tsx` בלבד.
