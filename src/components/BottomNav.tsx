@@ -4,9 +4,9 @@ import { Home, Calendar, Wallet, Star, MessagesSquare } from "lucide-react";
 const tabs = [
   { to: "/phrasebook", icon: MessagesSquare, label: "שיחון" },
   { to: "/recommendations", icon: Star, label: "המלצות" },
+  { to: "/", icon: Home, label: "בית" },
   { to: "/budget", icon: Wallet, label: "תקציב" },
   { to: "/itinerary", icon: Calendar, label: "מסלול" },
-  { to: "/", icon: Home, label: "בית" },
 ] as const;
 
 export function BottomNav() {
