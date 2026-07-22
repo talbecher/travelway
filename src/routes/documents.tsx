@@ -176,43 +176,38 @@ function DocumentCard({
   );
 
   const actions = (
-    <div className="flex flex-wrap flex-row-reverse items-center gap-2 pt-1">
-      <div className="flex items-center gap-2">
-        {doc.barcode_value && (
-          <button
-            onClick={onShowBarcode}
-            className="h-8 px-3 rounded-lg bg-[color:var(--accent)] text-white text-xs font-medium inline-flex items-center gap-1"
-          >
-            <QrCode size={14} /> הצג ברקוד
-          </button>
-        )}
-        {doc.file_url && (
-          <a
-            href={doc.file_url}
-            target="_blank"
-            rel="noreferrer"
-            className="h-8 px-3 rounded-lg border border-border text-xs font-medium inline-flex items-center gap-1"
-          >
-            <Paperclip size={14} /> קובץ
-            <ExternalLink size={11} />
-          </a>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 pt-1">
+      {doc.barcode_value && (
         <button
-          onClick={onEdit}
-          className="h-8 px-3 rounded-lg border border-border text-xs font-medium inline-flex items-center"
+          onClick={onShowBarcode}
+          className="h-10 px-4 rounded-full bg-[color:var(--terracotta)] text-white text-sm font-medium inline-flex items-center gap-1.5"
         >
-          ערוך
+          <QrCode size={16} /> הצג ברקוד
         </button>
-        <button
-          onClick={onDelete}
-          className="h-8 w-8 rounded-lg border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
-          aria-label="מחק"
+      )}
+      {doc.file_url && (
+        <a
+          href={doc.file_url}
+          target="_blank"
+          rel="noreferrer"
+          className="h-9 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
         >
-          <Trash2 size={14} />
-        </button>
-      </div>
+          <Paperclip size={15} /> קובץ
+        </a>
+      )}
+      <button
+        onClick={onEdit}
+        className="h-9 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center"
+      >
+        ערוך
+      </button>
+      <button
+        onClick={onDelete}
+        className="h-9 w-9 rounded-full border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
+        aria-label="מחק"
+      >
+        <Trash2 size={16} />
+      </button>
     </div>
   );
 
