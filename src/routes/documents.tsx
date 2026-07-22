@@ -178,21 +178,6 @@ function DocumentCard({
   const actions = (
     <div className="flex flex-wrap flex-row-reverse items-center gap-2 pt-1">
       <div className="flex items-center gap-2">
-        <button
-          onClick={onEdit}
-          className="h-8 px-3 rounded-lg border border-border text-xs font-medium inline-flex items-center"
-        >
-          ערוך
-        </button>
-        <button
-          onClick={onDelete}
-          className="h-8 w-8 rounded-lg border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
-          aria-label="מחק"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
-      <div className="flex items-center gap-2">
         {doc.barcode_value && (
           <button
             onClick={onShowBarcode}
@@ -212,6 +197,21 @@ function DocumentCard({
             <ExternalLink size={11} />
           </a>
         )}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onEdit}
+          className="h-8 px-3 rounded-lg border border-border text-xs font-medium inline-flex items-center"
+        >
+          ערוך
+        </button>
+        <button
+          onClick={onDelete}
+          className="h-8 w-8 rounded-lg border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
+          aria-label="מחק"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );
