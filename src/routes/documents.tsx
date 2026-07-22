@@ -197,13 +197,13 @@ function DocumentCard({
       )}
       <button
         onClick={onEdit}
-        className="h-9 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center"
+        className="h-9 px-4 ms-auto rounded-full border border-border text-sm font-medium inline-flex items-center"
       >
         ערוך
       </button>
       <button
         onClick={onDelete}
-        className="h-9 w-9 ms-auto rounded-full border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
+        className="h-9 w-9 rounded-full border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
         aria-label="מחק"
       >
         <Trash2 size={16} />
