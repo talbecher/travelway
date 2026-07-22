@@ -203,7 +203,7 @@ function DocumentCard({
       </button>
       <button
         onClick={onDelete}
-        className="h-9 w-9 rounded-full border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
+        className="h-9 w-9 ms-auto rounded-full border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
         aria-label="מחק"
       >
         <Trash2 size={16} />
