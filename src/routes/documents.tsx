@@ -176,39 +176,43 @@ function DocumentCard({
   );
 
   const actions = (
-    <div className="flex flex-wrap gap-2 pt-1">
-      {doc.barcode_value && (
+    <div className="flex flex-wrap flex-row-reverse items-center gap-2 pt-1">
+      <div className="flex items-center gap-2">
         <button
-          onClick={onShowBarcode}
-          className="h-8 px-3 rounded-lg bg-[color:var(--accent)] text-white text-xs font-medium inline-flex items-center gap-1"
+          onClick={onEdit}
+          className="h-8 px-3 rounded-lg border border-border text-xs font-medium inline-flex items-center"
         >
-          <QrCode size={14} /> הצג ברקוד
+          ערוך
         </button>
-      )}
-      {doc.file_url && (
-        <a
-          href={doc.file_url}
-          target="_blank"
-          rel="noreferrer"
-          className="h-8 px-3 rounded-lg border border-border text-xs inline-flex items-center gap-1"
+        <button
+          onClick={onDelete}
+          className="h-8 w-8 rounded-lg border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
+          aria-label="מחק"
         >
-          <Paperclip size={14} /> קובץ
-          <ExternalLink size={11} />
-        </a>
-      )}
-      <button
-        onClick={onEdit}
-        className="h-8 px-3 rounded-lg border border-border text-xs inline-flex items-center"
-      >
-        ערוך
-      </button>
-      <button
-        onClick={onDelete}
-        className="h-8 w-8 rounded-lg border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
-        aria-label="מחק"
-      >
-        <Trash2 size={14} />
-      </button>
+          <Trash2 size={14} />
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        {doc.barcode_value && (
+          <button
+            onClick={onShowBarcode}
+            className="h-8 px-3 rounded-lg bg-[color:var(--accent)] text-white text-xs font-medium inline-flex items-center gap-1"
+          >
+            <QrCode size={14} /> הצג ברקוד
+          </button>
+        )}
+        {doc.file_url && (
+          <a
+            href={doc.file_url}
+            target="_blank"
+            rel="noreferrer"
+            className="h-8 px-3 rounded-lg border border-border text-xs font-medium inline-flex items-center gap-1"
+          >
+            <Paperclip size={14} /> קובץ
+            <ExternalLink size={11} />
+          </a>
+        )}
+      </div>
     </div>
   );
 
