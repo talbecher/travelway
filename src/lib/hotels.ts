@@ -55,6 +55,7 @@ export async function syncHotelToItinerary(
 
   const stayTitle = `לינה: ${h.hotel_name}`;
   const leaveTitle = `יציאה מ${h.hotel_name}`;
+  const morningTitle = `בוקר ב${h.hotel_name}`;
 
   // ── 1. Remove prior day_entries for this hotel across ALL trip days
   //       (handles date changes: entries on days no longer in range must go).
@@ -76,7 +77,7 @@ export async function syncHotelToItinerary(
       .in("day_id", allDayIds)
       .eq("entry_type", "hotel_checkin")
       .is("linked_recommendation_id", null)
-      .or(`title.eq.${stayTitle},title.eq.${leaveTitle}`);
+      .or(`title.eq.${stayTitle},title.eq.${leaveTitle},title.eq.${morningTitle}`);
     if (delTitleErr) throw delTitleErr;
   }
 
