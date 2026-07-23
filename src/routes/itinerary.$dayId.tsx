@@ -538,6 +538,24 @@ function DayDetail() {
         )}
       </BottomSheet>
 
+      {/* Day map sheet */}
+      <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
+        <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
+          {mapStops.length > 0 ? (
+            <DayMap
+              stops={mapStops}
+              highlightId={highlightId}
+              onPinTap={(id) => { setMapOpen(false); setTimeout(() => scrollToCard(id), 250); }}
+            />
+          ) : (
+            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
+              <MapIcon size={28} className="text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">אין פריטים עם מיקום להצגה במפה</div>
+            </div>
+          )}
+        </div>
+      </BottomSheet>
+
     </div>
   );
 }
