@@ -278,24 +278,7 @@ function DayDetail() {
     setPickerOpen(true);
   }
 
-  // Drag divider between map and list
-  useEffect(() => {
-    function move(e: PointerEvent) {
-      if (!draggingRef.current) return;
-      const container = document.getElementById("day-split");
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const pct = ((e.clientY - rect.top) / rect.height) * 100;
-      setMapPct(Math.max(20, Math.min(80, pct)));
-    }
-    function up() { draggingRef.current = false; document.body.style.cursor = ""; }
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, []);
+
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
