@@ -164,8 +164,7 @@ function DayDetail() {
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
 
-  const [mapPct, setMapPct] = useState(40);
-  const draggingRef = useRef(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
