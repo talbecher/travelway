@@ -309,19 +309,22 @@ function DayDetail() {
               </div>
               <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
               <DayWeatherLine city={day.city_label ?? null} date={day.date} />
-              <button
-                type="button"
-                onClick={() => setMapOpen(true)}
-                disabled={mapStops.length === 0}
-                className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] px-2.5 py-1 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <MapIcon size={13} />
-                תצוגת מפה
-                {mapStops.length > 0 && (
-                  <span className="text-white/70">· {mapStops.length}</span>
-                )}
-              </button>
             </div>
+
+            {/* Map view button — anchored bottom-left (opposite city chip) */}
+            <button
+              type="button"
+              onClick={() => setMapOpen(true)}
+              disabled={mapStops.length === 0}
+              className="absolute bottom-2 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <MapIcon size={13} />
+              <span>תצוגת מפה</span>
+              {mapStops.length > 0 && (
+                <span className="text-white/70">· {mapStops.length}</span>
+              )}
+            </button>
+
 
             {/* City chip — anchored bottom-right (RTL start) */}
             <div className="absolute bottom-2 right-3">
