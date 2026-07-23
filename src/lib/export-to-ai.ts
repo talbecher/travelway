@@ -5,6 +5,9 @@ export type ExportStats = {
   totalDays: number;
   entryCount: number;
   emptyDays: number;
+  sparseDays: number;
+  plannedDays: number;
+  avgEntries: number;
   hotelCount: number;
   charCount: number;
 };
