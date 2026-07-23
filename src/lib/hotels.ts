@@ -106,8 +106,41 @@ export async function syncHotelToItinerary(
     addedEntries++;
   };
 
+  const insertStartOfDay = async (dayId: string, title: string) => {
+    const { data: existing } = await supabase
+      .from("day_entries")
+      .select("id, display_order")
+      .eq("day_id", dayId)
+      .order("display_order", { ascending: false });
+    for (const row of existing ?? []) {
+      const { error } = await supabase
+        .from("day_entries")
+        .update({ display_order: (row.display_order ?? 0) + 1 })
+        .eq("id", row.id);
+      if (error) throw error;
+    }
+    const { error } = await supabase.from("day_entries").insert({
+      day_id: dayId,
+      entry_type: "hotel_checkin",
+      title,
+      location_name: h.city,
+      google_maps_url: h.google_maps_url ?? null,
+      icon_emoji: "🏨",
+      time_of_day: "09:00",
+      display_order: 0,
+      latitude: lat,
+      longitude: lng,
+      photo_url: h.photo_url ?? null,
+      linked_recommendation_id: h.id,
+    });
+    if (error) throw error;
+    addedEntries++;
+  };
+
   if (checkinDay) await insertEndOfDay(checkinDay.id, stayTitle);
   for (const d of middleNights) {
+    // Middle nights: wake up at hotel (morning) and sleep at hotel (evening)
+    await insertStartOfDay(d.id, morningTitle);
     await insertEndOfDay(d.id, stayTitle);
   }
 
