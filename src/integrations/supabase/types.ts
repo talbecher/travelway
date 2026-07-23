@@ -159,6 +159,7 @@ export type Database = {
           expense_date: string
           foreign_currency: string | null
           id: string
+          linked_hotel_id: string | null
           linked_recommendation_id: string | null
           location_name: string | null
           trip_id: string
@@ -172,6 +173,7 @@ export type Database = {
           expense_date?: string
           foreign_currency?: string | null
           id?: string
+          linked_hotel_id?: string | null
           linked_recommendation_id?: string | null
           location_name?: string | null
           trip_id: string
@@ -185,11 +187,19 @@ export type Database = {
           expense_date?: string
           foreign_currency?: string | null
           id?: string
+          linked_hotel_id?: string | null
           linked_recommendation_id?: string | null
           location_name?: string | null
           trip_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_linked_hotel_id_fkey"
+            columns: ["linked_hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_linked_recommendation_id_fkey"
             columns: ["linked_recommendation_id"]
