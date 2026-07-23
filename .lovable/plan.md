@@ -1,73 +1,33 @@
-## Goal
-Update only `src/lib/export-to-ai.ts` to enhance the AI export prompt with a planning-status stats section and an extra analysis question about empty/sparse days, while extending the returned `ExportStats` object.
+## מה קורה היום
 
-## Changes
+בעמוד "המלצות → לינה" יש כפתור "הוסף למסלול" שיוצר ידנית את הכניסות בימי המסלול:
+- יום צ׳ק-אין → "לינה: X" ב-20:00
+- לילות באמצע → "לינה: X" ב-20:00
+- יום צ׳ק-אאוט → "יציאה מ-X" ב-09:00 (בתחילת היום)
 
-### 1. Extend `ExportStats` type
-Add three new fields to the exported type:
-```ts
-export type ExportStats = {
-  totalDays: number;
-  entryCount: number;
-  emptyDays: number;
-  sparseDays: number;   // days with exactly 1 entry
-  plannedDays: number;  // days with ≥1 entry
-  avgEntries: number;   // entries / plannedDays, rounded to 1 decimal
-  hotelCount: number;
-  charCount: number;
-};
-```
+אבל כשעורכים את המלון ומשנים תאריכים, שום דבר לא מתעדכן אוטומטית במסלול — צריך ללחוץ ידנית שוב על הכפתור, והכניסות הישנות (מתאריכים קודמים) נשארות.
 
-### 2. Compute planning metrics
-After the `entriesByDay` map is built, calculate:
-- `plannedDays` = number of days whose entry array length is ≥ 1
-- `emptyDays` = number of days whose entry array length is 0 (already exists; keep behavior)
-- `sparseDays` = number of days whose entry array length is exactly 1
-- `avgEntries` = `entries.length / plannedDays`, rounded to 1 decimal place (`Math.round((avg * 10)) / 10`); if `plannedDays` is 0, fallback to `0`.
+## מה נבנה
 
-### 3. Insert planning status section
-After the existing budget block (`💰 תקציב כולל`, `💸 הוצאנו עד כה`, `📊 נשאר`) and before the itinerary section, add:
-```
-📊 מצב התכנון הנוכחי:
-- ימים עם תוכנית: {plannedDays} מתוך {totalDays}
-- ימים ריקים לחלוטין: {emptyDays}
-- ימים עם פחות מ-2 פעילויות: {sparseDays}
-- ממוצע פעילויות ביום מתוכנן: {avgEntries}
-```
+סנכרון אוטומטי בשמירת מלון ב-`HotelForm`:
 
-### 4. Insert the 6th analysis question
-After the existing `🗓 5. תזמון חכם` block and before the `✅ סיכום מבוקש:` section, add:
-```
-🗺 6. תכנון ימים חסרים ויום-דליל
-- במסלול יש {emptyDays} ימים ריקים ו-{sparseDays} ימים דלילים.
+1. אחרי שמירה מוצלחת של מלון, אם למלון היו כבר `day_entries` מקושרים (`linked_recommendation_id = hotel.id`, `entry_type = 'hotel_checkin'`) — הרץ מחדש את אותה לוגיקת הסנכרון שקיימת ב-`addToItinerary`:
+   - מחק את כל הכניסות הישנות של המלון בכל הימים של הטיול
+   - הכנס מחדש לפי התאריכים החדשים: 20:00 בצ׳ק-אין ולילות אמצע, 09:00 ביום הצ׳ק-אאוט
+2. אם למלון אין עדיין כניסות במסלול (מלון חדש או שמעולם לא נלחץ "הוסף למסלול") — לא נעשה כלום; המשתמש עדיין ילחץ ידנית בפעם הראשונה.
+3. גם ההוצאות (`expenses`) לפי לילה יעודכנו: נמחק הוצאות ישנות של המלון הזה שאינן חופפות לתאריכים החדשים, ונוסיף חדשות לפי הצורך (בלי כפילויות).
+4. עדכון היעדים אם המשתמש שינה תאריכים: כניסה בתאריך 25.11 תופיע רק כ"יציאה מ-X" ב-09:00, בדיוק כמו שאתה מצפה.
+5. `toast` בהצלחה: "נשמר · המסלול עודכן".
 
-לכל יום ריק, אנא הצע 3-4 פעילויות מומלצות לפי העיר שאני אהיה בה:
-- שם המקום
-- מדוע הוא מומלץ (ייחודיות, מיקום, חוויה)
-- מחיר משוער (חינם / ¥ / ¥¥ / ¥¥¥)
-- כמה זמן לתכנן (שעה / חצי יום / יום שלם)
+## פרטים טכניים
 
-לימים עם פחות מ-2 פעילויות, הצע פעילויות שמשלימות את מה שכבר תוכנן — באותו אזור, באותו קצב.
-```
+- מיצוי הלוגיקה הקיימת מ-`addToItinerary` (recommendations.tsx שורות ~1014-1140) לפונקציה משותפת `syncHotelToItinerary(hotel, days)` ב-`src/lib/hotels.ts` (חדש).
+- `HotelForm.save.mutationFn`: אחרי ה-`update`/`insert`, שלוף את `day_entries` הקיימים עם `linked_recommendation_id = hotel.id`. אם קיימים → הרץ `syncHotelToItinerary`.
+- `HotelCard.addToItinerary` יקרא לאותה פונקציה משותפת (רפקטור, אותה התנהגות).
+- Invalidate: `["hotels"]`, `["day-entries"]`, `["day-entries-summary"]`, `["expenses"]`.
 
-### 5. Update the returned `stats` object
-Return the new fields alongside the existing ones:
-```ts
-return {
-  prompt,
-  stats: {
-    totalDays: days.length,
-    entryCount: entries.length,
-    emptyDays,
-    sparseDays,
-    plannedDays,
-    avgEntries,
-    hotelCount: hotels.length,
-    charCount: prompt.length,
-  },
-};
-```
+## מחוץ להיקף
 
-## Verification
-- TypeScript typecheck should pass.
-- The UI in `src/routes/itinerary.index.tsx` will ignore the new stats fields unless explicitly updated, which is out of scope per the request; no other files are touched.
+- שינוי עיצוב של הטפסים או הכרטיסים.
+- שינוי לוגיקת השעות (20:00 / 09:00) — נשאר כמו היום.
+- סנכרון אחורי — עריכת יום ידנית במסלול לא תשנה את המלון.

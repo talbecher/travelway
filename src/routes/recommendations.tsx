@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
+import { syncHotelToItinerary, hotelHasItineraryEntries } from "@/lib/hotels";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -1015,129 +1016,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
     mutationFn: async () => {
       if (!h.checkin_date || !h.checkout_date) throw new Error("חסרים תאריכים");
       if (matchingDays.length === 0) throw new Error("התאריכים של המלון לא חופפים למסלול");
-
-      const priceN = Number(h.price_per_night_ils) || (nights > 0 ? Number(h.total_cost_ils ?? 0) / nights : 0);
-      const lat = h.latitude != null ? Number(h.latitude) : null;
-      const lng = h.longitude != null ? Number(h.longitude) : null;
-
-      // Categorize days
-      const checkinDay = days.find((d) => d.date === h.checkin_date) ?? null;
-      const checkoutDay = days.find((d) => d.date === h.checkout_date) ?? null;
-      // Middle nights = matchingDays (checkin..checkout-1) excluding checkin day
-      const middleNights = matchingDays.filter((d) => d.date !== h.checkin_date);
-
-      const stayTitle = `לינה: ${h.hotel_name}`;
-      const leaveTitle = `יציאה מ${h.hotel_name}`;
-
-      // Dedupe: remove any prior hotel_checkin entries for this hotel on affected days
-      const affectedDayIds = [
-        ...(checkinDay ? [checkinDay.id] : []),
-        ...middleNights.map((d) => d.id),
-        ...(checkoutDay ? [checkoutDay.id] : []),
-      ];
-      if (affectedDayIds.length > 0) {
-        const { error: delErr } = await supabase
-          .from("day_entries")
-          .delete()
-          .in("day_id", affectedDayIds)
-          .eq("entry_type", "hotel_checkin")
-          .or(`title.ilike.%${h.hotel_name}%,title.eq.${h.hotel_name}`);
-        if (delErr) throw delErr;
-      }
-
-      let addedEntries = 0;
-
-      const insertEndOfDay = async (dayId: string, title: string) => {
-        const { count } = await supabase
-          .from("day_entries")
-          .select("id", { count: "exact", head: true })
-          .eq("day_id", dayId);
-        const { error } = await supabase.from("day_entries").insert({
-          day_id: dayId,
-          entry_type: "hotel_checkin",
-          title,
-          location_name: h.city,
-          google_maps_url: h.google_maps_url ?? null,
-          icon_emoji: "🏨",
-          time_of_day: "20:00",
-          display_order: count ?? 0,
-          latitude: lat,
-          longitude: lng,
-          photo_url: h.photo_url ?? null,
-          linked_recommendation_id: h.id,
-        });
-        if (error) throw error;
-        addedEntries++;
-      };
-
-      // 1. Check-in day (end, 20:00)
-      if (checkinDay) await insertEndOfDay(checkinDay.id, stayTitle);
-
-      // 2. Middle nights (end, 20:00)
-      for (const d of middleNights) {
-        await insertEndOfDay(d.id, stayTitle);
-      }
-
-      // 3. Checkout day (start, 09:00) — shift existing entries + insert at 0
-      if (checkoutDay) {
-        const { data: existing } = await supabase
-          .from("day_entries")
-          .select("id, display_order")
-          .eq("day_id", checkoutDay.id)
-          .order("display_order", { ascending: false });
-        for (const row of existing ?? []) {
-          const { error } = await supabase
-            .from("day_entries")
-            .update({ display_order: (row.display_order ?? 0) + 1 })
-            .eq("id", row.id);
-          if (error) throw error;
-        }
-        const { error } = await supabase.from("day_entries").insert({
-          day_id: checkoutDay.id,
-          entry_type: "hotel_checkin",
-          title: leaveTitle,
-          location_name: h.city,
-          google_maps_url: h.google_maps_url ?? null,
-          icon_emoji: "🏨",
-          time_of_day: "09:00",
-          display_order: 0,
-          latitude: lat,
-          longitude: lng,
-          photo_url: h.photo_url ?? null,
-          linked_recommendation_id: h.id,
-        });
-        if (error) throw error;
-        addedEntries++;
-      }
-
-      // Expenses: one per night (unchanged logic)
-      let addedExpenses = 0;
-      if (priceN > 0) {
-        for (const d of matchingDays) {
-          const { data: existingExp } = await supabase
-            .from("expenses")
-            .select("id")
-            .eq("trip_id", getActiveTripId())
-            .eq("category", "accommodation")
-            .eq("description", h.hotel_name)
-            .eq("expense_date", d.date)
-            .limit(1);
-          if (!existingExp || existingExp.length === 0) {
-            const { error } = await supabase.from("expenses").insert({
-              trip_id: getActiveTripId(),
-              category: "accommodation",
-              amount_ils: priceN,
-              description: h.hotel_name,
-              location_name: h.city,
-              expense_date: d.date,
-            });
-            if (error) throw error;
-            addedExpenses++;
-          }
-        }
-      }
-
-      return { addedEntries, addedExpenses, nights: matchingDays.length, total: priceN * matchingDays.length };
+      return syncHotelToItinerary(h, days);
     },
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
@@ -1282,6 +1161,8 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
     setPhotoUrl(null);
   }
 
+  const { data: days = [] } = useDays();
+
   const save = useMutation({
     mutationFn: async () => {
       if (!hotel_name.trim()) throw new Error("שם המלון חסר");
@@ -1303,17 +1184,42 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         longitude: coords?.lng ?? null,
         photo_url: photoUrl,
       };
+      let hotelId: string;
       if (existing) {
         const { error } = await supabase.from("hotels").update(payload).eq("id", existing.id);
         if (error) throw error;
+        hotelId = existing.id;
       } else {
-        const { error } = await supabase.from("hotels").insert({ trip_id: getActiveTripId(), ...payload });
+        const { data, error } = await supabase
+          .from("hotels")
+          .insert({ trip_id: getActiveTripId(), ...payload })
+          .select("id")
+          .single();
         if (error) throw error;
+        hotelId = data.id;
       }
+
+      // Auto-resync itinerary if this hotel already has entries in the trip.
+      let resynced = false;
+      if (existing && payload.checkin_date && payload.checkout_date) {
+        const has = await hotelHasItineraryEntries(hotelId);
+        if (has) {
+          await syncHotelToItinerary({ id: hotelId, ...payload }, days);
+          resynced = true;
+        }
+      }
+      return { resynced };
     },
-    onSuccess: () => {
+    onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["hotels"] });
-      toast.success(existing ? "נשמר" : "נוסף");
+      if (r.resynced) {
+        qc.invalidateQueries({ queryKey: ["day-entries"] });
+        qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+        qc.invalidateQueries({ queryKey: ["expenses"] });
+        toast.success("נשמר · המסלול עודכן");
+      } else {
+        toast.success(existing ? "נשמר" : "נוסף");
+      }
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
