@@ -62,6 +62,7 @@ function Itinerary() {
   const { data: days = [], isLoading } = useDays();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const saveCity = useMutation({
     mutationFn: async ({ id, city }: { id: string; city: string }) => {
