@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Trash2, Check, X, ChevronLeft } from "lucide-react";
+import { Pencil, Trash2, Check, X, ChevronLeft, Sparkles } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate } from "@/lib/format";
@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
+import { BottomSheet } from "@/components/BottomSheet";
+import { generateAIPrompt } from "@/lib/export-to-ai";
 
 function DayWeatherBadge({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
