@@ -170,11 +170,21 @@ function Itinerary() {
 
   return (
     <div className="pt-2 space-y-5">
-      <header>
-        <h1>מסלול</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {trip?.destination_country} · {days.length} ימים
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1>מסלול</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {trip?.destination_country} · {days.length} ימים
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExportOpen(true)}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--accent)] text-white text-[12px] px-3 h-8 shadow-sm"
+        >
+          <Sparkles size={14} />
+          ייצא ל-AI
+        </button>
       </header>
 
       {/* City navigation strip */}
