@@ -26,6 +26,7 @@ export type HotelSyncResult = {
 
 type ExistingAccommodationExpense = {
   id: string;
+  linked_hotel_id?: string | null;
   description: string | null;
   location_name: string | null;
   expense_date: string;
@@ -207,7 +208,7 @@ export async function syncHotelToItinerary(
   const targetDates = new Set(matchingDays.map((d) => d.date));
   const { data: existingExpenses, error: existingExpErr } = await supabase
     .from("expenses")
-    .select("id, description, location_name, expense_date, amount_ils")
+    .select("id, linked_hotel_id, description, location_name, expense_date, amount_ils")
     .eq("trip_id", tripId)
     .eq("category", "accommodation");
   if (existingExpErr) throw existingExpErr;
@@ -217,11 +218,12 @@ export async function syncHotelToItinerary(
       const description = expense.description ?? "";
       const exactNameMatch = names.some((name) => sameText(description, name));
       const signatureMatch = targetSignatures.has(hotelSignature(description));
+      const linkedHotelMatch = expense.linked_hotel_id === h.id;
       const sameStayLine =
         targetDates.has(expense.expense_date) &&
         sameText(expense.location_name, h.city) &&
         sameAmount(expense.amount_ils, priceN);
-      return exactNameMatch || signatureMatch || sameStayLine;
+      return linkedHotelMatch || exactNameMatch || signatureMatch || sameStayLine;
     })
     .map((expense) => expense.id);
 
