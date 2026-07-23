@@ -1161,6 +1161,8 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
     setPhotoUrl(null);
   }
 
+  const { data: days = [] } = useDays();
+
   const save = useMutation({
     mutationFn: async () => {
       if (!hotel_name.trim()) throw new Error("שם המלון חסר");
@@ -1182,17 +1184,42 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         longitude: coords?.lng ?? null,
         photo_url: photoUrl,
       };
+      let hotelId: string;
       if (existing) {
         const { error } = await supabase.from("hotels").update(payload).eq("id", existing.id);
         if (error) throw error;
+        hotelId = existing.id;
       } else {
-        const { error } = await supabase.from("hotels").insert({ trip_id: getActiveTripId(), ...payload });
+        const { data, error } = await supabase
+          .from("hotels")
+          .insert({ trip_id: getActiveTripId(), ...payload })
+          .select("id")
+          .single();
         if (error) throw error;
+        hotelId = data.id;
       }
+
+      // Auto-resync itinerary if this hotel already has entries in the trip.
+      let resynced = false;
+      if (existing && payload.checkin_date && payload.checkout_date) {
+        const has = await hotelHasItineraryEntries(hotelId);
+        if (has) {
+          await syncHotelToItinerary({ id: hotelId, ...payload }, days);
+          resynced = true;
+        }
+      }
+      return { resynced };
     },
-    onSuccess: () => {
+    onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["hotels"] });
-      toast.success(existing ? "נשמר" : "נוסף");
+      if (r.resynced) {
+        qc.invalidateQueries({ queryKey: ["day-entries"] });
+        qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+        qc.invalidateQueries({ queryKey: ["expenses"] });
+        toast.success("נשמר · המסלול עודכן");
+      } else {
+        toast.success(existing ? "נשמר" : "נוסף");
+      }
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
