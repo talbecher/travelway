@@ -1,50 +1,73 @@
-The "Export to AI" feature doesn't exist yet — neither `src/lib/export-to-ai.ts` nor any export UI in `src/routes/itinerary.index.tsx`. This plan **creates** the feature per spec (the phrasing "update" is treated as "create/replace").
+## Goal
+Update only `src/lib/export-to-ai.ts` to enhance the AI export prompt with a planning-status stats section and an extra analysis question about empty/sparse days, while extending the returned `ExportStats` object.
 
-## 1. New file: `src/lib/export-to-ai.ts`
+## Changes
 
-Export `generateAIPrompt(tripId)` that loads:
-- Trip (destination, num travelers, start/end, total budget)
-- Days (day_number, date, city_label)
-- Day entries (title, time_of_day, icon_emoji, location_name, notes, linked_recommendation_id, display_order)
-- Recommendations joined for notes fallback
-- Hotels: derived from day entries with `entry_type = "hotel_checkin"` grouped by linked_recommendation_id (checkin/checkout dates, nights). Cost from `recommendations` if present.
-- Expenses sum for `spent`; `remaining = total_budget - spent`
-
-Builds the Hebrew prompt from the exact template in the request (destination, travelers, days, budget, itinerary grouped by day with city label, hotels, analysis prompt, summary request).
-
-Formatting details:
-- Group entries per day sorted by `display_order`
-- `time_of_day` padded to 5 chars, else 5 spaces
-- Notes truncated to 80 chars via helper
-- Empty days → "(יום ריק — לא תוכנן עדיין)"
-- Blank line between days
-
-Returns:
+### 1. Extend `ExportStats` type
+Add three new fields to the exported type:
 ```ts
-{ prompt: string,
-  stats: { totalDays, entryCount, emptyDays, hotelCount, charCount } }
+export type ExportStats = {
+  totalDays: number;
+  entryCount: number;
+  emptyDays: number;
+  sparseDays: number;   // days with exactly 1 entry
+  plannedDays: number;  // days with ≥1 entry
+  avgEntries: number;   // entries / plannedDays, rounded to 1 decimal
+  hotelCount: number;
+  charCount: number;
+};
 ```
 
-## 2. `src/routes/itinerary.index.tsx` — Export BottomSheet
+### 2. Compute planning metrics
+After the `entriesByDay` map is built, calculate:
+- `plannedDays` = number of days whose entry array length is ≥ 1
+- `emptyDays` = number of days whose entry array length is 0 (already exists; keep behavior)
+- `sparseDays` = number of days whose entry array length is exactly 1
+- `avgEntries` = `entries.length / plannedDays`, rounded to 1 decimal place (`Math.round((avg * 10)) / 10`); if `plannedDays` is 0, fallback to `0`.
 
-Add an "ייצא ל-AI" trigger button in the page header (next to the days summary), and a `BottomSheet` state controlling it. Lazy-compute the prompt via `useQuery` keyed on tripId, only when the sheet opens.
+### 3. Insert planning status section
+After the existing budget block (`💰 תקציב כולל`, `💸 הוצאנו עד כה`, `📊 נשאר`) and before the itinerary section, add:
+```
+📊 מצב התכנון הנוכחי:
+- ימים עם תוכנית: {plannedDays} מתוך {totalDays}
+- ימים ריקים לחלוטין: {emptyDays}
+- ימים עם פחות מ-2 פעילויות: {sparseDays}
+- ממוצע פעילויות ביום מתוכנן: {avgEntries}
+```
 
-Sheet content per spec:
-- Header title "🤖 ייצא מסלול ל-AI" + muted subtitle
-- Stats row: 3 pills (`bg-surface-2`) — days / entries / hotels
-- Preview label + `max-h-[35vh]` scrollable box, `font-mono text-[12px]`, `bg-surface-2 rounded-xl p-3`, dir="rtl", first 30 lines with bottom gradient fade
-- Below preview: "{chars} תווים — {tokens} טוקנים בערך" (tokens ≈ chars/4)
-- Actions (vertical, full width):
-  - Copy full prompt → toast/inline "✅ הועתק! כעת הדבק בכלי AI" for 3s (accent bg, h-48)
-  - Open ChatGPT (h-44, border) → `https://chatgpt.com/?q=` + `encodeURIComponent(prompt.slice(0,2000) + "\n\n[המשך מלא הועתק ללוח - הדבק בצ'אט]")`; also copies full prompt to clipboard first
-  - Open Claude (h-44, border) → opens `https://claude.ai/new`; copies full prompt first
-- Tip box (`bg-accent/10 border border-accent/20 rounded-xl p-3 text-[12px]`) with the provided Hebrew tip text
+### 4. Insert the 6th analysis question
+After the existing `🗓 5. תזמון חכם` block and before the `✅ סיכום מבוקש:` section, add:
+```
+🗺 6. תכנון ימים חסרים ויום-דליל
+- במסלול יש {emptyDays} ימים ריקים ו-{sparseDays} ימים דלילים.
 
-No DB/schema changes. No changes to existing features.
+לכל יום ריק, אנא הצע 3-4 פעילויות מומלצות לפי העיר שאני אהיה בה:
+- שם המקום
+- מדוע הוא מומלץ (ייחודיות, מיקום, חוויה)
+- מחיר משוער (חינם / ¥ / ¥¥ / ¥¥¥)
+- כמה זמן לתכנן (שעה / חצי יום / יום שלם)
 
-## Technical
+לימים עם פחות מ-2 פעילויות, הצע פעילויות שמשלימות את מה שכבר תוכנן — באותו אזור, באותו קצב.
+```
 
-- Reuse existing `supabase` client, `useActiveTripId`, `BottomSheet`.
-- All queries are read-only via existing RLS.
-- `hebDateLong` from `@/lib/format` for weekday+date in itinerary lines.
-- No new deps.
+### 5. Update the returned `stats` object
+Return the new fields alongside the existing ones:
+```ts
+return {
+  prompt,
+  stats: {
+    totalDays: days.length,
+    entryCount: entries.length,
+    emptyDays,
+    sparseDays,
+    plannedDays,
+    avgEntries,
+    hotelCount: hotels.length,
+    charCount: prompt.length,
+  },
+};
+```
+
+## Verification
+- TypeScript typecheck should pass.
+- The UI in `src/routes/itinerary.index.tsx` will ignore the new stats fields unless explicitly updated, which is out of scope per the request; no other files are touched.
