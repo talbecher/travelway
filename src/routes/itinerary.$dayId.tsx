@@ -323,6 +323,8 @@ function DayDetail() {
               {mapStops.length > 0 && (
                 <span className="text-white/70">· {mapStops.length}</span>
               )}
+            </button>
+
 
             {/* City chip — anchored bottom-right (RTL start) */}
             <div className="absolute bottom-2 right-3">
