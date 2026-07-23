@@ -26,15 +26,17 @@ export type HotelSyncResult = {
 
 /**
  * Sync a hotel's stay into the itinerary + expenses.
- * - Check-in day + middle nights: "לינה: {name}" @ 20:00 (end of day).
- * - Check-out day: "יציאה מ-{name}" @ 09:00 (start of day, shift others down).
- * - Removes any prior entries tied to this hotel (by linked_recommendation_id
- *   or by title match on the affected days) so date changes stay consistent.
- * - Rebuilds per-night expenses for this hotel (delete + insert).
+ * - Check-in day: "לינה: {name}" @ 20:00.
+ * - Middle nights: "בוקר ב{name}" @ 09:00 + "לינה: {name}" @ 20:00.
+ * - Check-out day: "יציאה מ{name}" @ 09:00.
+ * - Deletes prior entries for this hotel (by linked_hotel_id, plus title
+ *   fallback covering the previous name when renamed / legacy rows).
+ * - Rebuilds per-night expenses for this hotel.
  */
 export async function syncHotelToItinerary(
   h: HotelSyncInput,
   days: ItineraryDay[],
+  previousName?: string,
 ): Promise<HotelSyncResult> {
   if (!h.checkin_date || !h.checkout_date) {
     throw new Error("חסרים תאריכים");
@@ -53,33 +55,43 @@ export async function syncHotelToItinerary(
   const lat = h.latitude != null ? Number(h.latitude) : null;
   const lng = h.longitude != null ? Number(h.longitude) : null;
 
-  const stayTitle = `לינה: ${h.hotel_name}`;
-  const leaveTitle = `יציאה מ${h.hotel_name}`;
-  const morningTitle = `בוקר ב${h.hotel_name}`;
+  const names = Array.from(
+    new Set([h.hotel_name, previousName].filter((n): n is string => !!n)),
+  );
+  const titleVariants = names.flatMap((n) => [
+    `לינה: ${n}`,
+    `יציאה מ${n}`,
+    `בוקר ב${n}`,
+  ]);
 
-  // ── 1. Remove prior day_entries for this hotel across ALL trip days
-  //       (handles date changes: entries on days no longer in range must go).
+  // ── 1. Remove prior day_entries for this hotel across ALL trip days.
   const allDayIds = days.map((d) => d.id);
   if (allDayIds.length > 0) {
-    // By linked_recommendation_id (canonical link)
+    // Canonical link by hotel id.
     const { error: delLinkErr } = await supabase
       .from("day_entries")
       .delete()
       .in("day_id", allDayIds)
       .eq("entry_type", "hotel_checkin")
-      .eq("linked_recommendation_id", h.id);
+      .eq("linked_hotel_id", h.id);
     if (delLinkErr) throw delLinkErr;
 
-    // Fallback: legacy rows without linked_recommendation_id — match by title
-    const { error: delTitleErr } = await supabase
-      .from("day_entries")
-      .delete()
-      .in("day_id", allDayIds)
-      .eq("entry_type", "hotel_checkin")
-      .is("linked_recommendation_id", null)
-      .or(`title.eq.${stayTitle},title.eq.${leaveTitle},title.eq.${morningTitle}`);
-    if (delTitleErr) throw delTitleErr;
+    // Fallback: legacy rows / renamed hotel — match by known titles.
+    if (titleVariants.length > 0) {
+      const { error: delTitleErr } = await supabase
+        .from("day_entries")
+        .delete()
+        .in("day_id", allDayIds)
+        .eq("entry_type", "hotel_checkin")
+        .is("linked_hotel_id", null)
+        .in("title", titleVariants);
+      if (delTitleErr) throw delTitleErr;
+    }
   }
+
+  const stayTitle = `לינה: ${h.hotel_name}`;
+  const leaveTitle = `יציאה מ${h.hotel_name}`;
+  const morningTitle = `בוקר ב${h.hotel_name}`;
 
   let addedEntries = 0;
 
@@ -100,7 +112,7 @@ export async function syncHotelToItinerary(
       latitude: lat,
       longitude: lng,
       photo_url: h.photo_url ?? null,
-      linked_recommendation_id: h.id,
+      linked_hotel_id: h.id,
     });
     if (error) throw error;
     addedEntries++;
@@ -131,7 +143,7 @@ export async function syncHotelToItinerary(
       latitude: lat,
       longitude: lng,
       photo_url: h.photo_url ?? null,
-      linked_recommendation_id: h.id,
+      linked_hotel_id: h.id,
     });
     if (error) throw error;
     addedEntries++;
@@ -139,50 +151,22 @@ export async function syncHotelToItinerary(
 
   if (checkinDay) await insertEndOfDay(checkinDay.id, stayTitle);
   for (const d of middleNights) {
-    // Middle nights: wake up at hotel (morning) and sleep at hotel (evening)
     await insertStartOfDay(d.id, morningTitle);
     await insertEndOfDay(d.id, stayTitle);
   }
 
   if (checkoutDay) {
-    const { data: existing } = await supabase
-      .from("day_entries")
-      .select("id, display_order")
-      .eq("day_id", checkoutDay.id)
-      .order("display_order", { ascending: false });
-    for (const row of existing ?? []) {
-      const { error } = await supabase
-        .from("day_entries")
-        .update({ display_order: (row.display_order ?? 0) + 1 })
-        .eq("id", row.id);
-      if (error) throw error;
-    }
-    const { error } = await supabase.from("day_entries").insert({
-      day_id: checkoutDay.id,
-      entry_type: "hotel_checkin",
-      title: leaveTitle,
-      location_name: h.city,
-      google_maps_url: h.google_maps_url ?? null,
-      icon_emoji: "🏨",
-      time_of_day: "09:00",
-      display_order: 0,
-      latitude: lat,
-      longitude: lng,
-      photo_url: h.photo_url ?? null,
-      linked_recommendation_id: h.id,
-    });
-    if (error) throw error;
-    addedEntries++;
+    await insertStartOfDay(checkoutDay.id, leaveTitle);
   }
 
-  // ── 2. Rebuild per-night expenses for this hotel
+  // ── 2. Rebuild per-night expenses for this hotel (current + previous name).
   const tripId = getActiveTripId();
   const { error: delExpErr } = await supabase
     .from("expenses")
     .delete()
     .eq("trip_id", tripId)
     .eq("category", "accommodation")
-    .eq("description", h.hotel_name);
+    .in("description", names);
   if (delExpErr) throw delExpErr;
 
   let addedExpenses = 0;
@@ -210,7 +194,7 @@ export async function hotelHasItineraryEntries(hotelId: string): Promise<boolean
     .from("day_entries")
     .select("id", { count: "exact", head: true })
     .eq("entry_type", "hotel_checkin")
-    .eq("linked_recommendation_id", hotelId);
+    .eq("linked_hotel_id", hotelId);
   if (error) throw error;
   return (count ?? 0) > 0;
 }

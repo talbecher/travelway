@@ -25,6 +25,7 @@ export type Database = {
           icon_emoji: string | null
           id: string
           latitude: number | null
+          linked_hotel_id: string | null
           linked_recommendation_id: string | null
           location_name: string | null
           longitude: number | null
@@ -42,6 +43,7 @@ export type Database = {
           icon_emoji?: string | null
           id?: string
           latitude?: number | null
+          linked_hotel_id?: string | null
           linked_recommendation_id?: string | null
           location_name?: string | null
           longitude?: number | null
@@ -59,6 +61,7 @@ export type Database = {
           icon_emoji?: string | null
           id?: string
           latitude?: number | null
+          linked_hotel_id?: string | null
           linked_recommendation_id?: string | null
           location_name?: string | null
           longitude?: number | null
@@ -72,6 +75,13 @@ export type Database = {
             columns: ["day_id"]
             isOneToOne: false
             referencedRelation: "itinerary_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_entries_linked_hotel_id_fkey"
+            columns: ["linked_hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
             referencedColumns: ["id"]
           },
           {

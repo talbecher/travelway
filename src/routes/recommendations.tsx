@@ -1204,7 +1204,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
       if (existing && payload.checkin_date && payload.checkout_date) {
         const has = await hotelHasItineraryEntries(hotelId);
         if (has) {
-          await syncHotelToItinerary({ id: hotelId, ...payload }, days);
+          await syncHotelToItinerary({ id: hotelId, ...payload }, days, existing.hotel_name);
           resynced = true;
         }
       }
