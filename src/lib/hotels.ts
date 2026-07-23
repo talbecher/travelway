@@ -218,11 +218,14 @@ export async function syncHotelToItinerary(
       const description = expense.description ?? "";
       const exactNameMatch = names.some((name) => sameText(description, name));
       const signatureMatch = targetSignatures.has(hotelSignature(description));
+      const locationSignatureMatch = targetSignatures.has(
+        hotelSignature(expense.location_name),
+      );
       const linkedHotelMatch = expense.linked_hotel_id === h.id;
       const sameStayLine =
         targetDates.has(expense.expense_date) &&
-        sameText(expense.location_name, h.city) &&
-        sameAmount(expense.amount_ils, priceN);
+        sameAmount(expense.amount_ils, priceN) &&
+        locationSignatureMatch;
       return linkedHotelMatch || exactNameMatch || signatureMatch || sameStayLine;
     })
     .map((expense) => expense.id);
