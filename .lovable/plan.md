@@ -1,40 +1,26 @@
-## הבעיה
+## Plan
 
-`day_entries.linked_recommendation_id` הוא FK ל-`recommendations(id)`, אבל `syncHotelToItinerary` שולח לשם את `hotels.id` (טבלה אחרת) — ולכן כל insert של כניסת מלון למסלול נכשל עם 409 / FK violation. גם אם היה עובר, לא היה לנו קישור אמין לניקוי כפילויות בעת שינוי שם/תאריכים.
+1. **Clean the existing duplicate hotel expenses**
+   - For the current RIO Shinjuku case, remove the old stale hotel expense rows (`Hotel RIO Shinjuku`) that overlap the active hotel record (`rio hotel shinjuku`).
+   - Keep exactly one accommodation expense per hotel night for 19.11–24.11, matching the current hotel price.
 
-## מה נתקן
+2. **Make future hotel sync overwrite safely**
+   - Update `src/lib/hotels.ts` so hotel-generated expenses are linked to the hotel via `linked_recommendation_id` when possible.
+   - Before re-inserting expenses, delete all previous generated expenses for that hotel by:
+     - linked hotel/recommendation id
+     - current hotel name
+     - previous hotel name
+     - same trip + accommodation + overlapping stay dates
+   - This makes “הוסף למסלול” and editing hotel dates/prices idempotent: tap/save again = replace, not duplicate.
 
-### 1. עמודה חדשה בטבלת `day_entries`
-- הוספת `linked_hotel_id uuid null references public.hotels(id) on delete set null` + index.
-- לא נוגעים ב-`linked_recommendation_id` הקיים (נשאר לשימוש להמלצות "רגילות").
+3. **Backfill legacy links where needed**
+   - If existing hotel expense rows are still unlinked, link the kept current rows to the hotel id so the next sync can find and overwrite them reliably.
 
-### 2. `src/lib/hotels.ts` — `syncHotelToItinerary`
-- להחליף את כל השימוש ב-`linked_recommendation_id: h.id` ב-`linked_hotel_id: h.id`.
-- שלב המחיקה שרץ לפני ההוספה יימחק לפי:
-  - `linked_hotel_id = h.id` (הקישור החדש והאמין), **וגם**
-  - Fallback לפי כותרת (`לינה: X`, `יציאה מX`, `בוקר בX`) לרשומות ישנות מלפני העמודה החדשה או אחרי שינוי שם.
-- אחרי המחיקה מכל ימי הטיול, ההוספה מחדש נשארת כמו היום (צ׳ק-אין 20:00, אמצע = בוקר 09:00 + לינה 20:00, צ׳ק-אאוט 09:00).
-- הוספת פרמטר אופציונלי `previousName?: string` — כשה-form שומר מלון עם שם שהשתנה, נעביר גם אותו כדי שהמחיקה לפי כותרת תתפוס גם את השם הישן.
+4. **Verify**
+   - Re-query accommodation expenses and confirm there are no duplicate RIO rows.
+   - Confirm the itinerary sync still creates start/end hotel entries without duplicating expenses.
 
-### 3. הוצאות — ללא כפילויות גם אחרי rename
-- היום מוחקים לפי `description = h.hotel_name`; אם המשתמש שינה שם, ההוצאות הישנות נשארות.
-- נעביר `previousName` גם ל-שלב ההוצאות: נמחק לפי השם החדש **וגם** לפי הישן (כשקיים) לפני שמכניסים מחדש לכל לילה.
+## Technical details
 
-### 4. `hotelHasItineraryEntries`
-- לבדוק לפי `linked_hotel_id = hotelId` (במקום `linked_recommendation_id`), כך שכפתור "הוסף למסלול" יזהה נכון מלונות שכבר קיימים.
-
-### 5. `HotelForm.save` ב-`src/routes/recommendations.tsx`
-- כשמעדכנים מלון קיים ומריצים resync, להעביר `previousName = existing.hotel_name` ל-`syncHotelToItinerary`.
-- לוודא ש-`addToItinerary` ב-`HotelCard` ממשיך לעבוד כמו קודם (בלי `previousName`).
-
-## תוצאה מצופה
-
-- לחיצה על "הוסף למסלול" עובדת בלי 409.
-- הפעלה חוזרת של הוספה/עדכון של אותו מלון מוחקת את הכניסות/הוצאות הישנות שלו (גם אם השם או התאריכים השתנו) לפני יצירת החדשות — אין כפילויות.
-- מלונות ישנים שנוצרו בעבר עם כותרות מוכרות ינוקו דרך ה-fallback לפי title.
-
-## מחוץ להיקף
-
-- שינוי מבנה זמנים/כותרות של כניסות המלון.
-- שינוי UI.
-- מיגרציה של רשומות היסטוריות (מילוי `linked_hotel_id` אחורנית) — לא נדרש; המחיקה fallback לפי title מכסה אותן.
+- I confirmed the duplicate rows are not exact duplicates by name: the old rows are `Hotel RIO Shinjuku`, while the current hotel is `rio hotel shinjuku`, so the current delete-by-name logic only removed the new name and left the old-name rows behind.
+- No schema change is required because `expenses.linked_recommendation_id` already exists and references recommendations/hotel recommendation ids.

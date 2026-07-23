@@ -24,6 +24,47 @@ export type HotelSyncResult = {
   total: number;
 };
 
+type ExistingAccommodationExpense = {
+  id: string;
+  description: string | null;
+  location_name: string | null;
+  expense_date: string;
+  amount_ils: number | string | null;
+};
+
+function compactUnique(values: Array<string | null | undefined>): string[] {
+  return Array.from(
+    new Set(values.map((v) => v?.trim()).filter((v): v is string => !!v)),
+  );
+}
+
+function hotelSignature(value: string | null | undefined): string {
+  if (!value) return "";
+  const genericWords = new Set([
+    "hotel",
+    "hotels",
+    "the",
+    "מלון",
+    "לינה",
+  ]);
+  return value
+    .toLowerCase()
+    .replace(/[׳'״"`’‘.,:;()\[\]{}\-_/\\|]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1 && !genericWords.has(token))
+    .sort()
+    .join(" ");
+}
+
+function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+}
+
+function sameAmount(a: number | string | null | undefined, b: number): boolean {
+  return Math.abs(Number(a ?? 0) - b) < 0.01;
+}
+
 /**
  * Sync a hotel's stay into the itinerary + expenses.
  * - Check-in day: "לינה: {name}" @ 20:00.
@@ -55,9 +96,7 @@ export async function syncHotelToItinerary(
   const lat = h.latitude != null ? Number(h.latitude) : null;
   const lng = h.longitude != null ? Number(h.longitude) : null;
 
-  const names = Array.from(
-    new Set([h.hotel_name, previousName].filter((n): n is string => !!n)),
-  );
+  const names = compactUnique([h.hotel_name, previousName]);
   const titleVariants = names.flatMap((n) => [
     `לינה: ${n}`,
     `יציאה מ${n}`,
@@ -159,15 +198,40 @@ export async function syncHotelToItinerary(
     await insertStartOfDay(checkoutDay.id, leaveTitle);
   }
 
-  // ── 2. Rebuild per-night expenses for this hotel (current + previous name).
+  // ── 2. Rebuild per-night expenses for this hotel.
+  // Fetch-and-delete by ids instead of relying only on exact text equality:
+  // legacy rows may have the same hotel words in a different order/casing
+  // (for example "Hotel RIO Shinjuku" vs "rio hotel shinjuku").
   const tripId = getActiveTripId();
-  const { error: delExpErr } = await supabase
+  const targetSignatures = new Set(names.map(hotelSignature).filter(Boolean));
+  const targetDates = new Set(matchingDays.map((d) => d.date));
+  const { data: existingExpenses, error: existingExpErr } = await supabase
     .from("expenses")
-    .delete()
+    .select("id, description, location_name, expense_date, amount_ils")
     .eq("trip_id", tripId)
-    .eq("category", "accommodation")
-    .in("description", names);
-  if (delExpErr) throw delExpErr;
+    .eq("category", "accommodation");
+  if (existingExpErr) throw existingExpErr;
+
+  const expenseIdsToDelete = ((existingExpenses ?? []) as ExistingAccommodationExpense[])
+    .filter((expense) => {
+      const description = expense.description ?? "";
+      const exactNameMatch = names.some((name) => sameText(description, name));
+      const signatureMatch = targetSignatures.has(hotelSignature(description));
+      const sameStayLine =
+        targetDates.has(expense.expense_date) &&
+        sameText(expense.location_name, h.city) &&
+        sameAmount(expense.amount_ils, priceN);
+      return exactNameMatch || signatureMatch || sameStayLine;
+    })
+    .map((expense) => expense.id);
+
+  if (expenseIdsToDelete.length > 0) {
+    const { error: delExpErr } = await supabase
+      .from("expenses")
+      .delete()
+      .in("id", expenseIdsToDelete);
+    if (delExpErr) throw delExpErr;
+  }
 
   let addedExpenses = 0;
   if (priceN > 0) {
