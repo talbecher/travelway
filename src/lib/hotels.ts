@@ -242,6 +242,7 @@ export async function syncHotelToItinerary(
         amount_ils: priceN,
         description: h.hotel_name,
         location_name: h.city,
+        linked_hotel_id: h.id,
         expense_date: d.date,
       });
       if (error) throw error;
