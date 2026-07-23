@@ -164,8 +164,7 @@ function DayDetail() {
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
 
-  const [mapPct, setMapPct] = useState(40);
-  const draggingRef = useRef(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -279,24 +278,7 @@ function DayDetail() {
     setPickerOpen(true);
   }
 
-  // Drag divider between map and list
-  useEffect(() => {
-    function move(e: PointerEvent) {
-      if (!draggingRef.current) return;
-      const container = document.getElementById("day-split");
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const pct = ((e.clientY - rect.top) / rect.height) * 100;
-      setMapPct(Math.max(20, Math.min(80, pct)));
-    }
-    function up() { draggingRef.current = false; document.body.style.cursor = ""; }
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, []);
+
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
 
@@ -327,6 +309,18 @@ function DayDetail() {
               </div>
               <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
               <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+              <button
+                type="button"
+                onClick={() => setMapOpen(true)}
+                disabled={mapStops.length === 0}
+                className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] px-2.5 py-1 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <MapIcon size={13} />
+                תצוגת מפה
+                {mapStops.length > 0 && (
+                  <span className="text-white/70">· {mapStops.length}</span>
+                )}
+              </button>
             </div>
 
             {/* City chip — anchored bottom-right (RTL start) */}
@@ -380,32 +374,10 @@ function DayDetail() {
       ) : !hasAnyEntries ? (
         <div className="px-4 pt-3"><EmptyDay onAdd={openPicker} /></div>
       ) : (
-        <div id="day-split" className="relative flex flex-col" style={{ height: "calc(100dvh - 260px)" }}>
-          {/* Map pane */}
-          <div className="relative overflow-hidden" style={{ height: `${mapPct}%` }}>
-            {mapStops.length > 0 ? (
-              <DayMap stops={mapStops} highlightId={highlightId} onPinTap={scrollToCard} />
-            ) : (
-              <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
-                <MapIcon size={28} className="text-muted-foreground" />
-                <div className="text-sm text-muted-foreground">אין פריטים עם מיקום להצגה במפה</div>
-                <div className="text-xs text-muted-foreground">הוסף לינק גוגל מפות לפריטים ותראה אותם כאן</div>
-              </div>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div
-            role="separator"
-            aria-orientation="horizontal"
-            onPointerDown={(e) => { draggingRef.current = true; document.body.style.cursor = "row-resize"; e.preventDefault(); }}
-            className="h-4 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
-          >
-            <div className="w-12 h-[5px] rounded-[3px] bg-[color:var(--border-strong)]" />
-          </div>
-
-          {/* List pane */}
+        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 200px)" }}>
+          {/* List pane (full height — map opens in bottom sheet) */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
+
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-4">
@@ -564,6 +536,24 @@ function DayDetail() {
             onClose={() => setDetailsFor(null)}
           />
         )}
+      </BottomSheet>
+
+      {/* Day map sheet */}
+      <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
+        <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
+          {mapStops.length > 0 ? (
+            <DayMap
+              stops={mapStops}
+              highlightId={highlightId}
+              onPinTap={(id) => { setMapOpen(false); setTimeout(() => scrollToCard(id), 250); }}
+            />
+          ) : (
+            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
+              <MapIcon size={28} className="text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">אין פריטים עם מיקום להצגה במפה</div>
+            </div>
+          )}
+        </div>
       </BottomSheet>
 
     </div>
