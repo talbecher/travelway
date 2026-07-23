@@ -313,10 +313,10 @@ function DayDetail() {
                 type="button"
                 onClick={() => setMapOpen(true)}
                 disabled={mapStops.length === 0}
-                className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] px-2.5 py-1 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[13px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <MapIcon size={13} />
-                תצוגת מפה
+                <MapIcon size={14} />
+                <span>תצוגת מפה</span>
                 {mapStops.length > 0 && (
                   <span className="text-white/70">· {mapStops.length}</span>
                 )}
