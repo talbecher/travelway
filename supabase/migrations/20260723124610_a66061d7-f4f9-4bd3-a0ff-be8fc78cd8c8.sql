@@ -1,0 +1,2 @@
+ALTER TABLE public.day_entries ADD COLUMN IF NOT EXISTS linked_hotel_id uuid NULL REFERENCES public.hotels(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS day_entries_linked_hotel_id_idx ON public.day_entries(linked_hotel_id);
