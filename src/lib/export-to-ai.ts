@@ -144,7 +144,6 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
   lines.push(SEP);
   lines.push("");
 
-  let emptyDays = 0;
   for (const d of days) {
     const dayEntries = entriesByDay.get(d.id) ?? [];
     lines.push(
