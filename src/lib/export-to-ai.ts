@@ -103,6 +103,21 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
     entriesByDay.set(e.day_id, arr);
   }
 
+  let emptyDays = 0;
+  let sparseDays = 0;
+  let plannedDays = 0;
+  for (const d of days) {
+    const count = (entriesByDay.get(d.id) ?? []).length;
+    if (count === 0) emptyDays += 1;
+    else {
+      plannedDays += 1;
+      if (count === 1) sparseDays += 1;
+    }
+  }
+  const avgEntries = plannedDays
+    ? Math.round((entries.length / plannedDays) * 10) / 10
+    : 0;
+
   const spent = expenses.reduce((s, e) => s + Number(e.amount_ils ?? 0), 0);
   const totalBudget = Number(trip.total_budget_ils ?? 0);
   const remaining = totalBudget - spent;
@@ -117,6 +132,12 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
   lines.push(`💰 תקציב כולל: ₪${fmt(totalBudget)}`);
   lines.push(`💸 הוצאנו עד כה: ₪${fmt(spent)}`);
   lines.push(`📊 נשאר: ₪${fmt(remaining)}`);
+  lines.push("");
+  lines.push("📊 מצב התכנון הנוכחי:");
+  lines.push(`- ימים עם תוכנית: ${plannedDays} מתוך ${days.length}`);
+  lines.push(`- ימים ריקים לחלוטין: ${emptyDays}`);
+  lines.push(`- ימים עם פחות מ-2 פעילויות: ${sparseDays}`);
+  lines.push(`- ממוצע פעילויות ביום מתוכנן: ${avgEntries}`);
   lines.push("");
   lines.push(SEP);
   lines.push("🗺 המסלול המלא שבניתי:");
@@ -200,6 +221,18 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
     "- לפי תאריכי הטיול הספציפיים — האם יש פסטיבלים, חגים מקומיים, או עונות מיוחדות שכדאי לנצל או להיערך אליהן?"
   );
   lines.push("");
+  lines.push("🗺 6. תכנון ימים חסרים ויום-דליל");
+  lines.push(`- במסלול יש ${emptyDays} ימים ריקים ו-${sparseDays} ימים דלילים.`);
+  lines.push("");
+  lines.push("לכל יום ריק, אנא הצע 3-4 פעילויות מומלצות לפי העיר שאני אהיה בה:");
+  lines.push("- שם המקום");
+  lines.push("- מדוע הוא מומלץ (ייחודיות, מיקום, חוויה)");
+  lines.push("- מחיר משוער (חינם / ¥ / ¥¥ / ¥¥¥)");
+  lines.push("- כמה זמן לתכנן (שעה / חצי יום / יום שלם)");
+  lines.push("");
+  lines.push("לימים עם פחות מ-2 פעילויות, הצע פעילויות שמשלימות את מה שכבר תוכנן —");
+  lines.push("באותו אזור, באותו קצב.");
+  lines.push("");
   lines.push(SEP);
   lines.push("✅ סיכום מבוקש:");
   lines.push(SEP);
@@ -221,6 +254,9 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
       totalDays: days.length,
       entryCount: entries.length,
       emptyDays,
+      sparseDays,
+      plannedDays,
+      avgEntries,
       hotelCount: hotels.length,
       charCount: prompt.length,
     },
