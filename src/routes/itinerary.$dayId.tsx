@@ -362,32 +362,10 @@ function DayDetail() {
       ) : !hasAnyEntries ? (
         <div className="px-4 pt-3"><EmptyDay onAdd={openPicker} /></div>
       ) : (
-        <div id="day-split" className="relative flex flex-col" style={{ height: "calc(100dvh - 260px)" }}>
-          {/* Map pane */}
-          <div className="relative overflow-hidden" style={{ height: `${mapPct}%` }}>
-            {mapStops.length > 0 ? (
-              <DayMap stops={mapStops} highlightId={highlightId} onPinTap={scrollToCard} />
-            ) : (
-              <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
-                <MapIcon size={28} className="text-muted-foreground" />
-                <div className="text-sm text-muted-foreground">אין פריטים עם מיקום להצגה במפה</div>
-                <div className="text-xs text-muted-foreground">הוסף לינק גוגל מפות לפריטים ותראה אותם כאן</div>
-              </div>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div
-            role="separator"
-            aria-orientation="horizontal"
-            onPointerDown={(e) => { draggingRef.current = true; document.body.style.cursor = "row-resize"; e.preventDefault(); }}
-            className="h-4 bg-card border-y border-border flex items-center justify-center cursor-row-resize touch-none select-none shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
-          >
-            <div className="w-12 h-[5px] rounded-[3px] bg-[color:var(--border-strong)]" />
-          </div>
-
-          {/* List pane */}
+        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 200px)" }}>
+          {/* List pane (full height — map opens in bottom sheet) */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
+
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-4">
