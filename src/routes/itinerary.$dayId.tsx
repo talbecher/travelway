@@ -305,9 +305,8 @@ function DayDetail() {
             </button>
             <div className="pt-1 pr-1">
               <div className="text-white text-[28px] font-semibold leading-none">
-                יום {day.day_number}
+                יום {day.day_number} - {hebDateLong(day.date)}
               </div>
-              <div className="text-white/70 text-[12px] mt-1.5">{hebDateLong(day.date)}</div>
               <DayWeatherLine city={day.city_label ?? null} date={day.date} />
             </div>
 
