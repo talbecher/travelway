@@ -1085,7 +1085,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
         <button onClick={onEdit} className="flex-1 h-8 rounded-md border border-border text-xs inline-flex items-center justify-center gap-1 min-h-0">
           <Pencil size={11} /> ערוך
         </button>
-        <button onClick={() => { if (confirm(`למחוק את ${h.hotel_name}?`)) del.mutate(); }} className="flex-1 h-8 rounded-md border border-border text-[color:var(--accent-2)] text-xs inline-flex items-center justify-center gap-1 min-h-0">
+        <button onClick={() => { if (confirm(`למחוק את ${h.hotel_name}?\n\nהמלון, כניסות המסלול שלו וכל הוצאות הלינה שלו יימחקו.`)) del.mutate(); }} className="flex-1 h-8 rounded-md border border-border text-[color:var(--accent-2)] text-xs inline-flex items-center justify-center gap-1 min-h-0">
           <Trash2 size={11} /> מחק
         </button>
       </div>
