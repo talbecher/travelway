@@ -1201,7 +1201,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         existing?.id,
       );
       if (overlaps.length > 0 && !replace) {
-        return { conflicts: overlaps } as const;
+        return { conflicts: [...overlaps] };
       }
 
       // Replace approved: cascade-delete conflicting hotels before proceeding.
