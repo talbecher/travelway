@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
-import { syncHotelToItinerary, hotelHasItineraryEntries } from "@/lib/hotels";
+import { syncHotelToItinerary, hotelHasItineraryEntries, findConflictingHotels, deleteHotelCascade } from "@/lib/hotels";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -1006,10 +1006,16 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
 
   const del = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("hotels").delete().eq("id", h.id);
-      if (error) throw error;
+      await deleteHotelCascade(h.id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hotels"] }); toast.success("נמחק"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hotels"] });
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success("המלון, כניסות המסלול וההוצאות נמחקו");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const addToItinerary = useMutation({
@@ -1079,7 +1085,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
         <button onClick={onEdit} className="flex-1 h-8 rounded-md border border-border text-xs inline-flex items-center justify-center gap-1 min-h-0">
           <Pencil size={11} /> ערוך
         </button>
-        <button onClick={() => { if (confirm(`למחוק את ${h.hotel_name}?`)) del.mutate(); }} className="flex-1 h-8 rounded-md border border-border text-[color:var(--accent-2)] text-xs inline-flex items-center justify-center gap-1 min-h-0">
+        <button onClick={() => { if (confirm(`למחוק את ${h.hotel_name}?\n\nהמלון, כניסות המסלול שלו וכל הוצאות הלינה שלו יימחקו.`)) del.mutate(); }} className="flex-1 h-8 rounded-md border border-border text-[color:var(--accent-2)] text-xs inline-flex items-center justify-center gap-1 min-h-0">
           <Trash2 size={11} /> מחק
         </button>
       </div>
@@ -1162,9 +1168,11 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
   }
 
   const { data: days = [] } = useDays();
+  const { data: allHotels = [] } = useHotels();
+  const [conflicts, setConflicts] = useState<Hotel[]>([]);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ replace = false }: { replace?: boolean } = {}) => {
       if (!hotel_name.trim()) throw new Error("שם המלון חסר");
       const nights = checkin_date && checkout_date ? Math.max(1, daysBetween(checkin_date, checkout_date)) : 1;
       const priceN = Number(price_per_night) || 0;
@@ -1184,8 +1192,29 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         longitude: coords?.lng ?? null,
         photo_url: photoUrl,
       };
+
+      // Check for overlapping hotels (excluding the one being edited).
+      const overlaps = findConflictingHotels(
+        payload.checkin_date,
+        payload.checkout_date,
+        allHotels as Hotel[],
+        existing?.id,
+      );
+      if (overlaps.length > 0 && !replace) {
+        return { kind: "conflict" as const, conflicts: [...overlaps] };
+      }
+
+      // Replace approved: cascade-delete conflicting hotels before proceeding.
+      if (overlaps.length > 0 && replace) {
+        for (const c of overlaps) {
+          await deleteHotelCascade(c.id);
+        }
+      }
+
       let hotelId: string;
+      let hadEntries = false;
       if (existing) {
+        hadEntries = await hotelHasItineraryEntries(existing.id);
         const { error } = await supabase.from("hotels").update(payload).eq("id", existing.id);
         if (error) throw error;
         hotelId = existing.id;
@@ -1199,24 +1228,30 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         hotelId = data.id;
       }
 
-      // Auto-resync itinerary if this hotel already has entries in the trip.
+      // Auto-resync itinerary if this hotel already has entries, or if we
+      // just replaced other hotels (the user expects the new one to slot in).
       let resynced = false;
-      if (existing && payload.checkin_date && payload.checkout_date) {
-        const has = await hotelHasItineraryEntries(hotelId);
-        if (has) {
-          await syncHotelToItinerary({ id: hotelId, ...payload }, days, existing.hotel_name);
-          resynced = true;
-        }
+      if (payload.checkin_date && payload.checkout_date && (hadEntries || (replace && overlaps.length > 0))) {
+        await syncHotelToItinerary(
+          { id: hotelId, ...payload },
+          days,
+          existing?.hotel_name,
+        );
+        resynced = true;
       }
-      return { resynced };
+      return { kind: "saved" as const, resynced, replaced: replace && overlaps.length > 0 };
     },
     onSuccess: (r) => {
+      if (r.kind === "conflict") {
+        setConflicts(r.conflicts);
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["hotels"] });
-      if (r.resynced) {
+      if (r.resynced || r.replaced) {
         qc.invalidateQueries({ queryKey: ["day-entries"] });
         qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
         qc.invalidateQueries({ queryKey: ["expenses"] });
-        toast.success("נשמר · המסלול עודכן");
+        toast.success(r.replaced ? "הוחלף · המסלול וההוצאות עודכנו" : "נשמר · המסלול עודכן");
       } else {
         toast.success(existing ? "נשמר" : "נוסף");
       }
@@ -1226,8 +1261,9 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
   });
 
   return (
+    <>
     <form
-      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); save.mutate({}); }}
       className="flex flex-col min-h-[62vh] pt-1 pb-2"
     >
       <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
@@ -1286,6 +1322,49 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         </div>
       )}
     </form>
+
+    <BottomSheet
+      open={conflicts.length > 0}
+      onOpenChange={(o) => { if (!o) setConflicts([]); }}
+      title="חפיפת תאריכים"
+    >
+      <div className="space-y-3 pb-2">
+        <div className="text-sm text-muted-foreground">
+          התאריכים שבחרת חופפים למלונות קיימים:
+        </div>
+        <ul className="space-y-1.5">
+          {conflicts.map((c) => (
+            <li key={c.id} className="rounded-lg border border-border p-2 text-sm">
+              <div className="font-medium">{c.hotel_name}</div>
+              <div className="text-xs text-muted-foreground" dir="ltr">
+                {c.checkin_date && hebDate(c.checkin_date)} → {c.checkout_date && hebDate(c.checkout_date)}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="text-xs text-[color:var(--accent-2)]">
+          החלפה תמחק את המלונות הללו, את כניסות המסלול וההוצאות שלהם, ותכניס את המלון החדש במקומם.
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setConflicts([])}
+            className="flex-1 h-11 rounded-xl border border-border font-medium"
+          >
+            בטל
+          </button>
+          <button
+            type="button"
+            disabled={save.isPending}
+            onClick={() => { setConflicts([]); save.mutate({ replace: true }); }}
+            className="flex-1 h-11 rounded-xl bg-[color:var(--accent-2)] text-white font-medium disabled:opacity-50"
+          >
+            {save.isPending ? "מחליף..." : "החלף"}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+    </>
   );
 }
 
