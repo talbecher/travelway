@@ -1006,10 +1006,16 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
 
   const del = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("hotels").delete().eq("id", h.id);
-      if (error) throw error;
+      await deleteHotelCascade(h.id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hotels"] }); toast.success("נמחק"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hotels"] });
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success("המלון, כניסות המסלול וההוצאות נמחקו");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const addToItinerary = useMutation({
