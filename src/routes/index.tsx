@@ -393,6 +393,16 @@ function HeroCard(props: {
         </a>
       )}
 
+      <div className="absolute top-3 right-3 z-10">
+        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${pill.cls}`}>
+          {pill.dot && <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-300"></span>
+          </span>}
+          {pill.text}
+        </span>
+      </div>
+
       <div className="flex flex-col justify-between h-full">
         <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[52px]">
           <div className="text-[28px] font-bold leading-tight truncate">{title}</div>
@@ -401,15 +411,6 @@ function HeroCard(props: {
 
         <div className="text-sm text-white/70" dir="ltr">
           {hebDate(startDate)} → {hebDate(endDate)}
-        </div>
-        <div>
-          <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${pill.cls}`}>
-            {pill.dot && <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-300"></span>
-            </span>}
-            {pill.text}
-          </span>
         </div>
       </div>
       <div className="absolute bottom-3 left-3">
