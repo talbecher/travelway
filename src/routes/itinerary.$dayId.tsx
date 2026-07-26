@@ -130,6 +130,7 @@ function DayDetail() {
   const [editLocationEntry, setEditLocationEntry] = useState<EntryRow | null>(null);
   const [detailsFor, setDetailsFor] = useState<EntryRow | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [navigateOpen, setNavigateOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
@@ -227,6 +228,35 @@ function DayDetail() {
       qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       toast.success("✅ נוסף למסלול");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addNavigate = useMutation({
+    mutationFn: async ({ place, note }: { place: SelectedPlace | null; note: string }) => {
+      if (!place && !note.trim()) throw new Error("בחר מקום או הוסף טקסט");
+      const title = place ? `נווט אל: ${place.name}` : `נווט אל: ${note.trim().slice(0, 60)}`;
+      const { error } = await supabase.from("day_entries").insert({
+        day_id: dayId,
+        entry_type: "transport",
+        icon_emoji: "🧭",
+        title,
+        description: note.trim() || null,
+        location_name: place?.address ?? null,
+        latitude: place?.latitude ?? null,
+        longitude: place?.longitude ?? null,
+        google_maps_url: place?.google_maps_url ?? null,
+        photo_url: place?.photo_url ?? null,
+        display_order: entries.length,
+        time_of_day: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("✅ נוספה נקודת ניווט");
+      setNavigateOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -428,6 +458,14 @@ function DayDetail() {
               <span>📝</span>
               <span>הערה מהירה</span>
             </button>
+            <button
+              onClick={() => setNavigateOpen(true)}
+              aria-label="נווט אל"
+              className="h-9 px-3 rounded-full bg-card border border-border text-foreground shadow-sm flex items-center gap-1.5 text-[12px] font-medium min-h-0 active:scale-95 transition-transform"
+            >
+              <span>🧭</span>
+              <span>נווט אל</span>
+            </button>
           </div>
 
 
@@ -515,6 +553,16 @@ function DayDetail() {
             entryType="note"
             defaultOrder={entries.length}
             onDone={() => setNoteOpen(false)}
+          />
+        )}
+      </BottomSheet>
+
+      {/* Navigate-to sheet */}
+      <BottomSheet open={navigateOpen} onOpenChange={setNavigateOpen} title="נווט אל">
+        {navigateOpen && (
+          <NavigateToForm
+            pending={addNavigate.isPending}
+            onSubmit={(place, note) => addNavigate.mutate({ place, note })}
           />
         )}
       </BottomSheet>
@@ -882,6 +930,63 @@ function EntryDetails({
           <Trash2 size={14} /> מחק
         </button>
       </div>
+    </div>
+  );
+}
+
+function NavigateToForm({
+  pending,
+  onSubmit,
+}: {
+  pending: boolean;
+  onSubmit: (place: SelectedPlace | null, note: string) => void;
+}) {
+  const [place, setPlace] = useState<SelectedPlace | null>(null);
+  const [note, setNote] = useState("");
+  const canSubmit = (!!place || note.trim().length > 0) && !pending;
+  return (
+    <div className="pt-2 pb-4 space-y-3" dir="rtl">
+      <div>
+        <label className="block text-[12px] text-muted-foreground mb-1">חיפוש כתובת / מקום בגוגל מפות</label>
+        {place ? (
+          <div className="flex items-start gap-2 p-2 rounded-lg border border-border bg-muted/40">
+            <span className="text-lg">📍</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate" dir="ltr">{place.name}</div>
+              <div className="text-[11px] text-muted-foreground truncate" dir="ltr">{place.address}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPlace(null)}
+              className="text-[11px] text-muted-foreground underline min-h-0"
+            >
+              נקה
+            </button>
+          </div>
+        ) : (
+          <PlacesSearch onSelect={(p) => setPlace(p)} placeholder="חפש כתובת או מקום..." />
+        )}
+      </div>
+
+      <div>
+        <label className="block text-[12px] text-muted-foreground mb-1">טקסט חופשי (אופציונלי)</label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          placeholder="למשל: לאסוף מזוודות בדרך"
+          className="w-full rounded-lg bg-background border border-input px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]"
+        />
+      </div>
+
+      <button
+        type="button"
+        disabled={!canSubmit}
+        onClick={() => onSubmit(place, note)}
+        className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white font-semibold text-sm disabled:opacity-50 min-h-0"
+      >
+        {pending ? "מוסיף..." : "הוסף למסלול"}
+      </button>
     </div>
   );
 }
