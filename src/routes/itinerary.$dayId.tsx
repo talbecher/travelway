@@ -232,6 +232,35 @@ function DayDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const addNavigate = useMutation({
+    mutationFn: async ({ place, note }: { place: SelectedPlace | null; note: string }) => {
+      if (!place && !note.trim()) throw new Error("בחר מקום או הוסף טקסט");
+      const title = place ? `נווט אל: ${place.name}` : `נווט אל: ${note.trim().slice(0, 60)}`;
+      const { error } = await supabase.from("day_entries").insert({
+        day_id: dayId,
+        entry_type: "transport",
+        icon_emoji: "🧭",
+        title,
+        description: note.trim() || null,
+        location_name: place?.address ?? null,
+        latitude: place?.latitude ?? null,
+        longitude: place?.longitude ?? null,
+        google_maps_url: place?.google_maps_url ?? null,
+        photo_url: place?.photo_url ?? null,
+        display_order: entries.length,
+        time_of_day: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("✅ נוספה נקודת ניווט");
+      setNavigateOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
