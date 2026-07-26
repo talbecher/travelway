@@ -130,6 +130,7 @@ function DayDetail() {
   const [editLocationEntry, setEditLocationEntry] = useState<EntryRow | null>(null);
   const [detailsFor, setDetailsFor] = useState<EntryRow | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [navigateOpen, setNavigateOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
