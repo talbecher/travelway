@@ -19,24 +19,25 @@ import { toast } from "sonner";
 
 export function GlobalFab() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const onDayDetail = pathname.startsWith("/itinerary/") && pathname !== "/itinerary";
+  const showFab = pathname === "/" || pathname === "/budget";
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const h = () => setOpen(true);
     window.addEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
     return () => window.removeEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
   }, []);
-  if (onDayDetail) return null;
   return (
     <>
-      <motion.button
-        whileTap={{ scale: 0.94 }}
-        onClick={() => setOpen(true)}
-        aria-label="הוסף הוצאה מהירה"
-        className="fixed bottom-[84px] left-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent-2)] text-white flex items-center justify-center shadow-lg"
-      >
-        <Plus size={26} strokeWidth={1.8} />
-      </motion.button>
+      {showFab && (
+        <motion.button
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setOpen(true)}
+          aria-label="הוסף הוצאה מהירה"
+          className="fixed bottom-[84px] left-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent-2)] text-white flex items-center justify-center shadow-lg"
+        >
+          <Plus size={26} strokeWidth={1.8} />
+        </motion.button>
+      )}
       <BottomSheet open={open} onOpenChange={setOpen} title="הוסף הוצאה מהירה">
         <QuickExpenseForm onDone={() => setOpen(false)} />
       </BottomSheet>
