@@ -269,3 +269,68 @@ export async function hotelHasItineraryEntries(hotelId: string): Promise<boolean
   if (error) throw error;
   return (count ?? 0) > 0;
 }
+
+/**
+ * Cascade-delete a hotel: removes its itinerary day_entries and its
+ * accommodation expenses, then the hotel row itself. Relies on
+ * `linked_hotel_id` on both tables (set by `syncHotelToItinerary`).
+ */
+export async function deleteHotelCascade(hotelId: string): Promise<void> {
+  const { error: entriesErr } = await supabase
+    .from("day_entries")
+    .delete()
+    .eq("entry_type", "hotel_checkin")
+    .eq("linked_hotel_id", hotelId);
+  if (entriesErr) throw entriesErr;
+
+  const { error: expErr } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("linked_hotel_id", hotelId);
+  if (expErr) throw expErr;
+
+  const { error: hotelErr } = await supabase
+    .from("hotels")
+    .delete()
+    .eq("id", hotelId);
+  if (hotelErr) throw hotelErr;
+}
+
+type HotelDateRange = {
+  id: string;
+  hotel_name: string;
+  checkin_date: string | null;
+  checkout_date: string | null;
+};
+
+/**
+ * Half-open range overlap: [aIn, aOut) vs [bIn, bOut).
+ * Two stays that touch on a single date (one's checkout = other's checkin)
+ * do NOT overlap — that's a normal same-day handoff.
+ */
+function rangesOverlap(
+  aIn: string,
+  aOut: string,
+  bIn: string,
+  bOut: string,
+): boolean {
+  return aIn < bOut && bIn < aOut;
+}
+
+/**
+ * Find existing hotels whose stay dates overlap the given range.
+ * `excludeId` skips the hotel being edited.
+ */
+export function findConflictingHotels<H extends HotelDateRange>(
+  checkinDate: string | null,
+  checkoutDate: string | null,
+  allHotels: H[],
+  excludeId?: string,
+): H[] {
+  if (!checkinDate || !checkoutDate) return [];
+  return allHotels.filter((h) => {
+    if (excludeId && h.id === excludeId) return false;
+    if (!h.checkin_date || !h.checkout_date) return false;
+    return rangesOverlap(checkinDate, checkoutDate, h.checkin_date, h.checkout_date);
+  });
+}
