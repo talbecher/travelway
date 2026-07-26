@@ -29,8 +29,8 @@ export function SignInScreen() {
       <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
         <TravelSvg className="w-20 h-20 text-[color:var(--accent)]" />
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">TripNote</h1>
-          <p className="text-muted-foreground text-sm">מתכנן הטיולים שלך</p>
+          <h1 className="text-4xl font-bold tracking-tight">TravelWay</h1>
+          <p className="text-muted-foreground text-sm">Plan. Experience. Remember.</p>
         </div>
         <div className="space-y-1 max-w-xs">
           <p className="text-xl font-semibold">תכנן. חווה. זכור.</p>

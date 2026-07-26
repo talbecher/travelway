@@ -1,7 +1,7 @@
 {
-  "name": "יפן 2026",
-  "short_name": "יפן",
-  "description": "מתכנן הטיול שלנו ליפן",
+  "name": "TravelWay",
+  "short_name": "TravelWay",
+  "description": "TravelWay — your all-in-one travel planner",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
