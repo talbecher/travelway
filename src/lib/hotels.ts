@@ -101,7 +101,8 @@ export async function syncHotelToItinerary(
   const titleVariants = names.flatMap((n) => [
     `לינה: ${n}`,
     `יציאה מ${n}`,
-    `בוקר ב${n}`,
+    `בוקר ב: ${n}`,
+    `בוקר ב${n}`, // legacy format (pre "בוקר ב: ")
   ]);
 
   // ── 1. Remove prior day_entries for this hotel across ALL trip days.
@@ -131,7 +132,7 @@ export async function syncHotelToItinerary(
 
   const stayTitle = `לינה: ${h.hotel_name}`;
   const leaveTitle = `יציאה מ${h.hotel_name}`;
-  const morningTitle = `בוקר ב${h.hotel_name}`;
+  const morningTitle = `בוקר ב: ${h.hotel_name}`;
 
   let addedEntries = 0;
 
