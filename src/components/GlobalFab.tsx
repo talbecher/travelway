@@ -19,14 +19,13 @@ import { toast } from "sonner";
 
 export function GlobalFab() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const onDayDetail = pathname.startsWith("/itinerary/") && pathname !== "/itinerary";
+  const showFab = pathname === "/" || pathname === "/budget";
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const h = () => setOpen(true);
     window.addEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
     return () => window.removeEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
   }, []);
-  if (onDayDetail) return null;
   return (
     <>
       <motion.button
