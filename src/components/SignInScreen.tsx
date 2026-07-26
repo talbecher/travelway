@@ -32,10 +32,6 @@ export function SignInScreen() {
           <h1 className="text-4xl font-bold tracking-tight">TravelWay</h1>
           <p className="text-muted-foreground text-sm">Plan. Experience. Remember.</p>
         </div>
-        <div className="space-y-1 max-w-xs">
-          <p className="text-xl font-semibold">תכנן. חווה. זכור.</p>
-          <p className="text-muted-foreground text-sm">הכל במקום אחד</p>
-        </div>
       </div>
 
       <div className="w-full max-w-xs space-y-3">
