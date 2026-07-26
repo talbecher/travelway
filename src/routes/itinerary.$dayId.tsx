@@ -458,6 +458,14 @@ function DayDetail() {
               <span>📝</span>
               <span>הערה מהירה</span>
             </button>
+            <button
+              onClick={() => setNavigateOpen(true)}
+              aria-label="נווט אל"
+              className="h-9 px-3 rounded-full bg-card border border-border text-foreground shadow-sm flex items-center gap-1.5 text-[12px] font-medium min-h-0 active:scale-95 transition-transform"
+            >
+              <span>🧭</span>
+              <span>נווט אל</span>
+            </button>
           </div>
 
 
