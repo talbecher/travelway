@@ -1,29 +1,23 @@
-# Rename app to "TravelWay"
+# Use uploaded TravelWay logo everywhere
 
-Style-only text replacements. No logic changes. Trip/user data untouched.
+Upload the provided logo as a Lovable asset and swap it into every place the app currently shows a logo/icon.
 
-## Files
+## Steps
 
-### 1. `public/manifest.webmanifest`
-- `name`: `"TravelWay"`
-- `short_name`: `"TravelWay"`
-- `description`: `"TravelWay — your all-in-one travel planner"`
+1. **Store the logo as a project asset**
+   - Run `lovable-assets create` on `/mnt/user-uploads/Gemini_Generated_Image_ppol67ppol67ppol.png` → `src/assets/travelway-logo.png.asset.json`.
+   - Also copy the PNG into `public/` at two sizes for PWA/favicon use: `public/favicon.png`, `public/icon-192.png`, `public/icon-512.png` (overwriting the existing icon PNGs so the manifest keeps working).
+   - Delete `public/favicon.ico` so no stale Lovable icon is served.
 
-### 2. `src/components/SignInScreen.tsx`
-- `<h1>` → `TravelWay`
-- Tagline `מתכנן הטיולים שלך` → `Plan. Experience. Remember.`
-- Keep travel SVG and Google button unchanged.
+2. **Sign-in screen** (`src/components/SignInScreen.tsx`)
+   - Replace the inline `<TravelSvg />` suitcase illustration with an `<img>` using the imported asset URL. Keep the "TravelWay" heading and tagline.
 
-### 3. `src/routes/__root.tsx`
-- `title` meta → `TravelWay`
-- `description` meta → `TravelWay — your all-in-one travel planner`
-- `og:title`, `twitter:title` → `TravelWay`
-- `apple-mobile-web-app-title` → `TravelWay` (was `יפן 2026`)
-- Keep og/twitter description consistent with new description.
+3. **Root `<head>`** (`src/routes/__root.tsx`)
+   - Update the `links` array: replace the `favicon.ico` entry with `{ rel: "icon", type: "image/png", href: "/favicon.png" }`. Keep `apple-touch-icon` → `/icon-192.png`.
 
-### 4. `src/routes/documents.tsx`
-- Route title `מסמכים · TripNote` → `מסמכים · TravelWay`
+4. **Manifest** — no code change needed; `public/icon-192.png` and `public/icon-512.png` get overwritten with the new logo.
 
 ## Not changed
-- Trip records in DB, city labels, itinerary content, user-entered text.
-- Existing "יפן 2026" strings only appear as the app name in the two spots above; no other occurrences found.
+- App header (no logo currently rendered there).
+- Trip/hero card content, destination flags, in-app illustrations unrelated to brand.
+- Text labels — "TravelWay" wording stays as-is.
