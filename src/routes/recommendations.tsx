@@ -1168,9 +1168,11 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
   }
 
   const { data: days = [] } = useDays();
+  const { data: allHotels = [] } = useHotels();
+  const [conflicts, setConflicts] = useState<Hotel[]>([]);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ replace = false }: { replace?: boolean } = {}) => {
       if (!hotel_name.trim()) throw new Error("שם המלון חסר");
       const nights = checkin_date && checkout_date ? Math.max(1, daysBetween(checkin_date, checkout_date)) : 1;
       const priceN = Number(price_per_night) || 0;
@@ -1190,8 +1192,29 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         longitude: coords?.lng ?? null,
         photo_url: photoUrl,
       };
+
+      // Check for overlapping hotels (excluding the one being edited).
+      const overlaps = findConflictingHotels(
+        payload.checkin_date,
+        payload.checkout_date,
+        allHotels as Hotel[],
+        existing?.id,
+      );
+      if (overlaps.length > 0 && !replace) {
+        return { conflicts: overlaps } as const;
+      }
+
+      // Replace approved: cascade-delete conflicting hotels before proceeding.
+      if (overlaps.length > 0 && replace) {
+        for (const c of overlaps) {
+          await deleteHotelCascade(c.id);
+        }
+      }
+
       let hotelId: string;
+      let hadEntries = false;
       if (existing) {
+        hadEntries = await hotelHasItineraryEntries(existing.id);
         const { error } = await supabase.from("hotels").update(payload).eq("id", existing.id);
         if (error) throw error;
         hotelId = existing.id;
@@ -1205,24 +1228,30 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         hotelId = data.id;
       }
 
-      // Auto-resync itinerary if this hotel already has entries in the trip.
+      // Auto-resync itinerary if this hotel already has entries, or if we
+      // just replaced other hotels (the user expects the new one to slot in).
       let resynced = false;
-      if (existing && payload.checkin_date && payload.checkout_date) {
-        const has = await hotelHasItineraryEntries(hotelId);
-        if (has) {
-          await syncHotelToItinerary({ id: hotelId, ...payload }, days, existing.hotel_name);
-          resynced = true;
-        }
+      if (payload.checkin_date && payload.checkout_date && (hadEntries || (replace && overlaps.length > 0))) {
+        await syncHotelToItinerary(
+          { id: hotelId, ...payload },
+          days,
+          existing?.hotel_name,
+        );
+        resynced = true;
       }
-      return { resynced };
+      return { resynced, replaced: replace && overlaps.length > 0 } as const;
     },
     onSuccess: (r) => {
+      if ("conflicts" in r) {
+        setConflicts(r.conflicts);
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["hotels"] });
-      if (r.resynced) {
+      if (r.resynced || r.replaced) {
         qc.invalidateQueries({ queryKey: ["day-entries"] });
         qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
         qc.invalidateQueries({ queryKey: ["expenses"] });
-        toast.success("נשמר · המסלול עודכן");
+        toast.success(r.replaced ? "הוחלף · המסלול וההוצאות עודכנו" : "נשמר · המסלול עודכן");
       } else {
         toast.success(existing ? "נשמר" : "נוסף");
       }
