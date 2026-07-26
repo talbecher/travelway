@@ -223,7 +223,7 @@ function Recs() {
         <TabBtn active={tab === "all"} onClick={() => setTab("all")}>הכל</TabBtn>
         <TabBtn active={tab === "food"} onClick={() => setTab("food")}>🍜 אוכל</TabBtn>
         <TabBtn active={tab === "attractions"} onClick={() => setTab("attractions")}>⛩ אטרקציות</TabBtn>
-        <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 לינה</TabBtn>
+        <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 מלונות</TabBtn>
       </div>
 
       <div className="relative">
