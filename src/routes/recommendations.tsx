@@ -1262,7 +1262,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); save.mutate({}); }}
       className="flex flex-col min-h-[62vh] pt-1 pb-2"
     >
       <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
