@@ -1261,6 +1261,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
   });
 
   return (
+    <>
     <form
       onSubmit={(e) => { e.preventDefault(); save.mutate({}); }}
       className="flex flex-col min-h-[62vh] pt-1 pb-2"
@@ -1321,6 +1322,49 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         </div>
       )}
     </form>
+
+    <BottomSheet
+      open={conflicts.length > 0}
+      onOpenChange={(o) => { if (!o) setConflicts([]); }}
+      title="חפיפת תאריכים"
+    >
+      <div className="space-y-3 pb-2">
+        <div className="text-sm text-muted-foreground">
+          התאריכים שבחרת חופפים למלונות קיימים:
+        </div>
+        <ul className="space-y-1.5">
+          {conflicts.map((c) => (
+            <li key={c.id} className="rounded-lg border border-border p-2 text-sm">
+              <div className="font-medium">{c.hotel_name}</div>
+              <div className="text-xs text-muted-foreground" dir="ltr">
+                {c.checkin_date && hebDate(c.checkin_date)} → {c.checkout_date && hebDate(c.checkout_date)}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="text-xs text-[color:var(--accent-2)]">
+          החלפה תמחק את המלונות הללו, את כניסות המסלול וההוצאות שלהם, ותכניס את המלון החדש במקומם.
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setConflicts([])}
+            className="flex-1 h-11 rounded-xl border border-border font-medium"
+          >
+            בטל
+          </button>
+          <button
+            type="button"
+            disabled={save.isPending}
+            onClick={() => { setConflicts([]); save.mutate({ replace: true }); }}
+            className="flex-1 h-11 rounded-xl bg-[color:var(--accent-2)] text-white font-medium disabled:opacity-50"
+          >
+            {save.isPending ? "מחליף..." : "החלף"}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+    </>
   );
 }
 
