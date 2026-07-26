@@ -393,7 +393,19 @@ function HeroCard(props: {
         </a>
       )}
 
-      <div className="absolute top-3 right-3 z-10">
+      <div className="absolute top-3 right-3 z-10 flex items-start gap-2 min-w-0 max-w-[70%]">
+        <div className="text-[26px] leading-tight shrink-0">{flag}</div>
+        <div className="text-[24px] font-bold leading-tight truncate">{title}</div>
+      </div>
+
+      <div className="absolute bottom-3 left-3 flex items-end gap-3">
+        <ProgressRing pct={tripProgressPct} size={56} label={`${daysPassed}/${daysTotal}`} stroke="rgba(255,255,255,0.85)" track="rgba(255,255,255,0.18)" textColor="#fff" fontSize={11} />
+        <div className="text-xs text-white/75 pb-1" dir="ltr">
+          {hebDate(startDate)} → {hebDate(endDate)}
+        </div>
+      </div>
+
+      <div className="absolute bottom-3 right-3 z-10">
         <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${pill.cls}`}>
           {pill.dot && <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -402,23 +414,10 @@ function HeroCard(props: {
           {pill.text}
         </span>
       </div>
-
-      <div className="flex flex-col justify-between h-full">
-        <div className="flex items-start gap-2 min-w-0 pr-[76px] pl-[52px]">
-          <div className="text-[28px] font-bold leading-tight truncate">{title}</div>
-          <div className="text-[26px] leading-tight shrink-0">{flag}</div>
-        </div>
-
-        <div className="text-sm text-white/70" dir="ltr">
-          {hebDate(startDate)} → {hebDate(endDate)}
-        </div>
-      </div>
-      <div className="absolute bottom-3 left-3">
-        <ProgressRing pct={tripProgressPct} size={56} label={`${daysPassed}/${daysTotal}`} stroke="rgba(255,255,255,0.85)" track="rgba(255,255,255,0.18)" textColor="#fff" fontSize={11} />
-      </div>
     </section>
   );
 }
+
 
 
 function DayPreviewCard(props: {
