@@ -557,6 +557,16 @@ function DayDetail() {
         )}
       </BottomSheet>
 
+      {/* Navigate-to sheet */}
+      <BottomSheet open={navigateOpen} onOpenChange={setNavigateOpen} title="נווט אל">
+        {navigateOpen && (
+          <NavigateToForm
+            pending={addNavigate.isPending}
+            onSubmit={(place, note) => addNavigate.mutate({ place, note })}
+          />
+        )}
+      </BottomSheet>
+
       {/* Entry details sheet */}
       <BottomSheet
         open={!!detailsFor}
