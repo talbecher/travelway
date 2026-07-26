@@ -1,44 +1,29 @@
-## מטרה
-לחזק את ניהול המלונות: מחיקת מלון תגרור מחיקה מלאה של ההוצאות והכניסות במסלול, ותימנע הוספת מלון על תאריכים שכבר תפוסים ע"י מלון אחר — עם דיאלוג "להחליף?" שמחליף אוטומטית גם במסלול וגם בהוצאות.
+# Rename app to "TravelWay"
 
-## שינויים
+Style-only text replacements. No logic changes. Trip/user data untouched.
 
-### 1. מחיקת מלון — מחיקה מדורגת (`src/routes/recommendations.tsx`, mutation `del`)
-כיום המחיקה מוחקת רק מטבלת `hotels`. נעדכן לרצף:
-1. `DELETE FROM day_entries WHERE linked_hotel_id = h.id` — כל כניסות המסלול של המלון.
-2. `DELETE FROM expenses WHERE linked_hotel_id = h.id` — כל הוצאות הלינה שנוצרו מהמלון.
-3. `DELETE FROM hotels WHERE id = h.id`.
-4. אינוולידציה של `hotels`, `day-entries`, `day-entries-summary`, `expenses`.
-5. הודעת confirm תדגיש: "המלון, כניסות המסלול שלו וכל הוצאות הלינה שלו יימחקו."
+## Files
 
-### 2. חסימת חפיפת תאריכים + דיאלוג החלפה
-במקום היום ניתן לשמור/להוסיף מלון חדש בלי בדיקה — נזהה חפיפה עם מלונות קיימים (טווח `[checkin, checkout)` חופף לטווח של מלון אחר באותו trip).
+### 1. `public/manifest.webmanifest`
+- `name`: `"TravelWay"`
+- `short_name`: `"TravelWay"`
+- `description`: `"TravelWay — your all-in-one travel planner"`
 
-**נוסיף עזר** ב-`src/lib/hotels.ts`:
-```ts
-findConflictingHotels(newHotel, allHotels): Hotel[]
-```
-מחזיר מלונות שהטווח שלהם חופף (למעט המלון עצמו במקרה עריכה).
+### 2. `src/components/SignInScreen.tsx`
+- `<h1>` → `TravelWay`
+- Tagline `מתכנן הטיולים שלך` → `Plan. Experience. Remember.`
+- Keep travel SVG and Google button unchanged.
 
-**HotelForm — mutation `save`**:
-- לפני שמירה, אם יש חפיפה, לזרוק אובייקט `ConflictError` עם רשימת המלונות המתנגשים במקום `throw` רגיל.
-- ב-`onError` (או state נפרד) נציג `BottomSheet`/מודאל אישור: "התאריכים חופפים עם: {שמות}. להחליף אותם?"
-  - **כן** → נקרא ל-`save.mutate({ replace: true })`; ה-mutation יריץ את מחיקת המלונות המתנגשים (כולל ה-day_entries וההוצאות שלהם — אותו רצף מסעיף 1) לפני יצירת/עדכון המלון הנוכחי, ואז יריץ `syncHotelToItinerary` על המלון החדש כך שהמסלול וההוצאות יוחלפו במלון החדש.
-  - **לא** → סוגר את הדיאלוג, המלון לא נשמר.
+### 3. `src/routes/__root.tsx`
+- `title` meta → `TravelWay`
+- `description` meta → `TravelWay — your all-in-one travel planner`
+- `og:title`, `twitter:title` → `TravelWay`
+- `apple-mobile-web-app-title` → `TravelWay` (was `יפן 2026`)
+- Keep og/twitter description consistent with new description.
 
-**כפתור "הוסף למסלול" בכרטיס** (`addToItinerary` mutation):
-- כיום קורא רק ל-`syncHotelToItinerary` על המלון עצמו. `syncHotelToItinerary` כבר מוחק כניסות/הוצאות של אותו מלון, אבל **לא** של מלון אחר על אותם ימים.
-- נוסיף בדיקה: אם יש `day_entries` מסוג `hotel_checkin` עם `linked_hotel_id` שונה על הימים שבטווח → confirm "הימים האלה כבר משויכים ל-{שם המלון האחר}. להחליף?" ואם כן — נמחק את הכניסות של המלון המתנגש בטווח הימים + את ההוצאות שלו על אותם ימים, ואז נריץ sync רגיל.
+### 4. `src/routes/documents.tsx`
+- Route title `מסמכים · TripNote` → `מסמכים · TravelWay`
 
-### 3. מיסגור "לינה" כטאב קבוע (לא "המלצה")
-טאב הלינה כבר קיים כטאב נפרד ב-`recommendations.tsx`. שיפורי מיסגור קלים:
-- הטקסט הריק/הצ׳יפים ישתמשו במונח "מלונות" בלבד (לא "המלצות").
-- להוריד את כפתור "בחר" (selection mode) בטאב לינה (כבר קורה: `selectableInList = tab !== "hotels"`).
-- ללא שינוי מבנה קבצים או ניתוב.
-
-## פרטים טכניים
-
-- אין שינויי סכימה — `linked_hotel_id` כבר קיים ב-`day_entries` ו-`expenses` והמדיניות של RLS (`can_access_trip`) מכסה את המחיקות המדורגות.
-- כל המחיקות מתבצעות מהלקוח דרך `supabase-js` עם RLS פעיל; אין צורך ב-server function.
-- הדיאלוג של החלפה יהיה `BottomSheet` פשוט עם שתי כפתורים (החלף / בטל) — עקבי לשאר האפליקציה; לא `window.confirm`.
-- שגיאה במחיקה מדורגת → toast עם ההודעה; המחיקה לא תמשיך לשלב הבא אם קודמו נכשל.
+## Not changed
+- Trip records in DB, city labels, itinerary content, user-entered text.
+- Existing "יפן 2026" strings only appear as the app name in the two spots above; no other occurrences found.

@@ -24,7 +24,7 @@ import { hebDate, ils } from "@/lib/format";
 export const Route = createFileRoute("/documents")({
   head: () => ({
     meta: [
-      { title: "מסמכים · TripNote" },
+      { title: "מסמכים · TravelWay" },
       { name: "description", content: "כרטיסים, אישורי הזמנה, ברקודים ומסמכי טיסה במקום אחד" },
     ],
   }),
