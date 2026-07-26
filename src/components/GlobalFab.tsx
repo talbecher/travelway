@@ -28,14 +28,16 @@ export function GlobalFab() {
   }, []);
   return (
     <>
-      <motion.button
-        whileTap={{ scale: 0.94 }}
-        onClick={() => setOpen(true)}
-        aria-label="הוסף הוצאה מהירה"
-        className="fixed bottom-[84px] left-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent-2)] text-white flex items-center justify-center shadow-lg"
-      >
-        <Plus size={26} strokeWidth={1.8} />
-      </motion.button>
+      {showFab && (
+        <motion.button
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setOpen(true)}
+          aria-label="הוסף הוצאה מהירה"
+          className="fixed bottom-[84px] left-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent-2)] text-white flex items-center justify-center shadow-lg"
+        >
+          <Plus size={26} strokeWidth={1.8} />
+        </motion.button>
+      )}
       <BottomSheet open={open} onOpenChange={setOpen} title="הוסף הוצאה מהירה">
         <QuickExpenseForm onDone={() => setOpen(false)} />
       </BottomSheet>
