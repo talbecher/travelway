@@ -69,7 +69,7 @@ function sameAmount(a: number | string | null | undefined, b: number): boolean {
 /**
  * Sync a hotel's stay into the itinerary + expenses.
  * - Check-in day: "לינה: {name}" @ 20:00.
- * - Middle nights: "בוקר ב{name}" @ 09:00 + "לינה: {name}" @ 20:00.
+ * - Middle nights: "בוקר ב: {name}" @ 09:00 + "לינה: {name}" @ 20:00.
  * - Check-out day: "יציאה מ{name}" @ 09:00.
  * - Deletes prior entries for this hotel (by linked_hotel_id, plus title
  *   fallback covering the previous name when renamed / legacy rows).
