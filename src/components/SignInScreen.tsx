@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
+import logoAsset from "@/assets/travelway-logo.png.asset.json";
+
 
 export function SignInScreen() {
   const [loading, setLoading] = useState(false);
@@ -26,13 +28,11 @@ export function SignInScreen() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-between px-6 py-12">
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
-        <TravelSvg className="w-20 h-20 text-[color:var(--accent)]" />
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">TravelWay</h1>
-          <p className="text-muted-foreground text-sm">Plan. Experience. Remember.</p>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+        <img src={logoAsset.url} alt="TravelWay" className="w-40 h-40 object-contain" />
+        <p className="text-muted-foreground text-sm">Plan. Experience. Remember.</p>
       </div>
+
 
       <div className="w-full max-w-xs space-y-3">
         <button
