@@ -1201,7 +1201,7 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         existing?.id,
       );
       if (overlaps.length > 0 && !replace) {
-        return { conflicts: [...overlaps] };
+        return { kind: "conflict" as const, conflicts: [...overlaps] };
       }
 
       // Replace approved: cascade-delete conflicting hotels before proceeding.
@@ -1239,10 +1239,10 @@ function HotelForm({ existing, onDone }: { existing?: Hotel; onDone: () => void 
         );
         resynced = true;
       }
-      return { resynced, replaced: replace && overlaps.length > 0 } as const;
+      return { kind: "saved" as const, resynced, replaced: replace && overlaps.length > 0 };
     },
     onSuccess: (r) => {
-      if ("conflicts" in r) {
+      if (r.kind === "conflict") {
         setConflicts(r.conflicts);
         return;
       }
