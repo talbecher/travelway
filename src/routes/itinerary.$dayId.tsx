@@ -1259,22 +1259,69 @@ function HotelEntrySection(props: {
   const qc = useQueryClient();
   const { data: hotels = [] } = useHotels();
   const { data: days = [] } = useDays();
+  const currentDay = days.find((d) => d.id === props.dayId);
+  const currentDate = currentDay?.date ?? null;
   const [mode, setMode] = useState<"pick" | "new" | "editHotel" | "legacy">(() => {
     if (!existing) return "pick";
     if (existing.linked_hotel_id) return "editHotel";
     return "legacy";
   });
+  const [pending, setPending] = useState<Hotel | null>(null);
+  const [editOverride, setEditOverride] = useState<Hotel | null>(null);
   const linkedHotel = existing?.linked_hotel_id
     ? (hotels.find((h) => h.id === existing.linked_hotel_id) as Hotel | undefined)
     : undefined;
+  const hotelToEdit = editOverride ?? linkedHotel;
 
   async function chooseHotel(h: Hotel) {
+    const isWithinRange = !!(
+      currentDate &&
+      h.checkin_date &&
+      h.checkout_date &&
+      currentDate >= h.checkin_date &&
+      currentDate < h.checkout_date
+    );
+    if (!isWithinRange) {
+      setPending(h);
+      return;
+    }
     try {
       await syncHotelToItinerary(h, days as any);
       qc.invalidateQueries({ queryKey: ["day-entries"] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       qc.invalidateQueries({ queryKey: ["expenses"] });
       toast.success("המלון סונכרן למסלול");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "שגיאה");
+    }
+  }
+
+  async function addSingleNight(h: Hotel) {
+    try {
+      const { count } = await supabase
+        .from("day_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("day_id", props.dayId);
+      const { error } = await supabase.from("day_entries").insert({
+        day_id: props.dayId,
+        entry_type: "hotel_checkin",
+        title: `לינה: ${h.hotel_name}`,
+        time_of_day: "20:00",
+        location_name: h.city ?? null,
+        latitude: h.latitude != null ? Number(h.latitude) : null,
+        longitude: h.longitude != null ? Number(h.longitude) : null,
+        google_maps_url: h.google_maps_url ?? null,
+        photo_url: h.photo_url ?? null,
+        linked_hotel_id: h.id,
+        icon_emoji: "🏨",
+        display_order: count ?? 0,
+      });
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["day-entries", props.dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("✅ לינה נוספה ליום");
+      setPending(null);
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "שגיאה");
@@ -1295,11 +1342,11 @@ function HotelEntrySection(props: {
     onDone();
   }
 
-  if (mode === "editHotel" && linkedHotel) {
+  if (mode === "editHotel" && hotelToEdit) {
     return (
       <div>
         <div className="text-xs text-muted-foreground mb-2">עריכה תעדכן גם את המסלול וההוצאות</div>
-        <HotelForm existing={linkedHotel} onDone={onDone} onSaved={onHotelSaved} />
+        <HotelForm existing={hotelToEdit} onDone={onDone} onSaved={onHotelSaved} />
       </div>
     );
   }
@@ -1322,47 +1369,97 @@ function HotelEntrySection(props: {
 
   // pick mode
   return (
-    <div className="space-y-3">
-      <button
-        type="button"
-        onClick={() => setMode("new")}
-        className="w-full h-12 rounded-xl border-2 border-dashed border-[color:var(--accent)] text-[color:var(--accent)] font-medium"
-      >
-        ➕ הוסף מלון חדש
-      </button>
-      {hotels.length > 0 && (
-        <div>
-          <div className="text-xs text-muted-foreground mb-2">או בחר מלון שמור</div>
-          <div className="space-y-2">
-            {hotels.map((h: any) => (
-              <button
-                key={h.id}
-                type="button"
-                onClick={() => chooseHotel(h as Hotel)}
-                className="w-full text-right rounded-xl border border-border bg-card p-3 hover:bg-muted/40 transition-colors flex items-center gap-3"
-              >
-                {h.photo_url ? (
-                  <img src={h.photo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">🏨</div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{h.hotel_name}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {[h.city, h.checkin_date && h.checkout_date ? `${hebDate(h.checkin_date)} – ${hebDate(h.checkout_date)}` : null].filter(Boolean).join(" · ")}
+    <>
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setMode("new")}
+          className="w-full h-12 rounded-xl border-2 border-dashed border-[color:var(--accent)] text-[color:var(--accent)] font-medium"
+        >
+          ➕ הוסף מלון חדש
+        </button>
+        {hotels.length > 0 && (
+          <div>
+            <div className="text-xs text-muted-foreground mb-2">או בחר מלון שמור</div>
+            <div className="space-y-2">
+              {hotels.map((h: any) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => chooseHotel(h as Hotel)}
+                  className="w-full text-right rounded-xl border border-border bg-card p-3 hover:bg-muted/40 transition-colors flex items-center gap-3"
+                >
+                  {h.photo_url ? (
+                    <img src={h.photo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">🏨</div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{h.hotel_name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {[h.city, h.checkin_date && h.checkout_date ? `${hebDate(h.checkin_date)} – ${hebDate(h.checkout_date)}` : null].filter(Boolean).join(" · ")}
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-      {hotels.length === 0 && (
-        <div className="text-xs text-muted-foreground text-center py-2">
-          אין מלונות שמורים. הוסף חדש למעלה או שמור מלון בעמוד ההמלצות.
-        </div>
-      )}
-    </div>
+        )}
+        {hotels.length === 0 && (
+          <div className="text-xs text-muted-foreground text-center py-2">
+            אין מלונות שמורים. הוסף חדש למעלה או שמור מלון בעמוד ההמלצות.
+          </div>
+        )}
+      </div>
+
+      <BottomSheet
+        open={!!pending}
+        onOpenChange={(o) => !o && setPending(null)}
+        title={pending ? `🏨 ${pending.hotel_name}` : ""}
+      >
+        {pending && (
+          <div>
+            <div className="rounded-xl bg-muted/60 p-3 mb-4 text-sm text-muted-foreground space-y-1">
+              <div>
+                📅 שמור לתאריכים:{" "}
+                {pending.checkin_date && pending.checkout_date
+                  ? `${hebDate(pending.checkin_date)} – ${hebDate(pending.checkout_date)}`
+                  : "לא הוגדרו תאריכים"}
+              </div>
+              <div>📅 היום במסלול: {currentDate ? hebDate(currentDate) : "—"}</div>
+            </div>
+            <div className="text-sm mb-3">מה תרצה לעשות?</div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => addSingleNight(pending)}
+                className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium"
+              >
+                📌 רשום לינה ביום זה בלבד
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditOverride(pending);
+                  setMode("editHotel");
+                  setPending(null);
+                }}
+                className="h-11 rounded-xl bg-card border border-border"
+              >
+                ✏️ עדכן את תאריכי המלון
+              </button>
+              <button
+                type="button"
+                onClick={() => setPending(null)}
+                className="h-10 text-muted-foreground"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
+    </>
   );
 }
 
