@@ -1038,7 +1038,7 @@ function EntryForm(props: {
         <div className="text-lg font-medium flex items-center gap-2"><span>{meta.icon}</span>{meta.label}</div>
       </div>
       {entryType === "flight" && <FlightForm {...props} />}
-      {entryType === "hotel_checkin" && <LodgingForm {...props} />}
+      {entryType === "hotel_checkin" && <HotelEntrySection {...props} />}
       {entryType === "attraction" && <PlaceForm {...props} recType="attraction" />}
       {entryType === "food" && <PlaceForm {...props} recType="food" />}
       {entryType === "transport" && <TransportForm {...props} />}
