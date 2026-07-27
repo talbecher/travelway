@@ -270,6 +270,16 @@ export async function hotelHasItineraryEntries(hotelId: string): Promise<boolean
   return (count ?? 0) > 0;
 }
 
+/** True if this hotel already has any linked accommodation expenses. */
+export async function hotelHasExpenses(hotelId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("expenses")
+    .select("id", { count: "exact", head: true })
+    .eq("linked_hotel_id", hotelId);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 /**
  * Cascade-delete a hotel: removes its itinerary day_entries and its
  * accommodation expenses, then the hotel row itself. Relies on
