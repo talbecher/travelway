@@ -146,7 +146,7 @@ function AppShell() {
           </div>
         </div>
       </header>
-      <main className="max-w-md mx-auto px-4 pb-32">
+      <main className="max-w-md mx-auto px-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
       {!isOnboarding && <GlobalFab />}
