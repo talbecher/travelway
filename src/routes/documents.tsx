@@ -497,12 +497,7 @@ function DocumentFormSheet({
 
 
         <Field label="תאריך (אופציונלי)">
-          <input
-            type="date"
-            value={validDate}
-            onChange={(e) => setValidDate(e.target.value)}
-            className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm"
-          />
+          <DateField value={validDate} onChange={setValidDate} />
         </Field>
 
         <Field label="הערות (מספר טיסה, קוד אישור...)">
