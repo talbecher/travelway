@@ -12,6 +12,7 @@ import { DateField } from "@/components/DateField";
 import {
   syncHotelToItinerary,
   hotelHasItineraryEntries,
+  hotelHasExpenses,
   findConflictingHotels,
   deleteHotelCascade,
 } from "@/lib/hotels";
