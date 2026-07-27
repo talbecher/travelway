@@ -82,6 +82,7 @@ type EntryRow = {
   latitude: number | string | null;
   longitude: number | string | null;
   photo_url?: string | null;
+  linked_hotel_id?: string | null;
 };
 
 const TYPE_COLOR: Record<string, string> = {
