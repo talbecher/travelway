@@ -10,6 +10,7 @@ import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
 import { useSettings } from "@/hooks/use-trip";
 import { BottomSheet } from "./BottomSheet";
+import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
@@ -142,8 +143,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
       )}
       <div>
         <label className="text-sm text-muted-foreground">תאריך</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+        <div className="mt-1"><DateField value={date} onChange={setDate} /></div>
       </div>
       <button type="submit" disabled={mut.isPending}
         className="w-full h-12 rounded-xl bg-[color:var(--accent-2)] text-white font-medium disabled:opacity-50">

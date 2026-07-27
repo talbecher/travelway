@@ -18,6 +18,7 @@ import {
   type DocumentInput,
 } from "@/hooks/use-documents";
 import { BottomSheet } from "@/components/BottomSheet";
+import { DateField } from "@/components/DateField";
 import { supabase } from "@/integrations/supabase/client";
 import { hebDate, ils } from "@/lib/format";
 
@@ -497,12 +498,7 @@ function DocumentFormSheet({
 
 
         <Field label="תאריך (אופציונלי)">
-          <input
-            type="date"
-            value={validDate}
-            onChange={(e) => setValidDate(e.target.value)}
-            className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm"
-          />
+          <DateField value={validDate} onChange={setValidDate} />
         </Field>
 
         <Field label="הערות (מספר טיסה, קוד אישור...)">

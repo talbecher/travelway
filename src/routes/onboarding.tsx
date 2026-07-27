@@ -10,6 +10,7 @@ import { setActiveTripId, clearActiveTripId, getActiveTripId } from "@/lib/const
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DateField } from "@/components/DateField";
 import { Share2, Trash2 } from "lucide-react";
 
 const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
@@ -275,12 +276,10 @@ function Onboarding() {
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="מתאריך">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required
-              className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+            <DateField value={startDate} onChange={setStartDate} placeholder="בחר תאריך" />
           </Field>
           <Field label="עד תאריך">
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required
-              className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+            <DateField value={endDate} onChange={setEndDate} placeholder="בחר תאריך" min={startDate || undefined} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

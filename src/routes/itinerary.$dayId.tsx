@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useDays, useRecs, useTrip, dayEntriesQuery } from "@/hooks/use-trip";
+import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
-import { hebDateLong } from "@/lib/format";
+import { hebDateLong, hebDate, daysBetween } from "@/lib/format";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE } from "@/lib/weather";
+import { DateField } from "@/components/DateField";
+import { HotelForm, type Hotel } from "@/components/HotelForm";
+import { syncHotelToItinerary } from "@/lib/hotels";
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
@@ -79,6 +82,7 @@ type EntryRow = {
   latitude: number | string | null;
   longitude: number | string | null;
   photo_url?: string | null;
+  linked_hotel_id?: string | null;
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -1034,7 +1038,7 @@ function EntryForm(props: {
         <div className="text-lg font-medium flex items-center gap-2"><span>{meta.icon}</span>{meta.label}</div>
       </div>
       {entryType === "flight" && <FlightForm {...props} />}
-      {entryType === "hotel_checkin" && <LodgingForm {...props} />}
+      {entryType === "hotel_checkin" && <HotelEntrySection {...props} />}
       {entryType === "attraction" && <PlaceForm {...props} recType="attraction" />}
       {entryType === "food" && <PlaceForm {...props} recType="food" />}
       {entryType === "transport" && <TransportForm {...props} />}
@@ -1243,6 +1247,125 @@ function FlightForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   );
 }
 
+
+function HotelEntrySection(props: {
+  dayId: string;
+  entryType: EntryType;
+  defaultOrder: number;
+  existing?: EntryRow;
+  onDone: () => void;
+}) {
+  const { existing, onDone } = props;
+  const qc = useQueryClient();
+  const { data: hotels = [] } = useHotels();
+  const { data: days = [] } = useDays();
+  const [mode, setMode] = useState<"pick" | "new" | "editHotel" | "legacy">(() => {
+    if (!existing) return "pick";
+    if (existing.linked_hotel_id) return "editHotel";
+    return "legacy";
+  });
+  const linkedHotel = existing?.linked_hotel_id
+    ? (hotels.find((h) => h.id === existing.linked_hotel_id) as Hotel | undefined)
+    : undefined;
+
+  async function chooseHotel(h: Hotel) {
+    try {
+      await syncHotelToItinerary(h, days as any);
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success("המלון סונכרן למסלול");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "שגיאה");
+    }
+  }
+
+  async function onHotelSaved(hotelId: string) {
+    // Re-fetch and sync into itinerary
+    const { data } = await supabase.from("hotels").select("*").eq("id", hotelId).maybeSingle();
+    if (data) {
+      try {
+        await syncHotelToItinerary(data as any, days as any);
+        qc.invalidateQueries({ queryKey: ["day-entries"] });
+        qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+        qc.invalidateQueries({ queryKey: ["expenses"] });
+      } catch {}
+    }
+    onDone();
+  }
+
+  if (mode === "editHotel" && linkedHotel) {
+    return (
+      <div>
+        <div className="text-xs text-muted-foreground mb-2">עריכה תעדכן גם את המסלול וההוצאות</div>
+        <HotelForm existing={linkedHotel} onDone={onDone} onSaved={onHotelSaved} />
+      </div>
+    );
+  }
+
+  if (mode === "new") {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <button type="button" onClick={() => setMode("pick")} className="text-xs text-muted-foreground">← חזור</button>
+          <div className="text-sm font-medium">מלון חדש</div>
+        </div>
+        <HotelForm onDone={onDone} onSaved={onHotelSaved} />
+      </div>
+    );
+  }
+
+  if (mode === "legacy") {
+    return <LodgingForm {...props} />;
+  }
+
+  // pick mode
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setMode("new")}
+        className="w-full h-12 rounded-xl border-2 border-dashed border-[color:var(--accent)] text-[color:var(--accent)] font-medium"
+      >
+        ➕ הוסף מלון חדש
+      </button>
+      {hotels.length > 0 && (
+        <div>
+          <div className="text-xs text-muted-foreground mb-2">או בחר מלון שמור</div>
+          <div className="space-y-2">
+            {hotels.map((h: any) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => chooseHotel(h as Hotel)}
+                className="w-full text-right rounded-xl border border-border bg-card p-3 hover:bg-muted/40 transition-colors flex items-center gap-3"
+              >
+                {h.photo_url ? (
+                  <img src={h.photo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">🏨</div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{h.hotel_name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {[h.city, h.checkin_date && h.checkout_date ? `${hebDate(h.checkin_date)} – ${hebDate(h.checkout_date)}` : null].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {hotels.length === 0 && (
+        <div className="text-xs text-muted-foreground text-center py-2">
+          אין מלונות שמורים. הוסף חדש למעלה או שמור מלון בעמוד ההמלצות.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   const [name, setName] = useState(existing?.title ?? "");
   const [time, setTime] = useState(existing?.time_of_day ?? "");
@@ -1295,7 +1418,7 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         />
         <CoordStatus status={resolver.status} />
       </div>
-      <div><L>תאריך ביטול חינם</L><input type="date" value={cancel} onChange={(e) => setCancel(e.target.value)} className={inputCls} /></div>
+      <div><L>תאריך ביטול חינם</L><DateField value={cancel} onChange={setCancel} /></div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
       <button type="submit" disabled={mut.isPending} className={btnCls}>{mut.isPending ? "שומר..." : "שמור"}</button>
     </form>

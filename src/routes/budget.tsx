@@ -9,6 +9,7 @@ import { useTrip, useExpenses, useSettings } from "@/hooks/use-trip";
 import { ils, hebDate } from "@/lib/format";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
+import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 
@@ -253,8 +254,7 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
       </div>
       <div>
         <label className="text-xs text-muted-foreground">תאריך</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+        <div className="mt-1"><DateField value={date} onChange={setDate} /></div>
       </div>
       <button type="submit" disabled={save.isPending}
         className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
