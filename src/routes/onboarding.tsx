@@ -10,6 +10,7 @@ import { setActiveTripId, clearActiveTripId, getActiveTripId } from "@/lib/const
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DateField } from "@/components/DateField";
 import { Share2, Trash2 } from "lucide-react";
 
 const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
