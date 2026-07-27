@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useDays, useRecs, useTrip, dayEntriesQuery } from "@/hooks/use-trip";
+import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
-import { hebDateLong } from "@/lib/format";
+import { hebDateLong, hebDate, daysBetween } from "@/lib/format";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE } from "@/lib/weather";
+import { DateField } from "@/components/DateField";
+import { HotelForm, type Hotel } from "@/components/HotelForm";
+import { syncHotelToItinerary } from "@/lib/hotels";
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
