@@ -1458,10 +1458,21 @@ function HotelEntrySection(props: {
 
       <BottomSheet
         open={!!pending}
-        onOpenChange={(o) => !o && setPending(null)}
-        title={pending ? `🏨 ${pending.hotel_name}` : ""}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPending(null);
+            setSingleForm(null);
+          }
+        }}
+        title={
+          pending
+            ? singleForm
+              ? `הוסף ${pending.hotel_name} ליום`
+              : `🏨 ${pending.hotel_name}`
+            : ""
+        }
       >
-        {pending && (
+        {pending && !singleForm && (
           <div>
             <div className="rounded-xl bg-muted/60 p-3 mb-4 text-sm text-muted-foreground space-y-1">
               <div>
@@ -1476,7 +1487,7 @@ function HotelEntrySection(props: {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => addSingleNight(pending)}
+                onClick={() => openSingleForm(pending)}
                 className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium"
               >
                 📌 רשום לינה ביום זה בלבד
@@ -1487,6 +1498,7 @@ function HotelEntrySection(props: {
                   setEditOverride(pending);
                   setMode("editHotel");
                   setPending(null);
+                  setSingleForm(null);
                 }}
                 className="h-11 rounded-xl bg-card border border-border"
               >
@@ -1501,6 +1513,91 @@ function HotelEntrySection(props: {
               </button>
             </div>
           </div>
+        )}
+        {pending && singleForm && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitSingle();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">סוג פעילות</div>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => switchSingleType("hotel_checkin")}
+                  className={`h-10 rounded-lg text-sm font-medium transition-colors ${
+                    singleForm.type === "hotel_checkin"
+                      ? "bg-[color:var(--accent)] text-white"
+                      : "text-foreground"
+                  }`}
+                >
+                  🏨 לינה
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchSingleType("attraction")}
+                  className={`h-10 rounded-lg text-sm font-medium transition-colors ${
+                    singleForm.type === "attraction"
+                      ? "bg-[color:var(--accent)] text-white"
+                      : "text-foreground"
+                  }`}
+                >
+                  📍 ניווט למלון
+                </button>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">כותרת</div>
+              <input
+                value={singleForm.title}
+                onChange={(e) =>
+                  setSingleForm((p) => (p ? { ...p, title: e.target.value } : p))
+                }
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">שעה (אופציונלי)</div>
+              <input
+                type="time"
+                value={singleForm.time}
+                onChange={(e) =>
+                  setSingleForm((p) => (p ? { ...p, time: e.target.value } : p))
+                }
+                dir="ltr"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">הערות (אופציונלי)</div>
+              <input
+                value={singleForm.notes}
+                onChange={(e) =>
+                  setSingleForm((p) => (p ? { ...p, notes: e.target.value } : p))
+                }
+                className={inputCls}
+              />
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="submit"
+                disabled={savingSingle}
+                className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-60"
+              >
+                {savingSingle ? "שומר..." : "שמור"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSingleForm(null)}
+                className="h-10 text-muted-foreground"
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
         )}
       </BottomSheet>
     </>
