@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
-import { syncHotelToItinerary, hotelHasItineraryEntries, findConflictingHotels, deleteHotelCascade } from "@/lib/hotels";
+import { syncHotelToItinerary } from "@/lib/hotels";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -22,6 +22,7 @@ import { PhotoUploader } from "@/components/PhotoUploader";
 import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { HotelForm, type Hotel } from "@/components/HotelForm";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
