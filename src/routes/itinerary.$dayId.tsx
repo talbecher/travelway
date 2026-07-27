@@ -1418,7 +1418,7 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
         />
         <CoordStatus status={resolver.status} />
       </div>
-      <div><L>תאריך ביטול חינם</L><input type="date" value={cancel} onChange={(e) => setCancel(e.target.value)} className={inputCls} /></div>
+      <div><L>תאריך ביטול חינם</L><DateField value={cancel} onChange={setCancel} /></div>
       <div><L>הערות</L><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={textareaCls} /></div>
       <button type="submit" disabled={mut.isPending} className={btnCls}>{mut.isPending ? "שומר..." : "שמור"}</button>
     </form>
