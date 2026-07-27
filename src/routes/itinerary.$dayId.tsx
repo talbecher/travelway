@@ -782,14 +782,36 @@ function SortableEntry({
 
 
 function EntryDetails({
-  entry, onEdit, onUpdateLocation, onDelete, onClose,
+  entry, dayId, onEdit, onUpdateLocation, onDelete, onClose,
 }: {
   entry: EntryRow;
+  dayId: string;
   onEdit: () => void;
   onUpdateLocation: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const qc = useQueryClient();
+  const [editingTime, setEditingTime] = useState(false);
+  const [timeDraft, setTimeDraft] = useState(entry.time_of_day ?? "");
+  useEffect(() => { setTimeDraft(entry.time_of_day ?? ""); setEditingTime(false); }, [entry.id, entry.time_of_day]);
+  const [savingTime, setSavingTime] = useState(false);
+  async function saveTime() {
+    setSavingTime(true);
+    try {
+      const v = timeDraft.trim() || null;
+      const { error } = await supabase.from("day_entries").update({ time_of_day: v }).eq("id", entry.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("⏰ שעה עודכנה");
+      setEditingTime(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "שגיאה");
+    } finally {
+      setSavingTime(false);
+    }
+  }
   const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
