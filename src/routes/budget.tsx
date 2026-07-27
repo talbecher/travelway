@@ -9,6 +9,7 @@ import { useTrip, useExpenses, useSettings } from "@/hooks/use-trip";
 import { ils, hebDate } from "@/lib/format";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
+import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 
