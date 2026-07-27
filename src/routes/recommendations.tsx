@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
-import { syncHotelToItinerary } from "@/lib/hotels";
+import { syncHotelToItinerary, deleteHotelCascade } from "@/lib/hotels";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { z } from "zod";
