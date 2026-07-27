@@ -580,6 +580,7 @@ function DayDetail() {
         {detailsFor && (
           <EntryDetails
             entry={detailsFor}
+            dayId={dayId}
             onEdit={() => { setEditEntry(detailsFor); setDetailsFor(null); }}
             onUpdateLocation={() => { setEditLocationEntry(detailsFor); setDetailsFor(null); }}
             onDelete={() => {
@@ -781,14 +782,36 @@ function SortableEntry({
 
 
 function EntryDetails({
-  entry, onEdit, onUpdateLocation, onDelete, onClose,
+  entry, dayId, onEdit, onUpdateLocation, onDelete, onClose,
 }: {
   entry: EntryRow;
+  dayId: string;
   onEdit: () => void;
   onUpdateLocation: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const qc = useQueryClient();
+  const [editingTime, setEditingTime] = useState(false);
+  const [timeDraft, setTimeDraft] = useState(entry.time_of_day ?? "");
+  useEffect(() => { setTimeDraft(entry.time_of_day ?? ""); setEditingTime(false); }, [entry.id, entry.time_of_day]);
+  const [savingTime, setSavingTime] = useState(false);
+  async function saveTime() {
+    setSavingTime(true);
+    try {
+      const v = timeDraft.trim() || null;
+      const { error } = await supabase.from("day_entries").update({ time_of_day: v }).eq("id", entry.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("⏰ שעה עודכנה");
+      setEditingTime(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "שגיאה");
+    } finally {
+      setSavingTime(false);
+    }
+  }
   const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
@@ -839,10 +862,52 @@ function EntryDetails({
           <span>{icon}</span>
           <span>{typeLabel}</span>
         </span>
-        {entry.time_of_day && (
-          <span className="inline-flex items-center text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground" dir="ltr">
-            {entry.time_of_day}
+        {editingTime ? (
+          <span className="inline-flex items-center gap-1">
+            <input
+              type="time"
+              value={timeDraft}
+              onChange={(e) => setTimeDraft(e.target.value)}
+              dir="ltr"
+              autoFocus
+              className="text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground border border-border outline-none"
+            />
+            <button
+              type="button"
+              onClick={saveTime}
+              disabled={savingTime}
+              className="w-7 h-7 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center disabled:opacity-60"
+              aria-label="שמור שעה"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTimeDraft(entry.time_of_day ?? ""); setEditingTime(false); }}
+              className="w-7 h-7 rounded-full bg-muted text-foreground flex items-center justify-center"
+              aria-label="בטל"
+            >
+              <X size={14} />
+            </button>
           </span>
+        ) : entry.time_of_day ? (
+          <button
+            type="button"
+            onClick={() => setEditingTime(true)}
+            className="inline-flex items-center text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground hover:bg-muted/70"
+            dir="ltr"
+            aria-label="ערוך שעה"
+          >
+            {entry.time_of_day}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditingTime(true)}
+            className="inline-flex items-center text-[12px] text-[color:var(--accent)] hover:underline"
+          >
+            + הוסף שעה
+          </button>
         )}
         {entry.linked_recommendation_id && (
           <span className="inline-flex items-center gap-1 text-[11px] text-[color:var(--accent-3)]">
@@ -1268,6 +1333,13 @@ function HotelEntrySection(props: {
   });
   const [pending, setPending] = useState<Hotel | null>(null);
   const [editOverride, setEditOverride] = useState<Hotel | null>(null);
+  const [singleForm, setSingleForm] = useState<null | {
+    type: "hotel_checkin" | "attraction";
+    title: string;
+    time: string;
+    notes: string;
+  }>(null);
+  const [savingSingle, setSavingSingle] = useState(false);
   const linkedHotel = existing?.linked_hotel_id
     ? (hotels.find((h) => h.id === existing.linked_hotel_id) as Hotel | undefined)
     : undefined;
@@ -1283,6 +1355,7 @@ function HotelEntrySection(props: {
     );
     if (!isWithinRange) {
       setPending(h);
+      setSingleForm(null);
       return;
     }
     try {
@@ -1297,7 +1370,39 @@ function HotelEntrySection(props: {
     }
   }
 
-  async function addSingleNight(h: Hotel) {
+  function openSingleForm(h: Hotel) {
+    setSingleForm({
+      type: "hotel_checkin",
+      title: `לינה: ${h.hotel_name}`,
+      time: "20:00",
+      notes: "",
+    });
+  }
+
+  function switchSingleType(t: "hotel_checkin" | "attraction") {
+    setSingleForm((prev) => {
+      if (!prev || !pending) return prev;
+      const wasDefaultTitle =
+        prev.title === `לינה: ${pending.hotel_name}` || prev.title === pending.hotel_name;
+      const wasDefaultTime = prev.time === "20:00" || prev.time === "09:00";
+      return {
+        type: t,
+        title: wasDefaultTitle
+          ? t === "hotel_checkin"
+            ? `לינה: ${pending.hotel_name}`
+            : pending.hotel_name
+          : prev.title,
+        time: wasDefaultTime ? (t === "hotel_checkin" ? "20:00" : "09:00") : prev.time,
+        notes: prev.notes,
+      };
+    });
+  }
+
+  async function submitSingle() {
+    if (!pending || !singleForm) return;
+    const h = pending;
+    const f = singleForm;
+    setSavingSingle(true);
     try {
       const { count } = await supabase
         .from("day_entries")
@@ -1305,26 +1410,30 @@ function HotelEntrySection(props: {
         .eq("day_id", props.dayId);
       const { error } = await supabase.from("day_entries").insert({
         day_id: props.dayId,
-        entry_type: "hotel_checkin",
-        title: `לינה: ${h.hotel_name}`,
-        time_of_day: "20:00",
+        entry_type: f.type,
+        title: f.title.trim() || h.hotel_name,
+        time_of_day: f.time || null,
+        description: f.notes.trim() || null,
         location_name: h.city ?? null,
         latitude: h.latitude != null ? Number(h.latitude) : null,
         longitude: h.longitude != null ? Number(h.longitude) : null,
         google_maps_url: h.google_maps_url ?? null,
         photo_url: h.photo_url ?? null,
-        linked_hotel_id: h.id,
-        icon_emoji: "🏨",
+        linked_hotel_id: f.type === "hotel_checkin" ? h.id : null,
+        icon_emoji: f.type === "hotel_checkin" ? "🏨" : "📍",
         display_order: count ?? 0,
       });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["day-entries", props.dayId] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
-      toast.success("✅ לינה נוספה ליום");
+      toast.success(f.type === "hotel_checkin" ? "✅ לינה נוספה ליום" : "✅ נוסף ליום");
+      setSingleForm(null);
       setPending(null);
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "שגיאה");
+    } finally {
+      setSavingSingle(false);
     }
   }
 
@@ -1414,10 +1523,21 @@ function HotelEntrySection(props: {
 
       <BottomSheet
         open={!!pending}
-        onOpenChange={(o) => !o && setPending(null)}
-        title={pending ? `🏨 ${pending.hotel_name}` : ""}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPending(null);
+            setSingleForm(null);
+          }
+        }}
+        title={
+          pending
+            ? singleForm
+              ? `הוסף ${pending.hotel_name} ליום`
+              : `🏨 ${pending.hotel_name}`
+            : ""
+        }
       >
-        {pending && (
+        {pending && !singleForm && (
           <div>
             <div className="rounded-xl bg-muted/60 p-3 mb-4 text-sm text-muted-foreground space-y-1">
               <div>
@@ -1432,7 +1552,7 @@ function HotelEntrySection(props: {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => addSingleNight(pending)}
+                onClick={() => openSingleForm(pending)}
                 className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium"
               >
                 📌 רשום לינה ביום זה בלבד
@@ -1443,6 +1563,7 @@ function HotelEntrySection(props: {
                   setEditOverride(pending);
                   setMode("editHotel");
                   setPending(null);
+                  setSingleForm(null);
                 }}
                 className="h-11 rounded-xl bg-card border border-border"
               >
@@ -1457,6 +1578,91 @@ function HotelEntrySection(props: {
               </button>
             </div>
           </div>
+        )}
+        {pending && singleForm && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitSingle();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">סוג פעילות</div>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => switchSingleType("hotel_checkin")}
+                  className={`h-10 rounded-lg text-sm font-medium transition-colors ${
+                    singleForm.type === "hotel_checkin"
+                      ? "bg-[color:var(--accent)] text-white"
+                      : "text-foreground"
+                  }`}
+                >
+                  🏨 לינה
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchSingleType("attraction")}
+                  className={`h-10 rounded-lg text-sm font-medium transition-colors ${
+                    singleForm.type === "attraction"
+                      ? "bg-[color:var(--accent)] text-white"
+                      : "text-foreground"
+                  }`}
+                >
+                  📍 ניווט למלון
+                </button>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">כותרת</div>
+              <input
+                value={singleForm.title}
+                onChange={(e) =>
+                  setSingleForm((p) => (p ? { ...p, title: e.target.value } : p))
+                }
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">שעה (אופציונלי)</div>
+              <input
+                type="time"
+                value={singleForm.time}
+                onChange={(e) =>
+                  setSingleForm((p) => (p ? { ...p, time: e.target.value } : p))
+                }
+                dir="ltr"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1.5">הערות (אופציונלי)</div>
+              <input
+                value={singleForm.notes}
+                onChange={(e) =>
+                  setSingleForm((p) => (p ? { ...p, notes: e.target.value } : p))
+                }
+                className={inputCls}
+              />
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="submit"
+                disabled={savingSingle}
+                className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-60"
+              >
+                {savingSingle ? "שומר..." : "שמור"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSingleForm(null)}
+                className="h-10 text-muted-foreground"
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
         )}
       </BottomSheet>
     </>
