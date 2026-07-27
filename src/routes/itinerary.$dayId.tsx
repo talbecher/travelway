@@ -1268,6 +1268,13 @@ function HotelEntrySection(props: {
   });
   const [pending, setPending] = useState<Hotel | null>(null);
   const [editOverride, setEditOverride] = useState<Hotel | null>(null);
+  const [singleForm, setSingleForm] = useState<null | {
+    type: "hotel_checkin" | "attraction";
+    title: string;
+    time: string;
+    notes: string;
+  }>(null);
+  const [savingSingle, setSavingSingle] = useState(false);
   const linkedHotel = existing?.linked_hotel_id
     ? (hotels.find((h) => h.id === existing.linked_hotel_id) as Hotel | undefined)
     : undefined;
@@ -1283,6 +1290,7 @@ function HotelEntrySection(props: {
     );
     if (!isWithinRange) {
       setPending(h);
+      setSingleForm(null);
       return;
     }
     try {
@@ -1297,7 +1305,39 @@ function HotelEntrySection(props: {
     }
   }
 
-  async function addSingleNight(h: Hotel) {
+  function openSingleForm(h: Hotel) {
+    setSingleForm({
+      type: "hotel_checkin",
+      title: `לינה: ${h.hotel_name}`,
+      time: "20:00",
+      notes: "",
+    });
+  }
+
+  function switchSingleType(t: "hotel_checkin" | "attraction") {
+    setSingleForm((prev) => {
+      if (!prev || !pending) return prev;
+      const wasDefaultTitle =
+        prev.title === `לינה: ${pending.hotel_name}` || prev.title === pending.hotel_name;
+      const wasDefaultTime = prev.time === "20:00" || prev.time === "09:00";
+      return {
+        type: t,
+        title: wasDefaultTitle
+          ? t === "hotel_checkin"
+            ? `לינה: ${pending.hotel_name}`
+            : pending.hotel_name
+          : prev.title,
+        time: wasDefaultTime ? (t === "hotel_checkin" ? "20:00" : "09:00") : prev.time,
+        notes: prev.notes,
+      };
+    });
+  }
+
+  async function submitSingle() {
+    if (!pending || !singleForm) return;
+    const h = pending;
+    const f = singleForm;
+    setSavingSingle(true);
     try {
       const { count } = await supabase
         .from("day_entries")
@@ -1305,26 +1345,30 @@ function HotelEntrySection(props: {
         .eq("day_id", props.dayId);
       const { error } = await supabase.from("day_entries").insert({
         day_id: props.dayId,
-        entry_type: "hotel_checkin",
-        title: `לינה: ${h.hotel_name}`,
-        time_of_day: "20:00",
+        entry_type: f.type,
+        title: f.title.trim() || h.hotel_name,
+        time_of_day: f.time || null,
+        description: f.notes.trim() || null,
         location_name: h.city ?? null,
         latitude: h.latitude != null ? Number(h.latitude) : null,
         longitude: h.longitude != null ? Number(h.longitude) : null,
         google_maps_url: h.google_maps_url ?? null,
         photo_url: h.photo_url ?? null,
-        linked_hotel_id: h.id,
-        icon_emoji: "🏨",
+        linked_hotel_id: f.type === "hotel_checkin" ? h.id : null,
+        icon_emoji: f.type === "hotel_checkin" ? "🏨" : "📍",
         display_order: count ?? 0,
       });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["day-entries", props.dayId] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
-      toast.success("✅ לינה נוספה ליום");
+      toast.success(f.type === "hotel_checkin" ? "✅ לינה נוספה ליום" : "✅ נוסף ליום");
+      setSingleForm(null);
       setPending(null);
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "שגיאה");
+    } finally {
+      setSavingSingle(false);
     }
   }
 
