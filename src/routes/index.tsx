@@ -2,12 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, MessagesSquare, FileText, ExternalLink } from "lucide-react";
+import { Calendar, Wallet, Star, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, MessagesSquare, FileText, ExternalLink } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
 import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
-import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
@@ -293,7 +292,6 @@ function Home() {
         <ActionTile icon={Star} label="המלצות" to="/recommendations" />
         <ActionTile icon={Wallet} label="תקציב" to="/budget" />
         <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
-        <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
       </section>
     ),
