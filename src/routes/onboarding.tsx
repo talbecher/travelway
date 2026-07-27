@@ -275,12 +275,10 @@ function Onboarding() {
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="מתאריך">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required
-              className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+            <DateField value={startDate} onChange={setStartDate} placeholder="בחר תאריך" />
           </Field>
           <Field label="עד תאריך">
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required
-              className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+            <DateField value={endDate} onChange={setEndDate} placeholder="בחר תאריך" min={startDate || undefined} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
