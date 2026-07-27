@@ -143,8 +143,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
       )}
       <div>
         <label className="text-sm text-muted-foreground">תאריך</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+        <div className="mt-1"><DateField value={date} onChange={setDate} /></div>
       </div>
       <button type="submit" disabled={mut.isPending}
         className="w-full h-12 rounded-xl bg-[color:var(--accent-2)] text-white font-medium disabled:opacity-50">
