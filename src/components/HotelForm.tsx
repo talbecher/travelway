@@ -12,6 +12,7 @@ import { DateField } from "@/components/DateField";
 import {
   syncHotelToItinerary,
   hotelHasItineraryEntries,
+  hotelHasExpenses,
   findConflictingHotels,
   deleteHotelCascade,
 } from "@/lib/hotels";
@@ -154,8 +155,10 @@ export function HotelForm({
 
       let hotelId: string;
       let hadEntries = false;
+      let hadExpenses = false;
       if (existing) {
         hadEntries = await hotelHasItineraryEntries(existing.id);
+        hadExpenses = await hotelHasExpenses(existing.id);
         const { error } = await supabase.from("hotels").update(payload).eq("id", existing.id);
         if (error) throw error;
         hotelId = existing.id;
@@ -173,7 +176,7 @@ export function HotelForm({
       if (
         payload.checkin_date &&
         payload.checkout_date &&
-        (hadEntries || (replace && overlaps.length > 0))
+        (hadEntries || hadExpenses || (replace && overlaps.length > 0))
       ) {
         await syncHotelToItinerary(
           { id: hotelId, ...payload },
