@@ -862,10 +862,52 @@ function EntryDetails({
           <span>{icon}</span>
           <span>{typeLabel}</span>
         </span>
-        {entry.time_of_day && (
-          <span className="inline-flex items-center text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground" dir="ltr">
-            {entry.time_of_day}
+        {editingTime ? (
+          <span className="inline-flex items-center gap-1">
+            <input
+              type="time"
+              value={timeDraft}
+              onChange={(e) => setTimeDraft(e.target.value)}
+              dir="ltr"
+              autoFocus
+              className="text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground border border-border outline-none"
+            />
+            <button
+              type="button"
+              onClick={saveTime}
+              disabled={savingTime}
+              className="w-7 h-7 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center disabled:opacity-60"
+              aria-label="שמור שעה"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTimeDraft(entry.time_of_day ?? ""); setEditingTime(false); }}
+              className="w-7 h-7 rounded-full bg-muted text-foreground flex items-center justify-center"
+              aria-label="בטל"
+            >
+              <X size={14} />
+            </button>
           </span>
+        ) : entry.time_of_day ? (
+          <button
+            type="button"
+            onClick={() => setEditingTime(true)}
+            className="inline-flex items-center text-[12px] font-semibold tabular-nums px-2 py-1 rounded-full bg-muted text-foreground hover:bg-muted/70"
+            dir="ltr"
+            aria-label="ערוך שעה"
+          >
+            {entry.time_of_day}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditingTime(true)}
+            className="inline-flex items-center text-[12px] text-[color:var(--accent)] hover:underline"
+          >
+            + הוסף שעה
+          </button>
         )}
         {entry.linked_recommendation_id && (
           <span className="inline-flex items-center gap-1 text-[11px] text-[color:var(--accent-3)]">
