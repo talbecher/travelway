@@ -10,6 +10,7 @@ import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
 import { useSettings } from "@/hooks/use-trip";
 import { BottomSheet } from "./BottomSheet";
+import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
