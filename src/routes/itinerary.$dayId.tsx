@@ -580,6 +580,7 @@ function DayDetail() {
         {detailsFor && (
           <EntryDetails
             entry={detailsFor}
+            dayId={dayId}
             onEdit={() => { setEditEntry(detailsFor); setDetailsFor(null); }}
             onUpdateLocation={() => { setEditLocationEntry(detailsFor); setDetailsFor(null); }}
             onDelete={() => {
