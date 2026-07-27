@@ -929,19 +929,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // Hotels tab
 // ─────────────────────────────────────────────────────────────────
 
-type Hotel = {
-  id: string; hotel_name: string; type: string; city: string | null;
-  checkin_date: string | null; checkout_date: string | null;
-  total_cost_ils: number | string | null; price_per_night_ils: number | string | null;
-  booking_platform: string | null; confirmation_url: string | null;
-  cancellation_deadline: string | null; post_stay_rating: number | null; post_stay_review: string | null;
-  notes: string | null;
-  address?: string | null;
-  google_maps_url?: string | null;
-  latitude?: number | string | null;
-  longitude?: number | string | null;
-  photo_url?: string | null;
-};
 
 function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; query: string }) {
   const { data: hotels = [], isLoading } = useHotels();
