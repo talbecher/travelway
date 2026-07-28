@@ -1060,11 +1060,18 @@ function EntryDetails({
           <span />
         )}
         <button
+          onClick={onMove}
+          className="col-span-2 h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
+        >
+          📅 העבר ליום אחר
+        </button>
+        <button
           onClick={onDelete}
           className="col-span-2 h-11 rounded-lg border border-[color:var(--accent-2)]/40 text-[color:var(--accent-2)] flex items-center justify-center gap-2 text-sm min-h-0"
         >
           <Trash2 size={14} /> מחק
         </button>
+
       </div>
     </div>
   );
