@@ -1,60 +1,16 @@
+## Multi-select adding from saved recommendations
 
-## הבעיה
+Add checkbox multi-select to `SavedRecsPicker` in `src/routes/itinerary.$dayId.tsx` so the user can pick several saved places at once and add them all to the day in one action.
 
-בכרטיס של אטרקציה במסלול, כל שטח הכרטיס משמש כידית גרירה: ה־`motion.div` הראשי מקבל `{...listeners} {...attributes}` וגם `touch-none`. המשמעות בפועל:
+### Behavior
+- Each result row gets a checkbox (right side, RTL) alongside the existing row content.
+- Tapping the row or checkbox toggles selection instead of adding immediately.
+- A sticky action bar at the bottom of the picker shows: `נבחרו N` + primary button `➕ הוסף את כל הנבחרים` + secondary `נקה`.
+- The button is disabled while the list is empty.
+- On tap: iterate selected recs sequentially and call the existing `addRecommendationToDay(...)` for each (keeps `display_order` correct since it re-reads the count per insert). Show a small progress state ("מוסיף X מתוך N").
+- On completion: invalidate `["day-entries", dayId]` and `["day-entries-summary", tripId]` once, toast `✅ נוספו N פעילויות למסלול`, clear selection, and call `onAdded()`.
+- On partial failure: toast the error, keep successfully added items added, keep the failed ones still selected so the user can retry.
+- Search filter and existing empty-state stay unchanged. Selection persists across search filtering (selected items that get filtered out are still counted).
 
-- דפדפן חוסם גלילה אנכית בתוך הכרטיס (`touch-action: none`).
-- כל נגיעה על הכרטיס נתפסת על ידי dnd-kit; רק לאחר 500ms של החזקה הגרירה מופעלת, אבל עד אז לא ניתן לגלול את המסך עם האצבע כשהיא על הכרטיס.
-
-## המטרה
-
-לאפשר גלילה טבעית של המסך כשהאצבע על כרטיס אטרקציה, בלי לפגוע ב־long-press-to-drag שעובד טוב היום.
-
-## מה משתנה — `src/routes/itinerary.$dayId.tsx` בלבד
-
-### 1. ידית גרירה ייעודית במקום כל־הכרטיס
-
-בתוך `SortableEntry` (סביב שורה 730):
-
-- להסיר את `{...attributes}` `{...listeners}` ו־`touch-none` מ־`motion.div` הראשי של הכרטיס.
-- להוסיף אלמנט ידית קטן בתוך הכרטיס (בפינה השמאלית העליונה ב־RTL, כלומר `left-2 top-2`), עם:
-  - אייקון `GripVertical` מ־`lucide-react` (כבר בשימוש בפרויקט).
-  - `{...attributes} {...listeners}` רק עליו.
-  - `touch-none cursor-grab active:cursor-grabbing`.
-  - `aria-label="גרור לשינוי סדר"`, hit-area מינימלי `w-8 h-8 flex items-center justify-center`, `text-muted-foreground`.
-- להשאיר `cursor-grab` כללי? לא — הכרטיס עצמו יחזור להיות `cursor-default`, והידית תסמן את איזור הגרירה.
-- לוודא ש־`onClick` הקיים לפתיחת הפרטים ("לפרטים ›") לא נפגע — הוא כבר בכפתור נפרד, לכן אין קונפליקט.
-
-### 2. שיפור זמני חיישני dnd-kit ליד המצב החדש
-
-עכשיו כשהגרירה תופעל רק על ידית קטנה, אין יותר צורך בהשהיה ארוכה שמונעת false positives מכל שטח הכרטיס. עדיין נשמור השהיה קטנה לביטחון:
-
-```ts
-useSensor(PointerSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
-useSensor(TouchSensor,   { activationConstraint: { delay: 120, tolerance: 6 } }),
-```
-
-זה משאיר את הגרירה נעימה ומיידית מהידית, בלי להפריע לטאפים על שאר הכרטיס.
-
-### 3. שיפורי UX קטנים במסך המסלול (כולם ב־`itinerary.$dayId.tsx`, ללא שינויי DB או לוגיקה)
-
-א. **רמז ויזואלי לידית** — בפעם הראשונה שהמסך נטען עם 2+ אטרקציות, להוסיף `animate-pulse` חד־פעמי לידית של הכרטיס הראשון (state מקומי, נכבה אחרי 2 שניות). עוזר לגלות את הפיצ׳ר.
-
-ב. **overscroll-behavior** — להוסיף `overscroll-contain` לאזור הרשימה הראשי כך שגלילה בתוך הרשימה לא "בורחת" לגלילת הדף מאחור בזמן שהמפה סגורה.
-
-ג. **טאפ על הכרטיס = פתיחת פרטים** — כרגע צריך ללחוץ במפורש על "לפרטים ›". נוסיף `onClick={onOpenDetails}` על גוף הכרטיס (לא על הידית ולא על הכפתורים הקיימים בתוכו — ה־`stopPropagation` כבר עליהם). כך המשתמש מקבל אינטראקציה טבעית: טאפ קצר = פרטים, long-press על ידית = גרירה.
-
-ד. **role/aria** — להוסיף `role="button"` ו־`tabIndex={0}` על הכרטיס כדי לשמור על נגישות אחרי שהוא נהיה tappable.
-
-## מה לא משתנה
-
-- אין שינויים ב־DB, ב־mutations, ב־`useDays`/`useDayEntries`, או במפה.
-- אין שינויים בקבצים אחרים.
-- אין תלויות חדשות.
-
-## אימות ידני אחרי הבנייה
-
-1. גלילה עם האצבע על כרטיס אטרקציה במובייל — עובדת חלק.
-2. long-press על ידית ה־`GripVertical` — מפעיל גרירה תוך ~120ms.
-3. טאפ קצר על גוף הכרטיס — פותח את גליון הפרטים.
-4. כפתורים קיימים בתוך הכרטיס (ניווט, פרטים) — עדיין פועלים בלי להפעיל גרירה.
+### Files
+- `src/routes/itinerary.$dayId.tsx` — modify `SavedRecsPicker` only. No DB changes, no changes to `addRecommendationToDay`, no new dependencies.
