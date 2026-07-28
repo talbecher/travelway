@@ -297,8 +297,8 @@ function DayDetail() {
   }
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 500, tolerance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
   );
 
   const mapStops = useMemo(() => {
