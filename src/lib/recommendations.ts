@@ -80,6 +80,7 @@ export async function addRecommendationToDay(rec: {
     display_order: count ?? 0,
     latitude: coords?.lat ?? null,
     longitude: coords?.lng ?? null,
+    photo_url: rec.photo_url ?? null,
   });
   if (error) throw error;
 }
