@@ -443,7 +443,7 @@ export type Database = {
           entry_pin: string
           id: string
           num_travelers: number
-          owner_id: string | null
+          owner_id: string
           share_token: string | null
           shared_user_ids: string[]
           start_date: string
@@ -458,7 +458,7 @@ export type Database = {
           entry_pin: string
           id?: string
           num_travelers?: number
-          owner_id?: string | null
+          owner_id: string
           share_token?: string | null
           shared_user_ids?: string[]
           start_date: string
@@ -473,7 +473,7 @@ export type Database = {
           entry_pin?: string
           id?: string
           num_travelers?: number
-          owner_id?: string | null
+          owner_id?: string
           share_token?: string | null
           shared_user_ids?: string[]
           start_date?: string
