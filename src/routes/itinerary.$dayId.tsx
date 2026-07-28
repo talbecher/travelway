@@ -693,10 +693,27 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
   } as const;
   const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
   const ordered: ("walking" | "transit")[] = [suggested, alt];
+  const r2r = `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`;
+  const r2rFirst = km >= 10;
+  const compareChip = (
+    <a
+      href={r2r}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      className="min-h-[36px] min-w-[80px] px-3 rounded-full text-[13px] inline-flex items-center justify-center gap-1.5 leading-none"
+      style={{ background: "transparent", color: "var(--foreground)", border: "1px solid var(--border)" }}
+    >
+      <span>🗺</span>
+      <span>השווה דרכים</span>
+    </a>
+  );
   return (
     <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
       <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
       <div className="flex gap-2 flex-wrap">
+        {r2rFirst && compareChip}
         {ordered.map((key) => {
           const m = modeMeta[key];
           const isOn = key === suggested;
@@ -721,10 +738,12 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
             </a>
           );
         })}
+        {!r2rFirst && compareChip}
       </div>
     </div>
   );
 }
+
 
 
 
