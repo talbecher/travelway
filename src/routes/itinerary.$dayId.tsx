@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2 } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2, GripVertical } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
@@ -297,8 +297,8 @@ function DayDetail() {
   }
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 500, tolerance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
   );
 
   const mapStops = useMemo(() => {
@@ -438,7 +438,7 @@ function DayDetail() {
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 overscroll-contain">
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
@@ -452,6 +452,7 @@ function DayDetail() {
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
                           onOpenDetails={() => setDetailsFor(e)}
+                          hintHandle={idx === 0 && entries.length >= 2}
                         />
 
                       </div>
@@ -728,13 +729,14 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onOpenDetails,
+  entry, pinIndex, highlighted, setRef, onOpenDetails, hintHandle,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
   onOpenDetails: () => void;
+  hintHandle?: boolean;
 }) {
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
@@ -748,6 +750,13 @@ function SortableEntry({
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
+
+  const [pulse, setPulse] = useState(!!hintHandle);
+  useEffect(() => {
+    if (!hintHandle) return;
+    const t = setTimeout(() => setPulse(false), 2000);
+    return () => clearTimeout(t);
+  }, [hintHandle]);
 
   return (
     <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="relative flex items-stretch gap-2">
@@ -772,12 +781,29 @@ function SortableEntry({
       </div>
 
       <motion.div
-        {...attributes}
-        {...listeners}
+        role="button"
+        tabIndex={0}
+        onClick={onOpenDetails}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetails(); } }}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 min-w-0 bg-card border border-border rounded-[12px] shadow-sm p-3 touch-none cursor-grab active:cursor-grabbing"
+        className="relative flex-1 min-w-0 bg-card border border-border rounded-[12px] shadow-sm p-3 pl-9 cursor-pointer"
       >
+        {/* Drag handle — the ONLY drag surface */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="גרור לשינוי סדר"
+          className={
+            "absolute left-1 top-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground touch-none cursor-grab active:cursor-grabbing hover:bg-muted/60 " +
+            (pulse ? "animate-pulse text-[color:var(--accent)]" : "")
+          }
+        >
+          <GripVertical size={16} />
+        </button>
+
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
