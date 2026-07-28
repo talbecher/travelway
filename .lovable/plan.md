@@ -1,41 +1,60 @@
-## Fix 4 — Move entry between days
 
-**File:** `src/routes/itinerary.$dayId.tsx`
+## הבעיה
 
-- In the `EntryDetails` bottom sheet, add a new action button **"📅 העבר ליום אחר"** below the existing actions.
-- Add local state `movePickerOpen` and a `moveMutation` that runs:
-  1. `supabase.from("day_entries").update({ day_id: selectedDayId }).eq("id", entry.id)`
-  2. Invalidates `["day-entries", currentDayId]`, `["day-entries", selectedDayId]`, `["day-entries-summary"]`.
-  3. Toasts `✅ הועבר ליום {day_number}`.
-  4. Closes both sheets and navigates back to `/itinerary`.
-- Render a second `BottomSheet` titled `העבר את {entry.title} ליום...` listing all days from the existing `useDays()` hook.
-- Each row (h-52px, full width): `יום {N} · {formatted date} · {city_label}`.
-- Current day row is rendered but disabled (`opacity-50 pointer-events-none`) with `(היום הנוכחי)` suffix.
+בכרטיס של אטרקציה במסלול, כל שטח הכרטיס משמש כידית גרירה: ה־`motion.div` הראשי מקבל `{...listeners} {...attributes}` וגם `touch-none`. המשמעות בפועל:
 
-## Fix 5 — "מה קרוב אליי" card on home
+- דפדפן חוסם גלילה אנכית בתוך הכרטיס (`touch-action: none`).
+- כל נגיעה על הכרטיס נתפסת על ידי dnd-kit; רק לאחר 500ms של החזקה הגרירה מופעלת, אבל עד אז לא ניתן לגלול את המסך עם האצבע כשהיא על הכרטיס.
 
-**File:** `src/routes/index.tsx`
+## המטרה
 
-- New section placed **after** the quick actions grid and **before** the hotel alerts section.
-- State: `nearbyFilter` (`"all" | "food" | "attraction"`), `userPos`, `geoError`.
-- On mount: `navigator.geolocation.getCurrentPosition` (timeout 8000); set pos or `geoError`.
-- Uses existing `useRecs()` and `haversine` from `src/lib/geo.ts`.
-- `useMemo` filters recs that have coords, matches filter, computes distance, sorts asc, takes top 3.
-- Filter pills row: `[🍜 אוכל] [⛩ אטרקציות] [הכל]`, active = `bg-accent text-white`, inactive = `bg-surface-2 border text-muted-foreground`.
-- Rows: 40×40 rounded photo (or emoji 🍜/⛩ fallback) · name (14px/600) + distance (`320 מ׳` under 1km, else `1.2 ק״מ`) · 🗺 button opening `google_maps_url` or `https://www.google.com/maps/search/?api=1&query={lat},{lng}` in a new tab.
-- "ראה הכל ›" navigates to `/recommendations`.
-- States:
-  - Geo denied/error → muted centered "📍 אפשר גישה למיקום כדי לראות מה קרוב אליך".
-  - No matches → "לא נמצאו מקומות שמורים בקטגוריה זו".
-  - Loading pos → 3 `animate-pulse` skeleton rows.
-- Card wrapper: `bg-card border border-border rounded-2xl p-4 shadow-sm`.
+לאפשר גלילה טבעית של המסך כשהאצבע על כרטיס אטרקציה, בלי לפגוע ב־long-press-to-drag שעובד טוב היום.
 
-## Constraints
+## מה משתנה — `src/routes/itinerary.$dayId.tsx` בלבד
 
-- Only the two files above are touched.
-- No DB changes, no new dependencies.
-- Existing hooks (`useDays`, `useRecs`) and existing `haversine` reused as-is.
+### 1. ידית גרירה ייעודית במקום כל־הכרטיס
 
-## Technical note on haversine
+בתוך `SortableEntry` (סביב שורה 730):
 
-`src/lib/geo.ts` exports `haversine({lat, lon}, {lat, lon})` (object args, `lon` not `lng`). The Fix-5 call sites will pass `{ lat, lon }` objects to match the current signature; no change to `geo.ts`.
+- להסיר את `{...attributes}` `{...listeners}` ו־`touch-none` מ־`motion.div` הראשי של הכרטיס.
+- להוסיף אלמנט ידית קטן בתוך הכרטיס (בפינה השמאלית העליונה ב־RTL, כלומר `left-2 top-2`), עם:
+  - אייקון `GripVertical` מ־`lucide-react` (כבר בשימוש בפרויקט).
+  - `{...attributes} {...listeners}` רק עליו.
+  - `touch-none cursor-grab active:cursor-grabbing`.
+  - `aria-label="גרור לשינוי סדר"`, hit-area מינימלי `w-8 h-8 flex items-center justify-center`, `text-muted-foreground`.
+- להשאיר `cursor-grab` כללי? לא — הכרטיס עצמו יחזור להיות `cursor-default`, והידית תסמן את איזור הגרירה.
+- לוודא ש־`onClick` הקיים לפתיחת הפרטים ("לפרטים ›") לא נפגע — הוא כבר בכפתור נפרד, לכן אין קונפליקט.
+
+### 2. שיפור זמני חיישני dnd-kit ליד המצב החדש
+
+עכשיו כשהגרירה תופעל רק על ידית קטנה, אין יותר צורך בהשהיה ארוכה שמונעת false positives מכל שטח הכרטיס. עדיין נשמור השהיה קטנה לביטחון:
+
+```ts
+useSensor(PointerSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+useSensor(TouchSensor,   { activationConstraint: { delay: 120, tolerance: 6 } }),
+```
+
+זה משאיר את הגרירה נעימה ומיידית מהידית, בלי להפריע לטאפים על שאר הכרטיס.
+
+### 3. שיפורי UX קטנים במסך המסלול (כולם ב־`itinerary.$dayId.tsx`, ללא שינויי DB או לוגיקה)
+
+א. **רמז ויזואלי לידית** — בפעם הראשונה שהמסך נטען עם 2+ אטרקציות, להוסיף `animate-pulse` חד־פעמי לידית של הכרטיס הראשון (state מקומי, נכבה אחרי 2 שניות). עוזר לגלות את הפיצ׳ר.
+
+ב. **overscroll-behavior** — להוסיף `overscroll-contain` לאזור הרשימה הראשי כך שגלילה בתוך הרשימה לא "בורחת" לגלילת הדף מאחור בזמן שהמפה סגורה.
+
+ג. **טאפ על הכרטיס = פתיחת פרטים** — כרגע צריך ללחוץ במפורש על "לפרטים ›". נוסיף `onClick={onOpenDetails}` על גוף הכרטיס (לא על הידית ולא על הכפתורים הקיימים בתוכו — ה־`stopPropagation` כבר עליהם). כך המשתמש מקבל אינטראקציה טבעית: טאפ קצר = פרטים, long-press על ידית = גרירה.
+
+ד. **role/aria** — להוסיף `role="button"` ו־`tabIndex={0}` על הכרטיס כדי לשמור על נגישות אחרי שהוא נהיה tappable.
+
+## מה לא משתנה
+
+- אין שינויים ב־DB, ב־mutations, ב־`useDays`/`useDayEntries`, או במפה.
+- אין שינויים בקבצים אחרים.
+- אין תלויות חדשות.
+
+## אימות ידני אחרי הבנייה
+
+1. גלילה עם האצבע על כרטיס אטרקציה במובייל — עובדת חלק.
+2. long-press על ידית ה־`GripVertical` — מפעיל גרירה תוך ~120ms.
+3. טאפ קצר על גוף הכרטיס — פותח את גליון הפרטים.
+4. כפתורים קיימים בתוך הכרטיס (ניווט, פרטים) — עדיין פועלים בלי להפעיל גרירה.
