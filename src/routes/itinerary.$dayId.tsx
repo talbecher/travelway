@@ -133,10 +133,12 @@ function DayDetail() {
   const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
   const [editLocationEntry, setEditLocationEntry] = useState<EntryRow | null>(null);
   const [detailsFor, setDetailsFor] = useState<EntryRow | null>(null);
+  const [movingEntry, setMovingEntry] = useState<EntryRow | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [navigateOpen, setNavigateOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
+
 
 
   const updateEntryLocation = useMutation({
@@ -198,6 +200,25 @@ function DayDetail() {
       toast.success("נמחק");
     },
   });
+
+  const moveEntry = useMutation({
+    mutationFn: async ({ entryId, toDayId }: { entryId: string; toDayId: string }) => {
+      const { error } = await supabase.from("day_entries").update({ day_id: toDayId }).eq("id", entryId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries", vars.toDayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      const target = days.find((d) => d.id === vars.toDayId);
+      toast.success(`✅ הועבר ליום ${target?.day_number ?? ""}`.trim());
+      setMovingEntry(null);
+      setDetailsFor(null);
+      navigate({ to: "/itinerary" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const reorder = useMutation({
     mutationFn: async (rows: { id: string; display_order: number }[]) => {
@@ -583,6 +604,7 @@ function DayDetail() {
             dayId={dayId}
             onEdit={() => { setEditEntry(detailsFor); setDetailsFor(null); }}
             onUpdateLocation={() => { setEditLocationEntry(detailsFor); setDetailsFor(null); }}
+            onMove={() => { setMovingEntry(detailsFor); setDetailsFor(null); }}
             onDelete={() => {
               if (confirm("למחוק פריט?")) {
                 del.mutate(detailsFor.id);
@@ -593,6 +615,49 @@ function DayDetail() {
           />
         )}
       </BottomSheet>
+
+      {/* Move to another day sheet */}
+      <BottomSheet
+        open={!!movingEntry}
+        onOpenChange={(o) => !o && setMovingEntry(null)}
+        title={movingEntry ? `העבר את ${movingEntry.title} ליום...` : ""}
+      >
+        {movingEntry && (
+          <div className="pt-1 pb-4 space-y-1.5" dir="rtl">
+            {days.map((d) => {
+              const isCurrent = d.id === dayId;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  disabled={isCurrent || moveEntry.isPending}
+                  onClick={() => moveEntry.mutate({ entryId: movingEntry.id, toDayId: d.id })}
+                  className={
+                    "w-full h-[52px] px-3 rounded-xl border border-border bg-card flex items-center justify-between gap-2 text-right text-sm min-h-0 " +
+                    (isCurrent ? "opacity-50 pointer-events-none" : "hover:bg-muted/50 active:bg-muted")
+                  }
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold shrink-0">יום {d.day_number}</span>
+                    <span className="text-muted-foreground text-[12px] shrink-0">·</span>
+                    <span className="text-[12px]">{hebDate(d.date)}</span>
+                    {d.city_label && (
+                      <>
+                        <span className="text-muted-foreground text-[12px] shrink-0">·</span>
+                        <span className="text-[12px] text-muted-foreground truncate" dir="ltr">{d.city_label}</span>
+                      </>
+                    )}
+                  </span>
+                  {isCurrent && (
+                    <span className="text-[11px] text-muted-foreground shrink-0">(היום הנוכחי)</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </BottomSheet>
+
 
       {/* Day map sheet */}
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
@@ -782,15 +847,17 @@ function SortableEntry({
 
 
 function EntryDetails({
-  entry, dayId, onEdit, onUpdateLocation, onDelete, onClose,
+  entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose,
 }: {
   entry: EntryRow;
   dayId: string;
   onEdit: () => void;
   onUpdateLocation: () => void;
+  onMove: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
+
   const qc = useQueryClient();
   const [editingTime, setEditingTime] = useState(false);
   const [timeDraft, setTimeDraft] = useState(entry.time_of_day ?? "");
@@ -993,11 +1060,18 @@ function EntryDetails({
           <span />
         )}
         <button
+          onClick={onMove}
+          className="col-span-2 h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
+        >
+          📅 העבר ליום אחר
+        </button>
+        <button
           onClick={onDelete}
           className="col-span-2 h-11 rounded-lg border border-[color:var(--accent-2)]/40 text-[color:var(--accent-2)] flex items-center justify-center gap-2 text-sm min-h-0"
         >
           <Trash2 size={14} /> מחק
         </button>
+
       </div>
     </div>
   );
