@@ -201,6 +201,25 @@ function DayDetail() {
     },
   });
 
+  const moveEntry = useMutation({
+    mutationFn: async ({ entryId, toDayId }: { entryId: string; toDayId: string }) => {
+      const { error } = await supabase.from("day_entries").update({ day_id: toDayId }).eq("id", entryId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries", vars.toDayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      const target = days.find((d) => d.id === vars.toDayId);
+      toast.success(`✅ הועבר ליום ${target?.day_number ?? ""}`.trim());
+      setMovingEntry(null);
+      setDetailsFor(null);
+      navigate({ to: "/itinerary" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const reorder = useMutation({
     mutationFn: async (rows: { id: string; display_order: number }[]) => {
       await Promise.all(
