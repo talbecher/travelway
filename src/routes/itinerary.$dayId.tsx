@@ -847,15 +847,17 @@ function SortableEntry({
 
 
 function EntryDetails({
-  entry, dayId, onEdit, onUpdateLocation, onDelete, onClose,
+  entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose,
 }: {
   entry: EntryRow;
   dayId: string;
   onEdit: () => void;
   onUpdateLocation: () => void;
+  onMove: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
+
   const qc = useQueryClient();
   const [editingTime, setEditingTime] = useState(false);
   const [timeDraft, setTimeDraft] = useState(entry.time_of_day ?? "");
