@@ -1835,7 +1835,8 @@ function SavedRecsPicker({
   const tripId = useActiveTripId();
   const { data: recs = [] } = useRecs();
   const [q, setQ] = useState("");
-  const [addingId, setAddingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const pool = useMemo(
     () => (recs as Array<Record<string, unknown>>).filter((r) => r.type === recType),
@@ -1852,34 +1853,54 @@ function SavedRecsPicker({
     });
   }, [pool, q]);
 
-  async function pick(r: Record<string, unknown>) {
-    if (addingId) return;
-    setAddingId(String(r.id));
-    try {
-      await addRecommendationToDay({
-        id: String(r.id),
-        type: String(r.type),
-        name: String(r.name),
-        city: (r.city as string | null) ?? null,
-        google_maps_url: (r.google_maps_url as string | null) ?? null,
-        latitude: (r.latitude as number | null) ?? null,
-        longitude: (r.longitude as number | null) ?? null,
-      }, dayId);
-      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
-      qc.invalidateQueries({ queryKey: ["day-entries-summary", tripId] });
-      toast.success("✅ נוסף למסלול");
-      onAdded();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setAddingId(null);
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function addSelected() {
+    if (progress || selected.size === 0) return;
+    const byId = new Map(pool.map((r) => [String(r.id), r]));
+    const ids = Array.from(selected);
+    setProgress({ done: 0, total: ids.length });
+    const failedIds: string[] = [];
+    let successCount = 0;
+    for (let i = 0; i < ids.length; i++) {
+      const r = byId.get(ids[i]);
+      if (!r) { failedIds.push(ids[i]); continue; }
+      try {
+        await addRecommendationToDay({
+          id: String(r.id),
+          type: String(r.type),
+          name: String(r.name),
+          city: (r.city as string | null) ?? null,
+          google_maps_url: (r.google_maps_url as string | null) ?? null,
+          latitude: (r.latitude as number | null) ?? null,
+          longitude: (r.longitude as number | null) ?? null,
+        }, dayId);
+        successCount++;
+      } catch (e) {
+        failedIds.push(ids[i]);
+        toast.error(`${String(r.name)}: ${(e as Error).message}`);
+      } finally {
+        setProgress({ done: i + 1, total: ids.length });
+      }
     }
+    qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+    qc.invalidateQueries({ queryKey: ["day-entries-summary", tripId] });
+    if (successCount > 0) toast.success(`✅ נוספו ${successCount} פעילויות למסלול`);
+    setSelected(new Set(failedIds));
+    setProgress(null);
+    if (failedIds.length === 0) onAdded();
   }
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-2 space-y-2">
       <div className="text-[11px] font-medium text-muted-foreground px-1">
-        הוסף פעילות מההמלצות השמורות
+        הוסף פעילויות מההמלצות השמורות
       </div>
       {pool.length === 0 ? (
         <div className="text-[11px] text-muted-foreground px-1 py-1">
@@ -1904,14 +1925,26 @@ function SavedRecsPicker({
               const photo = (r.photo_url as string | null) ?? null;
               const rating = typeof r.google_rating === "number" ? (r.google_rating as number) : null;
               const notes = (r.notes as string | null) ?? null;
+              const isSelected = selected.has(id);
               return (
                 <button
                   key={id}
                   type="button"
-                  disabled={addingId === id}
-                  onClick={() => void pick(r)}
-                  className="w-full text-right flex items-center gap-2 p-1.5 rounded-md bg-background hover:bg-muted border border-transparent hover:border-border min-h-0 disabled:opacity-60"
+                  disabled={!!progress}
+                  onClick={() => toggle(id)}
+                  className={`w-full text-right flex items-center gap-2 p-1.5 rounded-md border min-h-0 disabled:opacity-60 ${
+                    isSelected
+                      ? "bg-[color:var(--accent)]/10 border-[color:var(--accent)]"
+                      : "bg-background hover:bg-muted border-transparent hover:border-border"
+                  }`}
                 >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    readOnly
+                    tabIndex={-1}
+                    className="w-4 h-4 accent-[color:var(--accent)] shrink-0 pointer-events-none"
+                  />
                   {photo ? (
                     <img src={photo} alt="" loading="lazy" className="w-9 h-9 rounded-md object-cover shrink-0" />
                   ) : (
@@ -1934,10 +1967,33 @@ function SavedRecsPicker({
                       </div>
                     )}
                   </div>
-                  {addingId === id && <span className="text-[10px] text-muted-foreground">מוסיף...</span>}
                 </button>
               );
             })}
+          </div>
+          <div className="sticky bottom-0 -mx-2 -mb-2 px-2 py-2 bg-muted/80 backdrop-blur border-t border-border flex items-center gap-2">
+            <div className="text-[12px] text-muted-foreground flex-1">
+              {progress
+                ? `מוסיף ${progress.done} מתוך ${progress.total}...`
+                : `נבחרו ${selected.size}`}
+            </div>
+            {selected.size > 0 && !progress && (
+              <button
+                type="button"
+                onClick={() => setSelected(new Set())}
+                className="text-[12px] text-muted-foreground px-2 h-8 rounded-md hover:bg-background min-h-0"
+              >
+                נקה
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={selected.size === 0 || !!progress}
+              onClick={() => void addSelected()}
+              className="text-[13px] font-medium px-3 h-8 rounded-md bg-[color:var(--accent)] text-white disabled:opacity-50 min-h-0"
+            >
+              ➕ הוסף את כל הנבחרים
+            </button>
           </div>
         </>
       )}
