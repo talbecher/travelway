@@ -301,7 +301,14 @@ function Home() {
     ),
   });
 
+  // 6b. NEARBY (from saved recs)
+  sections.push({
+    key: "nearby",
+    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations" })} />,
+  });
+
   // 7. HOTEL ALERTS
+
   if (upcomingHotelDeadlines.length > 0) {
     sections.push({
       key: "alerts",
