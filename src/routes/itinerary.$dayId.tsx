@@ -1880,6 +1880,7 @@ function SavedRecsPicker({
           google_maps_url: (r.google_maps_url as string | null) ?? null,
           latitude: (r.latitude as number | null) ?? null,
           longitude: (r.longitude as number | null) ?? null,
+          photo_url: (r.photo_url as string | null) ?? null,
         }, dayId);
         successCount++;
       } catch (e) {

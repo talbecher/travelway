@@ -59,6 +59,7 @@ export async function addRecommendationToDay(rec: {
   google_maps_url: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
+  photo_url?: string | null;
 }, dayId: string): Promise<void> {
   const entryType = recTypeToEntryType(rec.type);
   const { count } = await supabase
@@ -79,6 +80,7 @@ export async function addRecommendationToDay(rec: {
     display_order: count ?? 0,
     latitude: coords?.lat ?? null,
     longitude: coords?.lng ?? null,
+    photo_url: rec.photo_url ?? null,
   });
   if (error) throw error;
 }

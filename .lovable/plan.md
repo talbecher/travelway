@@ -1,16 +1,18 @@
-## Multi-select adding from saved recommendations
+# Fix: תמונת ההמלצה לא נשמרת ב־day_entries
 
-Add checkbox multi-select to `SavedRecsPicker` in `src/routes/itinerary.$dayId.tsx` so the user can pick several saved places at once and add them all to the day in one action.
+## סיבה מאומתת
+`addRecommendationToDay` ב־`src/lib/recommendations.ts` לא כולל `photo_url` ב־`insert`, ולכן כל הוספה של המלצה למסלול (בודדת או מרובה) יוצרת רשומה בלי תמונה — גם אם ההמלצה עצמה כוללת `photo_url`. גם הקריאה ב־`addSelected` (bulk) לא מעבירה את שדה התמונה.
 
-### Behavior
-- Each result row gets a checkbox (right side, RTL) alongside the existing row content.
-- Tapping the row or checkbox toggles selection instead of adding immediately.
-- A sticky action bar at the bottom of the picker shows: `נבחרו N` + primary button `➕ הוסף את כל הנבחרים` + secondary `נקה`.
-- The button is disabled while the list is empty.
-- On tap: iterate selected recs sequentially and call the existing `addRecommendationToDay(...)` for each (keeps `display_order` correct since it re-reads the count per insert). Show a small progress state ("מוסיף X מתוך N").
-- On completion: invalidate `["day-entries", dayId]` and `["day-entries-summary", tripId]` once, toast `✅ נוספו N פעילויות למסלול`, clear selection, and call `onAdded()`.
-- On partial failure: toast the error, keep successfully added items added, keep the failed ones still selected so the user can retry.
-- Search filter and existing empty-state stay unchanged. Selection persists across search filtering (selected items that get filtered out are still counted).
+## שינויים
 
-### Files
-- `src/routes/itinerary.$dayId.tsx` — modify `SavedRecsPicker` only. No DB changes, no changes to `addRecommendationToDay`, no new dependencies.
+### 1. `src/lib/recommendations.ts`
+- להוסיף `photo_url?: string | null` לטיפוס הפרמטר של `addRecommendationToDay`.
+- להוסיף `photo_url: rec.photo_url ?? null` באובייקט ה־`insert` ל־`day_entries`.
+
+### 2. `src/routes/itinerary.$dayId.tsx` (`SavedRecsPicker.addSelected`, ~שורה 1875)
+- להעביר `photo_url: (r.photo_url as string | null) ?? null` בקריאה ל־`addRecommendationToDay`.
+- לוודא שה־`SELECT` של pool כבר מחזיר `photo_url` (כן, שורה 923).
+
+## ללא שינוי
+- אין שינויי DB, אין תלויות חדשות, אין שינוי בסדר או ב־UI.
+- backfill לרשומות קיימות בלי תמונה — לא נעשה בשינוי הזה (נוסיף רק אם תבקש).
