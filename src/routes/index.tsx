@@ -562,3 +562,169 @@ function HomeSkeleton() {
     </div>
   );
 }
+
+/* ---------- Nearby card ---------- */
+
+type NearbyRec = {
+  id: string;
+  name: string;
+  type: string;
+  latitude: number | string | null;
+  longitude: number | string | null;
+  google_maps_url: string | null;
+  photo_url: string | null;
+};
+
+function fmtDistKm(km: number) {
+  if (km < 1) return `${Math.round(km * 1000)} מ׳`;
+  return `${km.toFixed(1)} ק״מ`;
+}
+
+function typeEmoji(t: string) {
+  if (t === "food") return "🍜";
+  if (t === "hotel") return "🏨";
+  return "⛩";
+}
+
+function NearbyCard({ recs, onSeeAll }: { recs: NearbyRec[]; onSeeAll: () => void }) {
+  const [filter, setFilter] = useState<"all" | "food" | "attraction">("all");
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoError, setGeoError] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoError(true);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setGeoError(true),
+      { timeout: 8000 },
+    );
+  }, []);
+
+  const nearby = useMemo(() => {
+    if (!userPos || !recs) return [];
+    return recs
+      .filter((r) => {
+        if (r.latitude == null || r.longitude == null) return false;
+        if (filter === "all") return true;
+        return r.type === filter;
+      })
+      .map((r) => ({
+        rec: r,
+        distance: haversine(
+          { lat: userPos.lat, lon: userPos.lng },
+          { lat: Number(r.latitude), lon: Number(r.longitude) },
+        ),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3);
+  }, [recs, userPos, filter]);
+
+  const filters: Array<{ key: "food" | "attraction" | "all"; label: string }> = [
+    { key: "food", label: "🍜 אוכל" },
+    { key: "attraction", label: "⛩ אטרקציות" },
+    { key: "all", label: "הכל" },
+  ];
+
+  return (
+    <section className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold flex items-center gap-1.5">
+            <MapPin size={14} /> מה קרוב אליי?
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">מהמקומות השמורים שלך</div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3">
+        {filters.map((f) => {
+          const active = filter === f.key;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={
+                "h-8 px-3 rounded-full text-[12px] " +
+                (active
+                  ? "bg-[color:var(--accent)] text-white border border-transparent"
+                  : "bg-[color:var(--surface-2)] border border-border text-muted-foreground")
+              }
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {geoError ? (
+          <div className="text-center py-4 text-[12px] text-muted-foreground flex flex-col items-center gap-1.5">
+            <MapPin size={16} />
+            <div>אפשר גישה למיקום כדי לראות מה קרוב אליך</div>
+          </div>
+        ) : !userPos ? (
+          [0, 1, 2].map((i) => (
+            <div key={i} className="h-12 rounded-lg bg-muted/40 animate-pulse" />
+          ))
+        ) : nearby.length === 0 ? (
+          <div className="text-center py-4 text-[12px] text-muted-foreground">
+            לא נמצאו מקומות שמורים בקטגוריה זו
+          </div>
+        ) : (
+          nearby.map(({ rec, distance }) => {
+            const mapsHref =
+              rec.google_maps_url ||
+              `https://www.google.com/maps/search/?api=1&query=${rec.latitude},${rec.longitude}`;
+            return (
+              <div
+                key={rec.id}
+                className="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2"
+              >
+                {rec.photo_url ? (
+                  <img
+                    src={rec.photo_url}
+                    alt=""
+                    loading="lazy"
+                    className="w-10 h-10 rounded-lg object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-lg shrink-0">
+                    {typeEmoji(rec.type)}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-semibold truncate">{rec.name}</div>
+                  <div className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">
+                    {fmtDistKm(distance)}
+                  </div>
+                </div>
+                <a
+                  href={mapsHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="פתח במפה"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-lg bg-[color:var(--surface-2)] border border-border shrink-0"
+                >
+                  🗺
+                </a>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onSeeAll}
+        className="mt-3 w-full text-center text-[12px] text-[color:var(--accent)] font-medium"
+      >
+        ראה הכל ›
+      </button>
+    </section>
+  );
+}
+
