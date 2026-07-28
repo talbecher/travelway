@@ -438,7 +438,7 @@ function DayDetail() {
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 overscroll-contain">
                   {entries.map((e, idx) => {
                     const prev = idx > 0 ? entries[idx - 1] : null;
                     const a = prev ? coordsOf(prev) : null;
@@ -452,6 +452,7 @@ function DayDetail() {
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
                           onOpenDetails={() => setDetailsFor(e)}
+                          hintHandle={idx === 0 && entries.length >= 2}
                         />
 
                       </div>
