@@ -1,18 +1,18 @@
-# Fix: תמונת ההמלצה לא נשמרת ב־day_entries
+## מה בדקתי
 
-## סיבה מאומתת
-`addRecommendationToDay` ב־`src/lib/recommendations.ts` לא כולל `photo_url` ב־`insert`, ולכן כל הוספה של המלצה למסלול (בודדת או מרובה) יוצרת רשומה בלי תמונה — גם אם ההמלצה עצמה כוללת `photo_url`. גם הקריאה ב־`addSelected` (bulk) לא מעבירה את שדה התמונה.
+ב־`src/routes/itinerary.$dayId.tsx`, הרכיב `SegmentConnector` (שורות 685–727) מציג כיום רק את המרחק ושני קישורי Google Maps ("🚶 ברגל" / "🚌 תחבורה"). כפתור **"🗺 השווה דרכים" (Rome2Rio)** כבר לא קיים בקוד — חיפוש אחר `rome2rio` בקובץ לא מחזיר תוצאות. לכן הוא נעלם.
 
-## שינויים
+בנוסף: המחבר בין שתי תחנות מוצג רק כששתי הנקודות מכילות קואורדינטות (`prev && a && b`, שורה 448) — אז גם כשהכפתור יחזור, הוא לא יופיע בין פריטים בלי מיקום.
 
-### 1. `src/lib/recommendations.ts`
-- להוסיף `photo_url?: string | null` לטיפוס הפרמטר של `addRecommendationToDay`.
-- להוסיף `photo_url: rec.photo_url ?? null` באובייקט ה־`insert` ל־`day_entries`.
+## מה אעשה
 
-### 2. `src/routes/itinerary.$dayId.tsx` (`SavedRecsPicker.addSelected`, ~שורה 1875)
-- להעביר `photo_url: (r.photo_url as string | null) ?? null` בקריאה ל־`addRecommendationToDay`.
-- לוודא שה־`SELECT` של pool כבר מחזיר `photo_url` (כן, שורה 923).
+### 1. החזרת כפתור Rome2Rio ב־`SegmentConnector`
+- להוסיף צ'יפ שלישי בשורת המצבים: `🗺 השווה דרכים`.
+- קישור: `https://www.rome2rio.com/map/{lat},{lng}/{lat},{lng}` לפי נקודת המוצא והיעד, נפתח בלשונית חדשה.
+- עיצוב זהה לצ'יפים הקיימים (outline), כולל `stopPropagation` על לחיצה/pointerdown כדי לא להפעיל גרירה או פתיחת כרטיס.
+
+### 2. שיפור קטן לנראות
+- כשמסלול ארוך (מעל ~10 ק"מ) — להציג "השווה דרכים" ראשון, כי שם הוא הכי רלוונטי (רכבת/אוטובוס/טיסה).
 
 ## ללא שינוי
-- אין שינויי DB, אין תלויות חדשות, אין שינוי בסדר או ב־UI.
-- backfill לרשומות קיימות בלי תמונה — לא נעשה בשינוי הזה (נוסיף רק אם תבקש).
+- אין שינויי DB, אין תלויות חדשות, אין שינוי בלוגיקה של סדר המסלול או בגרירה.
