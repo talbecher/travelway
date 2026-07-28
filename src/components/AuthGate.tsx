@@ -39,17 +39,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        // Claim any unowned trips (idempotent — used for the very first sign-in with legacy demo data)
-        await supabase
-          .from("trips")
-          .update({ owner_id: user.id })
-          .is("owner_id", null);
-
         // Load all accessible trips
         const { data: trips } = await supabase
           .from("trips")
           .select("id")
           .order("created_at", { ascending: true });
+
 
         const ids = (trips ?? []).map((t) => t.id);
         if (ids.length === 0) {
