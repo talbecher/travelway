@@ -469,8 +469,18 @@ function DayDetail() {
                     const b = coordsOf(e);
                     return (
                       <div key={e.id}>
-                        {prev && a && b && <SegmentConnector a={a} b={b} />}
+                        {prev && a && b && (
+                          <SegmentConnector
+                            a={a}
+                            b={b}
+                            from={prev}
+                            to={e}
+                            isJapan={isJapan}
+                            city={day?.city_label ?? ""}
+                          />
+                        )}
                         <SortableEntry
+
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
