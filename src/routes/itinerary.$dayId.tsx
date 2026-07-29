@@ -123,13 +123,20 @@ function rome2rioUrl(from: string, to: string): string {
   return `https://www.rome2rio.com/map/${encode(from)}/${encode(to)}`;
 }
 
-function navitimeUrl(from: string, to: string): string {
-  return (
-    `https://japantravel.navitime.com/en/area/jp/route/?` +
-    `fromName=${encodeURIComponent(from.trim())}` +
-    `&toName=${encodeURIComponent(to.trim())}`
-  );
+function navitimeUrl(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  fromName?: string,
+  toName?: string,
+): string {
+  const params = new URLSearchParams();
+  params.set("start", `${a.lat},${a.lng}`);
+  if (fromName?.trim()) params.set("start_name", fromName.trim());
+  params.set("goal", `${b.lat},${b.lng}`);
+  if (toName?.trim()) params.set("goal_name", toName.trim());
+  return `https://japantravel.navitime.com/en/area/jp/route/result/?${params.toString()}`;
 }
+
 
 function placeName(stop: EntryRow, fallbackCity?: string | null): string {
   return stop.location_name?.trim() || stop.title?.trim() || fallbackCity?.trim() || "";
@@ -754,46 +761,35 @@ function SegmentConnector({
     <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
       <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
       <div className="flex gap-2 flex-wrap">
-        {hasNames ? (
-          <div className="flex gap-2 flex-wrap mt-1">
-            <a
-              href={rome2rioUrl(fromName, toName)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              className={navLinkClass}
-            >
-              <span>🗺</span>
-              <span>השווה דרכים</span>
-            </a>
-            {isJapan && (
-              <a
-                href={navitimeUrl(fromName, toName)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className={navLinkClass}
-              >
-                <span>🚄</span>
-                <span>NAVITIME</span>
-              </a>
-            )}
-          </div>
-        ) : (
+        <a
+          href={
+            hasNames
+              ? rome2rioUrl(fromName, toName)
+              : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={navLinkClass}
+        >
+          <span>🗺</span>
+          <span>השווה דרכים</span>
+        </a>
+        {isJapan && (
           <a
-            href={`https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`}
+            href={navitimeUrl(a, b, fromName, toName)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             className={navLinkClass}
           >
-            <span>🗺</span>
-            <span>השווה דרכים</span>
+            <span>🚄</span>
+            <span>NAVITIME</span>
           </a>
         )}
+
         {ordered.map((key) => {
           const m = modeMeta[key];
           const isOn = key === suggested;
