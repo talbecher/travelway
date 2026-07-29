@@ -118,13 +118,37 @@ function coordsOf(e: EntryRow): { lat: number; lng: number } | null {
   return null;
 }
 
+function rome2rioUrl(from: string, to: string): string {
+  const encode = (s: string) => encodeURIComponent(s.trim().replace(/\s+/g, "-"));
+  return `https://www.rome2rio.com/map/${encode(from)}/${encode(to)}`;
+}
+
+function navitimeUrl(from: string, to: string): string {
+  return (
+    `https://japantravel.navitime.com/en/area/jp/route/?` +
+    `fromName=${encodeURIComponent(from.trim())}` +
+    `&toName=${encodeURIComponent(to.trim())}`
+  );
+}
+
+function placeName(stop: EntryRow, fallbackCity?: string | null): string {
+  return stop.location_name?.trim() || stop.title?.trim() || fallbackCity?.trim() || "";
+}
+
+
 function DayDetail() {
   const { dayId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const { data: trip } = useTrip();
+  const destination = trip?.destination_country?.toLowerCase() ?? "";
+  const isJapan = [
+    "japan", "יפן", "tokyo", "טוקיו", "kyoto", "קיוטו", "osaka", "אוסקה",
+    "hiroshima", "הירושימה", "kanazawa", "קאנאזאווה",
+  ].some((k) => destination.includes(k));
   const day = days.find((d) => d.id === dayId);
+
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const entries = sortEntries(rawEntries as EntryRow[]);
 
@@ -445,8 +469,18 @@ function DayDetail() {
                     const b = coordsOf(e);
                     return (
                       <div key={e.id}>
-                        {prev && a && b && <SegmentConnector a={a} b={b} />}
+                        {prev && a && b && (
+                          <SegmentConnector
+                            a={a}
+                            b={b}
+                            from={prev}
+                            to={e}
+                            isJapan={isJapan}
+                            city={day?.city_label ?? ""}
+                          />
+                        )}
                         <SortableEntry
+
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
@@ -682,7 +716,21 @@ function DayDetail() {
   );
 }
 
-function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat: number; lng: number } }) {
+function SegmentConnector({
+  a,
+  b,
+  from,
+  to,
+  isJapan,
+  city,
+}: {
+  a: { lat: number; lng: number };
+  b: { lat: number; lng: number };
+  from: EntryRow;
+  to: EntryRow;
+  isJapan?: boolean;
+  city?: string;
+}) {
   const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
   const isWalk = km < 1.5;
   const suggested: "walking" | "transit" = isWalk ? "walking" : "transit";
@@ -693,27 +741,59 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
   } as const;
   const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
   const ordered: ("walking" | "transit")[] = [suggested, alt];
-  const r2r = `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`;
-  const r2rFirst = km >= 10;
-  const compareChip = (
-    <a
-      href={r2r}
-      target="_blank"
-      rel="noreferrer"
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      className="min-h-[36px] min-w-[80px] px-3 rounded-full text-[13px] inline-flex items-center justify-center gap-1.5 leading-none"
-      style={{ background: "transparent", color: "var(--foreground)", border: "1px solid var(--border)" }}
-    >
-      <span>🗺</span>
-      <span>השווה דרכים</span>
-    </a>
-  );
+
+  const fromName = placeName(from, city);
+  const toName = placeName(to, city);
+  const hasNames = fromName && toName;
+
+  const navLinkClass =
+    "h-8 px-3 rounded-full bg-surface border border-border text-foreground text-[12px] " +
+    "flex items-center gap-1 hover:bg-surface-2 transition-colors";
+
   return (
     <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
       <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
       <div className="flex gap-2 flex-wrap">
-        {r2rFirst && compareChip}
+        {hasNames ? (
+          <div className="flex gap-2 flex-wrap mt-1">
+            <a
+              href={rome2rioUrl(fromName, toName)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={navLinkClass}
+            >
+              <span>🗺</span>
+              <span>השווה דרכים</span>
+            </a>
+            {isJapan && (
+              <a
+                href={navitimeUrl(fromName, toName)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={navLinkClass}
+              >
+                <span>🚄</span>
+                <span>NAVITIME</span>
+              </a>
+            )}
+          </div>
+        ) : (
+          <a
+            href={`https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={navLinkClass}
+          >
+            <span>🗺</span>
+            <span>השווה דרכים</span>
+          </a>
+        )}
         {ordered.map((key) => {
           const m = modeMeta[key];
           const isOn = key === suggested;
@@ -738,11 +818,11 @@ function SegmentConnector({ a, b }: { a: { lat: number; lng: number }; b: { lat:
             </a>
           );
         })}
-        {!r2rFirst && compareChip}
       </div>
     </div>
   );
 }
+
 
 
 
