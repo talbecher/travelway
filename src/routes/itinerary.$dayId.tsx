@@ -118,6 +118,24 @@ function coordsOf(e: EntryRow): { lat: number; lng: number } | null {
   return null;
 }
 
+function rome2rioUrl(from: string, to: string): string {
+  const encode = (s: string) => encodeURIComponent(s.trim().replace(/\s+/g, "-"));
+  return `https://www.rome2rio.com/map/${encode(from)}/${encode(to)}`;
+}
+
+function navitimeUrl(from: string, to: string): string {
+  return (
+    `https://japantravel.navitime.com/en/area/jp/route/?` +
+    `fromName=${encodeURIComponent(from.trim())}` +
+    `&toName=${encodeURIComponent(to.trim())}`
+  );
+}
+
+function placeName(stop: EntryRow, fallbackCity?: string | null): string {
+  return stop.location_name?.trim() || stop.title?.trim() || fallbackCity?.trim() || "";
+}
+
+
 function DayDetail() {
   const { dayId } = Route.useParams();
   const navigate = useNavigate();
