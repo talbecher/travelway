@@ -142,7 +142,13 @@ function DayDetail() {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const { data: trip } = useTrip();
+  const destination = trip?.destination_country?.toLowerCase() ?? "";
+  const isJapan = [
+    "japan", "יפן", "tokyo", "טוקיו", "kyoto", "קיוטו", "osaka", "אוסקה",
+    "hiroshima", "הירושימה", "kanazawa", "קאנאזאווה",
+  ].some((k) => destination.includes(k));
   const day = days.find((d) => d.id === dayId);
+
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const entries = sortEntries(rawEntries as EntryRow[]);
 
