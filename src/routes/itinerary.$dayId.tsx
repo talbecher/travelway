@@ -123,13 +123,20 @@ function rome2rioUrl(from: string, to: string): string {
   return `https://www.rome2rio.com/map/${encode(from)}/${encode(to)}`;
 }
 
-function navitimeUrl(from: string, to: string): string {
-  return (
-    `https://japantravel.navitime.com/en/area/jp/route/?` +
-    `fromName=${encodeURIComponent(from.trim())}` +
-    `&toName=${encodeURIComponent(to.trim())}`
-  );
+function navitimeUrl(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  fromName?: string,
+  toName?: string,
+): string {
+  const params = new URLSearchParams();
+  params.set("start", `${a.lat},${a.lng}`);
+  if (fromName?.trim()) params.set("start_name", fromName.trim());
+  params.set("goal", `${b.lat},${b.lng}`);
+  if (toName?.trim()) params.set("goal_name", toName.trim());
+  return `https://japantravel.navitime.com/en/area/jp/route/result/?${params.toString()}`;
 }
+
 
 function placeName(stop: EntryRow, fallbackCity?: string | null): string {
   return stop.location_name?.trim() || stop.title?.trim() || fallbackCity?.trim() || "";
