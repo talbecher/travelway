@@ -761,46 +761,35 @@ function SegmentConnector({
     <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
       <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
       <div className="flex gap-2 flex-wrap">
-        {hasNames ? (
-          <div className="flex gap-2 flex-wrap mt-1">
-            <a
-              href={rome2rioUrl(fromName, toName)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              className={navLinkClass}
-            >
-              <span>🗺</span>
-              <span>השווה דרכים</span>
-            </a>
-            {isJapan && (
-              <a
-                href={navitimeUrl(fromName, toName)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className={navLinkClass}
-              >
-                <span>🚄</span>
-                <span>NAVITIME</span>
-              </a>
-            )}
-          </div>
-        ) : (
+        <a
+          href={
+            hasNames
+              ? rome2rioUrl(fromName, toName)
+              : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={navLinkClass}
+        >
+          <span>🗺</span>
+          <span>השווה דרכים</span>
+        </a>
+        {isJapan && (
           <a
-            href={`https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`}
+            href={navitimeUrl(a, b, fromName, toName)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             className={navLinkClass}
           >
-            <span>🗺</span>
-            <span>השווה דרכים</span>
+            <span>🚄</span>
+            <span>NAVITIME</span>
           </a>
         )}
+
         {ordered.map((key) => {
           const m = modeMeta[key];
           const isOn = key === suggested;
