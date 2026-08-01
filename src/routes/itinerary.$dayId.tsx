@@ -401,7 +401,6 @@ function DayDetail() {
               <DayWeatherLine city={day.city_label ?? null} date={day.date} />
             </div>
             {/* Bottom-left action buttons */}
-
             <div className="absolute bottom-2 left-3 flex items-center gap-2">
               <button
                 type="button"
@@ -426,9 +425,8 @@ function DayDetail() {
               </button>
             </div>
 
-
-
             {/* City chip — anchored bottom-right (RTL start) */}
+
             <div className="absolute bottom-2 right-3">
               {editingCity ? (
                 <div className="flex items-center gap-2">
