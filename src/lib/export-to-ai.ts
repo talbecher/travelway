@@ -261,3 +261,182 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
     },
   };
 }
+
+export async function generateDayAIPrompt(
+  tripId: string,
+  dayId: string
+): Promise<ExportResult> {
+  const [tripRes, daysRes, entriesRes, hotelsRes] = await Promise.all([
+    supabase.from("trips").select("*").eq("id", tripId).single(),
+    supabase
+      .from("itinerary_days")
+      .select("id, day_number, date, city_label")
+      .eq("trip_id", tripId)
+      .order("day_number"),
+    supabase
+      .from("day_entries")
+      .select(
+        "id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, description, linked_recommendation_id"
+      )
+      .eq("day_id", dayId)
+      .order("display_order")
+      .order("created_at"),
+    supabase
+      .from("hotels")
+      .select("hotel_name, city, checkin_date, checkout_date, total_cost_ils")
+      .eq("trip_id", tripId),
+  ]);
+
+  if (tripRes.error) throw tripRes.error;
+  if (daysRes.error) throw daysRes.error;
+  if (entriesRes.error) throw entriesRes.error;
+  if (hotelsRes.error) throw hotelsRes.error;
+
+  const trip = tripRes.data;
+  const days = daysRes.data ?? [];
+  const day = days.find((d) => d.id === dayId);
+  if (!day) throw new Error("היום לא נמצא");
+
+  const entries = (entriesRes.data ?? []) as Array<{
+    entry_type: string;
+    icon_emoji: string | null;
+    title: string;
+    location_name: string | null;
+    time_of_day: string | null;
+    description: string | null;
+    linked_recommendation_id: string | null;
+  }>;
+
+  const recIds = Array.from(
+    new Set(
+      entries
+        .filter((e) => !e.description && e.linked_recommendation_id)
+        .map((e) => e.linked_recommendation_id as string)
+    )
+  );
+  const recNotesMap = new Map<string, string>();
+  if (recIds.length) {
+    const { data: recs } = await supabase
+      .from("recommendations")
+      .select("id, notes")
+      .in("id", recIds);
+    for (const r of recs ?? []) {
+      if (r.notes) recNotesMap.set(r.id, r.notes);
+    }
+  }
+
+  // Hotel covering this night (checkin <= date < checkout), pure string compare
+  const hotels = hotelsRes.data ?? [];
+  const nightHotel = hotels.find(
+    (h) =>
+      h.checkin_date &&
+      h.checkout_date &&
+      h.checkin_date <= day.date &&
+      day.date < h.checkout_date
+  );
+
+  const idx = days.findIndex((d) => d.id === dayId);
+  const prevDay = idx > 0 ? days[idx - 1] : null;
+  const nextDay = idx >= 0 && idx < days.length - 1 ? days[idx + 1] : null;
+
+  const lines: string[] = [];
+  lines.push(
+    `שלום! אני מתכנן יום בודד בטיול ל${trip.destination_country ?? "יעד"} ל-${trip.num_travelers} אנשים.`
+  );
+  lines.push(
+    `היום: יום ${day.day_number} מתוך ${days.length} | ${hebDateLong(day.date)} | ${day.city_label ?? "ללא עיר"}`
+  );
+  if (prevDay) {
+    lines.push(`אתמול (יום ${prevDay.day_number}): ${prevDay.city_label ?? "ללא עיר"}`);
+  }
+  if (nextDay) {
+    lines.push(`מחר (יום ${nextDay.day_number}): ${nextDay.city_label ?? "ללא עיר"}`);
+  }
+  lines.push("");
+  lines.push(SEP);
+  lines.push("🗺 מה מתוכנן ביום הזה:");
+  lines.push(SEP);
+  lines.push("");
+
+  if (entries.length === 0) {
+    lines.push("(יום ריק — לא תוכנן עדיין)");
+  } else {
+    for (const e of entries) {
+      const icon = e.icon_emoji || "•";
+      lines.push(`${pad5(e.time_of_day)} ${icon} ${e.title}`);
+      if (e.location_name) lines.push(`         📍 ${e.location_name}`);
+      const notes =
+        e.description ||
+        (e.linked_recommendation_id
+          ? recNotesMap.get(e.linked_recommendation_id) ?? ""
+          : "");
+      if (notes) lines.push(`         💬 ${truncate(notes, 80)}`);
+    }
+  }
+  lines.push("");
+
+  lines.push(SEP);
+  lines.push("🏨 לינה בלילה הזה:");
+  lines.push(SEP);
+  if (nightHotel) {
+    const nights = nightsBetween(nightHotel.checkin_date!, nightHotel.checkout_date!);
+    lines.push(`- ${nightHotel.hotel_name} | ${nightHotel.city ?? "—"}`);
+    lines.push(
+      `  ${nightHotel.checkin_date} → ${nightHotel.checkout_date} (${nights} לילות)`
+    );
+  } else {
+    lines.push("(לא הוזן מלון ללילה הזה)");
+  }
+  lines.push("");
+
+  lines.push(SEP);
+  lines.push("🙏 אנא נתח את היום הזה בלבד:");
+  lines.push(SEP);
+  lines.push("");
+  lines.push("📍 1. הגיון גיאוגרפי בתוך היום");
+  lines.push("- האם סדר התחנות יעיל או שיש קפיצות מיותרות הלוך-חזור?");
+  lines.push("- מה הסדר האופטימלי של התחנות לפי מיקום?");
+  lines.push("- כמה זמן נסיעה בין תחנה לתחנה (ובאיזה אמצעי תחבורה)?");
+  lines.push("");
+  lines.push("⏰ 2. ריאליזם זמנים");
+  lines.push("- האם היום עמוס מדי או דליל מדי?");
+  lines.push("- כמה זמן ריאלי להקדיש לכל תחנה?");
+  lines.push("- באיזו שעה כדאי לצאת ומתי לחזור?");
+  lines.push("");
+  lines.push("🗓 3. תזמון חכם");
+  lines.push("- מה עדיף לעשות מוקדם בבוקר כדי להימנע מתורים והמונים?");
+  lines.push("- האם משהו עלול להיות סגור בתאריך/יום הזה?");
+  lines.push("- האם יש נקודה שעדיף לראות בשקיעה או בערב?");
+  lines.push("");
+  lines.push("➕ 4. השלמות לאותו אזור");
+  lines.push("- הצע 2-4 מקומות נוספים קרובים שמשתלבים היטב ביום הזה:");
+  lines.push("  • שם המקום");
+  lines.push("  • מדוע הוא מתאים דווקא כאן");
+  lines.push("  • כמה זמן להקדיש לו");
+  lines.push("  • מחיר משוער");
+  lines.push("- כולל המלצה אחת לאוכל מקומי באזור.");
+  lines.push("");
+  lines.push(SEP);
+  lines.push("✅ סיכום מבוקש:");
+  lines.push(SEP);
+  lines.push("");
+  lines.push("1. לוח זמנים מוצע ליום (שעה → פעילות), מסודר ומעשי.");
+  lines.push("2. 3 שיפורים מרכזיים ליום הזה לפי עדיפות.");
+  lines.push("3. ציון ליום מ-1 עד 10 עם משפט הסבר אחד.");
+
+  const prompt = lines.join("\n");
+
+  return {
+    prompt,
+    stats: {
+      totalDays: 1,
+      entryCount: entries.length,
+      emptyDays: entries.length === 0 ? 1 : 0,
+      sparseDays: entries.length === 1 ? 1 : 0,
+      plannedDays: entries.length > 0 ? 1 : 0,
+      avgEntries: entries.length,
+      hotelCount: nightHotel ? 1 : 0,
+      charCount: prompt.length,
+    },
+  };
+}
