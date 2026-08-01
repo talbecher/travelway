@@ -393,35 +393,31 @@ function DayDetail() {
             >
               <ChevronRight size={18} className="rotate-180" />
             </button>
-            <button
-              type="button"
-              onClick={() => setExportOpen(true)}
-              className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
-            >
-              <Sparkles size={13} />
-              <span>ייצא ל-AI</span>
-            </button>
-            <div className="pt-1 pr-1">
-              <div className="text-white text-[28px] font-semibold leading-none">
-                יום {day.day_number}
-                <span className="text-[15px] font-medium text-white/80 mr-1">- {hebDateLong(day.date)}</span>
-              </div>
-              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+            {/* Bottom-left action buttons */}
+            <div className="absolute bottom-2 left-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMapOpen(true)}
+                disabled={mapStops.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <MapIcon size={13} />
+                <span>תצוגת מפה</span>
+                {mapStops.length > 0 && (
+                  <span className="text-white/70">· {mapStops.length}</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExportOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
+              >
+                <Sparkles size={13} />
+                <span>ייצא ל-AI</span>
+              </button>
             </div>
 
-            {/* Map view button — anchored bottom-left (opposite city chip) */}
-            <button
-              type="button"
-              onClick={() => setMapOpen(true)}
-              disabled={mapStops.length === 0}
-              className="absolute bottom-2 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <MapIcon size={13} />
-              <span>תצוגת מפה</span>
-              {mapStops.length > 0 && (
-                <span className="text-white/70">· {mapStops.length}</span>
-              )}
-            </button>
 
 
             {/* City chip — anchored bottom-right (RTL start) */}
