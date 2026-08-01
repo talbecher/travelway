@@ -393,7 +393,15 @@ function DayDetail() {
             >
               <ChevronRight size={18} className="rotate-180" />
             </button>
+            <div className="pt-1 pr-1">
+              <div className="text-white text-[28px] font-semibold leading-none">
+                יום {day.day_number}
+                <span className="text-[15px] font-medium text-white/80 mr-1">- {hebDateLong(day.date)}</span>
+              </div>
+              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+            </div>
             {/* Bottom-left action buttons */}
+
             <div className="absolute bottom-2 left-3 flex items-center gap-2">
               <button
                 type="button"
