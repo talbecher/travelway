@@ -24,6 +24,9 @@ import { WEATHER_LABELS_HE } from "@/lib/weather";
 import { DateField } from "@/components/DateField";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { syncHotelToItinerary } from "@/lib/hotels";
+import { ExportAISheet } from "@/components/ExportAISheet";
+import { generateDayAIPrompt } from "@/lib/export-to-ai";
+import { Sparkles } from "lucide-react";
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
@@ -167,6 +170,7 @@ function DayDetail() {
   const [movingEntry, setMovingEntry] = useState<EntryRow | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [navigateOpen, setNavigateOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
@@ -388,6 +392,14 @@ function DayDetail() {
               className="absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
             >
               <ChevronRight size={18} className="rotate-180" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportOpen(true)}
+              className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
+            >
+              <Sparkles size={13} />
+              <span>ייצא ל-AI</span>
             </button>
             <div className="pt-1 pr-1">
               <div className="text-white text-[28px] font-semibold leading-none">
@@ -702,6 +714,20 @@ function DayDetail() {
 
 
       {/* Day map sheet */}
+      <ExportAISheet
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        title="🤖 ייצא את היום ל-AI"
+        subtitle="קבל ניתוח מקצועי של היום הזה"
+        queryKey={["ai-export-day", dayId]}
+        generate={() => generateDayAIPrompt(tripId, dayId)}
+        chips={(st) => [
+          `יום ${day?.day_number ?? ""}`.trim(),
+          `${st.entryCount} פעילויות`,
+          st.hotelCount ? "מלון ✓" : "ללא מלון",
+        ]}
+      />
+
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
         <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
           {mapStops.length > 0 ? (
