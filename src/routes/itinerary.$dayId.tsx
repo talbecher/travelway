@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
-import { hebDateLong, hebDate, daysBetween } from "@/lib/format";
+import { hebDateLong, hebDate, hebWeekdayShort, daysBetween } from "@/lib/format";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -696,7 +696,9 @@ function DayDetail() {
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="font-semibold shrink-0">יום {d.day_number}</span>
                     <span className="text-muted-foreground text-[12px] shrink-0">·</span>
-                    <span className="text-[12px]">{hebDate(d.date)}</span>
+                    <span className="text-[12px] text-muted-foreground shrink-0">{hebWeekdayShort(d.date)}</span>
+                    <span className="text-muted-foreground text-[12px] shrink-0">·</span>
+                    <span className="text-[12px] shrink-0">{hebDate(d.date)}</span>
                     {d.city_label && (
                       <>
                         <span className="text-muted-foreground text-[12px] shrink-0">·</span>

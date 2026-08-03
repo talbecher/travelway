@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil, Trash2, Check, X, ChevronLeft, Sparkles } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
-import { hebDate } from "@/lib/format";
+import { hebDate, hebWeekday } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { EmptyState } from "@/components/EmptyState";
@@ -267,6 +267,10 @@ function Itinerary() {
                       >
                         <span className="text-[15px] font-bold text-[color:var(--accent)] shrink-0">
                           יום {d.day_number}
+                        </span>
+                        <span className="text-[13px] text-muted-foreground shrink-0">·</span>
+                        <span className="text-[13px] font-medium text-muted-foreground shrink-0">
+                          {hebWeekday(d.date)}
                         </span>
                         <span className="text-[13px] text-muted-foreground shrink-0">·</span>
                         <span className="text-[13px] text-muted-foreground shrink-0 tabular-nums">
