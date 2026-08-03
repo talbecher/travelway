@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil, Trash2, Check, X, ChevronLeft, Sparkles } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
-import { hebDate } from "@/lib/format";
+import { hebDate, hebWeekday } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { EmptyState } from "@/components/EmptyState";
