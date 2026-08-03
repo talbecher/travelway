@@ -269,6 +269,10 @@ function Itinerary() {
                           יום {d.day_number}
                         </span>
                         <span className="text-[13px] text-muted-foreground shrink-0">·</span>
+                        <span className="text-[13px] font-medium text-muted-foreground shrink-0">
+                          {hebWeekday(d.date)}
+                        </span>
+                        <span className="text-[13px] text-muted-foreground shrink-0">·</span>
                         <span className="text-[13px] text-muted-foreground shrink-0 tabular-nums">
                           {hebDate(d.date)}
                         </span>
