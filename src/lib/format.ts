@@ -18,6 +18,16 @@ export function hebDateLong(iso: string) {
   return d.toLocaleDateString("he-IL", { day: "numeric", month: "long", weekday: "long" });
 }
 
+export function hebWeekday(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("he-IL", { weekday: "long" });
+}
+
+export function hebWeekdayShort(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("he-IL", { weekday: "narrow" });
+}
+
 export function daysBetween(a: string | Date, b: string | Date) {
   const da = typeof a === "string" ? new Date(a + "T00:00:00") : a;
   const db = typeof b === "string" ? new Date(b + "T00:00:00") : b;
