@@ -305,71 +305,17 @@ function Home() {
   // 7. DEADLINES
 
   if (deadlines.length > 0) {
-    const shown = deadlines.slice(0, 5);
     sections.push({
       key: "alerts",
-      node: (
-        <section className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
-            <span>⏰ דדליינים קרובים</span>
-          </div>
-          <div className="space-y-2">
-            {shown.map((item: DeadlineItem) => {
-              const typeBadge =
-                item.type === "hotel" ? "מלון"
-                : item.recType === "food" ? "🍜"
-                : item.recType === "hotel" ? "🏨"
-                : "⛩";
-              const dayLabel =
-                item.daysLeft < 0 ? `⚠️ פספסת — ${Math.abs(item.daysLeft)} ימים אחרי`
-                : item.daysLeft === 0 ? "🔴 היום!"
-                : `${item.daysLeft} ימים נותרו`;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() =>
-                    navigate({
-                      to: "/recommendations",
-                      search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
-                    })
-                  }
-                  className="w-full text-right bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-2 min-h-0 h-auto"
-                  style={{ borderRightWidth: 4, borderRightColor: URGENCY_COLOR[item.urgency] }}
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{item.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      <span className="ml-1">{typeBadge}</span>
-                      {hebDate(item.deadline)} · {dayLabel}
-                    </div>
-                  </div>
-                  {item.booking_url && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(item.booking_url!, "_blank", "noopener");
-                      }}
-                      className="shrink-0 text-xs px-3 h-8 inline-flex items-center rounded-lg bg-[color:var(--accent)] text-white"
-                    >
-                      הזמן ↗
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-            {deadlines.length > 5 && (
-              <div className="text-xs text-muted-foreground text-center">
-                ועוד {deadlines.length - 5} נוספים...
-              </div>
-            )}
-          </div>
-        </section>
-      ),
+      node: <DeadlinesCard items={deadlines} onOpen={(item) =>
+        navigate({
+          to: "/recommendations",
+          search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
+        })
+      } />,
     });
   }
+
 
   return (
     <div className="pt-4 pb-8 flex flex-col gap-4">
