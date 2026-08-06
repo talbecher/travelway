@@ -78,6 +78,7 @@ export function buildDeadlines(
       daysLeft,
       urgency: urgencyFor(daysLeft),
       booking_url: r.booking_url ?? null,
+      booking_time: r.booking_time ?? null,
       status: r.booking_status ?? "none",
       sourceId: r.id,
     });
