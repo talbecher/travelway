@@ -315,7 +315,7 @@ function Home() {
             <span>⏰ דדליינים קרובים</span>
           </div>
           <div className="space-y-2">
-            {shown.map((item) => {
+            {shown.map((item: DeadlineItem) => {
               const typeBadge =
                 item.type === "hotel" ? "מלון"
                 : item.recType === "food" ? "🍜"
