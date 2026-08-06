@@ -23,6 +23,8 @@ import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
+import { bookingChip } from "@/lib/deadlines";
+import { DateField } from "@/components/DateField";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
