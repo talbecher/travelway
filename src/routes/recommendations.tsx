@@ -42,6 +42,11 @@ type Rec = {
   google_rating?: number | string | null;
   google_rating_count?: number | null;
   created_at?: string;
+  booking_deadline?: string | null;
+  booking_time?: string | null;
+  booking_url?: string | null;
+  booking_note?: string | null;
+  booking_status?: string | null;
 };
 
 const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food", attractions: "attraction" };
