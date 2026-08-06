@@ -799,6 +799,11 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         photo_url: photoUrl,
         google_rating: googleRating,
         google_rating_count: googleRatingCount,
+        booking_deadline: bookingDeadline || null,
+        booking_time: bookingTime.trim() || null,
+        booking_url: bookingUrl.trim() || null,
+        booking_note: bookingNote.trim() || null,
+        booking_status: bookingStatus,
       };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
