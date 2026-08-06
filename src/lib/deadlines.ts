@@ -11,6 +11,7 @@ export type DeadlineItem = {
   daysLeft: number;
   urgency: DeadlineUrgency;
   booking_url?: string | null;
+  booking_time?: string | null;
   status?: string | null;
   sourceId: string;
 };
