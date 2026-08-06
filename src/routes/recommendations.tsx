@@ -625,6 +625,20 @@ function PlaceCard({
             <span className="truncate">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>
           </div>
         )}
+        {(() => {
+          const chip = bookingChip(rec.booking_deadline, rec.booking_status, todayISO());
+          if (!chip) return null;
+          const cls =
+            chip.tone === "booked" ? "bg-[color:var(--accent-3)]/15 text-[color:var(--accent-3)]"
+            : chip.tone === "red" ? "bg-red-500/15 text-red-600"
+            : chip.tone === "orange" ? "bg-amber-500/15 text-amber-600"
+            : "bg-muted text-muted-foreground";
+          return (
+            <span className={`inline-block mt-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${cls} ${chip.pulse ? "animate-pulse" : ""}`}>
+              {chip.label}
+            </span>
+          );
+        })()}
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
           {googleRating != null && (
             <span className="inline-flex items-center gap-0.5" dir="ltr">
