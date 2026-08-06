@@ -12,6 +12,7 @@ import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 import { haversine } from "@/lib/geo";
+import { buildDeadlines, URGENCY_COLOR, type DeadlineItem } from "@/lib/deadlines";
 
 
 
