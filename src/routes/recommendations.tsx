@@ -736,6 +736,14 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   const [address, setAddress] = useState(existing?.address ?? "");
   const [url, setUrl] = useState(existing?.google_maps_url ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [bookingDeadline, setBookingDeadline] = useState(existing?.booking_deadline ?? "");
+  const [bookingTime, setBookingTime] = useState(existing?.booking_time ?? "");
+  const [bookingUrl, setBookingUrl] = useState(existing?.booking_url ?? "");
+  const [bookingNote, setBookingNote] = useState(existing?.booking_note ?? "");
+  const [bookingStatus, setBookingStatus] = useState<"none" | "booked">(
+    (existing?.booking_status as "none" | "booked") ?? "none",
+  );
+  const [bookingOpen, setBookingOpen] = useState(!!existing?.booking_deadline);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [googleRating, setGoogleRating] = useState<number | null>(
     existing?.google_rating != null ? Number(existing.google_rating) : null,
