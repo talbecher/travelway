@@ -31,6 +31,7 @@ type RecLike = {
   booking_deadline?: string | null;
   booking_status?: string | null;
   booking_url?: string | null;
+  booking_time?: string | null;
 };
 
 function urgencyFor(daysLeft: number): DeadlineUrgency {
