@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, MessagesSquare, FileText, ExternalLink } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,154 @@ import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 import { haversine } from "@/lib/geo";
-import { buildDeadlines, URGENCY_COLOR, type DeadlineItem } from "@/lib/deadlines";
+import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
+
+type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
+
+function DeadlineRow({ item, onOpen }: { item: DeadlineItem; onOpen: (i: DeadlineItem) => void }) {
+  const color = URGENCY_COLOR[item.urgency];
+  const strong = item.urgency !== "normal";
+  return (
+    <button
+      onClick={() => onOpen(item)}
+      className="w-full text-right bg-card border border-border rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2 h-auto min-h-0"
+      style={{ borderRightWidth: 4, borderRightColor: color }}
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-semibold truncate">{item.name}</div>
+        <div className="text-xs text-muted-foreground mt-0.5 truncate">
+          {deadlineLabel(item)} ·{" "}
+          <span
+            className={strong ? "font-semibold" : undefined}
+            style={strong ? { color } : undefined}
+          >
+            {daysLeftLabel(item.daysLeft)}
+          </span>
+        </div>
+      </div>
+      {item.booking_url && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(item.booking_url!, "_blank", "noopener");
+          }}
+          className="shrink-0 text-xs px-3 h-8 inline-flex items-center rounded-lg bg-[color:var(--accent)] text-white"
+        >
+          הזמן ↗
+        </span>
+      )}
+    </button>
+  );
+}
+
+function DeadlineSection({
+  group,
+  open,
+  onToggle,
+  onOpen,
+}: {
+  group: DeadlineGroup;
+  open: boolean;
+  onToggle: () => void;
+  onOpen: (i: DeadlineItem) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const items = showAll ? group.items : group.items.slice(0, 4);
+  return (
+    <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-0"
+      >
+        <div className="min-w-0">
+          <div className="text-sm font-semibold truncate">
+            {group.title} ({group.items.length})
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate">{group.subtitle}</div>
+        </div>
+        <ChevronDown
+          size={16}
+          className="shrink-0 text-muted-foreground transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : undefined }}
+        />
+      </button>
+      {open && (
+        <div className="px-2 pb-2 space-y-2">
+          {items.map((i) => (
+            <DeadlineRow key={i.id} item={i} onOpen={onOpen} />
+          ))}
+          {!showAll && group.items.length > 4 && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="w-full text-xs text-muted-foreground py-1 h-auto min-h-0"
+            >
+              הצג הכל ({group.items.length})
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeadlinesCard({
+  items,
+  onOpen,
+}: {
+  items: DeadlineItem[];
+  onOpen: (i: DeadlineItem) => void;
+}) {
+  const groups = useMemo<DeadlineGroup[]>(() => {
+    const defs: DeadlineGroup[] = [
+      { key: "hotel", title: "🏨 מלונות", subtitle: "עד מתי אפשר לבטל בחינם", items: [] },
+      { key: "attraction", title: "⛩ אטרקציות", subtitle: "עד מתי צריך להזמין", items: [] },
+      { key: "food", title: "🍜 מסעדות", subtitle: "עד מתי צריך להזמין שולחן", items: [] },
+      { key: "other", title: "🎟 שאר ההזמנות", subtitle: "עד מתי צריך להזמין", items: [] },
+    ];
+    const by = Object.fromEntries(defs.map((g) => [g.key, g])) as Record<string, DeadlineGroup>;
+    for (const i of items) {
+      if (i.type === "hotel" || i.recType === "hotel") by.hotel.items.push(i);
+      else if (i.recType === "food") by.food.items.push(i);
+      else if (i.recType === "attraction") by.attraction.items.push(i);
+      else by.other.items.push(i);
+    }
+    return defs.filter((g) => g.items.length > 0);
+  }, [items]);
+
+  const mostUrgentKey = useMemo(() => {
+    let best: DeadlineGroup | null = null;
+    for (const g of groups) {
+      const min = Math.min(...g.items.map((i) => i.daysLeft));
+      if (!best || min < Math.min(...best.items.map((i) => i.daysLeft))) best = g;
+    }
+    return best?.key ?? null;
+  }, [groups]);
+
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const effectiveOpen = openKey ?? mostUrgentKey;
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
+        <span>⏰ דדליינים קרובים</span>
+      </div>
+      <div className="space-y-2">
+        {groups.map((g) => (
+          <DeadlineSection
+            key={g.key}
+            group={g}
+            open={effectiveOpen === g.key}
+            onToggle={() => setOpenKey(effectiveOpen === g.key ? "" : g.key)}
+            onOpen={onOpen}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 
 
@@ -305,71 +452,17 @@ function Home() {
   // 7. DEADLINES
 
   if (deadlines.length > 0) {
-    const shown = deadlines.slice(0, 5);
     sections.push({
       key: "alerts",
-      node: (
-        <section className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
-            <span>⏰ דדליינים קרובים</span>
-          </div>
-          <div className="space-y-2">
-            {shown.map((item: DeadlineItem) => {
-              const typeBadge =
-                item.type === "hotel" ? "מלון"
-                : item.recType === "food" ? "🍜"
-                : item.recType === "hotel" ? "🏨"
-                : "⛩";
-              const dayLabel =
-                item.daysLeft < 0 ? `⚠️ פספסת — ${Math.abs(item.daysLeft)} ימים אחרי`
-                : item.daysLeft === 0 ? "🔴 היום!"
-                : `${item.daysLeft} ימים נותרו`;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() =>
-                    navigate({
-                      to: "/recommendations",
-                      search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
-                    })
-                  }
-                  className="w-full text-right bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-2 min-h-0 h-auto"
-                  style={{ borderRightWidth: 4, borderRightColor: URGENCY_COLOR[item.urgency] }}
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{item.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      <span className="ml-1">{typeBadge}</span>
-                      {hebDate(item.deadline)} · {dayLabel}
-                    </div>
-                  </div>
-                  {item.booking_url && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(item.booking_url!, "_blank", "noopener");
-                      }}
-                      className="shrink-0 text-xs px-3 h-8 inline-flex items-center rounded-lg bg-[color:var(--accent)] text-white"
-                    >
-                      הזמן ↗
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-            {deadlines.length > 5 && (
-              <div className="text-xs text-muted-foreground text-center">
-                ועוד {deadlines.length - 5} נוספים...
-              </div>
-            )}
-          </div>
-        </section>
-      ),
+      node: <DeadlinesCard items={deadlines} onOpen={(item) =>
+        navigate({
+          to: "/recommendations",
+          search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
+        })
+      } />,
     });
   }
+
 
   return (
     <div className="pt-4 pb-8 flex flex-col gap-4">

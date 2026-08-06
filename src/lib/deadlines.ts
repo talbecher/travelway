@@ -11,6 +11,7 @@ export type DeadlineItem = {
   daysLeft: number;
   urgency: DeadlineUrgency;
   booking_url?: string | null;
+  booking_time?: string | null;
   status?: string | null;
   sourceId: string;
 };
@@ -30,6 +31,7 @@ type RecLike = {
   booking_deadline?: string | null;
   booking_status?: string | null;
   booking_url?: string | null;
+  booking_time?: string | null;
 };
 
 function urgencyFor(daysLeft: number): DeadlineUrgency {
@@ -76,6 +78,7 @@ export function buildDeadlines(
       daysLeft,
       urgency: urgencyFor(daysLeft),
       booking_url: r.booking_url ?? null,
+      booking_time: r.booking_time ?? null,
       status: r.booking_status ?? "none",
       sourceId: r.id,
     });
@@ -105,4 +108,25 @@ export function bookingChip(
   if (d <= 2) return { label: `🔴 בעוד ${d} ימים`, tone: "red" };
   if (d <= 7) return { label: `🟠 בעוד ${d} ימים`, tone: "orange" };
   return { label: `🎟 הזמנה בעוד ${d} ימים`, tone: "muted" };
+}
+
+function shortDate(iso: string) {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+}
+
+/** "ביטול חינם עד 26.11" / "להזמין עד 26.11 בשעה 09:00" */
+export function deadlineLabel(item: DeadlineItem): string {
+  const base =
+    item.type === "hotel"
+      ? `ביטול חינם עד ${shortDate(item.deadline)}`
+      : `להזמין עד ${shortDate(item.deadline)}`;
+  return item.booking_time ? `${base} בשעה ${item.booking_time}` : base;
+}
+
+/** "עוד 112 ימים" / "🔴 היום!" / "⚠️ פספסת לפני 3 ימים" */
+export function daysLeftLabel(daysLeft: number): string {
+  if (daysLeft < 0) return `⚠️ פספסת לפני ${Math.abs(daysLeft)} ימים`;
+  if (daysLeft === 0) return "🔴 היום!";
+  if (daysLeft === 1) return "🔴 מחר";
+  return `עוד ${daysLeft} ימים`;
 }
