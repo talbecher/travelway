@@ -23,6 +23,8 @@ import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
+import { bookingChip } from "@/lib/deadlines";
+import { DateField } from "@/components/DateField";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
@@ -42,6 +44,11 @@ type Rec = {
   google_rating?: number | string | null;
   google_rating_count?: number | null;
   created_at?: string;
+  booking_deadline?: string | null;
+  booking_time?: string | null;
+  booking_url?: string | null;
+  booking_note?: string | null;
+  booking_status?: string | null;
 };
 
 const TAB_TYPE: Record<Exclude<Tab, "all" | "hotels">, RecType> = { food: "food", attractions: "attraction" };
@@ -620,6 +627,20 @@ function PlaceCard({
             <span className="truncate">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>
           </div>
         )}
+        {(() => {
+          const chip = bookingChip(rec.booking_deadline, rec.booking_status, todayISO());
+          if (!chip) return null;
+          const cls =
+            chip.tone === "booked" ? "bg-[color:var(--accent-3)]/15 text-[color:var(--accent-3)]"
+            : chip.tone === "red" ? "bg-red-500/15 text-red-600"
+            : chip.tone === "orange" ? "bg-amber-500/15 text-amber-600"
+            : "bg-muted text-muted-foreground";
+          return (
+            <span className={`inline-block mt-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${cls} ${chip.pulse ? "animate-pulse" : ""}`}>
+              {chip.label}
+            </span>
+          );
+        })()}
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
           {googleRating != null && (
             <span className="inline-flex items-center gap-0.5" dir="ltr">
@@ -715,6 +736,14 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   const [address, setAddress] = useState(existing?.address ?? "");
   const [url, setUrl] = useState(existing?.google_maps_url ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [bookingDeadline, setBookingDeadline] = useState(existing?.booking_deadline ?? "");
+  const [bookingTime, setBookingTime] = useState(existing?.booking_time ?? "");
+  const [bookingUrl, setBookingUrl] = useState(existing?.booking_url ?? "");
+  const [bookingNote, setBookingNote] = useState(existing?.booking_note ?? "");
+  const [bookingStatus, setBookingStatus] = useState<"none" | "booked">(
+    (existing?.booking_status as "none" | "booked") ?? "none",
+  );
+  const [bookingOpen, setBookingOpen] = useState(!!existing?.booking_deadline);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const [googleRating, setGoogleRating] = useState<number | null>(
     existing?.google_rating != null ? Number(existing.google_rating) : null,
@@ -770,6 +799,11 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         photo_url: photoUrl,
         google_rating: googleRating,
         google_rating_count: googleRatingCount,
+        booking_deadline: bookingDeadline || null,
+        booking_time: bookingTime.trim() || null,
+        booking_url: bookingUrl.trim() || null,
+        booking_note: bookingNote.trim() || null,
+        booking_status: bookingStatus,
       };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
@@ -898,6 +932,46 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
               </Field>
             )}
             <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <button type="button" onClick={() => setBookingOpen((v) => !v)}
+                className="w-full h-11 px-3 flex items-center justify-between bg-muted/40 text-sm min-h-0">
+                <span>🎟 פרטי הזמנה</span>
+                <span className="text-muted-foreground text-xs">{bookingOpen ? "▲" : "▼"}</span>
+              </button>
+              {bookingOpen && (
+                <div className="p-3 space-y-3">
+                  <Field label="מתי להזמין עד?">
+                    <DateField value={bookingDeadline} onChange={setBookingDeadline} placeholder="בחר תאריך" />
+                  </Field>
+                  <Field label="שעה">
+                    <input value={bookingTime} onChange={(e) => setBookingTime(e.target.value)}
+                      placeholder="09:00 — אם יש שעה מדויקת"
+                      className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                  </Field>
+                  <Field label="קישור להזמנה">
+                    <input type="url" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)}
+                      placeholder="https://..." dir="ltr"
+                      className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                  </Field>
+                  <Field label="הערה">
+                    <input value={bookingNote} onChange={(e) => setBookingNote(e.target.value)}
+                      placeholder="נגמר מהר, להזמין 30 יום מראש"
+                      className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                  </Field>
+                  <div className="flex gap-1 bg-muted rounded-lg p-1">
+                    <button type="button" onClick={() => setBookingStatus("none")}
+                      className={`flex-1 h-9 rounded-md text-xs min-h-0 ${bookingStatus === "none" ? "bg-card shadow-sm" : "text-muted-foreground bg-transparent"}`}>
+                      טרם הוזמן
+                    </button>
+                    <button type="button" onClick={() => setBookingStatus("booked")}
+                      className={`flex-1 h-9 rounded-md text-xs min-h-0 ${bookingStatus === "booked" ? "text-white" : "text-muted-foreground bg-transparent"}`}
+                      style={bookingStatus === "booked" ? { background: "var(--accent-3)" } : undefined}>
+                      ✅ הוזמן
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" /></Field>
 
             {type === "hotel" && !existing && (

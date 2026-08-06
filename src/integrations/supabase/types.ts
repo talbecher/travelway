@@ -337,6 +337,11 @@ export type Database = {
       recommendations: {
         Row: {
           address: string | null
+          booking_deadline: string | null
+          booking_note: string | null
+          booking_status: string | null
+          booking_time: string | null
+          booking_url: string | null
           city: string | null
           created_at: string
           google_maps_url: string | null
@@ -356,6 +361,11 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          booking_deadline?: string | null
+          booking_note?: string | null
+          booking_status?: string | null
+          booking_time?: string | null
+          booking_url?: string | null
           city?: string | null
           created_at?: string
           google_maps_url?: string | null
@@ -375,6 +385,11 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          booking_deadline?: string | null
+          booking_note?: string | null
+          booking_status?: string | null
+          booking_time?: string | null
+          booking_url?: string | null
           city?: string | null
           created_at?: string
           google_maps_url?: string | null
