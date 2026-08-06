@@ -932,6 +932,46 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
               </Field>
             )}
             <Field label="הערות"><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg bg-background border border-input px-3 py-2 min-h-[56px]" /></Field>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <button type="button" onClick={() => setBookingOpen((v) => !v)}
+                className="w-full h-11 px-3 flex items-center justify-between bg-muted/40 text-sm min-h-0">
+                <span>🎟 פרטי הזמנה</span>
+                <span className="text-muted-foreground text-xs">{bookingOpen ? "▲" : "▼"}</span>
+              </button>
+              {bookingOpen && (
+                <div className="p-3 space-y-3">
+                  <Field label="מתי להזמין עד?">
+                    <DateField value={bookingDeadline} onChange={setBookingDeadline} placeholder="בחר תאריך" />
+                  </Field>
+                  <Field label="שעה">
+                    <input value={bookingTime} onChange={(e) => setBookingTime(e.target.value)}
+                      placeholder="09:00 — אם יש שעה מדויקת"
+                      className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                  </Field>
+                  <Field label="קישור להזמנה">
+                    <input type="url" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)}
+                      placeholder="https://..." dir="ltr"
+                      className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                  </Field>
+                  <Field label="הערה">
+                    <input value={bookingNote} onChange={(e) => setBookingNote(e.target.value)}
+                      placeholder="נגמר מהר, להזמין 30 יום מראש"
+                      className="w-full rounded-lg bg-background border border-input px-3 h-10" />
+                  </Field>
+                  <div className="flex gap-1 bg-muted rounded-lg p-1">
+                    <button type="button" onClick={() => setBookingStatus("none")}
+                      className={`flex-1 h-9 rounded-md text-xs min-h-0 ${bookingStatus === "none" ? "bg-card shadow-sm" : "text-muted-foreground bg-transparent"}`}>
+                      טרם הוזמן
+                    </button>
+                    <button type="button" onClick={() => setBookingStatus("booked")}
+                      className={`flex-1 h-9 rounded-md text-xs min-h-0 ${bookingStatus === "booked" ? "text-white" : "text-muted-foreground bg-transparent"}`}
+                      style={bookingStatus === "booked" ? { background: "var(--accent-3)" } : undefined}>
+                      ✅ הוזמן
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" /></Field>
 
             {type === "hotel" && !existing && (
