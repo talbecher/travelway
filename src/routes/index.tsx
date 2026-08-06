@@ -142,16 +142,10 @@ function Home() {
     return { saved, visited, planned };
   }, [recs, days, entriesByDay]);
 
-  const upcomingHotelDeadlines = useMemo(() => {
-    const t = todayISO();
-    return (hotels ?? [])
-      .filter((h: { cancellation_deadline?: string | null }) => {
-        if (!h.cancellation_deadline) return false;
-        const d = daysBetween(t, h.cancellation_deadline);
-        return d >= 0 && d <= 7;
-      })
-      .sort((a, b) => (a.cancellation_deadline! < b.cancellation_deadline! ? -1 : 1));
-  }, [hotels]);
+  const deadlines = useMemo(
+    () => buildDeadlines(hotels as never, recs as never, todayISO()),
+    [hotels, recs],
+  );
 
   if (isLoading) return <HomeSkeleton />;
 
