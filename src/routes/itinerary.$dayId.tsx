@@ -485,9 +485,16 @@ function DayDetail() {
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-4 overscroll-contain">
                   {entries.map((e, idx) => {
-                    const prev = idx > 0 ? entries[idx - 1] : null;
-                    const a = prev ? coordsOf(prev) : null;
                     const b = coordsOf(e);
+                    let prev: typeof e | null = null;
+                    let a: ReturnType<typeof coordsOf> = null;
+                    if (b) {
+                      for (let i = idx - 1; i >= 0; i--) {
+                        const c = coordsOf(entries[i]);
+                        if (c) { prev = entries[i]; a = c; break; }
+                      }
+                    }
+
                     return (
                       <div key={e.id}>
                         {prev && a && b && (
