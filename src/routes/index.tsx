@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
+import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
 import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
