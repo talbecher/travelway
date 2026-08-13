@@ -211,9 +211,17 @@ function Onboarding() {
         .single();
       if (tripErr) throw tripErr;
 
+      const { data: version, error: verErr } = await supabase
+        .from("itinerary_versions")
+        .insert({ trip_id: trip.id, name: "המסלול שלי", source: "manual", is_active: true })
+        .select("id")
+        .single();
+      if (verErr) throw verErr;
+
       const days = Array.from({ length: numDays }).map((_, i) => {
         return {
           trip_id: trip.id,
+          version_id: version.id,
           day_number: i + 1,
           date: addDaysISO(startDate, i),
           city_label: null,
