@@ -32,6 +32,67 @@ function nightsBetween(a: string, b: string) {
 
 const SEP = "━━━━━━━━━━━━━━━━━━━━━━━━━";
 
+/** Machine-readable contract so the app can import the AI answer back automatically. */
+function formatSection(
+  days: Array<{ day_number: number; date: string; city_label: string | null }>
+): string[] {
+  const lines: string[] = [];
+  lines.push(SEP);
+  lines.push("🔁 חשוב! פורמט תשובה לייבוא אוטומטי:");
+  lines.push(SEP);
+  lines.push("");
+  lines.push(
+    "בסוף התשובה (אחרי ההסבר בעברית), הוסף בלוק JSON אחד בלבד, עטוף ב-```json, בפורמט המדויק הבא:"
+  );
+  lines.push("");
+  lines.push("```json");
+  lines.push("{");
+  lines.push('  "version": 1,');
+  lines.push('  "itinerary": [');
+  lines.push("    {");
+  lines.push(`      "day_number": ${days[0]?.day_number ?? 1},`);
+  lines.push('      "entries": [');
+  lines.push("        {");
+  lines.push('          "title": "שם הפעילות בעברית",');
+  lines.push('          "entry_type": "attraction",');
+  lines.push('          "time_of_day": "09:00",');
+  lines.push('          "location_name": "Kiyomizu-dera, Kyoto",');
+  lines.push('          "description": "למה כדאי / טיפ קצר",');
+  lines.push('          "icon_emoji": "⛩"');
+  lines.push("        }");
+  lines.push("      ]");
+  lines.push("    }");
+  lines.push("  ],");
+  lines.push('  "recommendations": [');
+  lines.push("    {");
+  lines.push('      "name": "Ichiran Ramen Shibuya",');
+  lines.push('      "type": "food",');
+  lines.push('      "city": "Tokyo",');
+  lines.push('      "notes": "למה מומלץ, מחיר משוער, כמה זמן",');
+  lines.push('      "booking_deadline": "2026-10-01",');
+  lines.push('      "booking_time": "10:00",');
+  lines.push('      "booking_url": "https://...",');
+  lines.push('      "booking_note": "כרטיסים נפתחים חודש מראש"');
+  lines.push("    }");
+  lines.push("  ]");
+  lines.push("}");
+  lines.push("```");
+  lines.push("");
+  lines.push("כללים מחייבים:");
+  lines.push('- "entry_type" חייב להיות אחד מ: attraction | food | transport | note | flight | hotel_checkin');
+  lines.push('- "type" בהמלצות חייב להיות אחד מ: food | attraction | hotel');
+  lines.push('- "time_of_day" בפורמט HH:MM בלבד, "booking_deadline" בפורמט YYYY-MM-DD');
+  lines.push('- "location_name" — שם המקום באנגלית + עיר, כדי שאפשר יהיה לאתר אותו במפות');
+  lines.push("- שדות לא רלוונטיים אפשר להשמיט (או null). אין להמציא שדות חדשים.");
+  lines.push('- "day_number" חייב להיות אחד מהערכים הבאים בלבד:');
+  for (const d of days) {
+    lines.push(`  ${d.day_number} = ${d.date}${d.city_label ? ` (${d.city_label})` : ""}`);
+  }
+  lines.push("- החזר בלוק JSON אחד בלבד בסוף התשובה, בלי טקסט בתוך הבלוק.");
+  return lines;
+}
+
+
 export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
   const [tripRes, daysRes, entriesRes, hotelsRes, expensesRes] = await Promise.all([
     supabase.from("trips").select("*").eq("id", tripId).single(),
