@@ -13,6 +13,7 @@ import { WeatherIcon } from "@/components/WeatherIcon";
 import { BottomSheet } from "@/components/BottomSheet";
 import { generateAIPrompt } from "@/lib/export-to-ai";
 import { ExportAISheet } from "@/components/ExportAISheet";
+import { ImportAISheet } from "@/components/ImportAISheet";
 
 function DayWeatherBadge({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
@@ -64,6 +65,7 @@ function Itinerary() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const saveCity = useMutation({
     mutationFn: async ({ id, city }: { id: string; city: string }) => {
@@ -178,14 +180,24 @@ function Itinerary() {
             {trip?.destination_country} · {days.length} ימים
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setExportOpen(true)}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--accent)] text-white text-[12px] px-3 h-8 shadow-sm"
-        >
-          <Sparkles size={14} />
-          ייצא ל-AI
-        </button>
+        <div className="shrink-0 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExportOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--accent)] text-white text-[12px] px-3 h-8 shadow-sm"
+          >
+            <Sparkles size={14} />
+            ייצא ל-AI
+          </button>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-surface border border-border text-[12px] px-3 h-8"
+          >
+            <Download size={14} />
+            ייבא
+          </button>
+        </div>
       </header>
 
       {/* City navigation strip */}
@@ -400,6 +412,18 @@ function Itinerary() {
         onOpenChange={setExportOpen}
         queryKey={["ai-export", tripId]}
         generate={() => generateAIPrompt(tripId)}
+      />
+
+      <ImportAISheet
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        tripId={tripId}
+        days={days.map((d) => ({
+          id: d.id,
+          day_number: d.day_number,
+          date: d.date,
+          city_label: d.city_label,
+        }))}
       />
     </div>
   );

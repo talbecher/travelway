@@ -25,6 +25,7 @@ import { DateField } from "@/components/DateField";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { syncHotelToItinerary } from "@/lib/hotels";
 import { ExportAISheet } from "@/components/ExportAISheet";
+import { ImportAISheet } from "@/components/ImportAISheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { Sparkles } from "lucide-react";
 
@@ -171,6 +172,7 @@ function DayDetail() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [navigateOpen, setNavigateOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
@@ -422,6 +424,15 @@ function DayDetail() {
               >
                 <Sparkles size={13} />
                 <span>ייצא ל-AI</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
+              >
+                <Download size={13} />
+                <span>ייבא</span>
               </button>
             </div>
 
@@ -738,6 +749,22 @@ function DayDetail() {
           st.hotelCount ? "מלון ✓" : "ללא מלון",
         ]}
       />
+
+      {day && (
+        <ImportAISheet
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          tripId={tripId}
+          mode="day"
+          fixedDayNumber={day.day_number}
+          days={[{
+            id: day.id,
+            day_number: day.day_number,
+            date: day.date,
+            city_label: day.city_label,
+          }]}
+        />
+      )}
 
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
         <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
