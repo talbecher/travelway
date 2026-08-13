@@ -167,7 +167,7 @@ function Itinerary() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  if (isLoading) return <ListSkeleton />;
+  if (isLoading || !activeVersion) return <ListSkeleton />;
 
   if (days.length === 0) {
     return (
