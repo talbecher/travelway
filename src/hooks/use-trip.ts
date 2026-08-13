@@ -112,7 +112,11 @@ export function dayEntriesQuery(dayId: string) {
 }
 
 export function useTrip() { return useQuery(tripQuery(useActiveTripId())); }
-export function useDays() { return useQuery(daysQuery(useActiveTripId())); }
+export function useDays() {
+  const tripId = useActiveTripId();
+  const { version } = useActiveVersion(tripId);
+  return useQuery(daysQuery(tripId, version?.id));
+}
 export function useRecs() { return useQuery(recsQuery(useActiveTripId())); }
 export function useHotels() { return useQuery(hotelsQuery(useActiveTripId())); }
 export function useExpenses() { return useQuery(expensesQuery(useActiveTripId())); }
