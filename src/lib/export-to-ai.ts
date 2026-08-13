@@ -484,6 +484,9 @@ export async function generateDayAIPrompt(
   lines.push("1. לוח זמנים מוצע ליום (שעה → פעילות), מסודר ומעשי.");
   lines.push("2. 3 שיפורים מרכזיים ליום הזה לפי עדיפות.");
   lines.push("3. ציון ליום מ-1 עד 10 עם משפט הסבר אחד.");
+  lines.push("");
+  lines.push(...formatSection([{ day_number: day.day_number, date: day.date, city_label: day.city_label ?? null }]));
+
 
   const prompt = lines.join("\n");
 
