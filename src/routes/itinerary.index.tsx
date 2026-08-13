@@ -60,6 +60,7 @@ function Itinerary() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const tripId = useActiveTripId();
+  const { version: activeVersion } = useActiveVersion(tripId);
   const { data: trip } = useTrip();
   const { data: days = [], isLoading } = useDays();
   const [editingId, setEditingId] = useState<string | null>(null);
