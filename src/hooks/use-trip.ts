@@ -1,6 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
+import { useActiveVersion } from "@/hooks/use-versions";
 
 /**
  * All trip-scoped query keys MUST include the active tripId so cached data
@@ -18,20 +19,20 @@ export function tripQuery(tripId: string) {
   });
 }
 
-export function daysQuery(tripId: string) {
+export function daysQuery(tripId: string, versionId?: string | null) {
   return queryOptions({
-    queryKey: ["days", tripId],
+    queryKey: ["days", tripId, versionId ?? null],
+    enabled: !!tripId && !!versionId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("itinerary_days")
-        .select("*")
-        .eq("trip_id", tripId)
-        .order("day_number");
+      let q = supabase.from("itinerary_days").select("*").eq("trip_id", tripId);
+      if (versionId) q = q.eq("version_id", versionId);
+      const { data, error } = await q.order("day_number");
       if (error) throw error;
       return data ?? [];
     },
   });
 }
+
 
 export function recsQuery(tripId: string) {
   return queryOptions({
@@ -111,7 +112,11 @@ export function dayEntriesQuery(dayId: string) {
 }
 
 export function useTrip() { return useQuery(tripQuery(useActiveTripId())); }
-export function useDays() { return useQuery(daysQuery(useActiveTripId())); }
+export function useDays() {
+  const tripId = useActiveTripId();
+  const { version } = useActiveVersion(tripId);
+  return useQuery(daysQuery(tripId, version?.id));
+}
 export function useRecs() { return useQuery(recsQuery(useActiveTripId())); }
 export function useHotels() { return useQuery(hotelsQuery(useActiveTripId())); }
 export function useExpenses() { return useQuery(expensesQuery(useActiveTripId())); }

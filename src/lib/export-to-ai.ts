@@ -93,22 +93,35 @@ function formatSection(
 }
 
 
+async function activeVersionId(tripId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("itinerary_versions")
+    .select("id, is_active")
+    .eq("trip_id", tripId)
+    .order("created_at");
+  return (data ?? []).find((v) => v.is_active)?.id ?? data?.[0]?.id ?? null;
+}
+
 export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
+  const versionId = await activeVersionId(tripId);
+  const daysBase = supabase
+    .from("itinerary_days")
+    .select("id, day_number, date, city_label")
+    .eq("trip_id", tripId);
+  const entriesBase = supabase
+    .from("day_entries")
+    .select(
+      "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, description, linked_recommendation_id, itinerary_days!inner(trip_id, version_id)"
+    )
+    .eq("itinerary_days.trip_id", tripId);
+
   const [tripRes, daysRes, entriesRes, hotelsRes, expensesRes] = await Promise.all([
     supabase.from("trips").select("*").eq("id", tripId).single(),
-    supabase
-      .from("itinerary_days")
-      .select("id, day_number, date, city_label")
-      .eq("trip_id", tripId)
-      .order("day_number"),
-    supabase
-      .from("day_entries")
-      .select(
-        "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, description, linked_recommendation_id, itinerary_days!inner(trip_id)"
-      )
-      .eq("itinerary_days.trip_id", tripId)
+    (versionId ? daysBase.eq("version_id", versionId) : daysBase).order("day_number"),
+    (versionId ? entriesBase.eq("itinerary_days.version_id", versionId) : entriesBase)
       .order("display_order")
       .order("created_at"),
+
     supabase
       .from("hotels")
       .select("hotel_name, city, checkin_date, checkout_date, total_cost_ils")
@@ -334,13 +347,14 @@ export async function generateDayAIPrompt(
   tripId: string,
   dayId: string
 ): Promise<ExportResult> {
+  const versionId = await activeVersionId(tripId);
+  const daysBase = supabase
+    .from("itinerary_days")
+    .select("id, day_number, date, city_label")
+    .eq("trip_id", tripId);
   const [tripRes, daysRes, entriesRes, hotelsRes] = await Promise.all([
     supabase.from("trips").select("*").eq("id", tripId).single(),
-    supabase
-      .from("itinerary_days")
-      .select("id, day_number, date, city_label")
-      .eq("trip_id", tripId)
-      .order("day_number"),
+    (versionId ? daysBase.eq("version_id", versionId) : daysBase).order("day_number"),
     supabase
       .from("day_entries")
       .select(
