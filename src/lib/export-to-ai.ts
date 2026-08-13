@@ -347,13 +347,14 @@ export async function generateDayAIPrompt(
   tripId: string,
   dayId: string
 ): Promise<ExportResult> {
+  const versionId = await activeVersionId(tripId);
+  const daysBase = supabase
+    .from("itinerary_days")
+    .select("id, day_number, date, city_label")
+    .eq("trip_id", tripId);
   const [tripRes, daysRes, entriesRes, hotelsRes] = await Promise.all([
     supabase.from("trips").select("*").eq("id", tripId).single(),
-    supabase
-      .from("itinerary_days")
-      .select("id, day_number, date, city_label")
-      .eq("trip_id", tripId)
-      .order("day_number"),
+    (versionId ? daysBase.eq("version_id", versionId) : daysBase).order("day_number"),
     supabase
       .from("day_entries")
       .select(
