@@ -124,9 +124,28 @@ function Onboarding() {
         }).eq("id", existingTrip.id);
         if (upErr) throw upErr;
 
+        // Active itinerary version for this trip (create one if missing)
+        const { data: versions, error: vErr } = await supabase
+          .from("itinerary_versions")
+          .select("id, is_active")
+          .eq("trip_id", existingTrip.id)
+          .order("created_at");
+        if (vErr) throw vErr;
+        let versionId = (versions ?? []).find((v) => v.is_active)?.id ?? versions?.[0]?.id ?? null;
+        if (!versionId) {
+          const { data: newV, error: nvErr } = await supabase
+            .from("itinerary_versions")
+            .insert({ trip_id: existingTrip.id, name: "המסלול שלי", source: "manual", is_active: true })
+            .select("id")
+            .single();
+          if (nvErr) throw nvErr;
+          versionId = newV.id;
+        }
+
         // Reconcile itinerary_days: keep existing, add missing, delete extra (only if no entries)
         const { data: existingDays, error: dErr } = await supabase
-          .from("itinerary_days").select("id, day_number, date").eq("trip_id", existingTrip.id).order("day_number");
+          .from("itinerary_days").select("id, day_number, date").eq("trip_id", existingTrip.id)
+          .eq("version_id", versionId).order("day_number");
         if (dErr) throw dErr;
 
         const desired: { day_number: number; date: string }[] = Array.from({ length: numDays }).map((_, i) => {
@@ -148,11 +167,12 @@ function Onboarding() {
         // Add missing days at the end
         if (desired.length > overlap) {
           const toAdd = desired.slice(overlap).map((d) => ({
-            trip_id: existingTrip.id, day_number: d.day_number, date: d.date, city_label: null,
+            trip_id: existingTrip.id, version_id: versionId, day_number: d.day_number, date: d.date, city_label: null,
           }));
           const { error: addErr } = await supabase.from("itinerary_days").insert(toAdd);
           if (addErr) throw addErr;
         }
+
 
         // Trim from the end, only if no entries exist
         if ((existingDays?.length ?? 0) > desired.length) {
