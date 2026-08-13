@@ -6,6 +6,8 @@ import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, hebWeekday } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
+import { useActiveVersion } from "@/hooks/use-versions";
+import { VersionSelector } from "@/components/VersionSelector";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
