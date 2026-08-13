@@ -20,6 +20,8 @@ import { z } from "zod";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { PhotoUploader } from "@/components/PhotoUploader";
 import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
+import { ImportAISheet } from "@/components/ImportAISheet";
+import { useActiveTripId } from "@/hooks/use-active-trip";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
@@ -82,6 +84,8 @@ function Recs() {
   const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [aiImportOpen, setAiImportOpen] = useState(false);
+  const aiTripId = useActiveTripId();
   const [editRec, setEditRec] = useState<Rec | null>(null);
   const [mapPickRec, setMapPickRec] = useState<Rec | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -212,6 +216,12 @@ function Recs() {
               </button>
             )
           )}
+          {!selectionMode && (
+            <button onClick={() => setAiImportOpen(true)} aria-label="ייבוא מ-AI"
+              className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
+              ✨ ייבא מ-AI
+            </button>
+          )}
           {tab !== "hotels" && !selectionMode && (
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
@@ -331,6 +341,15 @@ function Recs() {
       )}
 
       <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
+
+      <ImportAISheet
+        open={aiImportOpen}
+        onOpenChange={setAiImportOpen}
+        tripId={aiTripId}
+        mode="recs"
+        days={[]}
+        existingRecNames={recs.map((r) => r.name)}
+      />
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף המלצה">
         <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
