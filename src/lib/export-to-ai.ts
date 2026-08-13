@@ -305,6 +305,13 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
   lines.push("2. תן ציון כללי למסלול מ-1 עד 10 עם משפט הסבר אחד.");
   lines.push("");
   lines.push("3. אם יש שינוי אחד קריטי שהייתה ממליץ בחום — סמן אותו ב-⭐");
+  lines.push("");
+  lines.push(
+    ...formatSection(
+      days.map((d) => ({ day_number: d.day_number, date: d.date, city_label: d.city_label ?? null }))
+    )
+  );
+
 
   const prompt = lines.join("\n");
 
