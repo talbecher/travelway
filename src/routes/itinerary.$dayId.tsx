@@ -27,7 +27,7 @@ import { syncHotelToItinerary } from "@/lib/hotels";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Download } from "lucide-react";
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);

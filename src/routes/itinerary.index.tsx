@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Trash2, Check, X, ChevronLeft, Sparkles } from "lucide-react";
+import { Pencil, Trash2, Check, X, ChevronLeft, Sparkles, Download } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, hebWeekday } from "@/lib/format";
