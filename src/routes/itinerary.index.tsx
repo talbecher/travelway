@@ -206,6 +206,10 @@ function Itinerary() {
         </div>
       </header>
 
+      <VersionSelector tripId={tripId} />
+
+
+
       {/* City navigation strip */}
       {grouped.length > 1 && (
         <div className="-mx-4 px-4 overflow-x-auto no-scrollbar sticky top-0 z-10 py-3 bg-surface border-b border-border">
