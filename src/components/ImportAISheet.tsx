@@ -309,6 +309,12 @@ export function ImportAISheet({
                 ))}
             </div>
 
+            {tab === "itinerary" && entries.length > 0 && (
+              <div className="mt-2 text-[12px] text-muted-foreground">
+                🕐 הפריטים ימוזגו למסלול הקיים לפי שעות. פריט ללא שעה יישאר אחרי הפריט שלפניו.
+              </div>
+            )}
+
             {skipped > 0 && (
               <div className="mt-2 text-[12px] text-muted-foreground">
                 {skipped} פריטים דולגו (פורמט לא תקין או יום שאינו קיים)
