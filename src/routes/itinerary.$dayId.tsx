@@ -175,6 +175,8 @@ function DayDetail() {
   const [navigateOpen, setNavigateOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
