@@ -28,7 +28,7 @@ import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
-import { Sparkles, Download, History } from "lucide-react";
+import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
 
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
@@ -176,6 +176,7 @@ function DayDetail() {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
@@ -390,24 +391,70 @@ function DayDetail() {
         return (
           <div
             className="relative w-full px-4 pt-3 pb-3 border-b border-border"
-            style={{ minHeight: 100, background: theme.heroGradient }}
+            style={{ background: theme.heroGradient }}
           >
-            <button
-              onClick={() => navigate({ to: "/itinerary" })}
-              aria-label="חזרה למסלול"
-              className="absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
-            >
-              <ChevronRight size={18} className="rotate-180" />
-            </button>
-            <div className="pt-1 pr-1">
-              <div className="text-white text-[28px] font-semibold leading-none">
-                יום {day.day_number}
-                <span className="text-[15px] font-medium text-white/80 mr-1">- {hebDateLong(day.date)}</span>
+            {/* Row 1 — back + title */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3" dir="rtl">
+              <button
+                onClick={() => navigate({ to: "/itinerary" })}
+                aria-label="חזרה למסלול"
+                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-white text-[22px] font-semibold leading-tight">
+                  יום {day.day_number}
+                </h1>
+                <p className="text-white/80 text-[13px] leading-snug mt-0.5">
+                  {hebDateLong(day.date)}
+                </p>
               </div>
-              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
             </div>
-            {/* Bottom-left action buttons */}
-            <div className="absolute bottom-2 left-3 flex items-center gap-2">
+
+            {/* Row 2 — weather + city */}
+            <div className="mt-2 flex flex-wrap items-center gap-2" dir="rtl">
+              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+              {editingCity ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={cityValue}
+                    onChange={(e) => setCityValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveCity.mutate();
+                      if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
+                    }}
+                    dir="ltr"
+                    placeholder="עיר / איזור"
+                    className="text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white min-w-0 w-[150px]"
+                  />
+                  <button
+                    onClick={() => saveCity.mutate()}
+                    className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
+                    className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/10 min-h-0 h-auto"
+                >
+                  <span dir="ltr" className="truncate">{day.city_label || "הוסף עיר / איזור"}</span>
+                  <Pencil size={11} className="shrink-0" />
+                </button>
+              )}
+            </div>
+
+            {/* Row 3 — actions */}
+            <div className="mt-2.5 flex items-center gap-2" dir="rtl">
               <button
                 type="button"
                 onClick={() => setMapOpen(true)}
@@ -423,74 +470,16 @@ function DayDetail() {
 
               <button
                 type="button"
-                onClick={() => setExportOpen(true)}
+                onClick={() => setMoreOpen(true)}
+                aria-label="פעולות נוספות"
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
               >
-                <Sparkles size={13} />
-                <span>ייצא ל-AI</span>
+                <MoreHorizontal size={14} />
+                <span>עוד</span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
-              >
-                <Download size={13} />
-                <span>ייבא</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSnapshotsOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
-              >
-                <History size={13} />
-                <span>גרסאות</span>
-              </button>
-
-            </div>
-
-            {/* City chip — anchored bottom-right (RTL start) */}
-
-            <div className="absolute bottom-2 right-3">
-              {editingCity ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    autoFocus
-                    value={cityValue}
-                    onChange={(e) => setCityValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveCity.mutate();
-                      if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
-                    }}
-                    dir="ltr"
-                    placeholder="עיר / איזור"
-                    className="text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white"
-                  />
-                  <button
-                    onClick={() => saveCity.mutate()}
-                    className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0"
-                  >
-                    <Check size={14} />
-                  </button>
-                  <button
-                    onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
-                    className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/10 min-h-0 h-auto"
-                >
-                  <span dir="ltr">{day.city_label || "הוסף עיר / איזור"}</span>
-                  <Pencil size={11} />
-                </button>
-              )}
             </div>
           </div>
+
         );
       })()}
 
@@ -502,7 +491,7 @@ function DayDetail() {
       ) : !hasAnyEntries ? (
         <div className="px-4 pt-3"><EmptyDay onAdd={openPicker} /></div>
       ) : (
-        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 200px)" }}>
+        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 240px)" }}>
           {/* List pane (full height — map opens in bottom sheet) */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
 
@@ -788,6 +777,27 @@ function DayDetail() {
           }]}
         />
       )}
+
+      <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="פעולות נוספות">
+        <div className="flex flex-col gap-2 pb-2">
+          {[
+            { icon: <Sparkles size={16} />, label: "ייצא ל-AI", onClick: () => setExportOpen(true) },
+            { icon: <Download size={16} />, label: "ייבא מ-AI", onClick: () => setImportOpen(true) },
+            { icon: <History size={16} />, label: "גרסאות ונקודות שחזור", onClick: () => setSnapshotsOpen(true) },
+          ].map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              onClick={() => { setMoreOpen(false); a.onClick(); }}
+              className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-right text-sm text-foreground"
+            >
+              <span className="text-muted-foreground">{a.icon}</span>
+              <span className="flex-1">{a.label}</span>
+              <ChevronRight size={16} className="text-muted-foreground rotate-180" />
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
 
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
         <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
