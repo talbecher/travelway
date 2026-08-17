@@ -14,6 +14,8 @@ import {
   type ParsedRec,
   type PlaceLookup,
 } from "@/lib/ai-import";
+import { createDaySnapshot } from "@/hooks/use-day-snapshots";
+
 
 type DayLite = { id: string; day_number: number; date: string; city_label?: string | null };
 
