@@ -434,6 +434,16 @@ function DayDetail() {
                 <Download size={13} />
                 <span>ייבא</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setSnapshotsOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
+              >
+                <History size={13} />
+                <span>גרסאות</span>
+              </button>
+
             </div>
 
             {/* City chip — anchored bottom-right (RTL start) */}
