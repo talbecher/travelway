@@ -251,6 +251,34 @@ export type PlaceLookup = (query: string) => Promise<{
   ratingCount: number | null;
 } | null>;
 
+type OrderItem = { id: string; time: string | null };
+
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/**
+ * Sorts a day's entries by time of day while keeping items without a time
+ * attached to the item they currently follow (notes stay in place).
+ * Returns the ids in their merged order.
+ */
+export function mergeByTime(items: OrderItem[]): string[] {
+  const groups: Array<{ time: string | null; ids: string[]; idx: number }> = [];
+  for (const it of items) {
+    const time = it.time && TIME_RE.test(it.time) ? it.time : null;
+    if (time || groups.length === 0) {
+      groups.push({ time, ids: [it.id], idx: groups.length });
+    } else {
+      groups[groups.length - 1]!.ids.push(it.id);
+    }
+  }
+  const sorted = [...groups].sort((a, b) => {
+    if (a.time === b.time) return a.idx - b.idx;
+    if (!a.time) return -1;
+    if (!b.time) return 1;
+    return a.time < b.time ? -1 : 1;
+  });
+  return sorted.flatMap((g) => g.ids);
+}
+
 export async function applyEntries(
   entries: ParsedEntry[],
   dayIdByNumber: Map<number, string>,
@@ -302,8 +330,34 @@ export async function applyEntries(
   if (!rows.length) return 0;
   const { error } = await supabase.from("day_entries").insert(rows as never);
   if (error) throw error;
+
+  await resortDaysByTime(Array.from(new Set(rows.map((r) => r["day_id"] as string))));
   return rows.length;
 }
+
+/** Re-writes display_order for the given days so entries follow their time of day. */
+export async function resortDaysByTime(dayIds: string[]): Promise<void> {
+  for (const dayId of dayIds) {
+    const { data, error } = await supabase
+      .from("day_entries")
+      .select("id, time_of_day, display_order")
+      .eq("day_id", dayId)
+      .order("display_order")
+      .order("created_at");
+    if (error || !data?.length) continue;
+
+    const ordered = mergeByTime(data.map((d) => ({ id: d.id, time: d.time_of_day })));
+    const currentById = new Map(data.map((d) => [d.id, d.display_order ?? 0]));
+    const updates = ordered
+      .map((id, i) => ({ id, i }))
+      .filter(({ id, i }) => currentById.get(id) !== i);
+
+    for (const u of updates) {
+      await supabase.from("day_entries").update({ display_order: u.i }).eq("id", u.id);
+    }
+  }
+}
+
 
 export async function applyRecs(
   tripId: string,

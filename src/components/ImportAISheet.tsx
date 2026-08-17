@@ -238,9 +238,13 @@ export function ImportAISheet({
                         <span className="flex items-center gap-2 flex-wrap">
                           <span>{e.icon_emoji ?? defaultIcon(e.entry_type)}</span>
                           <span className="font-medium text-[14px]">{e.title}</span>
-                          {e.time_of_day && (
+                          {e.time_of_day ? (
                             <span className="rounded-full bg-[color:var(--surface-2)] text-[11px] px-2 py-0.5">
                               {e.time_of_day}
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-[color:var(--surface-2)] text-[11px] px-2 py-0.5 text-muted-foreground">
+                              ללא שעה
                             </span>
                           )}
                         </span>
@@ -304,6 +308,12 @@ export function ImportAISheet({
                   })
                 ))}
             </div>
+
+            {tab === "itinerary" && entries.length > 0 && (
+              <div className="mt-2 text-[12px] text-muted-foreground">
+                🕐 הפריטים ימוזגו למסלול הקיים לפי שעות. פריט ללא שעה יישאר אחרי הפריט שלפניו.
+              </div>
+            )}
 
             {skipped > 0 && (
               <div className="mt-2 text-[12px] text-muted-foreground">
