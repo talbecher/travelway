@@ -28,7 +28,7 @@ import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
-import { Sparkles, Download, History } from "lucide-react";
+import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
 
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
@@ -176,6 +176,7 @@ function DayDetail() {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
@@ -490,7 +491,7 @@ function DayDetail() {
       ) : !hasAnyEntries ? (
         <div className="px-4 pt-3"><EmptyDay onAdd={openPicker} /></div>
       ) : (
-        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 200px)" }}>
+        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 240px)" }}>
           {/* List pane (full height — map opens in bottom sheet) */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
 
@@ -776,6 +777,27 @@ function DayDetail() {
           }]}
         />
       )}
+
+      <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="פעולות נוספות">
+        <div className="flex flex-col gap-2 pb-2">
+          {[
+            { icon: <Sparkles size={16} />, label: "ייצא ל-AI", onClick: () => setExportOpen(true) },
+            { icon: <Download size={16} />, label: "ייבא מ-AI", onClick: () => setImportOpen(true) },
+            { icon: <History size={16} />, label: "גרסאות ונקודות שחזור", onClick: () => setSnapshotsOpen(true) },
+          ].map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              onClick={() => { setMoreOpen(false); a.onClick(); }}
+              className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-right text-sm text-foreground"
+            >
+              <span className="text-muted-foreground">{a.icon}</span>
+              <span className="flex-1">{a.label}</span>
+              <ChevronRight size={16} className="text-muted-foreground rotate-180" />
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
 
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
         <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
