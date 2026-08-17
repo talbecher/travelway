@@ -93,6 +93,54 @@ export type Database = {
           },
         ]
       }
+      day_snapshots: {
+        Row: {
+          created_at: string
+          day_id: string
+          entries: Json
+          entry_count: number
+          id: string
+          name: string
+          reason: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_id: string
+          entries?: Json
+          entry_count?: number
+          id?: string
+          name: string
+          reason?: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          day_id?: string
+          entries?: Json
+          entry_count?: number
+          id?: string
+          name?: string
+          reason?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_snapshots_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_snapshots_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           amount_ils: number | null
