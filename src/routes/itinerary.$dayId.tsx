@@ -26,8 +26,10 @@ import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { syncHotelToItinerary } from "@/lib/hotels";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
+import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
-import { Sparkles, Download } from "lucide-react";
+import { Sparkles, Download, History } from "lucide-react";
+
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
@@ -173,6 +175,8 @@ function DayDetail() {
   const [navigateOpen, setNavigateOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const tripId = useActiveTripId();
 
@@ -434,6 +438,16 @@ function DayDetail() {
                 <Download size={13} />
                 <span>ייבא</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setSnapshotsOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
+              >
+                <History size={13} />
+                <span>גרסאות</span>
+              </button>
+
             </div>
 
             {/* City chip — anchored bottom-right (RTL start) */}
@@ -749,6 +763,15 @@ function DayDetail() {
           st.hotelCount ? "מלון ✓" : "ללא מלון",
         ]}
       />
+
+      <DaySnapshotsSheet
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        dayId={dayId}
+        tripId={tripId}
+      />
+
+
 
       {day && (
         <ImportAISheet
