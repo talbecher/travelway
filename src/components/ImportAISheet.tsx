@@ -131,16 +131,34 @@ export function ImportAISheet({
     setBusy(true);
     try {
       const l = enrich ? lookup : undefined;
+
+      // Restore point per affected day, before anything is written.
+      const affectedDayIds = Array.from(
+        new Set(selectedEntries.map((e) => dayIdByNumber.get(e.day_number)).filter(Boolean))
+      ) as string[];
+      let snapshotted = 0;
+      for (const id of affectedDayIds) {
+        try {
+          await createDaySnapshot({ dayId: id, tripId, reason: "ai_import" });
+          snapshotted++;
+        } catch (err) {
+          console.error("[ImportAISheet] snapshot failed", err);
+        }
+      }
+
       const addedEntries = await applyEntries(selectedEntries, dayIdByNumber, l);
       const addedRecs = await applyRecs(tripId, selectedRecs, l);
 
       qc.invalidateQueries({ queryKey: ["day-entries"] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["day-snapshots"] });
       qc.invalidateQueries({ queryKey: ["recs"] });
 
       toast.success(
-        `נוספו ${addedEntries} פעילויות ו-${addedRecs} המלצות`.replace(" ו-0 המלצות", "").replace("נוספו 0 פעילויות ו", "נוספו")
+        `נוספו ${addedEntries} פעילויות ו-${addedRecs} המלצות`.replace(" ו-0 המלצות", "").replace("נוספו 0 פעילויות ו", "נוספו"),
+        snapshotted ? { description: "נשמרה נקודת שחזור — אפשר לחזור אחורה מ'גרסאות היום'" } : undefined
       );
+
       onOpenChange(false);
     } catch (e) {
       console.error("[ImportAISheet] apply failed", e);
