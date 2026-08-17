@@ -764,6 +764,15 @@ function DayDetail() {
         ]}
       />
 
+      <DaySnapshotsSheet
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        dayId={dayId}
+        tripId={tripId}
+      />
+
+
+
       {day && (
         <ImportAISheet
           open={importOpen}
