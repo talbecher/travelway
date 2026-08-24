@@ -16,6 +16,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { generateAIPrompt } from "@/lib/export-to-ai";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
+import { dayLoadSummary, DAY_LOAD_LABEL, fmtDistance } from "@/lib/geo";
+
 
 function DayWeatherBadge({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
