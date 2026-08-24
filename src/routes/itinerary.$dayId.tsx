@@ -15,7 +15,7 @@ import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendation
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { haversine, fmtDistance } from "@/lib/geo";
+import { haversine, fmtDistance, dayLoadSummary, DAY_LOAD_LABEL } from "@/lib/geo";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
