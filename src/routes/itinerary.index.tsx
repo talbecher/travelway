@@ -399,12 +399,28 @@ function Itinerary() {
                               <EntryPreviewRow key={entry.id} entry={entry} />
                             ))}
                           </div>
+                          {(() => {
+                            const load = dayLoadSummary(
+                              entries
+                                .filter((e) => e.latitude != null && e.longitude != null)
+                                .map((e) => ({ lat: Number(e.latitude), lon: Number(e.longitude) })),
+                            );
+                            if (!load) return null;
+                            return (
+                              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-2)] border border-border text-[11px] px-2 py-0.5 text-muted-foreground">
+                                <span>{load.level === "heavy" ? "⚡" : load.level === "normal" ? "🚶" : "🌿"}</span>
+                                <span>{DAY_LOAD_LABEL[load.level]}</span>
+                                <span className="tabular-nums" dir="ltr">~{fmtDistance(load.totalKm)}</span>
+                              </div>
+                            );
+                          })()}
                           {more > 0 && (
                             <div className="mt-2 flex items-center justify-between text-[12px] text-muted-foreground">
                               <span>+ {more} נוספים</span>
                               <ChevronLeft size={14} />
                             </div>
                           )}
+
                         </button>
                       </>
                     )}
