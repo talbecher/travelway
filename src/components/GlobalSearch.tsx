@@ -116,12 +116,13 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
     }
 
     for (const x of expenses as Array<Record<string, string | number | null>>) {
-      if (!has(String(x["title"] ?? ""), String(x["category"] ?? ""))) continue;
+      const label = String(x["description"] ?? x["location_name"] ?? "");
+      if (!has(label, String(x["category"] ?? ""))) continue;
       out.push({
         id: `x-${x["id"]}`,
         group: "expenses",
         icon: "💸",
-        title: String(x["title"] ?? ""),
+        title: label || "הוצאה",
         subtitle: ils(Number(x["amount_ils"] ?? 0)),
         go: () => {
           onOpenChange(false);
@@ -129,6 +130,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         },
       });
     }
+
 
     return out;
   }, [term, entries, days, recs, documents, expenses, navigate, onOpenChange]);
