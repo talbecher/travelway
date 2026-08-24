@@ -141,12 +141,22 @@ function RootComponent() {
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isOnboarding = pathname === "/onboarding";
+  const [searchOpen, setSearchOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
         <div className="max-w-md mx-auto flex items-center justify-between gap-2 px-4 py-3">
           <div className="flex items-center gap-2">
             {!isOnboarding && <SwitchTripButton />}
+            {!isOnboarding && (
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="חיפוש"
+                className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+              >
+                <Search size={15} />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!isOnboarding && <ConverterPill />}
@@ -155,6 +165,8 @@ function AppShell() {
           </div>
         </div>
       </header>
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
       <main className="max-w-md mx-auto px-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
