@@ -28,6 +28,9 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { TripPicker } from "@/components/TripPicker";
 import { useTripsList } from "@/hooks/use-trips-list";
 import { getActiveTripId } from "@/lib/constants";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { registerServiceWorker } from "@/lib/register-sw";
+import { startOfflinePersistence } from "@/lib/offline-persist";
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(!t){localStorage.setItem('theme','light');t='light';}if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`;
 
@@ -118,9 +121,15 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    registerServiceWorker();
+    void startOfflinePersistence(queryClient);
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthListener />
+      <OfflineBanner />
       <AuthGate>
         <AppShell />
       </AuthGate>
