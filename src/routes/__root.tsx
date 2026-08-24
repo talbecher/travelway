@@ -17,7 +17,9 @@ import { GlobalFab } from "@/components/GlobalFab";
 import { ConverterPill } from "@/components/ConverterPill";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "@tanstack/react-router";
-import { Settings, LogOut, Share2, ArrowLeftRight } from "lucide-react";
+import { Settings, LogOut, Share2, ArrowLeftRight, Search } from "lucide-react";
+import { GlobalSearch } from "@/components/GlobalSearch";
+
 import { Toaster, toast } from "sonner";
 import { useTrip } from "@/hooks/use-trip";
 import { signOut, useAuth } from "@/hooks/use-auth";
