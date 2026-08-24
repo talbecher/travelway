@@ -118,9 +118,15 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    registerServiceWorker();
+    void startOfflinePersistence(queryClient);
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthListener />
+      <OfflineBanner />
       <AuthGate>
         <AppShell />
       </AuthGate>
