@@ -16,6 +16,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { generateAIPrompt } from "@/lib/export-to-ai";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
+import { dayLoadSummary, DAY_LOAD_LABEL, fmtDistance } from "@/lib/geo";
+
 
 function DayWeatherBadge({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
@@ -43,7 +45,10 @@ type EntryRow = {
   time_of_day: string | null;
   display_order: number;
   photo_url: string | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
 };
+
 
 function iconFor(t: string) {
   const m: Record<string, string> = {
@@ -110,8 +115,9 @@ function Itinerary() {
       const { data, error } = await supabase
         .from("day_entries")
         .select(
-          "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, itinerary_days!inner(trip_id, version_id)"
+          "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, itinerary_days!inner(trip_id, version_id)"
         )
+
         .eq("itinerary_days.trip_id", tripId)
         .eq("itinerary_days.version_id", activeVersion!.id)
         .order("display_order")
@@ -399,12 +405,28 @@ function Itinerary() {
                               <EntryPreviewRow key={entry.id} entry={entry} />
                             ))}
                           </div>
+                          {(() => {
+                            const load = dayLoadSummary(
+                              entries
+                                .filter((e) => e.latitude != null && e.longitude != null)
+                                .map((e) => ({ lat: Number(e.latitude), lon: Number(e.longitude) })),
+                            );
+                            if (!load) return null;
+                            return (
+                              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-2)] border border-border text-[11px] px-2 py-0.5 text-muted-foreground">
+                                <span>{load.level === "heavy" ? "⚡" : load.level === "normal" ? "🚶" : "🌿"}</span>
+                                <span>{DAY_LOAD_LABEL[load.level]}</span>
+                                <span className="tabular-nums" dir="ltr">~{fmtDistance(load.totalKm)}</span>
+                              </div>
+                            );
+                          })()}
                           {more > 0 && (
                             <div className="mt-2 flex items-center justify-between text-[12px] text-muted-foreground">
                               <span>+ {more} נוספים</span>
                               <ChevronLeft size={14} />
                             </div>
                           )}
+
                         </button>
                       </>
                     )}

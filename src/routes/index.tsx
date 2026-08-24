@@ -14,6 +14,8 @@ import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 import { haversine } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
+import { NowNextCard } from "@/components/NowNextCard";
+
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
 
@@ -224,7 +226,11 @@ type EntrySlim = {
   entry_type: string;
   title: string;
   time_of_day: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  google_maps_url?: string | null;
 };
+
 
 /* ---------- page ---------- */
 
@@ -244,7 +250,7 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("day_entries")
-        .select("id, day_id, entry_type, title, time_of_day, itinerary_days!inner(trip_id, version_id)")
+        .select("id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, itinerary_days!inner(trip_id, version_id)")
         .eq("itinerary_days.trip_id", tripId)
         .eq("itinerary_days.version_id", activeVersion!.id)
         .order("display_order")
@@ -344,6 +350,20 @@ function Home() {
   // 2 or 3. TODAY / NEXT
   if (todayDay && stats && !stats.beforeTrip && !stats.afterTrip) {
     const entries = entriesByDay[todayDay.id] ?? [];
+    if (entries.length > 0) {
+      sections.push({
+        key: "nownext",
+        node: (
+          <NowNextCard
+            entries={entries}
+            dayNumber={todayDay.day_number}
+            cityLabel={todayDay.city_label}
+            onOpenDay={() => navigate({ to: "/itinerary/$dayId", params: { dayId: todayDay.id } })}
+          />
+        ),
+      });
+    }
+
     sections.push({
       key: "today",
       node: (

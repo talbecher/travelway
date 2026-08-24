@@ -15,7 +15,7 @@ import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendation
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { haversine, fmtDistance } from "@/lib/geo";
+import { haversine, fmtDistance, dayLoadSummary, DAY_LOAD_LABEL } from "@/lib/geo";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
@@ -415,6 +415,28 @@ function DayDetail() {
             {/* Row 2 — weather + city */}
             <div className="mt-2 flex flex-wrap items-center gap-2" dir="rtl">
               <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+              {(() => {
+                const load = dayLoadSummary(
+                  entries
+                    .map(coordsOf)
+                    .filter((c): c is { lat: number; lng: number } => !!c)
+                    .map((c) => ({ lat: c.lat, lon: c.lng })),
+                );
+                if (!load) return null;
+                return (
+                  <span
+                    title={`המרחק הארוך ביותר בין שתי נקודות: ${fmtDistance(load.longestHopKm)}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] px-2.5 py-1"
+                  >
+                    <span>{load.level === "heavy" ? "⚡" : load.level === "normal" ? "🚶" : "🌿"}</span>
+                    <span>{DAY_LOAD_LABEL[load.level]}</span>
+                    <span className="text-white/70 tabular-nums" dir="ltr">
+                      ~{fmtDistance(load.totalKm)}
+                    </span>
+                  </span>
+                );
+              })()}
+
               {editingCity ? (
                 <div className="flex items-center gap-2">
                   <input
