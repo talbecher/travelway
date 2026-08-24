@@ -224,7 +224,11 @@ type EntrySlim = {
   entry_type: string;
   title: string;
   time_of_day: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  google_maps_url?: string | null;
 };
+
 
 /* ---------- page ---------- */
 
