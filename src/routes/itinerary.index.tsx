@@ -43,7 +43,10 @@ type EntryRow = {
   time_of_day: string | null;
   display_order: number;
   photo_url: string | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
 };
+
 
 function iconFor(t: string) {
   const m: Record<string, string> = {
