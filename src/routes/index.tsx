@@ -348,6 +348,20 @@ function Home() {
   // 2 or 3. TODAY / NEXT
   if (todayDay && stats && !stats.beforeTrip && !stats.afterTrip) {
     const entries = entriesByDay[todayDay.id] ?? [];
+    if (entries.length > 0) {
+      sections.push({
+        key: "nownext",
+        node: (
+          <NowNextCard
+            entries={entries}
+            dayNumber={todayDay.day_number}
+            cityLabel={todayDay.city_label}
+            onOpenDay={() => navigate({ to: "/itinerary/$dayId", params: { dayId: todayDay.id } })}
+          />
+        ),
+      });
+    }
+
     sections.push({
       key: "today",
       node: (
