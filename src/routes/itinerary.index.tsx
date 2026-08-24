@@ -115,8 +115,9 @@ function Itinerary() {
       const { data, error } = await supabase
         .from("day_entries")
         .select(
-          "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, itinerary_days!inner(trip_id, version_id)"
+          "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, itinerary_days!inner(trip_id, version_id)"
         )
+
         .eq("itinerary_days.trip_id", tripId)
         .eq("itinerary_days.version_id", activeVersion!.id)
         .order("display_order")
