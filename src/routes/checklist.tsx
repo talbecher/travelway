@@ -407,7 +407,7 @@ function ChecklistPage() {
       </div>
 
       {/* Item menu */}
-      <BottomSheet open={!!menuItem} onClose={() => setMenuItem(null)} title={menuItem?.title}>
+      <BottomSheet open={!!menuItem} onOpenChange={(o) => !o && setMenuItem(null)} title={menuItem?.title}>
         <div className="space-y-2 pb-2">
           <button
             onClick={() => {
@@ -435,7 +435,7 @@ function ChecklistPage() {
       </BottomSheet>
 
       {/* Edit sheet */}
-      <BottomSheet open={!!editItem} onClose={() => setEditItem(null)} title="עריכת משימה">
+      <BottomSheet open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)} title="עריכת משימה">
         {editItem && (
           <EditForm
             item={editItem}
