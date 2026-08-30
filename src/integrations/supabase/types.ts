@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      checklist_items: {
+        Row: {
+          category: string
+          created_at: string
+          display_order: number
+          done_at: string | null
+          due_date: string | null
+          id: string
+          is_done: boolean
+          notes: string | null
+          priority: string
+          title: string
+          trip_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          done_at?: string | null
+          due_date?: string | null
+          id?: string
+          is_done?: boolean
+          notes?: string | null
+          priority?: string
+          title: string
+          trip_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          done_at?: string | null
+          due_date?: string | null
+          id?: string
+          is_done?: boolean
+          notes?: string | null
+          priority?: string
+          title?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       day_entries: {
         Row: {
           created_at: string
