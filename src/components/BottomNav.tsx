@@ -18,7 +18,7 @@ export function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-40 border-t border-border backdrop-blur-xl"
       style={{ background: "color-mix(in oklab, var(--surface) 72%, transparent)" }}
     >
-      <div className="max-w-md mx-auto grid grid-cols-5">
+      <div className="max-w-md mx-auto grid grid-cols-6">
         {tabs.map((t) => {
           const active = t.to === "/" ? pathname === "/" : pathname.startsWith(t.to);
           const Icon = t.icon;
