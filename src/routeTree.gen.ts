@@ -14,6 +14,7 @@ import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ItineraryRouteImport } from './routes/itinerary'
 import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
@@ -45,6 +46,11 @@ const DocumentsRoute = DocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChecklistRoute = ChecklistRouteImport.update({
+  id: '/checklist',
+  path: '/checklist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BudgetRoute = BudgetRouteImport.update({
   id: '/budget',
   path: '/budget',
@@ -74,6 +80,7 @@ const ItineraryDayIdRoute = ItineraryDayIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
+  '/checklist': typeof ChecklistRoute
   '/documents': typeof DocumentsRoute
   '/itinerary': typeof ItineraryRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
+  '/checklist': typeof ChecklistRoute
   '/documents': typeof DocumentsRoute
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
+  '/checklist': typeof ChecklistRoute
   '/documents': typeof DocumentsRoute
   '/itinerary': typeof ItineraryRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/budget'
+    | '/checklist'
     | '/documents'
     | '/itinerary'
     | '/onboarding'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/budget'
+    | '/checklist'
     | '/documents'
     | '/onboarding'
     | '/phrasebook'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/budget'
+    | '/checklist'
     | '/documents'
     | '/itinerary'
     | '/onboarding'
@@ -148,6 +160,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BudgetRoute: typeof BudgetRoute
+  ChecklistRoute: typeof ChecklistRoute
   DocumentsRoute: typeof DocumentsRoute
   ItineraryRoute: typeof ItineraryRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checklist': {
+      id: '/checklist'
+      path: '/checklist'
+      fullPath: '/checklist'
+      preLoaderRoute: typeof ChecklistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/budget': {
@@ -248,6 +268,7 @@ const ItineraryRouteWithChildren = ItineraryRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BudgetRoute: BudgetRoute,
+  ChecklistRoute: ChecklistRoute,
   DocumentsRoute: DocumentsRoute,
   ItineraryRoute: ItineraryRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
