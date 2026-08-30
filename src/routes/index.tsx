@@ -15,6 +15,7 @@ import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 import { haversine } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
 import { NowNextCard } from "@/components/NowNextCard";
+import { ChecklistCard } from "@/components/ChecklistCard";
 
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
@@ -452,8 +453,12 @@ function Home() {
   });
 
 
+  // 5b. CHECKLIST
+  sections.push({ key: "checklist", node: <ChecklistCard /> });
+
   // 6. QUICK ACTIONS
   sections.push({
+
     key: "actions",
     node: (
       <section className="grid grid-cols-2 gap-3">
