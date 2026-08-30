@@ -1,13 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, Wallet, Star, MessagesSquare } from "lucide-react";
+import { Home, Calendar, Wallet, Star, MessagesSquare, CheckSquare } from "lucide-react";
 
 const tabs = [
   { to: "/phrasebook", icon: MessagesSquare, label: "שיחון" },
+  { to: "/checklist", icon: CheckSquare, label: "צ'קליסט" },
   { to: "/recommendations", icon: Star, label: "המלצות" },
   { to: "/", icon: Home, label: "בית" },
   { to: "/budget", icon: Wallet, label: "תקציב" },
   { to: "/itinerary", icon: Calendar, label: "מסלול" },
 ] as const;
+
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
