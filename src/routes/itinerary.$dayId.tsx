@@ -1165,7 +1165,7 @@ function SortableEntry({
 
 
 function EntryDetails({
-  entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose,
+  entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose, recById, onMarkVisited,
 }: {
   entry: EntryRow;
   dayId: string;
@@ -1174,6 +1174,8 @@ function EntryDetails({
   onMove: () => void;
   onDelete: () => void;
   onClose: () => void;
+  recById?: Record<string, { status: string; rating: number | null; city: string | null; notes: string | null; google_rating: number | null; google_maps_url: string | null; photo_url: string | null }>;
+  onMarkVisited?: (entry: EntryRow) => void;
 }) {
 
   const qc = useQueryClient();
@@ -1206,19 +1208,8 @@ function EntryDetails({
     ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
     : entry.google_maps_url;
 
-  const { data: linkedRec } = useQuery({
-    queryKey: ["rec-linked", entry.linked_recommendation_id],
-    enabled: !!entry.linked_recommendation_id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recommendations")
-        .select("id, name, city, notes, google_rating, google_maps_url, photo_url")
-        .eq("id", entry.linked_recommendation_id!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
+  const isVisited = linkedRec?.status === "visited";
 
   return (
     <div className="pt-1 pb-4 space-y-4" dir="rtl">
