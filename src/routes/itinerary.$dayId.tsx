@@ -460,6 +460,18 @@ function DayDetail() {
                 <p className="text-white/80 text-[13px] leading-snug mt-0.5">
                   {hebDateLong(day.date)}
                 </p>
+                {(() => {
+                  const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
+                  const visitedCount = entries.filter(
+                    (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
+                  ).length;
+                  if (totalLinked === 0) return null;
+                  return (
+                    <p className="text-white/70 text-[12px] mt-1">
+                      ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
+                    </p>
+                  );
+                })()}
               </div>
             </div>
 
