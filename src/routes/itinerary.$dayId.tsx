@@ -27,6 +27,7 @@ import { syncHotelToItinerary } from "@/lib/hotels";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
+import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
 
