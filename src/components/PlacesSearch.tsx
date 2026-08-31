@@ -13,6 +13,7 @@ export type SelectedPlace = {
   city: string | null;
   rating: number | null;
   userRatingCount: number | null;
+  primaryType?: string | null;
 };
 
 export function PlacesSearch({
