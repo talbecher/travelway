@@ -532,6 +532,7 @@ function Home() {
           {s.node}
         </motion.div>
       ))}
+      <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
     </div>
   );
 }
