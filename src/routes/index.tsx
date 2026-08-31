@@ -243,6 +243,8 @@ function Home() {
   const { data: days = [] } = useDays();
   const { data: recs = [] } = useRecs();
   const { data: hotels = [] } = useHotels();
+  const tripIsActive = useTripIsActive();
+  const [hayinuOpen, setHayinuOpen] = useState(false);
 
   const { version: activeVersion } = useActiveVersion(tripId);
   const { data: entriesByDay = {} } = useQuery<Record<string, EntrySlim[]>>({
