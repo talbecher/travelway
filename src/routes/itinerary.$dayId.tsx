@@ -369,6 +369,26 @@ function DayDetail() {
     reorder.mutate(next.map((r, i) => ({ id: r.id, display_order: i })));
   }
 
+  async function handleMarkVisited(entry: EntryRow) {
+    if (!entry.linked_recommendation_id) return;
+    const { error } = await supabase
+      .from("recommendations")
+      .update({ status: "visited" })
+      .eq("id", entry.linked_recommendation_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["linked-recs"] });
+    qc.invalidateQueries({ queryKey: ["recs", tripId] });
+    qc.invalidateQueries({ queryKey: ["recs"] });
+    setDetailsFor(null);
+    setRatingTarget({
+      recId: entry.linked_recommendation_id,
+      recName: entry.title,
+    });
+  }
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
