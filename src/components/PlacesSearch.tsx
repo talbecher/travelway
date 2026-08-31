@@ -124,6 +124,7 @@ export function PlacesSearch({
       city: p.city,
       rating: p.rating,
       userRatingCount: p.userRatingCount,
+      primaryType: p.primaryType,
     });
     setOpen(false);
     setQuery("");
