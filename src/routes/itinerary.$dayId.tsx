@@ -1323,10 +1323,15 @@ function EntryDetails({
       {/* Linked recommendation info */}
       {linkedRec && (
         <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
-          <div className="text-[11px] font-medium text-muted-foreground">⭐ מתוך ההמלצות שלך</div>
+          <div className="text-[11px] font-medium text-muted-foreground">
+            {isVisited ? "✅ ביקרתם כאן" : "⭐ מתוך ההמלצות שלך"}
+          </div>
           <div className="flex items-center gap-2 flex-wrap text-[12px]">
             {typeof linkedRec.google_rating === "number" && (
               <span className="font-semibold">★ {linkedRec.google_rating.toFixed(1)}</span>
+            )}
+            {typeof linkedRec.rating === "number" && (
+              <span className="font-semibold text-[color:var(--accent)]">★ {linkedRec.rating} שלך</span>
             )}
             {linkedRec.city && <span className="text-muted-foreground">· {linkedRec.city}</span>}
           </div>
@@ -1342,6 +1347,27 @@ function EntryDetails({
 
       {/* Actions */}
       <div className="pt-2 border-t border-border grid grid-cols-2 gap-2">
+        {entry.linked_recommendation_id && onMarkVisited && (
+          isVisited ? (
+            <button
+              type="button"
+              onClick={() => onMarkVisited(entry)}
+              className="col-span-2 h-12 rounded-xl bg-[color:var(--accent)]/15 text-[color:var(--accent)] font-medium text-[15px] flex items-center justify-center gap-2 mb-1"
+            >
+              ✅ ביקרנו
+              {typeof linkedRec?.rating === "number" && ` · ★${linkedRec.rating}`}
+              · עריכת דירוג
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onMarkVisited(entry)}
+              className="col-span-2 h-12 rounded-xl bg-[color:var(--accent)] text-white font-semibold text-[15px] flex items-center justify-center gap-2 mb-1"
+            >
+              📍 היינו כאן!
+            </button>
+          )
+        )}
         <button
           onClick={onEdit}
           className="h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
