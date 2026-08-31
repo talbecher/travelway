@@ -492,6 +492,9 @@ function Home() {
         <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
         <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
+        {tripIsActive && (
+          <ActionTile icon={MapPin} label="היינו כאן" onClick={() => setHayinuOpen(true)} accent />
+        )}
       </section>
     ),
   });
