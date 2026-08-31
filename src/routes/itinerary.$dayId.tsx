@@ -607,13 +607,13 @@ function DayDetail() {
                           />
                         )}
                         <SortableEntry
-
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
                           onOpenDetails={() => setDetailsFor(e)}
                           hintHandle={idx === 0 && entries.length >= 2}
+                          recById={recById}
                         />
 
                       </div>
