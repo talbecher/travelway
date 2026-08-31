@@ -348,6 +348,28 @@ function Home() {
     ),
   });
 
+  // 1b. "היינו כאן" — only while the trip is running
+  if (tripIsActive) {
+    sections.push({
+      key: "hayinu",
+      node: (
+        <button
+          onClick={() => setHayinuOpen(true)}
+          className="w-full flex items-center gap-4 bg-[color:var(--accent)]/10 border border-[color:var(--accent)]/30 rounded-2xl p-4 h-auto min-h-0"
+        >
+          <span className="text-3xl">📍</span>
+          <div className="flex-1 text-right">
+            <div className="text-[16px] font-semibold text-[color:var(--accent)]">היינו כאן</div>
+            <div className="text-[12px] text-muted-foreground">תעדו מקום שביקרתם בו</div>
+          </div>
+          <span className="text-muted-foreground">›</span>
+        </button>
+      ),
+    });
+  }
+
+
+
 
 
   // 2 or 3. TODAY / NEXT
