@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink } from "lucide-react";
-import { useTrip, useExpenses, useDays, useRecs, useHotels } from "@/hooks/use-trip";
+import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
+import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
@@ -243,6 +244,8 @@ function Home() {
   const { data: days = [] } = useDays();
   const { data: recs = [] } = useRecs();
   const { data: hotels = [] } = useHotels();
+  const tripIsActive = useTripIsActive();
+  const [hayinuOpen, setHayinuOpen] = useState(false);
 
   const { version: activeVersion } = useActiveVersion(tripId);
   const { data: entriesByDay = {} } = useQuery<Record<string, EntrySlim[]>>({
@@ -345,6 +348,28 @@ function Home() {
       />
     ),
   });
+
+  // 1b. "היינו כאן" — only while the trip is running
+  if (tripIsActive) {
+    sections.push({
+      key: "hayinu",
+      node: (
+        <button
+          onClick={() => setHayinuOpen(true)}
+          className="w-full flex items-center gap-4 bg-[color:var(--accent)]/10 border border-[color:var(--accent)]/30 rounded-2xl p-4 h-auto min-h-0"
+        >
+          <span className="text-3xl">📍</span>
+          <div className="flex-1 text-right">
+            <div className="text-[16px] font-semibold text-[color:var(--accent)]">היינו כאן</div>
+            <div className="text-[12px] text-muted-foreground">תעדו מקום שביקרתם בו</div>
+          </div>
+          <span className="text-muted-foreground">›</span>
+        </button>
+      ),
+    });
+  }
+
+
 
 
 
@@ -468,6 +493,9 @@ function Home() {
         <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
         <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
+        {tripIsActive && (
+          <ActionTile icon={MapPin} label="היינו כאן" onClick={() => setHayinuOpen(true)} accent />
+        )}
       </section>
     ),
   });
@@ -505,6 +533,7 @@ function Home() {
           {s.node}
         </motion.div>
       ))}
+      <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
     </div>
   );
 }

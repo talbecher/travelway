@@ -13,6 +13,7 @@ export type SelectedPlace = {
   city: string | null;
   rating: number | null;
   userRatingCount: number | null;
+  primaryType?: string | null;
 };
 
 export function PlacesSearch({
@@ -123,6 +124,7 @@ export function PlacesSearch({
       city: p.city,
       rating: p.rating,
       userRatingCount: p.userRatingCount,
+      primaryType: p.primaryType,
     });
     setOpen(false);
     setQuery("");
