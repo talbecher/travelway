@@ -27,6 +27,7 @@ import { syncHotelToItinerary } from "@/lib/hotels";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
+import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
 
@@ -165,6 +166,30 @@ function DayDetail() {
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const entries = sortEntries(rawEntries as EntryRow[]);
 
+  const linkedRecIds = useMemo(
+    () => entries.map((e) => e.linked_recommendation_id).filter((id): id is string => !!id),
+    [entries]
+  );
+
+  const { data: linkedRecs = [] } = useQuery({
+    queryKey: ["linked-recs", linkedRecIds.join(",")],
+    queryFn: async () => {
+      if (linkedRecIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("recommendations")
+        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url")
+        .in("id", linkedRecIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: linkedRecIds.length > 0,
+    staleTime: 30_000,
+  });
+
+  const recById = useMemo(() => {
+    return Object.fromEntries(linkedRecs.map((r) => [r.id, r]));
+  }, [linkedRecs]);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
   const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
@@ -179,6 +204,12 @@ function DayDetail() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [ratingTarget, setRatingTarget] = useState<{
+    recId: string;
+    recName: string;
+    initialRating?: number;
+    initialReview?: string;
+  } | null>(null);
   const tripId = useActiveTripId();
 
 
@@ -338,6 +369,26 @@ function DayDetail() {
     reorder.mutate(next.map((r, i) => ({ id: r.id, display_order: i })));
   }
 
+  async function handleMarkVisited(entry: EntryRow) {
+    if (!entry.linked_recommendation_id) return;
+    const { error } = await supabase
+      .from("recommendations")
+      .update({ status: "visited" })
+      .eq("id", entry.linked_recommendation_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["linked-recs"] });
+    qc.invalidateQueries({ queryKey: ["recs", tripId] });
+    qc.invalidateQueries({ queryKey: ["recs"] });
+    setDetailsFor(null);
+    setRatingTarget({
+      recId: entry.linked_recommendation_id,
+      recName: entry.title,
+    });
+  }
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
@@ -409,6 +460,18 @@ function DayDetail() {
                 <p className="text-white/80 text-[13px] leading-snug mt-0.5">
                   {hebDateLong(day.date)}
                 </p>
+                {(() => {
+                  const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
+                  const visitedCount = entries.filter(
+                    (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
+                  ).length;
+                  if (totalLinked === 0) return null;
+                  return (
+                    <p className="text-white/70 text-[12px] mt-1">
+                      ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
+                    </p>
+                  );
+                })()}
               </div>
             </div>
 
@@ -544,13 +607,13 @@ function DayDetail() {
                           />
                         )}
                         <SortableEntry
-
                           entry={e}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
                           onOpenDetails={() => setDetailsFor(e)}
                           hintHandle={idx === 0 && entries.length >= 2}
+                          recById={recById}
                         />
 
                       </div>
@@ -711,6 +774,8 @@ function DayDetail() {
               }
             }}
             onClose={() => setDetailsFor(null)}
+            recById={recById}
+            onMarkVisited={handleMarkVisited}
           />
         )}
       </BottomSheet>
@@ -820,6 +885,16 @@ function DayDetail() {
           ))}
         </div>
       </BottomSheet>
+
+      {ratingTarget && (
+        <RatingSheet
+          recId={ratingTarget.recId}
+          recName={ratingTarget.recName}
+          initialRating={ratingTarget.initialRating}
+          initialReview={ratingTarget.initialReview}
+          onClose={() => setRatingTarget(null)}
+        />
+      )}
 
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
         <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
@@ -943,7 +1018,7 @@ function SegmentConnector({
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onOpenDetails, hintHandle,
+  entry, pinIndex, highlighted, setRef, onOpenDetails, hintHandle, recById,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
@@ -951,6 +1026,7 @@ function SortableEntry({
   setRef: (el: HTMLDivElement | null) => void;
   onOpenDetails: () => void;
   hintHandle?: boolean;
+  recById?: Record<string, { status: string; rating: number | null }>;
 }) {
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
@@ -964,6 +1040,8 @@ function SortableEntry({
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
+  const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
+  const isVisited = linkedRec?.status === "visited";
 
   const [pulse, setPulse] = useState(!!hintHandle);
   useEffect(() => {
@@ -1031,7 +1109,19 @@ function SortableEntry({
                   {pinIndex}
                 </span>
               )}
-              {isLinked && (
+              {isVisited && (
+                <>
+                  <span
+                    className="inline-flex w-2 h-2 rounded-full shrink-0"
+                    style={{ background: "#10B981" }}
+                    title="ביקרתם כאן"
+                  />
+                  {typeof linkedRec?.rating === "number" && (
+                    <span className="text-[11px] font-medium text-[color:var(--accent)]">★{linkedRec.rating}</span>
+                  )}
+                </>
+              )}
+              {isLinked && !isVisited && (
                 <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
                   <Link2 size={12} aria-label="מסונכרן עם המלצות" />
                 </span>
@@ -1087,7 +1177,7 @@ function SortableEntry({
 
 
 function EntryDetails({
-  entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose,
+  entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose, recById, onMarkVisited,
 }: {
   entry: EntryRow;
   dayId: string;
@@ -1096,6 +1186,8 @@ function EntryDetails({
   onMove: () => void;
   onDelete: () => void;
   onClose: () => void;
+  recById?: Record<string, { status: string; rating: number | null; city: string | null; notes: string | null; google_rating: number | null; google_maps_url: string | null; photo_url: string | null }>;
+  onMarkVisited?: (entry: EntryRow) => void;
 }) {
 
   const qc = useQueryClient();
@@ -1128,19 +1220,8 @@ function EntryDetails({
     ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
     : entry.google_maps_url;
 
-  const { data: linkedRec } = useQuery({
-    queryKey: ["rec-linked", entry.linked_recommendation_id],
-    enabled: !!entry.linked_recommendation_id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recommendations")
-        .select("id, name, city, notes, google_rating, google_maps_url, photo_url")
-        .eq("id", entry.linked_recommendation_id!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
+  const isVisited = linkedRec?.status === "visited";
 
   return (
     <div className="pt-1 pb-4 space-y-4" dir="rtl">
@@ -1254,10 +1335,15 @@ function EntryDetails({
       {/* Linked recommendation info */}
       {linkedRec && (
         <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
-          <div className="text-[11px] font-medium text-muted-foreground">⭐ מתוך ההמלצות שלך</div>
+          <div className="text-[11px] font-medium text-muted-foreground">
+            {isVisited ? "✅ ביקרתם כאן" : "⭐ מתוך ההמלצות שלך"}
+          </div>
           <div className="flex items-center gap-2 flex-wrap text-[12px]">
             {typeof linkedRec.google_rating === "number" && (
               <span className="font-semibold">★ {linkedRec.google_rating.toFixed(1)}</span>
+            )}
+            {typeof linkedRec.rating === "number" && (
+              <span className="font-semibold text-[color:var(--accent)]">★ {linkedRec.rating} שלך</span>
             )}
             {linkedRec.city && <span className="text-muted-foreground">· {linkedRec.city}</span>}
           </div>
@@ -1273,6 +1359,27 @@ function EntryDetails({
 
       {/* Actions */}
       <div className="pt-2 border-t border-border grid grid-cols-2 gap-2">
+        {entry.linked_recommendation_id && onMarkVisited && (
+          isVisited ? (
+            <button
+              type="button"
+              onClick={() => onMarkVisited(entry)}
+              className="col-span-2 h-12 rounded-xl bg-[color:var(--accent)]/15 text-[color:var(--accent)] font-medium text-[15px] flex items-center justify-center gap-2 mb-1"
+            >
+              ✅ ביקרנו
+              {typeof linkedRec?.rating === "number" && ` · ★${linkedRec.rating}`}
+              · עריכת דירוג
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onMarkVisited(entry)}
+              className="col-span-2 h-12 rounded-xl bg-[color:var(--accent)] text-white font-semibold text-[15px] flex items-center justify-center gap-2 mb-1"
+            >
+              📍 היינו כאן!
+            </button>
+          )
+        )}
         <button
           onClick={onEdit}
           className="h-11 rounded-lg border border-border bg-background flex items-center justify-center gap-2 text-sm min-h-0"
