@@ -165,6 +165,30 @@ function DayDetail() {
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const entries = sortEntries(rawEntries as EntryRow[]);
 
+  const linkedRecIds = useMemo(
+    () => entries.map((e) => e.linked_recommendation_id).filter((id): id is string => !!id),
+    [entries]
+  );
+
+  const { data: linkedRecs = [] } = useQuery({
+    queryKey: ["linked-recs", linkedRecIds.join(",")],
+    queryFn: async () => {
+      if (linkedRecIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("recommendations")
+        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url")
+        .in("id", linkedRecIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: linkedRecIds.length > 0,
+    staleTime: 30_000,
+  });
+
+  const recById = useMemo(() => {
+    return Object.fromEntries(linkedRecs.map((r) => [r.id, r]));
+  }, [linkedRecs]);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
   const [editEntry, setEditEntry] = useState<EntryRow | null>(null);
@@ -179,6 +203,12 @@ function DayDetail() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [ratingTarget, setRatingTarget] = useState<{
+    recId: string;
+    recName: string;
+    initialRating?: number;
+    initialReview?: string;
+  } | null>(null);
   const tripId = useActiveTripId();
 
 
