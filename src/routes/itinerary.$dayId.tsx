@@ -774,6 +774,8 @@ function DayDetail() {
               }
             }}
             onClose={() => setDetailsFor(null)}
+            recById={recById}
+            onMarkVisited={handleMarkVisited}
           />
         )}
       </BottomSheet>
