@@ -886,6 +886,16 @@ function DayDetail() {
         </div>
       </BottomSheet>
 
+      {ratingTarget && (
+        <RatingSheet
+          recId={ratingTarget.recId}
+          recName={ratingTarget.recName}
+          initialRating={ratingTarget.initialRating}
+          initialReview={ratingTarget.initialReview}
+          onClose={() => setRatingTarget(null)}
+        />
+      )}
+
       <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
         <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
           {mapStops.length > 0 ? (
