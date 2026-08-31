@@ -1006,7 +1006,7 @@ function SegmentConnector({
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onOpenDetails, hintHandle,
+  entry, pinIndex, highlighted, setRef, onOpenDetails, hintHandle, recById,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
@@ -1014,6 +1014,7 @@ function SortableEntry({
   setRef: (el: HTMLDivElement | null) => void;
   onOpenDetails: () => void;
   hintHandle?: boolean;
+  recById?: Record<string, { status: string; rating: number | null }>;
 }) {
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
@@ -1027,6 +1028,8 @@ function SortableEntry({
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
+  const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
+  const isVisited = linkedRec?.status === "visited";
 
   const [pulse, setPulse] = useState(!!hintHandle);
   useEffect(() => {
@@ -1094,7 +1097,19 @@ function SortableEntry({
                   {pinIndex}
                 </span>
               )}
-              {isLinked && (
+              {isVisited && (
+                <>
+                  <span
+                    className="inline-flex w-2 h-2 rounded-full shrink-0"
+                    style={{ background: "#10B981" }}
+                    title="ביקרתם כאן"
+                  />
+                  {typeof linkedRec?.rating === "number" && (
+                    <span className="text-[11px] font-medium text-[color:var(--accent)]">★{linkedRec.rating}</span>
+                  )}
+                </>
+              )}
+              {isLinked && !isVisited && (
                 <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
                   <Link2 size={12} aria-label="מסונכרן עם המלצות" />
                 </span>
