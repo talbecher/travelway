@@ -219,9 +219,9 @@ export function HotelForm({
           e.preventDefault();
           save.mutate({});
         }}
-        className="flex flex-col min-h-[62vh] pt-1 pb-2"
+        className="flex flex-col pt-1 pb-2"
       >
-        <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
+        <div className="space-y-3 -mx-1 px-1">
           {!manualMode && !placeSelected && (
             <>
               <PlacesSearch onSelect={handlePlace} />
@@ -349,7 +349,7 @@ export function HotelForm({
         </div>
 
         {(manualMode || placeSelected) && (
-          <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-1 bg-card border-t border-border/60 shrink-0">
+          <div className="sticky bottom-0 z-10 -mx-5 mt-3 px-5 pt-3 pb-2 bg-card border-t border-border/60 shrink-0">
             <button
               type="submit"
               disabled={save.isPending}
