@@ -896,16 +896,17 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
-      className="flex flex-col min-h-[62vh] pt-1 pb-2"
+      className="flex flex-col pt-1 pb-2"
     >
-      <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3 shrink-0">
-        {seg("food", "אוכל", "🍜", "var(--accent-2)")}
-        {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
-        {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
+      <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-card">
+        <div className="flex gap-1 bg-muted rounded-lg p-1">
+          {seg("food", "אוכל", "🍜", "var(--accent-2)")}
+          {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
+          {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
+        </div>
       </div>
 
-
-      <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
+      <div className="space-y-3 -mx-1 px-1">
         {!manualMode && !placeSelected && (
           <>
             <PlacesSearch onSelect={handlePlace} autoFocus />
@@ -1003,7 +1004,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       </div>
 
       {(manualMode || placeSelected) && (
-        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-1 bg-card border-t border-border/60 shrink-0">
+        <div className="sticky bottom-0 z-10 -mx-5 mt-3 px-5 pt-3 pb-2 bg-card border-t border-border/60 shrink-0">
           <button type="submit" disabled={save.isPending}
             className="w-full h-11 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
             {save.isPending ? "שומר..." : "שמור"}
