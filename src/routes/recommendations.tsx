@@ -16,6 +16,7 @@ import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
 import { syncHotelToItinerary, deleteHotelCascade } from "@/lib/hotels";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { z } from "zod";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { PhotoUploader } from "@/components/PhotoUploader";
