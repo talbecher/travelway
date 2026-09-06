@@ -429,6 +429,7 @@ function DocumentFormSheet({
   }
 
   async function handleSave() {
+    if (!assertOnline()) return;
     if (!title.trim()) {
       toast.error("יש להזין כותרת");
       return;
