@@ -211,13 +211,18 @@ export default function DayMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const validStops = stops.filter(
-    (s) =>
-      Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
-      s.lat >= -90 && s.lat <= 90 &&
-      s.lng >= -180 && s.lng <= 180 &&
-      !(s.lat === 0 && s.lng === 0),
-  );
+  // Filter to valid coords, keep source order, then renumber sequentially
+  // so pin labels are always 1, 2, 3... regardless of incoming index values.
+  const validStops = stops
+    .filter(
+      (s) =>
+        Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
+        s.lat >= -90 && s.lat <= 90 &&
+        s.lng >= -180 && s.lng <= 180 &&
+        !(s.lat === 0 && s.lng === 0),
+    )
+    .sort((a, b) => a.index - b.index)
+    .map((s, idx) => ({ ...s, index: idx + 1 }));
 
   const center: [number, number] = validStops[0]
     ? [validStops[0].lat, validStops[0].lng]
