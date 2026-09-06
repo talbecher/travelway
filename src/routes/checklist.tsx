@@ -268,6 +268,7 @@ function ChecklistPage() {
   }
 
   function quickAdd() {
+    if (!assertOnline()) return;
     const title = newTitle.trim();
     if (!title) return;
     addItem.mutate(
