@@ -135,6 +135,7 @@ function Onboarding({ onSkip }: { onSkip: () => void }) {
   }
 
   function create() {
+    if (!assertOnline()) return;
     const items = TEMPLATE_CATEGORIES.filter((c) => selected.includes(c.id)).flatMap((c) =>
       (CHECKLIST_TEMPLATES[c.id] ?? []).map((t, i) => ({
         title: t.title,
