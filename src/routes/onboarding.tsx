@@ -85,6 +85,17 @@ function Onboarding() {
   const [pin, setPin] = useState("1717");
   const [currency, setCurrency] = useState("JPY");
 
+  // 👤 פרופיל המטיילים
+  const [travelPace, setTravelPace] = useState<"relaxed" | "balanced" | "intensive">("balanced");
+  const [travelInterests, setTravelInterests] = useState<string[]>([]);
+  const [foodBudget, setFoodBudget] = useState<"budget" | "medium" | "splurge">("medium");
+  const [travelNotes, setTravelNotes] = useState("");
+  const [profileOpen, setProfileOpen] = useState(true);
+
+  function profileIsEmpty(pace: string, interests: string[], food: string, notes: string) {
+    return pace === "balanced" && interests.length === 0 && food === "medium" && !notes.trim();
+  }
+
   useEffect(() => {
     if (isEditing && existingTrip) {
       setTitle(existingTrip.title);
@@ -96,6 +107,15 @@ function Onboarding() {
       setBudget(Number(existingTrip.total_budget_ils));
       setPin(existingTrip.entry_pin);
       setCurrency(existingTrip.currency_code);
+      const pace = (existingTrip.travel_pace as "relaxed" | "balanced" | "intensive") ?? "balanced";
+      const interests = existingTrip.travel_interests ?? [];
+      const food = (existingTrip.food_budget as "budget" | "medium" | "splurge") ?? "medium";
+      const notes = existingTrip.travel_notes ?? "";
+      setTravelPace(pace);
+      setTravelInterests(interests);
+      setFoodBudget(food);
+      setTravelNotes(notes);
+      setProfileOpen(profileIsEmpty(pace, interests, food, notes));
     }
   }, [isEditing, existingTrip]);
 
@@ -122,6 +142,10 @@ function Onboarding() {
           total_budget_ils: budget,
           currency_code: currency,
           entry_pin: pin || "0000",
+          travel_pace: travelPace,
+          travel_interests: travelInterests,
+          food_budget: foodBudget,
+          travel_notes: travelNotes.trim() || null,
         }).eq("id", existingTrip.id);
         if (upErr) throw upErr;
 
@@ -207,6 +231,10 @@ function Onboarding() {
           total_budget_ils: budget,
           currency_code: currency,
           entry_pin: pin || "0000",
+          travel_pace: travelPace,
+          travel_interests: travelInterests,
+          food_budget: foodBudget,
+          travel_notes: travelNotes.trim() || null,
         })
         .select()
         .single();
@@ -344,6 +372,112 @@ function Onboarding() {
               className="w-full rounded-lg bg-background border border-input px-3 h-11" />
           </Field>
         </div>
+
+        <section className="bg-card border border-border rounded-2xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 h-12 text-sm font-medium"
+          >
+            <span>👤 פרופיל המטיילים</span>
+            <span className="text-muted-foreground text-xs">{profileOpen ? "▲" : "▼"}</span>
+          </button>
+          {profileOpen && (
+            <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+              <Field label="קצב הטיול">
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["relaxed", "🌿 רגוע"],
+                    ["balanced", "⚖️ מאוזן"],
+                    ["intensive", "⚡ אינטנסיבי"],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setTravelPace(value)}
+                      className={`h-11 rounded-lg border text-[13px] font-medium transition-colors ${
+                        travelPace === value
+                          ? "bg-[color:var(--accent)] text-white border-transparent"
+                          : "bg-background border-input"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="מה אנחנו אוהבים">
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ["food", "🍜 אוכל"],
+                    ["culture", "⛩ תרבות"],
+                    ["nature", "🌿 טבע"],
+                    ["shopping", "🛍 קניות"],
+                    ["experiences", "🎭 חוויות"],
+                    ["history", "🏛 היסטוריה"],
+                  ] as const).map(([value, label]) => {
+                    const active = travelInterests.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() =>
+                          setTravelInterests((cur) =>
+                            cur.includes(value)
+                              ? cur.filter((i) => i !== value)
+                              : [...cur, value]
+                          )
+                        }
+                        className={`h-9 px-3 rounded-full border text-[13px] transition-colors ${
+                          active
+                            ? "bg-[color:var(--accent)] text-white border-transparent"
+                            : "bg-background border-input"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              <Field label="תקציב אוכל ליום">
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["budget", "₪ חסכוני"],
+                    ["medium", "₪₪ בינוני"],
+                    ["splurge", "₪₪₪ פרמיום"],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFoodBudget(value)}
+                      className={`h-11 rounded-lg border text-[13px] font-medium transition-colors ${
+                        foodBudget === value
+                          ? "bg-[color:var(--accent)] text-white border-transparent"
+                          : "bg-background border-input"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="הערות למתכנן AI">
+                <textarea
+                  value={travelNotes}
+                  onChange={(e) => setTravelNotes(e.target.value.slice(0, 200))}
+                  rows={3}
+                  maxLength={200}
+                  placeholder="צמחונים, אוהבים לקום מוקדם, לא אוהבים מוזיאונים ארוכים..."
+                  className="w-full rounded-lg bg-background border border-input px-3 py-2 text-sm resize-none"
+                />
+              </Field>
+            </div>
+          )}
+        </section>
 
         <button type="submit" disabled={submit.isPending}
           className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
