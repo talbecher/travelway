@@ -34,8 +34,8 @@ export function OfflineBanner() {
       className="sticky top-0 z-40 flex items-center justify-center gap-2 px-4 py-1.5 text-[12px] font-medium bg-[color:var(--terracotta)] text-white"
     >
       <span className="relative flex h-1.5 w-1.5 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-white/60" />
       </span>
       <span>אין חיבור · מוצגים נתונים שנשמרו{ago ? ` · ${ago}` : ""}</span>
       <style>{`
