@@ -2371,6 +2371,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       if (!name.trim()) { toast.error(recType === "food" ? "שם המסעדה חסר" : "שם האטרקציה חסר"); return; }
       let linkedId: string | null = existing?.linked_recommendation_id ?? null;
       if (!existing && saveToRecs) {
