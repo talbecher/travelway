@@ -926,7 +926,6 @@ function ActionTile({
       type="button"
       onClick={onClick}
       className={cls}
-      aria-disabled={disabled || undefined}
     >
       {content}
     </button>
