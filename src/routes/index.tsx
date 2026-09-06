@@ -706,7 +706,19 @@ function Home() {
         <ActionTile icon={Star} label="המלצות" to="/recommendations" />
         <ActionTile icon={Wallet} label="תקציב" to="/budget" />
         <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
-        <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
+        <ActionTile
+          icon={Plus}
+          label="הוצאה מהירה"
+          onClick={() => {
+            if (!isOnline) {
+              toast.error("אין חיבור · לא ניתן להוסיף כרגע");
+              return;
+            }
+            openQuickExpense();
+          }}
+          accent
+          disabled={!isOnline}
+        />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
         {tripIsActive && (
           <ActionTile icon={MapPin} label="היינו כאן" onClick={() => setHayinuOpen(true)} accent />
