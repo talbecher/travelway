@@ -571,15 +571,16 @@ function EditForm({
       </label>
 
       <button
-        onClick={() =>
+        onClick={() => {
+          if (!assertOnline()) return;
           onSave({
             title: title.trim() || item.title,
             category,
             priority,
             notes: notes.trim() || null,
             due_date: dueDate || null,
-          })
-        }
+          });
+        }}
         disabled={saving}
         className="w-full h-12 rounded-xl bg-[color:var(--accent)] text-white text-sm font-semibold disabled:opacity-60"
       >
