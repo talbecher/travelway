@@ -17,6 +17,8 @@ import { haversine } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
 import { NowNextCard } from "@/components/NowNextCard";
 import { ChecklistCard } from "@/components/ChecklistCard";
+import { useOnline } from "@/hooks/use-online";
+import { toast } from "sonner";
 
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
