@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
-import { hebDateLong, hebDate, hebWeekdayShort, daysBetween } from "@/lib/format";
+import { hebDate, hebWeekday, hebWeekdayShort, daysBetween } from "@/lib/format";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -15,12 +15,12 @@ import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendation
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { haversine, fmtDistance, dayLoadSummary, DAY_LOAD_LABEL } from "@/lib/geo";
+import { haversine, fmtDistance } from "@/lib/geo";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
 import { useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
-import { WEATHER_LABELS_HE } from "@/lib/weather";
+
 import { DateField } from "@/components/DateField";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { syncHotelToItinerary } from "@/lib/hotels";
@@ -35,21 +35,25 @@ import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   const w = useDayWeather(city, date);
   if (!w) return null;
-  const label = WEATHER_LABELS_HE[w.condition];
   return (
-    <div className="mt-2 flex flex-col gap-1.5 items-start">
-      <div className="inline-flex items-center gap-1.5 text-white/90 text-[13px]">
+    <div className="flex flex-col items-end gap-0.5">
+      <div className="inline-flex items-center gap-1 text-white/70 text-[10px]">
         <WeatherIcon condition={w.condition} size="sm" />
-        <span dir="ltr" className="tabular-nums">{w.tempMax}°C / {w.tempMin}°C</span>
-        {label && <span className="text-white/70">· {label}</span>}
+        <span dir="ltr" className="tabular-nums">{w.tempMax}° / {w.tempMin}°</span>
       </div>
       {w.precipitation > 5 && (
-        <div className="inline-flex items-center gap-1 text-[11px] text-white bg-white/15 border border-white/25 rounded-full px-2 py-0.5">
-          💧 צפוי גשם — בדוק פעילויות חוץ
+        <div className="inline-flex items-center gap-1 text-[10px] text-white bg-white/15 rounded-full px-2 py-0.5">
+          💧 צפוי גשם
         </div>
       )}
     </div>
   );
+}
+
+/** Pure helper — "HH:MM" → minutes since midnight. */
+function parseTime(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
 }
 import {
   DndContext,
@@ -202,6 +206,7 @@ function DayDetail() {
   const [importOpen, setImportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [heroFailedUrl, setHeroFailedUrl] = useState<string | null>(null);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [ratingTarget, setRatingTarget] = useState<{
@@ -436,135 +441,128 @@ function DayDetail() {
 
   return (
     <div className="-mx-4">
-      {/* Hero header */}
+      {/* Hero header — fixed 110px, photo background with gradient fallback */}
       {(() => {
         const theme = getDestinationTheme(trip?.destination_country ?? "");
+        const heroPhoto = entries.find((e) => e.photo_url)?.photo_url ?? null;
+        const showPhoto = !!heroPhoto && heroFailedUrl !== heroPhoto;
+        const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
+        const visitedCount = entries.filter(
+          (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
+        ).length;
+        const pillBtn =
+          "relative inline-flex items-center justify-center gap-1 rounded-full text-white text-[11px] min-h-0 " +
+          "after:absolute after:-inset-2 after:content-['']";
+        const pillBg = { background: "rgba(255,255,255,0.18)" } as const;
         return (
-          <div
-            className="relative w-full px-4 pt-3 pb-3 border-b border-border"
-            style={{ background: theme.heroGradient }}
-          >
-            {/* Row 1 — back + title */}
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3" dir="rtl">
-              <button
-                onClick={() => navigate({ to: "/itinerary" })}
-                aria-label="חזרה למסלול"
-                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/10 backdrop-blur border border-white/20 min-h-0"
-              >
-                <ChevronRight size={18} />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-white text-[22px] font-semibold leading-tight">
-                  יום {day.day_number}
-                </h1>
-                <p className="text-white/80 text-[13px] leading-snug mt-0.5">
-                  {hebDateLong(day.date)}
-                </p>
-                {(() => {
-                  const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
-                  const visitedCount = entries.filter(
-                    (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
-                  ).length;
-                  if (totalLinked === 0) return null;
-                  return (
-                    <p className="text-white/70 text-[12px] mt-1">
-                      ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
-                    </p>
-                  );
-                })()}
-              </div>
-            </div>
+          <div className="relative w-full h-[110px] overflow-hidden border-b border-border" dir="rtl">
+            {/* Background */}
+            {showPhoto ? (
+              <>
+                <img
+                  src={heroPhoto!}
+                  alt=""
+                  aria-hidden
+                  onError={() => setHeroFailedUrl(heroPhoto)}
+                  className="absolute inset-0 w-full h-full object-cover scale-110 blur-[6px]"
+                />
+                <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)" }} />
+              </>
+            ) : (
+              <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
+            )}
 
-            {/* Row 2 — weather + city */}
-            <div className="mt-2 flex flex-wrap items-center gap-2" dir="rtl">
-              <DayWeatherLine city={day.city_label ?? null} date={day.date} />
-              {(() => {
-                const load = dayLoadSummary(
-                  entries
-                    .map(coordsOf)
-                    .filter((c): c is { lat: number; lng: number } => !!c)
-                    .map((c) => ({ lat: c.lat, lon: c.lng })),
-                );
-                if (!load) return null;
-                return (
-                  <span
-                    title={`המרחק הארוך ביותר בין שתי נקודות: ${fmtDistance(load.longestHopKm)}`}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] px-2.5 py-1"
-                  >
-                    <span>{load.level === "heavy" ? "⚡" : load.level === "normal" ? "🚶" : "🌿"}</span>
-                    <span>{DAY_LOAD_LABEL[load.level]}</span>
-                    <span className="text-white/70 tabular-nums" dir="ltr">
-                      ~{fmtDistance(load.totalKm)}
-                    </span>
-                  </span>
-                );
-              })()}
-
-              {editingCity ? (
+            <div className="relative h-full px-4 py-2.5 flex flex-col justify-between">
+              {/* Top row — back (right) + map/more pills (left) */}
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  onClick={() => navigate({ to: "/itinerary" })}
+                  aria-label="חזרה למסלול"
+                  className="relative shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white/90 min-h-0 after:absolute after:-inset-1.5 after:content-['']"
+                  style={pillBg}
+                >
+                  <ChevronRight size={18} />
+                </button>
                 <div className="flex items-center gap-2">
-                  <input
-                    autoFocus
-                    value={cityValue}
-                    onChange={(e) => setCityValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveCity.mutate();
-                      if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
-                    }}
-                    dir="ltr"
-                    placeholder="עיר / איזור"
-                    className="text-sm bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-3 py-1 outline-none focus:border-white min-w-0 w-[150px]"
-                  />
                   <button
-                    onClick={() => saveCity.mutate()}
-                    className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                    type="button"
+                    onClick={() => setMapOpen(true)}
+                    disabled={mapStops.length === 0}
+                    className={pillBtn + " px-3 disabled:opacity-50 disabled:cursor-not-allowed"}
+                    style={{ ...pillBg, height: 28 }}
                   >
-                    <Check size={14} />
+                    <MapIcon size={12} />
+                    <span>מפה</span>
+                    {mapStops.length > 0 && <span className="text-white/70">· {mapStops.length}</span>}
                   </button>
                   <button
-                    onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
-                    className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                    type="button"
+                    onClick={() => setMoreOpen(true)}
+                    aria-label="פעולות נוספות"
+                    className={pillBtn}
+                    style={{ ...pillBg, height: 28, width: 28 }}
                   >
-                    <X size={14} />
+                    <MoreHorizontal size={14} />
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/30 text-white text-[12px] px-2.5 py-1 bg-white/10 min-h-0 h-auto"
-                >
-                  <span dir="ltr" className="truncate">{day.city_label || "הוסף עיר / איזור"}</span>
-                  <Pencil size={11} className="shrink-0" />
-                </button>
-              )}
-            </div>
+              </div>
 
-            {/* Row 3 — actions */}
-            <div className="mt-2.5 flex items-center gap-2" dir="rtl">
-              <button
-                type="button"
-                onClick={() => setMapOpen(true)}
-                disabled={mapStops.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <MapIcon size={13} />
-                <span>תצוגת מפה</span>
-                {mapStops.length > 0 && (
-                  <span className="text-white/70">· {mapStops.length}</span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMoreOpen(true)}
-                aria-label="פעולות נוספות"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 text-white text-[12px] whitespace-nowrap px-3 py-1.5 min-h-0 h-auto"
-              >
-                <MoreHorizontal size={14} />
-                <span>עוד</span>
-              </button>
+              {/* Bottom section — title/date (right) + weather/city (left) */}
+              <div className="flex items-end justify-between gap-2">
+                <div className="min-w-0">
+                  <h1 className="text-white text-[22px] font-medium leading-tight">יום {day.day_number}</h1>
+                  <p className="text-white/70 text-[11px] leading-snug mt-0.5">
+                    {hebWeekday(day.date)}, {hebDate(day.date)}
+                  </p>
+                  {totalLinked > 0 && (
+                    <p className="text-white/60 text-[10px] mt-0.5">
+                      ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+                  {editingCity ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        autoFocus
+                        value={cityValue}
+                        onChange={(e) => setCityValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveCity.mutate();
+                          if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
+                        }}
+                        dir="ltr"
+                        placeholder="עיר / איזור"
+                        className="text-[12px] bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-2.5 py-1 outline-none focus:border-white min-w-0 w-[130px]"
+                      />
+                      <button
+                        onClick={() => saveCity.mutate()}
+                        className="w-7 h-7 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                      >
+                        <Check size={13} />
+                      </button>
+                      <button
+                        onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
+                        className="w-7 h-7 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                      className="relative inline-flex items-center gap-1 rounded-full text-white text-[10px] px-2 py-1 min-h-0 max-w-[100px] after:absolute after:-inset-2 after:content-['']"
+                      style={{ background: "rgba(255,255,255,0.2)" }}
+                    >
+                      <span dir="ltr" className="truncate">{day.city_label || "הוסף עיר / אזור"}</span>
+                      <Pencil size={10} className="shrink-0" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-
         );
       })()}
 
@@ -578,7 +576,7 @@ function DayDetail() {
       ) : (
         <div className="relative flex flex-col" style={{ height: "calc(100dvh - 240px)" }}>
           {/* List pane (full height — map opens in bottom sheet) */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[160px] relative">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[120px] relative">
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
@@ -608,6 +606,7 @@ function DayDetail() {
                         )}
                         <SortableEntry
                           entry={e}
+                          nextTime={entries[idx + 1]?.time_of_day ?? null}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
@@ -624,34 +623,17 @@ function DayDetail() {
             </DndContext>
           </div>
 
-          {/* Floating action button — "add from favourites" pill */}
+          {/* Floating action button — 56px circle */}
           <div
-            className="fixed right-4 z-40 flex flex-col items-end gap-2"
+            className="fixed right-4 z-40"
             style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
           >
             <button
               onClick={openPicker}
               aria-label="הוסף פריט"
-              className="h-11 px-4 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center gap-2 text-sm font-semibold min-h-0 active:scale-95 transition-transform"
+              className="h-14 w-14 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center justify-center min-h-0 active:scale-95 transition-transform"
             >
-              <Plus size={16} />
-              <span>הוסף פריט</span>
-            </button>
-            <button
-              onClick={() => setNoteOpen(true)}
-              aria-label="הערה מהירה"
-              className="h-9 px-3 rounded-full bg-card border border-border text-foreground shadow-sm flex items-center gap-1.5 text-[12px] font-medium min-h-0 active:scale-95 transition-transform"
-            >
-              <span>📝</span>
-              <span>הערה מהירה</span>
-            </button>
-            <button
-              onClick={() => setNavigateOpen(true)}
-              aria-label="נווט אל"
-              className="h-9 px-3 rounded-full bg-card border border-border text-foreground shadow-sm flex items-center gap-1.5 text-[12px] font-medium min-h-0 active:scale-95 transition-transform"
-            >
-              <span>🧭</span>
-              <span>נווט אל</span>
+              <Plus size={24} />
             </button>
           </div>
 
@@ -661,7 +643,7 @@ function DayDetail() {
             className="sticky bottom-0 -mx-4 bg-card border-t border-border px-3 flex items-center"
             style={{ minHeight: 52, paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))", paddingTop: "0.25rem" }}
           >
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 [&_input]:!h-10 [&_input]:!rounded-[20px] [&_input]:!text-[13px]">
               <PlacesSearch
                 key={`quick-${entries.length}`}
                 placeholder="חיפוש מהיר בגוגל..."
@@ -868,6 +850,8 @@ function DayDetail() {
       <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="פעולות נוספות">
         <div className="flex flex-col gap-2 pb-2">
           {[
+            { icon: <span className="text-base">📝</span>, label: "הערה מהירה", onClick: () => setNoteOpen(true) },
+            { icon: <span className="text-base">🧭</span>, label: "נווט אל", onClick: () => setNavigateOpen(true) },
             { icon: <Sparkles size={16} />, label: "ייצא ל-AI", onClick: () => setExportOpen(true) },
             { icon: <Download size={16} />, label: "ייבא מ-AI", onClick: () => setImportOpen(true) },
             { icon: <History size={16} />, label: "גרסאות ונקודות שחזור", onClick: () => setSnapshotsOpen(true) },
@@ -947,68 +931,64 @@ function SegmentConnector({
   const toName = placeName(to, city);
   const hasNames = fromName && toName;
 
-  const navLinkClass =
-    "h-8 px-3 rounded-full bg-surface border border-border text-foreground text-[12px] " +
-    "flex items-center gap-1 hover:bg-surface-2 transition-colors";
+  // Compact one-line connector: 28×28 visual circles with expanded 44px hit area.
+  const circle = (active: boolean): React.CSSProperties =>
+    active
+      ? { background: "var(--accent)", color: "#fff", border: "0.5px solid transparent" }
+      : { background: "var(--surface-2)", color: "var(--foreground)", border: "0.5px solid var(--border)" };
 
   return (
-    <div className="my-1 flex items-center gap-2 flex-wrap" dir="rtl" style={{ paddingInlineStart: 72 }}>
-      <div className="text-[12px] text-muted-foreground">→ {fmtDistance(km)}</div>
-      <div className="flex gap-2 flex-wrap">
+    <div className="my-1 flex items-center gap-1 flex-nowrap min-w-0" dir="ltr" style={{ paddingInlineStart: 72 }}>
+      <span className="text-[11px] text-muted-foreground truncate shrink">→ {fmtDistance(km)}</span>
+      <a
+        href={
+          hasNames
+            ? rome2rioUrl(fromName, toName)
+            : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`
+        }
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="השווה דרכים (Rome2Rio)"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="p-2 -m-2 inline-flex shrink-0"
+      >
+        <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[13px]" style={circle(false)}>🗺</span>
+      </a>
+      {isJapan && (
         <a
-          href={
-            hasNames
-              ? rome2rioUrl(fromName, toName)
-              : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`
-          }
+          href={navitimeUrl(a, b, fromName, toName)}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="NAVITIME"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          className={navLinkClass}
+          className="p-2 -m-2 inline-flex shrink-0"
         >
-          <span>🗺</span>
-          <span>השווה דרכים</span>
+          <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[13px]" style={circle(false)}>🚄</span>
         </a>
-        {isJapan && (
+      )}
+
+      {ordered.map((key) => {
+        const m = modeMeta[key];
+        const isOn = key === suggested;
+        return (
           <a
-            href={navitimeUrl(a, b, fromName, toName)}
+            key={key}
+            href={`${base}&travelmode=${key}`}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noreferrer"
+            aria-label={m.label}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            className={navLinkClass}
+            className="p-2 -m-2 inline-flex shrink-0"
           >
-            <span>🚄</span>
-            <span>NAVITIME</span>
+            <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[13px]" style={circle(isOn)}>
+              {m.emoji}
+            </span>
           </a>
-        )}
-
-        {ordered.map((key) => {
-          const m = modeMeta[key];
-          const isOn = key === suggested;
-          return (
-            <a
-              key={key}
-              href={`${base}&travelmode=${key}`}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="min-h-[36px] min-w-[80px] px-3 rounded-full text-[13px] inline-flex items-center justify-center gap-1.5 leading-none"
-              style={
-                isOn
-                  ? { background: "var(--accent)", color: "#fff", border: "1px solid transparent" }
-                  : { background: "transparent", color: "var(--foreground)", border: "1px solid var(--border)" }
-              }
-            >
-              <span>{m.emoji}</span>
-              <span>{m.label}</span>
-              {isOn && <span className="opacity-90">✓</span>}
-            </a>
-          );
-        })}
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -1018,9 +998,10 @@ function SegmentConnector({
 
 
 function SortableEntry({
-  entry, pinIndex, highlighted, setRef, onOpenDetails, hintHandle, recById,
+  entry, nextTime, pinIndex, highlighted, setRef, onOpenDetails, hintHandle, recById,
 }: {
   entry: EntryRow;
+  nextTime?: string | null;
   pinIndex: number | null;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
@@ -1043,6 +1024,22 @@ function SortableEntry({
   const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
   const isVisited = linkedRec?.status === "visited";
 
+  // Duration until next stop — only when BOTH times exist and result is positive.
+  const duration = (() => {
+    if (!entry.time_of_day || !nextTime) return null;
+    const mins = parseTime(nextTime) - parseTime(entry.time_of_day);
+    if (mins <= 0) return null;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `⏱ ${h}h${m > 0 ? ` ${m}m` : ""}` : `⏱ ${m} דקות`;
+  })();
+
+  const notesSnippet = entry.description
+    ? entry.description.length > 60
+      ? entry.description.slice(0, 60) + "..."
+      : entry.description
+    : null;
+
   const [pulse, setPulse] = useState(!!hintHandle);
   useEffect(() => {
     if (!hintHandle) return;
@@ -1056,19 +1053,19 @@ function SortableEntry({
       <div className="w-[72px] shrink-0 relative flex flex-col items-center pt-1">
         {/* Dashed line running through the rail */}
         <div
-          className="absolute right-1/2 translate-x-1/2 top-0 bottom-[-16px] w-0"
+          className="absolute right-1/2 translate-x-1/2 top-0 bottom-[-16px] w-0 opacity-40"
           style={{ borderRight: "2px dashed var(--border-strong)" }}
           aria-hidden
         />
         <span
-          className="relative text-[13px] font-semibold text-foreground tabular-nums bg-background px-1"
+          className={`relative w-[44px] text-right text-[11px] tabular-nums bg-background ${entry.time_of_day ? "font-medium text-foreground" : "text-muted-foreground"}`}
           dir="ltr"
         >
           {entry.time_of_day || "—"}
         </span>
         <span
-          className="relative mt-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-background"
-          style={{ background: hasCoords ? pinColor : "var(--border-strong)" }}
+          className="relative mt-1.5 w-2.5 h-2.5 rounded-full"
+          style={{ background: hasCoords ? pinColor : "var(--border-strong)", border: "1.5px solid rgba(255,255,255,0.9)" }}
         />
       </div>
 
@@ -1079,7 +1076,8 @@ function SortableEntry({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetails(); } }}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 min-w-0 bg-card border border-border rounded-[12px] shadow-sm p-3 pl-9 cursor-pointer"
+        className="relative flex-1 min-w-0 bg-card rounded-[12px] shadow-sm overflow-hidden cursor-pointer"
+        style={{ border: "0.5px solid var(--border)" }}
       >
         {/* Drag handle — the ONLY drag surface */}
         <button
@@ -1089,87 +1087,89 @@ function SortableEntry({
           onClick={(e) => e.stopPropagation()}
           aria-label="גרור לשינוי סדר"
           className={
-            "absolute left-1 top-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground touch-none cursor-grab active:cursor-grabbing hover:bg-muted/60 " +
+            "absolute left-1 top-1 z-10 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground touch-none cursor-grab active:cursor-grabbing hover:bg-muted/60 " +
             (pulse ? "animate-pulse text-[color:var(--accent)]" : "")
           }
         >
           <GripVertical size={16} />
         </button>
 
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="entry-title text-[15px] font-semibold leading-tight text-right">{entry.title}</span>
-              {hasCoords && (
-                <span
-                  aria-label="במפה"
-                  className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold text-white shrink-0"
-                  style={{ background: pinColor }}
-                >
-                  {pinIndex}
-                </span>
-              )}
-              {isVisited && (
-                <>
+        {/* Variant A: photo header (fixed 80px) */}
+        {entry.photo_url && (
+          <img
+            src={entry.photo_url}
+            alt=""
+            loading="lazy"
+            className="w-full h-20 object-cover"
+          />
+        )}
+
+        <div className="p-3 pl-9">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="entry-title text-[14px] font-medium leading-tight text-right">{entry.title}</span>
+                {entry.photo_url && <span className="text-[14px] shrink-0">{icon}</span>}
+                {hasCoords && (
                   <span
-                    className="inline-flex w-2 h-2 rounded-full shrink-0"
-                    style={{ background: "#10B981" }}
-                    title="ביקרתם כאן"
-                  />
-                  {typeof linkedRec?.rating === "number" && (
-                    <span className="text-[11px] font-medium text-[color:var(--accent)]">★{linkedRec.rating}</span>
-                  )}
-                </>
+                    aria-label="במפה"
+                    className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold text-white shrink-0"
+                    style={{ background: pinColor }}
+                  >
+                    {pinIndex}
+                  </span>
+                )}
+                {isVisited && (
+                  <>
+                    <span
+                      className="inline-flex w-2 h-2 rounded-full shrink-0"
+                      style={{ background: "#10B981" }}
+                      title="ביקרתם כאן"
+                    />
+                    {typeof linkedRec?.rating === "number" && (
+                      <span className="text-[11px] font-medium text-[color:var(--accent)]">★{linkedRec.rating}</span>
+                    )}
+                  </>
+                )}
+                {isLinked && !isVisited && (
+                  <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
+                    <Link2 size={12} aria-label="מסונכרן עם המלצות" />
+                  </span>
+                )}
+              </div>
+
+              {entry.location_name && (
+                <div className="entry-subtitle mt-1 text-[11px] text-muted-foreground truncate">
+                  <span>📍 </span>
+                  <span dir="ltr">{entry.location_name}</span>
+                </div>
               )}
-              {isLinked && !isVisited && (
-                <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
-                  <Link2 size={12} aria-label="מסונכרן עם המלצות" />
-                </span>
+
+              {duration && (
+                <div className="mt-1 text-[10px] text-muted-foreground">{duration}</div>
+              )}
+
+              {notesSnippet && (
+                <div className="text-[10px] text-muted-foreground italic mt-1 truncate">
+                  {notesSnippet}
+                </div>
               )}
             </div>
 
-            {entry.location_name && (
-              <div className="entry-subtitle mt-1 text-[12px] text-muted-foreground">
-                <span>📍 </span>
-                <span dir="ltr">{entry.location_name}</span>
-              </div>
-            )}
-
-            {entry.description && (
-              <div className="text-[13px] text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-2 break-words">
-                {entry.description}
+            {/* Variant B: 48×48 icon when no photo */}
+            {!entry.photo_url && (
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center text-[22px] shrink-0"
+                style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
+              >
+                {icon}
               </div>
             )}
           </div>
-
-          {entry.photo_url ? (
-            <img
-              src={entry.photo_url}
-              alt=""
-              loading="lazy"
-              className="w-16 h-16 rounded-lg object-cover shrink-0"
-            />
-          ) : (
-            <div
-              className="w-16 h-16 rounded-lg flex items-center justify-center text-[26px] shrink-0"
-              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
-            >
-              {icon}
-            </div>
-          )}
         </div>
 
-        {/* "לפרטים ›" — opens the details sheet */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
-          onPointerDown={(e) => e.stopPropagation()}
-          aria-label="פרטים"
-          className="mt-2 text-[12px] text-[color:var(--accent)] font-medium inline-flex items-center min-h-0"
-        >
-          לפרטים ›
-        </button>
-
+        {/* Subtle chevron — whole card is tappable */}
+        <span className="absolute bottom-1 left-2 text-muted-foreground/60 text-[14px] leading-none" aria-hidden>›</span>
       </motion.div>
     </div>
   );
