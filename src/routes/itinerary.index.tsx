@@ -424,7 +424,7 @@ function Itinerary() {
                         ) : (
                           <>
                             {summary && (
-                              <span className="mt-1 block truncate text-[12px] text-foreground">
+                              <span className="mt-1 block line-clamp-2 text-[11px] text-foreground">
                                 {summary}
                               </span>
                             )}
