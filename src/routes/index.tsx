@@ -17,6 +17,8 @@ import { haversine } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
 import { NowNextCard } from "@/components/NowNextCard";
 import { ChecklistCard } from "@/components/ChecklistCard";
+import { useOnline } from "@/hooks/use-online";
+import { toast } from "sonner";
 
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
@@ -437,6 +439,7 @@ function Home() {
   const { data: recs = [] } = useRecs();
   const { data: hotels = [] } = useHotels();
   const tripIsActive = useTripIsActive();
+  const isOnline = useOnline();
   const [hayinuOpen, setHayinuOpen] = useState(false);
 
   const { version: activeVersion } = useActiveVersion(tripId);
@@ -703,7 +706,19 @@ function Home() {
         <ActionTile icon={Star} label="המלצות" to="/recommendations" />
         <ActionTile icon={Wallet} label="תקציב" to="/budget" />
         <ActionTile icon={MessagesSquare} label="שיחון" to="/phrasebook" />
-        <ActionTile icon={Plus} label="הוצאה מהירה" onClick={openQuickExpense} accent />
+        <ActionTile
+          icon={Plus}
+          label="הוצאה מהירה"
+          onClick={() => {
+            if (!isOnline) {
+              toast.error("אין חיבור · לא ניתן להוסיף כרגע");
+              return;
+            }
+            openQuickExpense();
+          }}
+          accent
+          disabled={!isOnline}
+        />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
         {tripIsActive && (
           <ActionTile icon={MapPin} label="היינו כאן" onClick={() => setHayinuOpen(true)} accent />
@@ -893,10 +908,10 @@ function ActionTile({
   icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean; disabled?: boolean;
 }) {
   const cls = `rounded-xl border h-20 flex flex-col items-center justify-center gap-1.5 transition-colors ${
-    accent
-      ? "bg-[color:var(--accent-2)] text-white border-transparent"
-      : disabled
+    disabled
       ? "bg-card border-border opacity-50"
+      : accent
+      ? "bg-[color:var(--accent-2)] text-white border-transparent"
       : "bg-card border-border"
   }`;
   const content = (
@@ -905,9 +920,16 @@ function ActionTile({
       <div className="text-[13px]">{label}</div>
     </>
   );
-  if (disabled) return <div className={cls} aria-disabled>{content}</div>;
   if (to) return <Link to={to} className={cls}>{content}</Link>;
-  return <button type="button" onClick={onClick} className={cls}>{content}</button>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cls}
+    >
+      {content}
+    </button>
+  );
 }
 
 function ProgressRing({

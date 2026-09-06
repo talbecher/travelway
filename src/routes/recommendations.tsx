@@ -16,6 +16,7 @@ import { addRecommendationToDay, type RecType } from "@/lib/recommendations";
 import { syncHotelToItinerary, deleteHotelCascade } from "@/lib/hotels";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { z } from "zod";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { PhotoUploader } from "@/components/PhotoUploader";
@@ -895,7 +896,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }}
       className="flex flex-col pt-1 pb-2"
     >
       <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-card">

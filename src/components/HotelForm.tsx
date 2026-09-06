@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { PhotoUploader } from "@/components/PhotoUploader";
 import { DateField } from "@/components/DateField";
+import { assertOnline } from "@/hooks/use-online";
 import {
   syncHotelToItinerary,
   hotelHasItineraryEntries,
@@ -217,6 +218,7 @@ export function HotelForm({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (!assertOnline()) return;
           save.mutate({});
         }}
         className="flex flex-col pt-1 pb-2"

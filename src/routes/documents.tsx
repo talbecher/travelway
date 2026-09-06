@@ -5,6 +5,7 @@ import { Plus, Trash2, QrCode, Paperclip, ExternalLink, Loader2, Upload, X } fro
 import { QRCodeSVG } from "qrcode.react";
 import Barcode from "react-barcode";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import {
   useDocuments,
@@ -428,6 +429,7 @@ function DocumentFormSheet({
   }
 
   async function handleSave() {
+    if (!assertOnline()) return;
     if (!title.trim()) {
       toast.error("יש להזין כותרת");
       return;

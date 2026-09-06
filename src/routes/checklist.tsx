@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, MoreHorizontal, Trash2, Pencil, ChevronDown, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import {
@@ -134,6 +135,7 @@ function Onboarding({ onSkip }: { onSkip: () => void }) {
   }
 
   function create() {
+    if (!assertOnline()) return;
     const items = TEMPLATE_CATEGORIES.filter((c) => selected.includes(c.id)).flatMap((c) =>
       (CHECKLIST_TEMPLATES[c.id] ?? []).map((t, i) => ({
         title: t.title,
@@ -266,6 +268,7 @@ function ChecklistPage() {
   }
 
   function quickAdd() {
+    if (!assertOnline()) return;
     const title = newTitle.trim();
     if (!title) return;
     addItem.mutate(
@@ -568,15 +571,16 @@ function EditForm({
       </label>
 
       <button
-        onClick={() =>
+        onClick={() => {
+          if (!assertOnline()) return;
           onSave({
             title: title.trim() || item.title,
             category,
             priority,
             notes: notes.trim() || null,
             due_date: dueDate || null,
-          })
-        }
+          });
+        }}
         disabled={saving}
         className="w-full h-12 rounded-xl bg-[color:var(--accent)] text-white text-sm font-semibold disabled:opacity-60"
       >

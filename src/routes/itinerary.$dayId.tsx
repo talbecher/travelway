@@ -18,6 +18,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 
@@ -1705,6 +1706,7 @@ function FlightForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       const title = `${flight} ${origin}→${destination}`.trim();
       const description = [
         origin && `מוצא: ${origin}`,
@@ -1820,6 +1822,7 @@ function HotelEntrySection(props: {
   }
 
   async function submitSingle() {
+    if (!assertOnline()) return;
     if (!pending || !singleForm) return;
     const h = pending;
     const f = singleForm;
@@ -2108,6 +2111,7 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       if (!name.trim()) { toast.error("שם המלון חסר"); return; }
       const description = [
         price && `מחיר ללילה: ${price}`,
@@ -2367,6 +2371,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       if (!name.trim()) { toast.error(recType === "food" ? "שם המסעדה חסר" : "שם האטרקציה חסר"); return; }
       let linkedId: string | null = existing?.linked_recommendation_id ?? null;
       if (!existing && saveToRecs) {
@@ -2481,6 +2486,7 @@ function TransportForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps)
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       const description = [
         `סוג: ${kind}`,
         from && `מוצא: ${from}`,
@@ -2520,6 +2526,7 @@ function NoteForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       if (!content.trim()) { toast.error("תוכן חסר"); return; }
       mut.mutate({
         entry_type: "note", title: title.trim() || "הערה",

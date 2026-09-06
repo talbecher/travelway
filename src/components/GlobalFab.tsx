@@ -14,6 +14,7 @@ import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 
 export function GlobalFab() {
   const [open, setOpen] = useState(false);
@@ -85,7 +86,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="space-y-4 pt-2">
+    <form onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }} className="space-y-4 pt-2">
       <div>
         <label className="text-sm text-muted-foreground">סכום</label>
         <div className="flex gap-2 mt-1">
