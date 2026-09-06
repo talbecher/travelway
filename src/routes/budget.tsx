@@ -12,6 +12,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 
 export const Route = createFileRoute("/budget")({
   component: Budget,
