@@ -908,10 +908,10 @@ function ActionTile({
   icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean; disabled?: boolean;
 }) {
   const cls = `rounded-xl border h-20 flex flex-col items-center justify-center gap-1.5 transition-colors ${
-    accent
-      ? "bg-[color:var(--accent-2)] text-white border-transparent"
-      : disabled
+    disabled
       ? "bg-card border-border opacity-50"
+      : accent
+      ? "bg-[color:var(--accent-2)] text-white border-transparent"
       : "bg-card border-border"
   }`;
   const content = (
