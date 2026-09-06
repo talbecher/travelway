@@ -420,6 +420,12 @@ function DayDetail() {
     return m;
   }, [mapStops]);
 
+  // ⚠️ zigzag detection: is the current stop order much longer than a
+  // nearest-neighbor order starting from the first stop?
+  const [zigzagDismissed, setZigzagDismissed] = useState(false);
+  const isZigzag = useMemo(() => detectZigzag(mapStops), [mapStops]);
+  useEffect(() => { setZigzagDismissed(false); }, [dayId]);
+
   const scrollToCard = useCallback((id: string) => {
     setHighlightId(id);
     const el = cardRefs.current[id];
