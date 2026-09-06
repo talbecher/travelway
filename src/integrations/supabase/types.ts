@@ -602,6 +602,7 @@ export type Database = {
           destination_country: string | null
           end_date: string
           entry_pin: string
+          food_budget: string
           id: string
           num_travelers: number
           owner_id: string
@@ -610,6 +611,9 @@ export type Database = {
           start_date: string
           title: string
           total_budget_ils: number
+          travel_interests: string[]
+          travel_notes: string | null
+          travel_pace: string
         }
         Insert: {
           created_at?: string
@@ -617,6 +621,7 @@ export type Database = {
           destination_country?: string | null
           end_date: string
           entry_pin: string
+          food_budget?: string
           id?: string
           num_travelers?: number
           owner_id: string
@@ -625,6 +630,9 @@ export type Database = {
           start_date: string
           title: string
           total_budget_ils?: number
+          travel_interests?: string[]
+          travel_notes?: string | null
+          travel_pace?: string
         }
         Update: {
           created_at?: string
@@ -632,6 +640,7 @@ export type Database = {
           destination_country?: string | null
           end_date?: string
           entry_pin?: string
+          food_budget?: string
           id?: string
           num_travelers?: number
           owner_id?: string
@@ -640,6 +649,9 @@ export type Database = {
           start_date?: string
           title?: string
           total_budget_ils?: number
+          travel_interests?: string[]
+          travel_notes?: string | null
+          travel_pace?: string
         }
         Relationships: []
       }
