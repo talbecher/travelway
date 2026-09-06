@@ -218,6 +218,7 @@ export function HotelForm({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (!assertOnline()) return;
           save.mutate({});
         }}
         className="flex flex-col pt-1 pb-2"
