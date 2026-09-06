@@ -8,6 +8,7 @@ import { fetchMyMapKml, type ImportedPlace } from "@/lib/maps-import.functions";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
+import { assertOnline } from "@/hooks/use-online";
 
 type Step = "url" | "preview";
 
