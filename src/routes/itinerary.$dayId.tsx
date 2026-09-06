@@ -2486,6 +2486,7 @@ function TransportForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps)
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       const description = [
         `סוג: ${kind}`,
         from && `מוצא: ${from}`,
