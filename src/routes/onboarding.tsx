@@ -9,6 +9,7 @@ import { useTripsList } from "@/hooks/use-trips-list";
 import { setActiveTripId, clearActiveTripId, getActiveTripId } from "@/lib/constants";
 import { daysBetween } from "@/lib/format";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DateField } from "@/components/DateField";
 import { Share2, Trash2 } from "lucide-react";
