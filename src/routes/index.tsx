@@ -439,6 +439,7 @@ function Home() {
   const { data: recs = [] } = useRecs();
   const { data: hotels = [] } = useHotels();
   const tripIsActive = useTripIsActive();
+  const isOnline = useOnline();
   const [hayinuOpen, setHayinuOpen] = useState(false);
 
   const { version: activeVersion } = useActiveVersion(tripId);
