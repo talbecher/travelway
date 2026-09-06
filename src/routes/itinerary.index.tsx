@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Trash2, Check, X, ChevronLeft, Sparkles, Download } from "lucide-react";
+import { Pencil, Trash2, Check, X, MoreHorizontal, Sparkles, Download } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, hebWeekday } from "@/lib/format";
@@ -16,7 +16,6 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { generateAIPrompt } from "@/lib/export-to-ai";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
-import { dayLoadSummary, DAY_LOAD_LABEL, fmtDistance } from "@/lib/geo";
 
 
 function DayWeatherBadge({ city, date }: { city: string | null; date: string }) {
@@ -63,6 +62,39 @@ function iconFor(t: string) {
   return m[t] ?? "•";
 }
 
+function buildSummary(entries: EntryRow[]) {
+  const attractions = entries.filter((entry) => entry.entry_type === "attraction");
+  const food = entries.filter((entry) => entry.entry_type === "food");
+  const transport = entries.filter((entry) => entry.entry_type === "transport");
+  const hotel = entries.filter((entry) => entry.entry_type === "hotel_checkin");
+  const parts: string[] = [];
+
+  if (hotel.length) parts.push(`🏨 ${hotel[0].title.slice(0, 15)}`);
+  if (attractions.length) {
+    parts.push(
+      attractions.length === 1
+        ? `⛩ ${attractions[0].title.slice(0, 15)}`
+        : `⛩ ${attractions.length} אטרקציות`,
+    );
+  }
+  if (food.length) {
+    parts.push(
+      food.length === 1
+        ? `🍜 ${food[0].title.slice(0, 15)}`
+        : `🍜 ${food.length} ארוחות`,
+    );
+  }
+  if (transport.length) parts.push("🚆 תחבורה");
+
+  if (parts.length > 3) return `${parts.slice(0, 2).join(" · ")} +${parts.length - 2}`;
+  return parts.join(" · ");
+}
+
+function localDateKey() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
 function Itinerary() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -74,6 +106,11 @@ function Itinerary() {
   const [editValue, setEditValue] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [dayMenuId, setDayMenuId] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressStart = useRef<{ x: number; y: number } | null>(null);
+  const suppressDayClick = useRef(false);
 
   const saveCity = useMutation({
     mutationFn: async ({ id, city }: { id: string; city: string }) => {
@@ -173,6 +210,22 @@ function Itinerary() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function clearLongPress() {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+    pressStart.current = null;
+  }
+
+  function startLongPress(dayId: string, x: number, y: number) {
+    clearLongPress();
+    pressStart.current = { x, y };
+    longPressTimer.current = setTimeout(() => {
+      suppressDayClick.current = true;
+      setDayMenuId(dayId);
+      longPressTimer.current = null;
+    }, 500);
+  }
+
   if (isLoading || !activeVersion) return <ListSkeleton />;
 
   if (days.length === 0) {
@@ -184,31 +237,50 @@ function Itinerary() {
   }
 
   return (
-    <div className="pt-2 space-y-5">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1>מסלול</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+    <div className="space-y-3 overflow-x-hidden pt-2 pb-24">
+      <header className="relative grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[20px] font-medium">מסלול</h1>
+          <p className="mt-1 truncate text-[12px] text-muted-foreground">
             {trip?.destination_country} · {days.length} ימים
           </p>
         </div>
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setExportOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--accent)] text-white text-[12px] px-3 h-8 shadow-sm"
+            aria-label="פעולות מסלול"
+            aria-expanded={headerMenuOpen}
+            onClick={() => setHeaderMenuOpen((open) => !open)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-foreground"
           >
-            <Sparkles size={14} />
-            ייצא ל-AI
+            <MoreHorizontal size={20} />
           </button>
-          <button
-            type="button"
-            onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-surface border border-border text-[12px] px-3 h-8"
-          >
-            <Download size={14} />
-            ייבא
-          </button>
+          {headerMenuOpen && (
+            <div className="absolute left-0 top-12 z-30 w-44 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-md">
+              <button
+                type="button"
+                onClick={() => {
+                  setHeaderMenuOpen(false);
+                  setExportOpen(true);
+                }}
+                className="flex h-11 w-full items-center gap-2 rounded-lg px-3 text-right text-[13px] text-foreground"
+              >
+                <Sparkles size={16} />
+                ייצא ל-AI
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHeaderMenuOpen(false);
+                  setImportOpen(true);
+                }}
+                className="flex h-11 w-full items-center gap-2 rounded-lg px-3 text-right text-[13px] text-foreground"
+              >
+                <Download size={16} />
+                ייבא
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -218,8 +290,8 @@ function Itinerary() {
 
       {/* City navigation strip */}
       {grouped.length > 1 && (
-        <div className="-mx-4 px-4 overflow-x-auto no-scrollbar sticky top-0 z-10 py-3 bg-surface border-b border-border">
-          <div className="flex gap-2 w-max" dir="rtl">
+        <div className="sticky top-0 z-10 -mx-4 overflow-x-auto border-b border-border bg-surface px-4 no-scrollbar">
+          <div className="flex w-max gap-1.5" dir="rtl">
             {grouped.map((g, i) => {
               const key = `${g.city || "—"}-${i}`;
               const active = activeCity === key;
@@ -228,16 +300,18 @@ function Itinerary() {
                   key={key}
                   type="button"
                   onClick={() => scrollToCity(key)}
-                  className={`rounded-full h-8 px-3 flex items-center justify-center text-[12px] whitespace-nowrap transition-colors ${
+                  className={`flex h-11 items-center justify-center rounded-full px-1 text-[11px] whitespace-nowrap transition-colors ${
                     active
-                      ? "bg-accent text-white shadow-sm"
-                      : "bg-surface-2 text-muted-foreground border border-border"
+                      ? "text-accent-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
-                  <span dir="ltr" className="inline-block align-middle">
-                    {g.city || "ללא עיר"}
+                  <span className={`flex h-8 items-center rounded-full px-3 ${active ? "bg-accent" : "border border-border bg-surface"}`}>
+                    <span dir="ltr" className="inline-block align-middle">
+                      {g.city || "ללא עיר"}
+                    </span>
+                    <span className="ms-1 opacity-70">· {g.days.length} י'</span>
                   </span>
-                  <span className="ms-1 opacity-70">· {g.days.length} י'</span>
                 </button>
               );
             })}
@@ -252,102 +326,135 @@ function Itinerary() {
             key={key}
             data-city-key={key}
             ref={(el) => { sectionRefs.current[key] = el; }}
-            className="scroll-mt-16"
+            className="scroll-mt-14"
           >
             {/* Group divider header */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 h-px bg-border" />
-              <div className="text-[12px] text-muted-foreground" dir="ltr">
+            <div className="mt-3 mb-1 flex items-center gap-2">
+              <div className="h-px flex-1 bg-border opacity-60" />
+              <div className="text-[11px] font-medium tracking-[0.05em] text-muted-foreground uppercase" dir="ltr">
                 {g.city || "ללא עיר"}
               </div>
-              <div className="flex-1 h-px bg-border" />
+              <div className="h-px flex-1 bg-border opacity-60" />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {g.days.map((d) => {
                 const entries = entriesByDay[d.id] ?? [];
                 const isEditing = editingId === d.id;
                 const isEmpty = entries.length === 0;
-                const preview = entries.slice(0, 3);
-                const more = entries.length - preview.length;
+                const summary = buildSummary(entries);
+                const isToday = d.date === localDateKey();
+                const menuOpen = dayMenuId === d.id;
 
                 return (
                   <div
                     key={d.id}
-                    className={`bg-white dark:bg-card rounded-2xl overflow-hidden transition-shadow ${
+                    className={`relative overflow-visible rounded-xl transition-colors ${
                       isEmpty
-                        ? "border border-dashed border-border-strong"
-                        : "border border-border"
-                    }`}
-                    style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                        ? "border border-dashed border-border-strong bg-transparent opacity-65"
+                        : "border border-border bg-card"
+                    } ${isToday ? "border-s-[3px] border-s-accent" : ""}`}
                   >
-                    <div className="h-1 bg-[color:var(--accent)]" />
-                    <div className="p-4">
-                    {/* Header row */}
-                    <div className="flex items-center gap-2">
+                    {isToday && (
+                      <span className="absolute top-2 left-2 z-10 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
+                        היום
+                      </span>
+                    )}
+                    <div className={isEmpty ? "px-3.5 py-2.5" : `min-h-[72px] px-3.5 py-3 ${isToday ? "ps-5" : ""}`}>
                       <button
                         type="button"
+                        aria-label={`פתח יום ${d.day_number}`}
+                        onPointerDown={(event) => startLongPress(d.id, event.clientX, event.clientY)}
+                        onPointerMove={(event) => {
+                          const start = pressStart.current;
+                          if (start && (Math.abs(event.clientX - start.x) > 8 || Math.abs(event.clientY - start.y) > 8)) {
+                            clearLongPress();
+                          }
+                        }}
+                        onPointerUp={clearLongPress}
+                        onPointerCancel={clearLongPress}
+                        onPointerLeave={clearLongPress}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          setDayMenuId(d.id);
+                        }}
                         onClick={() => {
                           if (isEditing) return;
+                          if (suppressDayClick.current) {
+                            suppressDayClick.current = false;
+                            return;
+                          }
                           navigate({ to: "/itinerary/$dayId", params: { dayId: d.id } });
                         }}
-                        className="flex-1 min-w-0 text-right flex items-center gap-2 min-h-0 h-auto py-0"
+                        className="block min-h-11 w-full min-w-0 text-right"
                       >
-                        <span className="text-[15px] font-bold text-[color:var(--accent)] shrink-0">
-                          יום {d.day_number}
-                        </span>
-                        <span className="text-[13px] text-muted-foreground shrink-0">·</span>
-                        <span className="text-[13px] font-medium text-muted-foreground shrink-0">
-                          {hebWeekday(d.date)}
-                        </span>
-                        <span className="text-[13px] text-muted-foreground shrink-0">·</span>
-                        <span className="text-[13px] text-muted-foreground shrink-0 tabular-nums">
-                          {hebDate(d.date)}
-                        </span>
-                        {d.city_label && !isEditing && (
-                          <span
-                            className="ms-auto rounded-full bg-[color:var(--surface-2)] text-[11px] px-2 py-0.5 truncate max-w-[45%]"
-                            dir="ltr"
-                          >
-                            {d.city_label}
+                        <span className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                          <span className={`shrink-0 text-[13px] font-medium ${isEmpty ? "text-muted-foreground" : "text-accent"}`}>
+                            יום {d.day_number}
                           </span>
-                        )}
-                        {!isEditing && (
-                          <DayWeatherBadge city={d.city_label ?? null} date={d.date} />
+                          <span className="truncate text-center text-[11px] text-muted-foreground">
+                            {hebWeekday(d.date)}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                            {hebDate(d.date)}
+                          </span>
+                        </span>
+                        {isEmpty ? (
+                          <span className="mt-1 block truncate text-center text-[11px] text-muted-foreground">
+                            לחץ לתכנון +
+                          </span>
+                        ) : (
+                          <>
+                            {summary && (
+                              <span className="mt-1 block truncate text-[12px] text-foreground">
+                                {summary}
+                              </span>
+                            )}
+                            <span className="mt-0.5 flex min-h-4 items-center">
+                              <DayWeatherBadge city={d.city_label ?? null} date={d.date} />
+                            </span>
+                          </>
                         )}
                       </button>
-                      {!isEditing && (
-                        <div className="flex items-center gap-1 shrink-0">
+
+                      {menuOpen && !isEditing && (
+                        <div className="absolute left-2 top-11 z-20 w-48 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-md">
                           <button
                             type="button"
-                            aria-label="ערוך שם עיר"
                             onClick={(e) => {
                               e.stopPropagation();
+                              setDayMenuId(null);
                               setEditValue(d.city_label ?? "");
                               setEditingId(d.id);
                             }}
-                            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground min-h-0"
+                            className="flex h-11 w-full items-center gap-2 rounded-lg px-3 text-right text-[13px] text-foreground"
                           >
-                            <Pencil size={12} />
+                            <Pencil size={16} />
+                            ערוך עיר
                           </button>
                           <button
                             type="button"
-                            aria-label="מחק יום"
+                            disabled={!isEmpty}
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!isEmpty) return;
+                              setDayMenuId(null);
                               if (confirm(`למחוק את יום ${d.day_number}?`)) delDay.mutate(d.id);
                             }}
-                            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-[color:var(--accent-2)] min-h-0"
+                            className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-right text-[13px] text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={16} />
+                            <span className="min-w-0">
+                              <span className="block">מחק</span>
+                              {!isEmpty && <span className="block text-[10px] text-muted-foreground">הסר קודם את הפעילויות</span>}
+                            </span>
                           </button>
                         </div>
                       )}
-                    </div>
 
                     {isEditing && (
                       <div
-                        className="flex items-center gap-1 mt-2"
+                        className="mt-2 grid grid-cols-[minmax(0,1fr)_44px_44px] items-center gap-1"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <input
@@ -359,77 +466,26 @@ function Itinerary() {
                             if (e.key === "Enter") saveCity.mutate({ id: d.id, city: editValue });
                             if (e.key === "Escape") setEditingId(null);
                           }}
-                          className="flex-1 text-xs bg-background border border-input rounded-md px-2 py-1 outline-none focus:border-[color:var(--accent)]"
+                          className="min-w-0 rounded-md border border-input bg-background px-2 text-xs outline-none focus:border-accent"
                           placeholder="עיר / איזור"
                         />
                         <button
                           type="button"
                           onClick={() => saveCity.mutate({ id: d.id, city: editValue })}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-[color:var(--accent-3)] min-h-0"
+                          className="flex h-11 w-11 items-center justify-center rounded-md text-success"
                         >
                           <Check size={14} />
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingId(null)}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground min-h-0"
+                          className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground"
                         >
                           <X size={14} />
                         </button>
                       </div>
                     )}
 
-                    {/* Body */}
-                    {isEmpty ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigate({ to: "/itinerary/$dayId", params: { dayId: d.id } })
-                        }
-                        className="w-full mt-3 text-center text-[13px] text-muted-foreground min-h-0 h-auto py-2"
-                      >
-                        יום ריק — לחץ להוספה
-                      </button>
-                    ) : (
-                      <>
-                        <div className="h-px bg-border my-3" />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate({ to: "/itinerary/$dayId", params: { dayId: d.id } })
-                          }
-                          className="w-full text-right min-h-0 h-auto p-0 block"
-                        >
-                          <div className="space-y-1.5">
-                            {preview.map((entry) => (
-                              <EntryPreviewRow key={entry.id} entry={entry} />
-                            ))}
-                          </div>
-                          {(() => {
-                            const load = dayLoadSummary(
-                              entries
-                                .filter((e) => e.latitude != null && e.longitude != null)
-                                .map((e) => ({ lat: Number(e.latitude), lon: Number(e.longitude) })),
-                            );
-                            if (!load) return null;
-                            return (
-                              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-2)] border border-border text-[11px] px-2 py-0.5 text-muted-foreground">
-                                <span>{load.level === "heavy" ? "⚡" : load.level === "normal" ? "🚶" : "🌿"}</span>
-                                <span>{DAY_LOAD_LABEL[load.level]}</span>
-                                <span className="tabular-nums" dir="ltr">~{fmtDistance(load.totalKm)}</span>
-                              </div>
-                            );
-                          })()}
-                          {more > 0 && (
-                            <div className="mt-2 flex items-center justify-between text-[12px] text-muted-foreground">
-                              <span>+ {more} נוספים</span>
-                              <ChevronLeft size={14} />
-                            </div>
-                          )}
-
-                        </button>
-                      </>
-                    )}
                     </div>
                   </div>
                 );
@@ -457,40 +513,6 @@ function Itinerary() {
           city_label: d.city_label,
         }))}
       />
-    </div>
-  );
-}
-
-
-function EntryPreviewRow({ entry }: { entry: EntryRow }) {
-  const emoji = entry.icon_emoji || iconFor(entry.entry_type);
-  return (
-    <div className="flex items-center gap-2 h-10">
-      {entry.photo_url ? (
-        <img
-          src={entry.photo_url}
-          alt=""
-          loading="lazy"
-          className="w-10 h-10 rounded-lg object-cover shrink-0"
-        />
-      ) : (
-        <div className="w-10 h-10 rounded-lg bg-[color:var(--surface-2)] flex items-center justify-center text-[16px] shrink-0">
-          {emoji}
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="text-[14px] truncate leading-tight">{entry.title}</div>
-        {entry.location_name && (
-          <div className="text-[11px] text-muted-foreground truncate leading-tight" dir="ltr">
-            {entry.location_name}
-          </div>
-        )}
-      </div>
-      {entry.time_of_day && (
-        <span className="rounded-full bg-[color:var(--surface-2)] text-[10px] tabular-nums px-1.5 py-0.5 shrink-0" dir="ltr">
-          {entry.time_of_day}
-        </span>
-      )}
     </div>
   );
 }

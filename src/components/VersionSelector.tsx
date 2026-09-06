@@ -56,8 +56,8 @@ export function VersionSelector({ tripId }: { tripId: string }) {
 
   return (
     <>
-      <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
-        <div className="flex gap-2 w-max" dir="rtl">
+      <div className="-mx-4 overflow-x-auto px-4 no-scrollbar">
+        <div className="flex w-max gap-1.5" dir="rtl">
           {versions.length > 1 &&
             versions.map((v) => {
               const isActive = active?.id === v.id;
@@ -72,23 +72,33 @@ export function VersionSelector({ tripId }: { tripId: string }) {
                       { onSuccess: () => toast.success(`עברת ל: ${v.name}`) }
                     );
                   }}
-                  className={`h-8 px-3 rounded-full text-[12px] whitespace-nowrap flex items-center gap-1 transition-colors ${
+                  className={`flex h-11 items-center rounded-full px-1 text-[12px] whitespace-nowrap transition-colors ${
                     isActive
-                      ? "bg-accent text-white shadow-sm"
-                      : "bg-surface-2 text-muted-foreground border border-border"
+                      ? "text-accent-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
-                  {pillLabel(v)}
-                  {isActive && <span>✓</span>}
+                  <span
+                    className={`flex h-[30px] items-center gap-1 rounded-full px-3 ${
+                      isActive
+                        ? "bg-accent"
+                        : "border border-border bg-surface"
+                    }`}
+                  >
+                    {pillLabel(v)}
+                    {isActive && <span>✓</span>}
+                  </span>
                 </button>
               );
             })}
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="h-8 px-3 rounded-full text-[12px] whitespace-nowrap bg-surface border border-dashed border-border-strong text-muted-foreground"
+            className="flex h-11 items-center rounded-full px-1 text-[12px] whitespace-nowrap text-muted-foreground"
           >
-            + גרסה חדשה
+            <span className="flex h-[30px] items-center rounded-full border border-dashed border-border-strong bg-surface px-3">
+              + גרסה חדשה
+            </span>
           </button>
         </div>
       </div>
