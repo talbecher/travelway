@@ -107,6 +107,15 @@ function Onboarding() {
       setBudget(Number(existingTrip.total_budget_ils));
       setPin(existingTrip.entry_pin);
       setCurrency(existingTrip.currency_code);
+      const pace = (existingTrip.travel_pace as "relaxed" | "balanced" | "intensive") ?? "balanced";
+      const interests = existingTrip.travel_interests ?? [];
+      const food = (existingTrip.food_budget as "budget" | "medium" | "splurge") ?? "medium";
+      const notes = existingTrip.travel_notes ?? "";
+      setTravelPace(pace);
+      setTravelInterests(interests);
+      setFoodBudget(food);
+      setTravelNotes(notes);
+      setProfileOpen(profileIsEmpty(pace, interests, food, notes));
     }
   }, [isEditing, existingTrip]);
 
