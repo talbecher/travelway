@@ -240,7 +240,7 @@ export function ImportFromMyMapsSheet({
             ))}
           </div>
           <button
-            onClick={() => importMut.mutate()}
+            onClick={() => { if (!assertOnline()) return; importMut.mutate(); }}
             disabled={importMut.isPending || selectedCount === 0}
             className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
