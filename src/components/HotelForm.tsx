@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { PhotoUploader } from "@/components/PhotoUploader";
 import { DateField } from "@/components/DateField";
+import { assertOnline } from "@/hooks/use-online";
 import {
   syncHotelToItinerary,
   hotelHasItineraryEntries,
