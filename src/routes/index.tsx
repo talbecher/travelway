@@ -920,9 +920,17 @@ function ActionTile({
       <div className="text-[13px]">{label}</div>
     </>
   );
-  if (disabled) return <div className={cls} aria-disabled>{content}</div>;
   if (to) return <Link to={to} className={cls}>{content}</Link>;
-  return <button type="button" onClick={onClick} className={cls}>{content}</button>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cls}
+      aria-disabled={disabled || undefined}
+    >
+      {content}
+    </button>
+  );
 }
 
 function ProgressRing({
