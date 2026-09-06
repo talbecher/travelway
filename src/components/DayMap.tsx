@@ -256,18 +256,7 @@ export default function DayMap({
           minZoom={3}
         />
 
-        {path.length >= 2 && (
-          <Polyline
-            positions={path}
-            pathOptions={{
-              color: "#6C63FF",
-              weight: 4,
-              opacity: 0.85,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
-          />
-        )}
+        {path.length >= 2 && <RoadRoute stops={validStops} />}
         <MarkerClusterGroup
           chunkedLoading
           maxClusterRadius={40}
