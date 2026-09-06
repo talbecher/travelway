@@ -2526,6 +2526,7 @@ function NoteForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       if (!content.trim()) { toast.error("תוכן חסר"); return; }
       mut.mutate({
         entry_type: "note", title: title.trim() || "הערה",
