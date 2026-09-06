@@ -155,6 +155,40 @@ function placeName(stop: EntryRow, fallbackCity?: string | null): string {
 }
 
 
+/** True when the current stop order is 30%+ longer than a nearest-neighbor order. */
+function detectZigzag(stops: Array<{ lat: number; lng: number }>): boolean {
+  if (stops.length < 3) return false;
+  const toPt = (s: { lat: number; lng: number }) => ({ lat: s.lat, lon: s.lng });
+
+  let currentDist = 0;
+  for (let i = 0; i < stops.length - 1; i++) {
+    currentDist += haversine(toPt(stops[i]), toPt(stops[i + 1]));
+  }
+
+  const remaining = stops.slice(1);
+  const optimized = [stops[0]];
+  while (remaining.length > 0) {
+    const last = optimized[optimized.length - 1];
+    let nearestIdx = 0;
+    let nearestDist = Infinity;
+    remaining.forEach((s, i) => {
+      const d = haversine(toPt(last), toPt(s));
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestIdx = i;
+      }
+    });
+    optimized.push(remaining.splice(nearestIdx, 1)[0]);
+  }
+
+  let optimizedDist = 0;
+  for (let i = 0; i < optimized.length - 1; i++) {
+    optimizedDist += haversine(toPt(optimized[i]), toPt(optimized[i + 1]));
+  }
+
+  return currentDist > optimizedDist * 1.3;
+}
+
 function DayDetail() {
   const { dayId } = Route.useParams();
   const navigate = useNavigate();
@@ -420,6 +454,12 @@ function DayDetail() {
     return m;
   }, [mapStops]);
 
+  // ⚠️ zigzag detection: is the current stop order much longer than a
+  // nearest-neighbor order starting from the first stop?
+  const [zigzagDismissed, setZigzagDismissed] = useState(false);
+  const isZigzag = useMemo(() => detectZigzag(mapStops), [mapStops]);
+  useEffect(() => { setZigzagDismissed(false); }, [dayId]);
+
   const scrollToCard = useCallback((id: string) => {
     setHighlightId(id);
     const el = cardRefs.current[id];
@@ -567,6 +607,22 @@ function DayDetail() {
         );
       })()}
 
+      {isZigzag && !zigzagDismissed && mapStops.length >= 3 && (
+        <div className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3 py-2">
+          <span className="text-[14px]">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] font-medium text-amber-800 dark:text-amber-200">סדר המסלול לא אופטימלי</div>
+            <div className="text-[11px] text-amber-600 dark:text-amber-400">יש נסיעות מיותרות — גרור פריטים לסידור יעיל יותר</div>
+          </div>
+          <button
+            type="button"
+            className="text-[11px] text-amber-700 dark:text-amber-300 underline shrink-0 min-h-[44px] px-1"
+            onClick={() => setZigzagDismissed(true)}
+          >
+            הבנתי
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="px-4 pt-3 space-y-2 animate-pulse">

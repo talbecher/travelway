@@ -45,6 +45,69 @@ function pinIcon(color: string, index: number, highlighted: boolean): L.DivIcon 
   });
 }
 
+function RoadRoute({ stops }: { stops: MapStop[] }) {
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
+  const [loading, setLoading] = useState(false);
+  const coordsKey = stops.map((s) => `${s.lat},${s.lng}`).join("|");
+
+  useEffect(() => {
+    if (stops.length < 2) {
+      setRouteCoords([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const coords = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+    fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const geometry = data.routes?.[0]?.geometry?.coordinates;
+        if (Array.isArray(geometry) && geometry.length >= 2) {
+          // OSRM returns [lng,lat], Leaflet needs [lat,lng]
+          setRouteCoords(geometry.map(([lng, lat]: number[]) => [lat, lng] as [number, number]));
+        } else {
+          setRouteCoords(stops.map((s) => [s.lat, s.lng] as [number, number]));
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fallback: straight lines between stops
+        setRouteCoords(stops.map((s) => [s.lat, s.lng] as [number, number]));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coordsKey]);
+
+  if (loading || routeCoords.length < 2) {
+    // Placeholder: dashed straight lines while the road route loads
+    return (
+      <Polyline
+        positions={stops.map((s) => [s.lat, s.lng] as [number, number])}
+        pathOptions={{ color: "#6C63FF", weight: 2, opacity: 0.4, dashArray: "6,6" }}
+      />
+    );
+  }
+
+  return (
+    <Polyline
+      positions={routeCoords}
+      pathOptions={{
+        color: "#6C63FF",
+        weight: 4,
+        opacity: 0.85,
+        lineCap: "round",
+        lineJoin: "round",
+      }}
+    />
+  );
+}
+
 function FitBounds({ stops }: { stops: MapStop[] }) {
   const map = useMap();
   const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
@@ -148,13 +211,18 @@ export default function DayMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const validStops = stops.filter(
-    (s) =>
-      Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
-      s.lat >= -90 && s.lat <= 90 &&
-      s.lng >= -180 && s.lng <= 180 &&
-      !(s.lat === 0 && s.lng === 0),
-  );
+  // Filter to valid coords, keep source order, then renumber sequentially
+  // so pin labels are always 1, 2, 3... regardless of incoming index values.
+  const validStops = stops
+    .filter(
+      (s) =>
+        Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
+        s.lat >= -90 && s.lat <= 90 &&
+        s.lng >= -180 && s.lng <= 180 &&
+        !(s.lat === 0 && s.lng === 0),
+    )
+    .sort((a, b) => a.index - b.index)
+    .map((s, idx) => ({ ...s, index: idx + 1 }));
 
   const center: [number, number] = validStops[0]
     ? [validStops[0].lat, validStops[0].lng]
@@ -188,18 +256,7 @@ export default function DayMap({
           minZoom={3}
         />
 
-        {path.length >= 2 && (
-          <Polyline
-            positions={path}
-            pathOptions={{
-              color: "#6C63FF",
-              weight: 4,
-              opacity: 0.85,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
-          />
-        )}
+        {path.length >= 2 && <RoadRoute stops={validStops} />}
         <MarkerClusterGroup
           chunkedLoading
           maxClusterRadius={40}
