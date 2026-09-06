@@ -106,39 +106,33 @@ export function ExportAISheet({
             </div>
 
             <div className="mt-4 flex flex-col gap-2">
+              {([
+                ["🤖 העתק + פתח Claude", "https://claude.ai/new"],
+                ["💬 העתק + פתח ChatGPT", "https://chatgpt.com"],
+                ["✨ העתק + פתח Gemini", "https://gemini.google.com"],
+              ] as const).map(([label, url]) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={async () => {
+                    const ok = await copyPrompt(data.prompt);
+                    if (ok) window.open(url, "_blank", "noopener");
+                  }}
+                  className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px]"
+                >
+                  {label} ↗
+                </button>
+              ))}
               <button
                 type="button"
                 onClick={() => copyPrompt(data.prompt)}
-                className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px]"
-              >
-                {copied ? "✅ הועתק! כעת הדבק בכלי AI" : "📋 העתק פרומפט"}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await copyPrompt(data.prompt);
-                  const url =
-                    "https://chatgpt.com/?q=" +
-                    encodeURIComponent(
-                      data.prompt.slice(0, 2000) +
-                        "\n\n[המשך מלא הועתק ללוח - הדבק בצ'אט]"
-                    );
-                  window.open(url, "_blank", "noopener");
-                }}
                 className="h-11 rounded-xl bg-surface border border-border text-[14px]"
               >
-                💬 פתח ב-ChatGPT ↗
+                {copied ? "✅ הועתק!" : "📋 העתק בלבד"}
               </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await copyPrompt(data.prompt);
-                  window.open("https://claude.ai/new", "_blank", "noopener");
-                }}
-                className="h-11 rounded-xl bg-surface border border-border text-[14px]"
-              >
-                🤖 פתח ב-Claude ↗
-              </button>
+              <div className="text-[12px] text-muted-foreground text-center mt-1">
+                הפרומפט הועתק ✓ פתח את הכלי והדבק (Cmd+V / Ctrl+V)
+              </div>
             </div>
 
             <div className="mt-4 rounded-xl bg-[color:var(--accent)]/10 border border-[color:var(--accent)]/20 p-3 text-[12px] leading-relaxed">
