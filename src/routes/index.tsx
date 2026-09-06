@@ -222,17 +222,209 @@ function iconFor(t: string) {
   return m[t] ?? "•";
 }
 
+function parseMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
 type EntrySlim = {
   id: string;
   day_id: string;
   entry_type: string;
+  icon_emoji?: string | null;
   title: string;
+  location_name?: string | null;
   time_of_day: string | null;
+  photo_url?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
   google_maps_url?: string | null;
 };
 
+
+/* ---------- live now card ---------- */
+
+function LiveNowCard({
+  todayDay,
+  entries,
+  onOpenDay,
+}: {
+  todayDay: { id: string; day_number: number; city_label?: string | null };
+  entries: EntrySlim[];
+  onOpenDay: () => void;
+}) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const timedEntries = useMemo(() => {
+    return entries
+      .filter((e): e is EntrySlim & { time_of_day: string } => !!e.time_of_day)
+      .map((e) => ({ ...e, minutes: parseMinutes(e.time_of_day) }))
+      .sort((a, b) => a.minutes - b.minutes);
+  }, [entries]);
+
+  const currentEntry = useMemo(() => {
+    return [...timedEntries].reverse().find((e) => e.minutes <= currentMinutes);
+  }, [timedEntries, currentMinutes]);
+
+  const nextEntry = useMemo(() => {
+    return timedEntries.find((e) => e.minutes > currentMinutes);
+  }, [timedEntries, currentMinutes]);
+
+  const minutesUntilNext = nextEntry ? nextEntry.minutes - currentMinutes : null;
+
+  const navTarget = currentEntry ?? nextEntry;
+  const navUrl = navTarget
+    ? navTarget.google_maps_url ||
+      (navTarget.latitude != null && navTarget.longitude != null
+        ? `https://www.google.com/maps/dir/?api=1&destination=${navTarget.latitude},${navTarget.longitude}`
+        : null)
+    : null;
+
+  return (
+    <section className="bg-card border border-border rounded-2xl overflow-hidden">
+      <style>{`
+        @keyframes live-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
+        }
+      `}</style>
+      <div className="h-2 bg-accent flex items-center px-2 gap-2">
+        <span
+          className="w-2 h-2 rounded-full bg-white"
+          style={{ animation: "live-pulse 2s ease-in-out infinite" }}
+        />
+        <span className="text-[10px] font-medium text-white">עכשיו</span>
+      </div>
+      <div className="p-4">
+        {currentEntry ? (
+          <div className="flex items-start gap-3">
+            {currentEntry.photo_url ? (
+              <img
+                src={currentEntry.photo_url}
+                alt=""
+                loading="lazy"
+                className="w-[52px] h-[52px] rounded-xl object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-[52px] h-[52px] rounded-xl bg-accent/15 flex items-center justify-center text-2xl shrink-0">
+                {currentEntry.icon_emoji ?? iconFor(currentEntry.entry_type)}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-[15px] font-medium line-clamp-1">{currentEntry.title}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {currentEntry.time_of_day.slice(0, 5)}
+              </div>
+              {currentEntry.location_name && (
+                <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                  📍 {currentEntry.location_name}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : nextEntry ? (
+          <div className="text-sm font-medium mb-2">הפעילות הראשונה של היום</div>
+        ) : null}
+
+        {nextEntry && (
+          <div className="flex items-center gap-2 my-2.5 text-muted-foreground/60">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px]">הבא בתור</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        )}
+
+        {nextEntry ? (
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-xl shrink-0">
+              {nextEntry.icon_emoji ?? iconFor(nextEntry.entry_type)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-medium line-clamp-1">{nextEntry.title}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {minutesUntilNext != null &&
+                  (minutesUntilNext < 60
+                    ? `בעוד ${minutesUntilNext} דקות`
+                    : `בעוד ${Math.floor(minutesUntilNext / 60)}ש׳ ${minutesUntilNext % 60}׳`)}
+              </div>
+              <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                {nextEntry.time_of_day.slice(0, 5)}
+              </div>
+            </div>
+          </div>
+        ) : currentEntry ? (
+          <div className="text-center text-[12px] text-muted-foreground mt-3">זה הכל להיום 🎉</div>
+        ) : null}
+
+        <div className="flex gap-2 mt-4">
+          {navUrl ? (
+            <a
+              href={navUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 h-9 rounded-xl bg-accent text-white text-[13px] font-medium flex items-center justify-center gap-1.5"
+            >
+              🗺 נווט לשם
+            </a>
+          ) : (
+            <button
+              disabled
+              className="flex-1 h-9 rounded-xl bg-muted text-muted-foreground text-[13px] font-medium flex items-center justify-center gap-1.5"
+            >
+              🗺 נווט לשם
+            </button>
+          )}
+          <button
+            onClick={onOpenDay}
+            className="flex-1 h-9 rounded-xl bg-surface-2 border border-border text-foreground text-[13px] font-medium flex items-center justify-center gap-1.5"
+          >
+            📅 פתח את היום
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LiveNowSkeleton() {
+  return (
+    <section className="bg-card border border-border rounded-2xl overflow-hidden animate-pulse">
+      <div className="h-2 bg-accent/50" />
+      <div className="p-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="w-[52px] h-[52px] rounded-xl bg-muted shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2 pt-1">
+            <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="h-3 bg-muted rounded w-1/2" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 my-2.5">
+          <span className="h-px flex-1 bg-border" />
+          <span className="h-3 bg-muted rounded w-16" />
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-muted shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2 pt-1">
+            <div className="h-3.5 bg-muted rounded w-2/3" />
+            <div className="h-3 bg-muted rounded w-1/3" />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <div className="flex-1 h-9 rounded-xl bg-muted" />
+          <div className="flex-1 h-9 rounded-xl bg-muted" />
+        </div>
+      </div>
+    </section>
+  );
+}
 
 /* ---------- page ---------- */
 
@@ -248,7 +440,7 @@ function Home() {
   const [hayinuOpen, setHayinuOpen] = useState(false);
 
   const { version: activeVersion } = useActiveVersion(tripId);
-  const { data: entriesByDay = {} } = useQuery<Record<string, EntrySlim[]>>({
+  const { data: entriesByDay = {}, isLoading: entriesLoading } = useQuery<Record<string, EntrySlim[]>>({
     queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null],
     enabled: !!tripId && !!activeVersion?.id,
     queryFn: async () => {
@@ -326,6 +518,26 @@ function Home() {
   }
 
   const sections: Array<{ key: string; node: React.ReactNode }> = [];
+
+  // 0. LIVE NOW
+  if (tripIsActive && todayDay) {
+    const entries = entriesByDay[todayDay.id] ?? [];
+    const hasTimed = entries.some((e) => e.time_of_day);
+    if (entriesLoading || hasTimed) {
+      sections.push({
+        key: "live-now",
+        node: entriesLoading ? (
+          <LiveNowSkeleton />
+        ) : (
+          <LiveNowCard
+            todayDay={todayDay}
+            entries={entries}
+            onOpenDay={() => navigate({ to: "/itinerary/$dayId", params: { dayId: todayDay.id } })}
+          />
+        ),
+      });
+    }
+  }
 
   // 1. HERO
   const heroWeatherCity = days.find((d) => d.city_label)?.city_label ?? null;
