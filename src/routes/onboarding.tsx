@@ -142,6 +142,10 @@ function Onboarding() {
           total_budget_ils: budget,
           currency_code: currency,
           entry_pin: pin || "0000",
+          travel_pace: travelPace,
+          travel_interests: travelInterests,
+          food_budget: foodBudget,
+          travel_notes: travelNotes.trim() || null,
         }).eq("id", existingTrip.id);
         if (upErr) throw upErr;
 
@@ -227,6 +231,10 @@ function Onboarding() {
           total_budget_ils: budget,
           currency_code: currency,
           entry_pin: pin || "0000",
+          travel_pace: travelPace,
+          travel_interests: travelInterests,
+          food_budget: foodBudget,
+          travel_notes: travelNotes.trim() || null,
         })
         .select()
         .single();
