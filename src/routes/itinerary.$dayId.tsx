@@ -2111,6 +2111,7 @@ function LodgingForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   return (
     <form onSubmit={async (e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       if (!name.trim()) { toast.error("שם המלון חסר"); return; }
       const description = [
         price && `מחיר ללילה: ${price}`,
