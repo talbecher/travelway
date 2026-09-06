@@ -62,32 +62,50 @@ function iconFor(t: string) {
   return m[t] ?? "•";
 }
 
-function buildSummary(entries: EntryRow[]) {
-  const attractions = entries.filter((entry) => entry.entry_type === "attraction");
-  const food = entries.filter((entry) => entry.entry_type === "food");
-  const transport = entries.filter((entry) => entry.entry_type === "transport");
-  const hotel = entries.filter((entry) => entry.entry_type === "hotel_checkin");
+function buildSummary(entries: EntryRow[]): string {
+  const byType = {
+    attraction: entries.filter((e) => e.entry_type === "attraction"),
+    food: entries.filter((e) => e.entry_type === "food"),
+    hotel: entries.filter((e) => e.entry_type === "hotel_checkin"),
+    transport: entries.filter((e) => e.entry_type === "transport"),
+    flight: entries.filter((e) => e.entry_type === "flight"),
+  };
+
   const parts: string[] = [];
 
-  if (hotel.length) parts.push(`🏨 ${hotel[0].title.slice(0, 15)}`);
-  if (attractions.length) {
-    parts.push(
-      attractions.length === 1
-        ? `⛩ ${attractions[0].title.slice(0, 15)}`
-        : `⛩ ${attractions.length} אטרקציות`,
-    );
+  // Flight first
+  if (byType.flight.length) {
+    parts.push(`✈️ ${byType.flight[0].title.slice(0, 20)}`);
   }
-  if (food.length) {
-    parts.push(
-      food.length === 1
-        ? `🍜 ${food[0].title.slice(0, 15)}`
-        : `🍜 ${food.length} ארוחות`,
-    );
-  }
-  if (transport.length) parts.push("🚆 תחבורה");
 
-  if (parts.length > 3) return `${parts.slice(0, 2).join(" · ")} +${parts.length - 2}`;
-  return parts.join(" · ");
+  // Hotel
+  if (byType.hotel.length) {
+    parts.push(`🏨 ${byType.hotel[0].title.slice(0, 18)}`);
+  }
+
+  // Attractions: show first 2 by name
+  if (byType.attraction.length === 1) {
+    parts.push(`⛩ ${byType.attraction[0].title.slice(0, 20)}`);
+  } else if (byType.attraction.length === 2) {
+    parts.push(`⛩ ${byType.attraction[0].title.slice(0, 15)} · ${byType.attraction[1].title.slice(0, 15)}`);
+  } else if (byType.attraction.length > 2) {
+    parts.push(`⛩ ${byType.attraction[0].title.slice(0, 15)} · ${byType.attraction[1].title.slice(0, 12)} +${byType.attraction.length - 2}`);
+  }
+
+  // Food: show first by name + count
+  if (byType.food.length === 1) {
+    parts.push(`🍜 ${byType.food[0].title.slice(0, 20)}`);
+  } else if (byType.food.length > 1) {
+    parts.push(`🍜 ${byType.food[0].title.slice(0, 15)} +${byType.food.length - 1}`);
+  }
+
+  // Transport
+  if (byType.transport.length) {
+    parts.push("🚆 תחבורה");
+  }
+
+  // Max 3 parts total
+  return parts.slice(0, 3).join("  ");
 }
 
 function localDateKey() {
