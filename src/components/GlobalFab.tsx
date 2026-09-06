@@ -86,7 +86,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="space-y-4 pt-2">
+    <form onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }} className="space-y-4 pt-2">
       <div>
         <label className="text-sm text-muted-foreground">סכום</label>
         <div className="flex gap-2 mt-1">
