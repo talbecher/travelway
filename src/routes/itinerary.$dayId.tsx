@@ -1706,6 +1706,7 @@ function FlightForm({ dayId, defaultOrder, existing, onDone }: BaseFormProps) {
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (!assertOnline()) return;
       const title = `${flight} ${origin}→${destination}`.trim();
       const description = [
         origin && `מוצא: ${origin}`,
