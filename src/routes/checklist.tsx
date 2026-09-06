@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, MoreHorizontal, Trash2, Pencil, ChevronDown, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import {
