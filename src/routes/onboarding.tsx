@@ -85,6 +85,17 @@ function Onboarding() {
   const [pin, setPin] = useState("1717");
   const [currency, setCurrency] = useState("JPY");
 
+  // 👤 פרופיל המטיילים
+  const [travelPace, setTravelPace] = useState<"relaxed" | "balanced" | "intensive">("balanced");
+  const [travelInterests, setTravelInterests] = useState<string[]>([]);
+  const [foodBudget, setFoodBudget] = useState<"budget" | "medium" | "splurge">("medium");
+  const [travelNotes, setTravelNotes] = useState("");
+  const [profileOpen, setProfileOpen] = useState(true);
+
+  function profileIsEmpty(pace: string, interests: string[], food: string, notes: string) {
+    return pace === "balanced" && interests.length === 0 && food === "medium" && !notes.trim();
+  }
+
   useEffect(() => {
     if (isEditing && existingTrip) {
       setTitle(existingTrip.title);
