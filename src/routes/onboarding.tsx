@@ -294,7 +294,7 @@ function Onboarding() {
       )}
 
       <form
-        onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}
+        onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; submit.mutate(); }}
         className="space-y-4"
       >
         <Field label="יעד">
