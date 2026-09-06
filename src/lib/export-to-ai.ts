@@ -32,6 +32,46 @@ function nightsBetween(a: string, b: string) {
 
 const SEP = "━━━━━━━━━━━━━━━━━━━━━━━━━";
 
+const PACE_LABELS: Record<string, string> = {
+  relaxed: "רגוע — ימים שקטים, פחות מ-3 פעילויות ביום",
+  balanced: "מאוזן — חצי יום מובנה, חצי חופשי",
+  intensive: "אינטנסיבי — מקסימום פעילויות, כל רגע מנוצל",
+};
+
+const FOOD_BUDGET_LABELS: Record<string, string> = {
+  budget: "חסכוני — רחוב ואוכל מקומי",
+  medium: "בינוני — מסעדות מקומיות טובות",
+  splurge: "פרמיום — חוויות קולינריות",
+};
+
+const INTEREST_LABELS: Record<string, string> = {
+  food: "אוכל",
+  culture: "תרבות",
+  nature: "טבע",
+  shopping: "קניות",
+  experiences: "חוויות",
+  history: "היסטוריה",
+};
+
+/** "👤 פרופיל המטיילים" block placed near the top of every export prompt. */
+function travelerProfileLines(trip: {
+  travel_pace?: string | null;
+  travel_interests?: string[] | null;
+  food_budget?: string | null;
+  travel_notes?: string | null;
+}): string[] {
+  const interests = (trip.travel_interests ?? []).map((i) => INTEREST_LABELS[i] ?? i);
+  const lines: string[] = [
+    "👤 פרופיל המטיילים:",
+    `- קצב: ${PACE_LABELS[trip.travel_pace ?? "balanced"] ?? PACE_LABELS.balanced}`,
+    `- תחומי עניין: ${interests.length ? interests.join(", ") : "לא צוין"}`,
+    `- תקציב אוכל: ${FOOD_BUDGET_LABELS[trip.food_budget ?? "medium"] ?? FOOD_BUDGET_LABELS.medium}`,
+  ];
+  if (trip.travel_notes?.trim()) lines.push(`- הערות: ${trip.travel_notes.trim()}`);
+  lines.push("");
+  return lines;
+}
+
 /** Machine-readable contract so the app can import the AI answer back automatically. */
 function formatSection(
   days: Array<{ day_number: number; date: string; city_label: string | null }>
@@ -234,6 +274,7 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
   lines.push(`- ימים עם פחות מ-2 פעילויות: ${sparseDays}`);
   lines.push(`- ממוצע פעילויות ביום מתוכנן: ${avgEntries}`);
   lines.push("");
+  lines.push(...travelerProfileLines(trip));
   lines.push(SEP);
   lines.push("🗺 המסלול המלא שבניתי:");
   lines.push(SEP);
@@ -456,6 +497,7 @@ export async function generateDayAIPrompt(
     lines.push(`מחר (יום ${nextDay.day_number}): ${nextDay.city_label ?? "ללא עיר"}`);
   }
   lines.push("");
+  lines.push(...travelerProfileLines(trip));
   lines.push(SEP);
   lines.push("🗺 מה מתוכנן ביום הזה:");
   lines.push(SEP);
