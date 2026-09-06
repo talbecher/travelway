@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { WifiOff } from "lucide-react";
 import { useOnline } from "@/hooks/use-online";
 import { getCacheTimestamp } from "@/lib/offline-persist";
 
@@ -34,8 +33,16 @@ export function OfflineBanner() {
       dir="rtl"
       className="sticky top-0 z-40 flex items-center justify-center gap-2 px-4 py-1.5 text-[12px] font-medium bg-[color:var(--terracotta)] text-white"
     >
-      <WifiOff className="h-3.5 w-3.5 shrink-0" />
+      <span className="relative flex h-1.5 w-1.5 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+      </span>
       <span>אין חיבור · מוצגים נתונים שנשמרו{ago ? ` · ${ago}` : ""}</span>
+      <style>{`
+        @keyframes ping {
+          75%, 100% { transform: scale(2); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
