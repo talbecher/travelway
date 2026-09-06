@@ -14,6 +14,7 @@ import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
+import { assertOnline } from "@/hooks/use-online";
 
 export function GlobalFab() {
   const [open, setOpen] = useState(false);
