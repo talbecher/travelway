@@ -222,7 +222,7 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 pt-2">
+    <form onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }} className="space-y-3 pt-2">
       <div>
         <label className="text-xs text-muted-foreground">סכום</label>
         <div className="flex gap-2 mt-1">
