@@ -1821,6 +1821,7 @@ function HotelEntrySection(props: {
   }
 
   async function submitSingle() {
+    if (!assertOnline()) return;
     if (!pending || !singleForm) return;
     const h = pending;
     const f = singleForm;
