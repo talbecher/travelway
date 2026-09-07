@@ -1060,7 +1060,7 @@ function DayDetail() {
                   {idx + 1}
                 </span>
                 {entry.photo_url ? (
-                  <img src={entry.photo_url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                  <img src={entry.photo_url} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }} className="w-9 h-9 rounded-lg object-cover shrink-0" />
                 ) : (
                   <span className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center text-[16px] shrink-0">
                     {entry.icon_emoji ?? TYPE_ICON[entry.entry_type] ?? "📍"}
@@ -2120,7 +2120,7 @@ function HotelEntrySection(props: {
                   className="w-full text-right rounded-xl border border-border bg-card p-3 hover:bg-muted/40 transition-colors flex items-center gap-3"
                 >
                   {h.photo_url ? (
-                    <img src={h.photo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                    <img src={h.photo_url} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">🏨</div>
                   )}

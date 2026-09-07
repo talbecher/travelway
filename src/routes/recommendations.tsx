@@ -582,6 +582,8 @@ function PlaceCard({
             src={rec.photo_url}
             alt=""
             loading="lazy"
+            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+            onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
             className="w-full h-full object-cover"
           />
         ) : (
