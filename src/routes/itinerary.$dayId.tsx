@@ -1298,6 +1298,8 @@ function SortableEntry({
             src={entry.photo_url}
             alt=""
             loading="lazy"
+            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+            onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
             className="w-full h-20 object-cover"
           />
         )}
@@ -1428,6 +1430,8 @@ function EntryDetails({
         <img
           src={entry.photo_url}
           alt=""
+          onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+          onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
           className="w-full h-44 rounded-xl object-cover"
         />
       ) : (
