@@ -155,24 +155,49 @@ function placeName(stop: EntryRow, fallbackCity?: string | null): string {
 }
 
 
-/** True when the current stop order is 30%+ longer than a nearest-neighbor order. */
-function detectZigzag(stops: Array<{ lat: number; lng: number }>): boolean {
-  if (stops.length < 3) return false;
-  const toPt = (s: { lat: number; lng: number }) => ({ lat: s.lat, lon: s.lng });
+type OptimizeResult = {
+  isSuboptimal: boolean;
+  optimalOrder: EntryRow[];
+  currentDistKm: number;
+  optimalDistKm: number;
+  savedMinutes: number;
+};
 
-  let currentDist = 0;
-  for (let i = 0; i < stops.length - 1; i++) {
-    currentDist += haversine(toPt(stops[i]), toPt(stops[i + 1]));
-  }
+/**
+ * Computes a nearest-neighbor route (starting from the first located entry)
+ * and compares it with the current order. Returns the full suggested order —
+ * entries without coordinates keep their relative position at the end.
+ */
+function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
+  const none: OptimizeResult = {
+    isSuboptimal: false,
+    optimalOrder: entries,
+    currentDistKm: 0,
+    optimalDistKm: 0,
+    savedMinutes: 0,
+  };
+  const withCoords = entries.filter((e) => coordsOf(e) !== null);
+  if (withCoords.length < 3) return none;
+  const toPt = (e: EntryRow) => {
+    const c = coordsOf(e)!;
+    return { lat: c.lat, lon: c.lng };
+  };
+  const pathDist = (list: EntryRow[]) => {
+    let d = 0;
+    for (let i = 0; i < list.length - 1; i++) d += haversine(toPt(list[i]), toPt(list[i + 1]));
+    return d;
+  };
 
-  const remaining = stops.slice(1);
-  const optimized = [stops[0]];
+  const currentDist = pathDist(withCoords);
+
+  const remaining = withCoords.slice(1);
+  const optimized = [withCoords[0]];
   while (remaining.length > 0) {
     const last = optimized[optimized.length - 1];
     let nearestIdx = 0;
     let nearestDist = Infinity;
-    remaining.forEach((s, i) => {
-      const d = haversine(toPt(last), toPt(s));
+    remaining.forEach((e, i) => {
+      const d = haversine(toPt(last), toPt(e));
       if (d < nearestDist) {
         nearestDist = d;
         nearestIdx = i;
@@ -181,12 +206,18 @@ function detectZigzag(stops: Array<{ lat: number; lng: number }>): boolean {
     optimized.push(remaining.splice(nearestIdx, 1)[0]);
   }
 
-  let optimizedDist = 0;
-  for (let i = 0; i < optimized.length - 1; i++) {
-    optimizedDist += haversine(toPt(optimized[i]), toPt(optimized[i + 1]));
-  }
+  const optimalDist = pathDist(optimized);
+  const savedKm = currentDist - optimalDist;
 
-  return currentDist > optimizedDist * 1.3;
+  const withoutCoords = entries.filter((e) => coordsOf(e) === null);
+
+  return {
+    isSuboptimal: currentDist > optimalDist * 1.3 && savedKm > 0,
+    optimalOrder: [...optimized, ...withoutCoords],
+    currentDistKm: Math.round(currentDist * 10) / 10,
+    optimalDistKm: Math.round(optimalDist * 10) / 10,
+    savedMinutes: Math.max(0, Math.round((savedKm / 30) * 60)),
+  };
 }
 
 function DayDetail() {
