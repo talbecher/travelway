@@ -155,24 +155,49 @@ function placeName(stop: EntryRow, fallbackCity?: string | null): string {
 }
 
 
-/** True when the current stop order is 30%+ longer than a nearest-neighbor order. */
-function detectZigzag(stops: Array<{ lat: number; lng: number }>): boolean {
-  if (stops.length < 3) return false;
-  const toPt = (s: { lat: number; lng: number }) => ({ lat: s.lat, lon: s.lng });
+type OptimizeResult = {
+  isSuboptimal: boolean;
+  optimalOrder: EntryRow[];
+  currentDistKm: number;
+  optimalDistKm: number;
+  savedMinutes: number;
+};
 
-  let currentDist = 0;
-  for (let i = 0; i < stops.length - 1; i++) {
-    currentDist += haversine(toPt(stops[i]), toPt(stops[i + 1]));
-  }
+/**
+ * Computes a nearest-neighbor route (starting from the first located entry)
+ * and compares it with the current order. Returns the full suggested order —
+ * entries without coordinates keep their relative position at the end.
+ */
+function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
+  const none: OptimizeResult = {
+    isSuboptimal: false,
+    optimalOrder: entries,
+    currentDistKm: 0,
+    optimalDistKm: 0,
+    savedMinutes: 0,
+  };
+  const withCoords = entries.filter((e) => coordsOf(e) !== null);
+  if (withCoords.length < 3) return none;
+  const toPt = (e: EntryRow) => {
+    const c = coordsOf(e)!;
+    return { lat: c.lat, lon: c.lng };
+  };
+  const pathDist = (list: EntryRow[]) => {
+    let d = 0;
+    for (let i = 0; i < list.length - 1; i++) d += haversine(toPt(list[i]), toPt(list[i + 1]));
+    return d;
+  };
 
-  const remaining = stops.slice(1);
-  const optimized = [stops[0]];
+  const currentDist = pathDist(withCoords);
+
+  const remaining = withCoords.slice(1);
+  const optimized = [withCoords[0]];
   while (remaining.length > 0) {
     const last = optimized[optimized.length - 1];
     let nearestIdx = 0;
     let nearestDist = Infinity;
-    remaining.forEach((s, i) => {
-      const d = haversine(toPt(last), toPt(s));
+    remaining.forEach((e, i) => {
+      const d = haversine(toPt(last), toPt(e));
       if (d < nearestDist) {
         nearestDist = d;
         nearestIdx = i;
@@ -181,12 +206,18 @@ function detectZigzag(stops: Array<{ lat: number; lng: number }>): boolean {
     optimized.push(remaining.splice(nearestIdx, 1)[0]);
   }
 
-  let optimizedDist = 0;
-  for (let i = 0; i < optimized.length - 1; i++) {
-    optimizedDist += haversine(toPt(optimized[i]), toPt(optimized[i + 1]));
-  }
+  const optimalDist = pathDist(optimized);
+  const savedKm = currentDist - optimalDist;
 
-  return currentDist > optimizedDist * 1.3;
+  const withoutCoords = entries.filter((e) => coordsOf(e) === null);
+
+  return {
+    isSuboptimal: currentDist > optimalDist * 1.3 && savedKm > 0,
+    optimalOrder: [...optimized, ...withoutCoords],
+    currentDistKm: Math.round(currentDist * 10) / 10,
+    optimalDistKm: Math.round(optimalDist * 10) / 10,
+    savedMinutes: Math.max(0, Math.round((savedKm / 30) * 60)),
+  };
 }
 
 function DayDetail() {
@@ -312,6 +343,25 @@ function DayDetail() {
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       toast.success("נמחק");
     },
+  });
+
+  const applyOptimalOrder = useMutation({
+    mutationFn: async (order: EntryRow[]) => {
+      assertOnline();
+      await Promise.all(
+        order.map((entry, idx) =>
+          supabase.from("day_entries").update({ display_order: idx }).eq("id", entry.id)
+        )
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      setShowOptimizePreview(false);
+      setZigzagDismissed(true);
+      toast.success("✅ המסלול סודר מחדש לפי מרחקים");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const moveEntry = useMutation({
@@ -454,11 +504,12 @@ function DayDetail() {
     return m;
   }, [mapStops]);
 
-  // ⚠️ zigzag detection: is the current stop order much longer than a
+  // ⚠️ route optimization: is the current stop order much longer than a
   // nearest-neighbor order starting from the first stop?
   const [zigzagDismissed, setZigzagDismissed] = useState(false);
-  const isZigzag = useMemo(() => detectZigzag(mapStops), [mapStops]);
-  useEffect(() => { setZigzagDismissed(false); }, [dayId]);
+  const [showOptimizePreview, setShowOptimizePreview] = useState(false);
+  const optimize = useMemo(() => computeOptimalOrder(entries), [entries]);
+  useEffect(() => { setZigzagDismissed(false); setShowOptimizePreview(false); }, [dayId]);
 
   const scrollToCard = useCallback((id: string) => {
     setHighlightId(id);
@@ -607,20 +658,29 @@ function DayDetail() {
         );
       })()}
 
-      {isZigzag && !zigzagDismissed && mapStops.length >= 3 && (
-        <div className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3 py-2">
-          <span className="text-[14px]">⚠️</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium text-amber-800 dark:text-amber-200">סדר המסלול לא אופטימלי</div>
-            <div className="text-[11px] text-amber-600 dark:text-amber-400">יש נסיעות מיותרות — גרור פריטים לסידור יעיל יותר</div>
+      {optimize.isSuboptimal && !zigzagDismissed && (
+        <div className="mx-4 mt-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3.5 py-3">
+          <div className="text-[13px] font-medium text-amber-800 dark:text-amber-200">⚠️ סדר המסלול לא אופטימלי</div>
+          <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+            חיסכון אפשרי: ~{optimize.savedMinutes} דקות נסיעה{" "}
+            <span dir="ltr" className="tabular-nums">({optimize.currentDistKm} ק״מ → {optimize.optimalDistKm} ק״מ)</span>
           </div>
-          <button
-            type="button"
-            className="text-[11px] text-amber-700 dark:text-amber-300 underline shrink-0 min-h-[44px] px-1"
-            onClick={() => setZigzagDismissed(true)}
-          >
-            הבנתי
-          </button>
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              className="flex-1 h-10 rounded-xl bg-amber-500 text-white text-[13px] font-medium"
+              onClick={() => setShowOptimizePreview(true)}
+            >
+              ✨ הצג סדר מוצע
+            </button>
+            <button
+              type="button"
+              className="flex-1 h-10 rounded-xl bg-transparent border border-amber-300 text-amber-700 dark:text-amber-300 text-[13px]"
+              onClick={() => setZigzagDismissed(true)}
+            >
+              השאר כמו שהוא
+            </button>
+          </div>
         </div>
       )}
 
@@ -951,6 +1011,56 @@ function DayDetail() {
               <div className="text-sm text-muted-foreground">אין פריטים עם מיקום להצגה במפה</div>
             </div>
           )}
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={showOptimizePreview} onOpenChange={setShowOptimizePreview} title="סדר מסלול מוצע">
+        <div className="text-[12px] text-muted-foreground mb-3">
+          חיסכון של ~{optimize.savedMinutes} דקות נסיעה ·{" "}
+          <span dir="ltr" className="tabular-nums">{optimize.currentDistKm} ק״מ → {optimize.optimalDistKm} ק״מ</span>
+        </div>
+        <div className="flex flex-col pb-3">
+          {optimize.optimalOrder.map((entry, idx) => {
+            const oldPos = entries.findIndex((e) => e.id === entry.id);
+            const moved = oldPos !== -1 && oldPos !== idx;
+            return (
+              <div key={entry.id} className="flex items-center gap-2.5 py-2 border-b border-border/60 last:border-b-0">
+                <span className="w-6 h-6 rounded-full bg-accent text-white text-[11px] font-medium flex items-center justify-center shrink-0 tabular-nums">
+                  {idx + 1}
+                </span>
+                {entry.photo_url ? (
+                  <img src={entry.photo_url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <span className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center text-[16px] shrink-0">
+                    {entry.icon_emoji ?? TYPE_ICON[entry.entry_type] ?? "📍"}
+                  </span>
+                )}
+                <span className="flex-1 min-w-0 text-[13px] truncate">{entry.title}</span>
+                {moved && (
+                  <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full shrink-0">
+                    ↕ היה מקום {oldPos + 1}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="sticky bottom-0 bg-card pt-2 pb-1 flex flex-col gap-2">
+          <button
+            type="button"
+            disabled={applyOptimalOrder.isPending}
+            className="w-full h-12 rounded-xl bg-accent text-white text-[14px] font-medium disabled:opacity-50"
+            onClick={() => applyOptimalOrder.mutate(optimize.optimalOrder)}
+          >
+            {applyOptimalOrder.isPending ? "מעדכן…" : "✅ אשר ועדכן סדר"}
+          </button>
+          <button
+            type="button"
+            className="w-full h-10 text-[13px] text-muted-foreground"
+            onClick={() => setShowOptimizePreview(false)}
+          >
+            ביטול
+          </button>
         </div>
       </BottomSheet>
 
