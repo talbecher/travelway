@@ -472,12 +472,12 @@ function Home() {
   }, [trip, expenses, days]);
 
   const todayDay = useMemo(() => {
-    const t = todayISO();
+    const t = todayLocal();
     return days.find((d) => d.date === t) ?? null;
   }, [days]);
 
   const nextDay = useMemo(() => {
-    const t = todayISO();
+    const t = todayLocal();
     for (const d of days) {
       if (d.date >= t && (entriesByDay[d.id]?.length ?? 0) > 0) return d;
     }
