@@ -767,58 +767,108 @@ function HeroCard(props: {
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
   const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
+  const navigate = useNavigate();
 
-  const pill =
-    status === "future"
-      ? { text: `עוד ${daysToStart} ימים`, cls: "bg-amber-400/20 text-amber-300 border-amber-300/30", dot: false }
-      : status === "active"
-      ? { text: `יום ${Math.min(daysPassed, daysTotal)} מתוך ${daysTotal}`, cls: "bg-emerald-400/20 text-emerald-300 border-emerald-300/30", dot: true }
-      : { text: "הסתיים", cls: "bg-white/10 text-white/70 border-white/20", dot: false };
+  const ringPct = status === "future" ? 0 : status === "past" ? 100 : tripProgressPct;
+  const ringStroke = status === "future" ? "rgba(255,255,255,0.15)" : "var(--accent)";
+  const ringTrack = "rgba(255,255,255,0.15)";
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl px-5 py-4 text-white"
+      className="relative overflow-hidden rounded-2xl px-4 py-3.5 text-white flex flex-col justify-between"
       style={{
         height: 160,
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
       }}
     >
-      {wCondition && wTemp != null && forecastUrl && (
-        <a
-          href={forecastUrl}
-          target="_blank"
-          rel="noreferrer"
-          title={wLabel ? `${wLabel} · לתחזית מלאה` : "לתחזית מלאה"}
-          aria-label={wLabel ? `${wTemp}° ${wLabel}` : `${wTemp}°`}
-          className="absolute top-2 left-2 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20 transition-colors"
+      {/* top row */}
+      <div className="flex items-start justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/settings" })}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white/90 shrink-0"
+          style={{ background: "rgba(255,255,255,0.15)" }}
+          aria-label="תפריט טיול"
         >
-          <WeatherIcon condition={wCondition} size="sm" />
-          <span className="text-[11px] font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
-        </a>
-      )}
-
-      <div className="absolute top-3 right-3 z-10 flex items-start gap-2 min-w-0 max-w-[70%]">
-        <div className="text-[26px] leading-tight shrink-0">{flag}</div>
-        <div className="text-[24px] font-bold leading-tight truncate">{title}</div>
-      </div>
-
-      <div className="absolute bottom-3 left-3 flex items-end gap-3">
-        <ProgressRing pct={tripProgressPct} size={56} label={`${tripProgressPct}%`} stroke="rgba(255,255,255,0.85)" track="rgba(255,255,255,0.18)" textColor="#fff" fontSize={11} />
-        <div className="text-xs text-white/75 pb-1" dir="ltr">
-          {hebDate(startDate)} → {hebDate(endDate)}
+          <MoreHorizontal size={16} />
+        </button>
+        <div className="flex items-center gap-2">
+          {wCondition && wTemp != null && (
+            <a
+              href={forecastUrl ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              title={wLabel ? `${wLabel} · לתחזית מלאה` : "לתחזית מלאה"}
+              aria-label={wLabel ? `${wTemp}° ${wLabel}` : `${wTemp}°`}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-white text-[10px]"
+              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+            >
+              <WeatherIcon condition={wCondition} size="sm" />
+              <span className="font-medium tabular-nums leading-none" dir="ltr">{wTemp}°</span>
+            </a>
+          )}
+          <span className="text-[22px] leading-none">{flag}</span>
         </div>
       </div>
 
-      <div className="absolute bottom-3 right-3 z-10">
-        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${pill.cls}`}>
-          {pill.dot && <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-300"></span>
-          </span>}
-          {pill.text}
-        </span>
+      {/* middle */}
+      <div className="text-right mt-1">
+        <div className="text-[20px] font-medium leading-tight tracking-[-0.3px] truncate">{title}</div>
+        <div className="text-[11px] text-white/65 mt-1 truncate" dir="rtl">
+          {hebDate(startDate)} – {hebDate(endDate)} · {daysTotal} ימים
+        </div>
+      </div>
+
+      {/* bottom row */}
+      <div className="flex items-end justify-between mt-1">
+        <ProgressRing pct={ringPct} size={44} label={`${ringPct}%`} stroke={ringStroke} track={ringTrack} textColor="#fff" fontSize={9} />
+        <HeroStatusPill status={status} daysToStart={daysToStart} daysPassed={daysPassed} daysTotal={daysTotal} />
       </div>
     </section>
+  );
+}
+
+function HeroStatusPill({ status, daysToStart, daysPassed, daysTotal }: {
+  status: "future" | "active" | "past";
+  daysToStart: number;
+  daysPassed: number;
+  daysTotal: number;
+}) {
+  if (status === "future") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-[10px] font-medium text-white px-2.5 py-1 rounded-full"
+        style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FCD34D] opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#FCD34D]" />
+        </span>
+        עוד {daysToStart} ימים
+      </span>
+    );
+  }
+  if (status === "active") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-[10px] font-medium text-white px-2.5 py-1 rounded-full"
+        style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+        </span>
+        יום {Math.min(daysPassed, daysTotal)} מתוך {daysTotal}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[10px] font-medium text-white/60 px-2.5 py-1 rounded-full"
+      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+    >
+      הסתיים
+    </span>
   );
 }
 
