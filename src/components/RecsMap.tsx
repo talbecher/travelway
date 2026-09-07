@@ -284,7 +284,7 @@ export default function RecsMap({
       >
         <TileLayer
           attribution='&copy; OpenStreetMap &copy; CartoDB'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          url={`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${import.meta.env.VITE_CARTO_API_KEY}`}
           maxZoom={19}
           minZoom={3}
         />
