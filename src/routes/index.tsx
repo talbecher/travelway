@@ -2,13 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, MoreHorizontal } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
 import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
-import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
+import { ils, todayISO, daysBetween, hebDate, hebWeekday } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
@@ -170,22 +170,6 @@ function DeadlinesCard({
 
 
 
-
-function HomeWeatherChip({ city, date }: { city: string | null; date: string | null }) {
-  const w = useDayWeather(city, date);
-  if (!w) return null;
-  const label = WEATHER_LABELS_HE[w.condition];
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border"
-      style={{ background: "color-mix(in oklab, var(--card) 60%, transparent)" }}
-    >
-      <WeatherIcon condition={w.condition} size="sm" />
-      <span className="font-semibold tabular-nums" dir="ltr">{w.tempMax}°</span>
-      {label && <span className="text-muted-foreground">{label}</span>}
-    </span>
-  );
-}
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -494,9 +478,9 @@ function Home() {
 
   const stats2 = useMemo(() => {
     const saved = recs.length;
-    const visited = recs.filter((r: { status?: string | null }) => r.status === "visited").length;
     const planned = days.reduce((n, d) => n + ((entriesByDay[d.id]?.length ?? 0) > 0 ? 1 : 0), 0);
-    return { saved, visited, planned };
+    const empty = Math.max(0, days.length - planned);
+    return { saved, planned, empty };
   }, [recs, days, entriesByDay]);
 
   const deadlines = useMemo(
@@ -623,14 +607,11 @@ function Home() {
     sections.push({
       key: "next",
       node: (
-        <DayPreviewCard
-          heading={`היום הבא המתוכנן — יום ${nextDay.day_number}`}
-          subheading={hebDate(nextDay.date)}
+        <UpcomingDayPreviewCard
+          dayNumber={nextDay.day_number}
+          date={nextDay.date}
           entries={entries}
-          maxVisible={3}
           onOpen={() => navigate({ to: "/itinerary/$dayId", params: { dayId: nextDay.id } })}
-          emptyLabel=""
-          openLabel="פתח את היום"
         />
       ),
     });
@@ -672,22 +653,13 @@ function Home() {
   }
 
   // 5. QUICK STATS
-  const weatherTarget = (() => {
-    const today = todayISO();
-    const target = days.find((d) => d.date >= today) ?? days[0];
-    if (!target) return null;
-    const diff = daysBetween(today, target.date);
-    if (diff < 0 || diff > 15) return null;
-    return { city: target.city_label ?? null, date: target.date };
-  })();
   sections.push({
     key: "stats",
     node: (
-      <section className="flex flex-wrap gap-2">
-        {weatherTarget && <HomeWeatherChip city={weatherTarget.city} date={weatherTarget.date} />}
-        <StatChip icon={<MapPin size={14} />} value={stats2.saved} label="מקומות שמורים" to="/recommendations" />
-        <StatChip icon={<CheckCircle2 size={14} />} value={stats2.visited} label="ביקרנו" to="/recommendations" />
-        <StatChip icon={<CalendarDays size={14} />} value={stats2.planned} label="ימים מתוכננים" to="/itinerary" />
+      <section className="grid grid-cols-3 gap-2">
+        <CompactStatChip icon="📍" value={stats2.saved} label="מקומות" to="/recommendations" />
+        <CompactStatChip icon="📅" value={stats2.planned} label="ימים מתוכננים" to="/itinerary" />
+        <CompactStatChip icon="🈳" value={stats2.empty} label="ריקים" to="/itinerary" />
       </section>
     ),
   });
@@ -716,7 +688,6 @@ function Home() {
             }
             openQuickExpense();
           }}
-          accent
           disabled={!isOnline}
         />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
@@ -746,13 +717,13 @@ function Home() {
 
 
   return (
-    <div className="pt-4 pb-8 flex flex-col gap-4">
+    <div className="pt-4 pb-24 px-4 flex flex-col gap-3">
       {sections.map((s, i) => (
         <motion.div
           key={s.key}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: i * 0.08, ease: "easeOut" }}
+          transition={{ duration: 0.35, delay: i * 0.05, ease: "easeOut" }}
         >
           {s.node}
         </motion.div>
@@ -779,58 +750,108 @@ function HeroCard(props: {
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
   const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
+  const navigate = useNavigate();
 
-  const pill =
-    status === "future"
-      ? { text: `עוד ${daysToStart} ימים`, cls: "bg-amber-400/20 text-amber-300 border-amber-300/30", dot: false }
-      : status === "active"
-      ? { text: `יום ${Math.min(daysPassed, daysTotal)} מתוך ${daysTotal}`, cls: "bg-emerald-400/20 text-emerald-300 border-emerald-300/30", dot: true }
-      : { text: "הסתיים", cls: "bg-white/10 text-white/70 border-white/20", dot: false };
+  const ringPct = status === "future" ? 0 : status === "past" ? 100 : tripProgressPct;
+  const ringStroke = status === "future" ? "rgba(255,255,255,0.15)" : "var(--accent)";
+  const ringTrack = "rgba(255,255,255,0.15)";
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl px-5 py-4 text-white"
+      className="relative overflow-hidden rounded-2xl px-4 py-3.5 text-white flex flex-col justify-between"
       style={{
         height: 160,
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
       }}
     >
-      {wCondition && wTemp != null && forecastUrl && (
-        <a
-          href={forecastUrl}
-          target="_blank"
-          rel="noreferrer"
-          title={wLabel ? `${wLabel} · לתחזית מלאה` : "לתחזית מלאה"}
-          aria-label={wLabel ? `${wTemp}° ${wLabel}` : `${wTemp}°`}
-          className="absolute top-2 left-2 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20 transition-colors"
+      {/* top row */}
+      <div className="flex items-start justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/onboarding" })}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white/90 shrink-0"
+          style={{ background: "rgba(255,255,255,0.15)" }}
+          aria-label="תפריט טיול"
         >
-          <WeatherIcon condition={wCondition} size="sm" />
-          <span className="text-[11px] font-semibold tabular-nums leading-none" dir="ltr">{wTemp}°</span>
-        </a>
-      )}
-
-      <div className="absolute top-3 right-3 z-10 flex items-start gap-2 min-w-0 max-w-[70%]">
-        <div className="text-[26px] leading-tight shrink-0">{flag}</div>
-        <div className="text-[24px] font-bold leading-tight truncate">{title}</div>
-      </div>
-
-      <div className="absolute bottom-3 left-3 flex items-end gap-3">
-        <ProgressRing pct={tripProgressPct} size={56} label={`${tripProgressPct}%`} stroke="rgba(255,255,255,0.85)" track="rgba(255,255,255,0.18)" textColor="#fff" fontSize={11} />
-        <div className="text-xs text-white/75 pb-1" dir="ltr">
-          {hebDate(startDate)} → {hebDate(endDate)}
+          <MoreHorizontal size={16} />
+        </button>
+        <div className="flex items-center gap-2">
+          {wCondition && wTemp != null && (
+            <a
+              href={forecastUrl ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              title={wLabel ? `${wLabel} · לתחזית מלאה` : "לתחזית מלאה"}
+              aria-label={wLabel ? `${wTemp}° ${wLabel}` : `${wTemp}°`}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-white text-[10px]"
+              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+            >
+              <WeatherIcon condition={wCondition} size="sm" />
+              <span className="font-medium tabular-nums leading-none" dir="ltr">{wTemp}°</span>
+            </a>
+          )}
+          <span className="text-[22px] leading-none">{flag}</span>
         </div>
       </div>
 
-      <div className="absolute bottom-3 right-3 z-10">
-        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${pill.cls}`}>
-          {pill.dot && <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-300"></span>
-          </span>}
-          {pill.text}
-        </span>
+      {/* middle */}
+      <div className="text-right mt-1">
+        <div className="text-[20px] font-medium leading-tight tracking-[-0.3px] truncate">{title}</div>
+        <div className="text-[11px] text-white/65 mt-1 truncate" dir="rtl">
+          {hebDate(startDate)} – {hebDate(endDate)} · {daysTotal} ימים
+        </div>
+      </div>
+
+      {/* bottom row */}
+      <div className="flex items-end justify-between mt-1">
+        <ProgressRing pct={ringPct} size={44} label={`${ringPct}%`} stroke={ringStroke} track={ringTrack} textColor="#fff" fontSize={9} />
+        <HeroStatusPill status={status} daysToStart={daysToStart} daysPassed={daysPassed} daysTotal={daysTotal} />
       </div>
     </section>
+  );
+}
+
+function HeroStatusPill({ status, daysToStart, daysPassed, daysTotal }: {
+  status: "future" | "active" | "past";
+  daysToStart: number;
+  daysPassed: number;
+  daysTotal: number;
+}) {
+  if (status === "future") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-[10px] font-medium text-white px-2.5 py-1 rounded-full"
+        style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FCD34D] opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#FCD34D]" />
+        </span>
+        עוד {daysToStart} ימים
+      </span>
+    );
+  }
+  if (status === "active") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-[10px] font-medium text-white px-2.5 py-1 rounded-full"
+        style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+        </span>
+        יום {Math.min(daysPassed, daysTotal)} מתוך {daysTotal}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[10px] font-medium text-white/60 px-2.5 py-1 rounded-full"
+      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+    >
+      הסתיים
+    </span>
   );
 }
 
@@ -885,44 +906,103 @@ function DayPreviewCard(props: {
   );
 }
 
-function StatChip({ icon, value, label, to }: { icon: React.ReactNode; value: number; label: string; to: string }) {
+function UpcomingDayPreviewCard({ dayNumber, date, entries, onOpen }: {
+  dayNumber: number;
+  date: string;
+  entries: EntrySlim[];
+  onOpen: () => void;
+}) {
+  const visible = entries.slice(0, 3);
+  const extra = Math.max(0, entries.length - 3);
+  return (
+    <section className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex">
+        <div className="w-2 shrink-0 bg-accent" />
+        <div className="flex-1 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[12px] font-medium text-[color:var(--accent)]">
+              יום {dayNumber} · {hebDate(date)}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{hebWeekday(date)}</span>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {visible.map((e) => (
+              <li key={e.id} className="flex items-center gap-2">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: entryTypeColor(e.entry_type) }}
+                />
+                <span className="flex-1 min-w-0 text-[11px] text-foreground truncate">{e.title}</span>
+                {e.time_of_day && (
+                  <span className="text-[10px] text-muted-foreground tabular-nums shrink-0" dir="ltr">
+                    {e.time_of_day.slice(0, 5)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {extra > 0 && (
+            <div className="text-[10px] text-muted-foreground mt-1.5">+ {extra} נוספים</div>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={onOpen}
+        className="w-full text-center text-[11px] font-medium text-[color:var(--accent)] py-2 border-t border-border"
+      >
+        פתח את היום ›
+      </button>
+    </section>
+  );
+}
+
+function entryTypeColor(t: string) {
+  const map: Record<string, string> = {
+    flight: "#60A5FA",
+    hotel_checkin: "#F472B6",
+    attraction: "#34D399",
+    food: "#FBBF24",
+    transport: "#A78BFA",
+    note: "#9CA3AF",
+  };
+  return map[t] ?? "var(--accent)";
+}
+
+function CompactStatChip({ icon, value, label, to }: { icon: string; value: number; label: string; to: string }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border"
-      style={{ background: "color-mix(in oklab, var(--card) 60%, transparent)" }}
+      className="flex flex-col items-center justify-center gap-0.5 bg-card border border-border rounded-[10px] py-1.5 px-1 text-center"
     >
-      <span className="text-[color:var(--accent)]">{icon}</span>
-      <span className="font-semibold tabular-nums">{value}</span>
-      <span className="text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-[13px] leading-none">{icon}</span>
+        <span className="text-[14px] font-semibold tabular-nums leading-none text-foreground">{value}</span>
+      </div>
+      <span className="text-[8px] text-muted-foreground leading-none">{label}</span>
     </Link>
   );
 }
 
 function ActionTile({
-  icon: Icon, label, to, onClick, accent, disabled,
+  icon: Icon, label, to, onClick, disabled,
 }: {
-  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean; disabled?: boolean;
+  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; disabled?: boolean;
 }) {
-  const cls = `rounded-xl border h-20 flex flex-col items-center justify-center gap-1.5 transition-colors ${
-    disabled
-      ? "bg-card border-border opacity-50"
-      : accent
-      ? "bg-[color:var(--accent-2)] text-white border-transparent"
-      : "bg-card border-border"
-  }`;
+  const cls = "rounded-xl border border-border h-[72px] flex flex-col items-center justify-center gap-1 bg-card transition-colors" + (disabled ? " opacity-50" : "");
   const content = (
     <>
-      <Icon size={22} strokeWidth={1.6} className={accent ? "" : "text-[color:var(--accent)]"} />
-      <div className="text-[13px]">{label}</div>
+      <Icon size={22} strokeWidth={1.6} className="text-[color:var(--accent)]" />
+      <div className="text-[10px] font-medium text-foreground">{label}</div>
     </>
   );
-  if (to) return <Link to={to} className={cls}>{content}</Link>;
+  if (to) return <Link to={to} className={cls} style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>{content}</Link>;
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cls}
+      style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
     >
       {content}
     </button>
