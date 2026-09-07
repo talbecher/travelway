@@ -8,7 +8,7 @@ Implement a constrained visual foundation pass without changing application beha
 - Update the existing warm light/dark palette in `src/styles.css` while preserving current variable names and CSS-variable representation.
 - Add semantic foreground values for success, warning, and destructive surfaces.
 - Add semantic entry-type colors for food, attraction, transport, hotel, note, and flight.
-- Standardize the global card recipe to 12px radius, token-based border/surface, and theme-appropriate subtle shadow.
+- Standardize only the existing shared `Card` component to 12px radius, token-based border/surface, and theme-appropriate subtle shadow; do not add or broaden any global card selector.
 - Preserve RTL, light/dark switching, Leaflet styles, and existing legacy aliases.
 
 ### Shared components
@@ -37,7 +37,8 @@ Implement a constrained visual foundation pass without changing application beha
 ## Verification
 
 - Inspect the final diff and confirm it contains only allowed files and visual changes.
-- Run the available project build command (`bun run build`). Since no dedicated TypeScript script exists, run the repository's compatible TypeScript checker (`bunx tsgo`) if available without installing anything; report it separately from the build.
+- Run the available project build command (`bun run build`). Since no dedicated TypeScript script exists, run `tsgo` only if it is already installed in the project; otherwise report it as unavailable without installing or invoking it through `bunx`.
 - Check the live app at 390px in light and dark modes, plus desktop, for overflow, RTL, header/nav/FAB overlap, long labels, touch targets, contrast, and focus visibility.
+- If authenticated screens cannot be accessed, mark them as "not verified"; the login screen alone will not be treated as evidence for the header, navigation, FAB, or protected content.
 - Capture mobile screenshots in both themes if the preview can be exercised.
 - Report exact files changed, token changes, replaced and intentionally retained literals, exact commands/results, interactions actually exercised, limitations, and any suspicious pre-existing issue without fixing it.
