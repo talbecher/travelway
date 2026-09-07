@@ -923,16 +923,17 @@ function DayPreviewCard(props: {
   );
 }
 
-function StatChip({ icon, value, label, to }: { icon: React.ReactNode; value: number; label: string; to: string }) {
+function CompactStatChip({ icon, value, label, to }: { icon: string; value: number; label: string; to: string }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border"
-      style={{ background: "color-mix(in oklab, var(--card) 60%, transparent)" }}
+      className="flex flex-col items-center justify-center gap-0.5 bg-card border border-border rounded-[10px] py-1.5 px-1 text-center"
     >
-      <span className="text-[color:var(--accent)]">{icon}</span>
-      <span className="font-semibold tabular-nums">{value}</span>
-      <span className="text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-[13px] leading-none">{icon}</span>
+        <span className="text-[14px] font-semibold tabular-nums leading-none text-foreground">{value}</span>
+      </div>
+      <span className="text-[8px] text-muted-foreground leading-none">{label}</span>
     </Link>
   );
 }
