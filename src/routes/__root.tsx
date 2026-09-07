@@ -146,21 +146,21 @@ function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
-        <div className="max-w-md mx-auto flex items-center justify-between gap-2 px-4 py-3">
-          <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-30 border-b border-border bg-background backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 92%, transparent)" }}>
+        <div className="mx-auto flex min-h-[52px] max-w-md items-center justify-between gap-1 px-3 py-1">
+          <div className="flex min-w-0 items-center gap-1">
             {!isOnboarding && <SwitchTripButton />}
             {!isOnboarding && (
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label="חיפוש"
-                className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+                className="flex h-11 w-11 min-w-11 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Search size={15} />
+                <Search size={20} />
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1">
             {!isOnboarding && <ConverterPill />}
             {!isOnboarding && <TripSettingsLink />}
             <SignOutButton />
@@ -169,7 +169,7 @@ function AppShell() {
       </header>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
-      <main className="max-w-md mx-auto px-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
+       <main className="max-w-md mx-auto px-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
       {!isOnboarding && <GlobalFab />}
@@ -193,9 +193,9 @@ function TripSettingsLink() {
       to="/onboarding"
       search={{ edit: true }}
       aria-label="עריכת פרטי הטיול"
-      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+      className="flex h-11 w-11 min-w-11 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <Settings size={15} />
+      <Settings size={20} />
     </Link>
   );
 }
@@ -228,9 +228,9 @@ function SignOutButton() {
     <button
       onClick={handleClick}
       aria-label="התנתקות"
-      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+      className="flex h-11 w-11 min-w-11 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <LogOut size={15} />
+      <LogOut size={20} />
     </button>
   );
 }
@@ -251,9 +251,9 @@ function ShareTripButton() {
     <button
       onClick={handleClick}
       aria-label="שתף טיול"
-      className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+      className="flex h-11 w-11 min-w-11 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <Share2 size={15} />
+      <Share2 size={20} />
     </button>
   );
 }
@@ -270,9 +270,9 @@ function SwitchTripButton() {
       <button
         onClick={() => setOpen(true)}
         aria-label="החלפת טיול"
-        className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground"
+        className="flex h-11 w-11 min-w-11 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <ArrowLeftRight size={15} />
+        <ArrowLeftRight size={20} />
       </button>
       <BottomSheet open={open} onOpenChange={setOpen} title="החלפת טיול">
         <TripPicker

@@ -43,8 +43,16 @@
   --color-terracotta: var(--terracotta);
   --color-terracotta-soft: var(--terracotta-soft);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-danger: var(--danger);
+  --color-food: var(--food);
+  --color-attraction: var(--attraction);
+  --color-transport: var(--transport);
+  --color-hotel: var(--hotel);
+  --color-note: var(--note);
+  --color-flight: var(--flight);
   --color-paper: var(--paper);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -76,6 +84,8 @@
   --accent-3: #10B981;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
+  --success-foreground: #FFFFFF;
+  --warning-foreground: #1C1917;
 
   --card: #FFFFFF;
   --card-foreground: #1C1917;
@@ -93,6 +103,13 @@
   --warning: var(--accent-2);
   --success: var(--accent-3);
   --danger: var(--destructive);
+
+  --food: #E8614D;
+  --attraction: #6C63FF;
+  --transport: #4ECDC4;
+  --hotel: #FFD93D;
+  --note: var(--muted-foreground);
+  --flight: #818CF8;
 
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
@@ -115,19 +132,22 @@
 
 /* Dark opt-in */
 .dark {
-  --background: #1A1614;
-  --surface: #252220;
-  --surface-2: #2F2B28;
+  --background: #191713;
+  --surface: #272420;
+  --surface-2: #302C28;
   --foreground: #F5F0EB;
   --muted-foreground: #A8A09A;
-  --border: #332E2B;
+  --border: #3D3733;
   --border-strong: #4A4440;
 
-  --accent: #E8614D;
+  --accent: #EE6552;
   --accent-foreground: #FFFFFF;
   --accent-2: #F59E0B;
   --accent-3: #10B981;
   --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success-foreground: #FFFFFF;
+  --warning-foreground: #1C1917;
 
   --card: #252220;
   --card-foreground: #F5F0EB;

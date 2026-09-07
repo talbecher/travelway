@@ -513,9 +513,9 @@ function PlacesList({
 }
 
 const TYPE_GRADIENT: Record<string, string> = {
-  food: "linear-gradient(135deg,#FF6B6B,#FF9770)",
-  attraction: "linear-gradient(135deg,#6C63FF,#8B7FFF)",
-  hotel: "linear-gradient(135deg,#F5B301,#FFD93D)",
+  food: "linear-gradient(135deg,var(--color-food),color-mix(in oklab,var(--color-food) 70%, white))",
+  attraction: "linear-gradient(135deg,var(--color-attraction),color-mix(in oklab,var(--color-attraction) 70%, white))",
+  hotel: "linear-gradient(135deg,var(--color-hotel),color-mix(in oklab,var(--color-hotel) 70%, white))",
 };
 
 function PlaceCard({
@@ -560,7 +560,7 @@ function PlaceCard({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
+  const typeChipColor = rec.type === "food" ? "var(--color-food)" : rec.type === "hotel" ? "var(--color-hotel)" : "var(--color-attraction)";
   const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
   const typeEmoji = rec.type === "food" ? "🍜" : rec.type === "hotel" ? "🏨" : "⛩";
 
@@ -618,12 +618,12 @@ function PlaceCard({
           <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
               className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center min-h-0 border border-black/10"
-              style={{ color: "#1f2937" }}>
+              style={{ color: "var(--foreground)" }}>
               <Pencil size={13} />
             </button>
             <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
               className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center min-h-0 border border-black/10"
-              style={{ color: "#dc2626" }}>
+              style={{ color: "var(--destructive)" }}>
               <Trash2 size={13} />
             </button>
           </div>
