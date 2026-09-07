@@ -939,29 +939,25 @@ function CompactStatChip({ icon, value, label, to }: { icon: string; value: numb
 }
 
 function ActionTile({
-  icon: Icon, label, to, onClick, accent, disabled,
+  icon: Icon, label, to, onClick, disabled,
 }: {
-  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; accent?: boolean; disabled?: boolean;
+  icon: typeof Calendar; label: string; to?: string; onClick?: () => void; disabled?: boolean;
 }) {
-  const cls = `rounded-xl border h-20 flex flex-col items-center justify-center gap-1.5 transition-colors ${
-    disabled
-      ? "bg-card border-border opacity-50"
-      : accent
-      ? "bg-[color:var(--accent-2)] text-white border-transparent"
-      : "bg-card border-border"
-  }`;
+  const cls = "rounded-xl border border-border h-[72px] flex flex-col items-center justify-center gap-1 bg-card transition-colors" + (disabled ? " opacity-50" : "");
   const content = (
     <>
-      <Icon size={22} strokeWidth={1.6} className={accent ? "" : "text-[color:var(--accent)]"} />
-      <div className="text-[13px]">{label}</div>
+      <Icon size={22} strokeWidth={1.6} className="text-[color:var(--accent)]" />
+      <div className="text-[10px] font-medium text-foreground">{label}</div>
     </>
   );
-  if (to) return <Link to={to} className={cls}>{content}</Link>;
+  if (to) return <Link to={to} className={cls} style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>{content}</Link>;
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cls}
+      style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
     >
       {content}
     </button>
