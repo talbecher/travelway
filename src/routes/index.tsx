@@ -704,7 +704,6 @@ function Home() {
             }
             openQuickExpense();
           }}
-          accent
           disabled={!isOnline}
         />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
