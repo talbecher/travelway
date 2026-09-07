@@ -1014,6 +1014,56 @@ function DayDetail() {
         </div>
       </BottomSheet>
 
+      <BottomSheet open={showOptimizePreview} onOpenChange={setShowOptimizePreview} title="סדר מסלול מוצע">
+        <div className="text-[12px] text-muted-foreground mb-3">
+          חיסכון של ~{optimize.savedMinutes} דקות נסיעה ·{" "}
+          <span dir="ltr" className="tabular-nums">{optimize.currentDistKm} ק״מ → {optimize.optimalDistKm} ק״מ</span>
+        </div>
+        <div className="flex flex-col pb-3">
+          {optimize.optimalOrder.map((entry, idx) => {
+            const oldPos = entries.findIndex((e) => e.id === entry.id);
+            const moved = oldPos !== -1 && oldPos !== idx;
+            return (
+              <div key={entry.id} className="flex items-center gap-2.5 py-2 border-b border-border/60 last:border-b-0">
+                <span className="w-6 h-6 rounded-full bg-accent text-white text-[11px] font-medium flex items-center justify-center shrink-0 tabular-nums">
+                  {idx + 1}
+                </span>
+                {entry.photo_url ? (
+                  <img src={entry.photo_url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <span className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center text-[16px] shrink-0">
+                    {entry.icon_emoji ?? TYPE_ICON[entry.entry_type] ?? "📍"}
+                  </span>
+                )}
+                <span className="flex-1 min-w-0 text-[13px] truncate">{entry.title}</span>
+                {moved && (
+                  <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full shrink-0">
+                    ↕ היה מקום {oldPos + 1}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="sticky bottom-0 bg-card pt-2 pb-1 flex flex-col gap-2">
+          <button
+            type="button"
+            disabled={applyOptimalOrder.isPending}
+            className="w-full h-12 rounded-xl bg-accent text-white text-[14px] font-medium disabled:opacity-50"
+            onClick={() => applyOptimalOrder.mutate(optimize.optimalOrder)}
+          >
+            {applyOptimalOrder.isPending ? "מעדכן…" : "✅ אשר ועדכן סדר"}
+          </button>
+          <button
+            type="button"
+            className="w-full h-10 text-[13px] text-muted-foreground"
+            onClick={() => setShowOptimizePreview(false)}
+          >
+            ביטול
+          </button>
+        </div>
+      </BottomSheet>
+
     </div>
   );
 }
