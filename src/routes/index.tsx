@@ -768,7 +768,7 @@ function HeroCard(props: {
       <div className="flex items-start justify-between gap-2">
         <button
           type="button"
-          onClick={() => navigate({ to: "/settings" })}
+          onClick={() => navigate({ to: "/onboarding" })}
           className="w-7 h-7 rounded-full flex items-center justify-center text-white/90 shrink-0"
           style={{ background: "rgba(255,255,255,0.15)" }}
           aria-label="תפריט טיול"
