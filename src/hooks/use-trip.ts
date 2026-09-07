@@ -2,6 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
+import { todayLocal } from "@/lib/format";
 
 /**
  * All trip-scoped query keys MUST include the active tripId so cached data
