@@ -720,9 +720,6 @@ function Home() {
           disabled={!isOnline}
         />
         <ActionTile icon={FileText} label="מסמכים" to="/documents" />
-        {tripIsActive && (
-          <ActionTile icon={MapPin} label="היינו כאן" onClick={() => setHayinuOpen(true)} accent />
-        )}
       </section>
     ),
   });
@@ -818,7 +815,7 @@ function HeroCard(props: {
       </div>
 
       <div className="absolute bottom-3 left-3 flex items-end gap-3">
-        <ProgressRing pct={tripProgressPct} size={56} label={`${daysPassed}/${daysTotal}`} stroke="rgba(255,255,255,0.85)" track="rgba(255,255,255,0.18)" textColor="#fff" fontSize={11} />
+        <ProgressRing pct={tripProgressPct} size={56} label={`${tripProgressPct}%`} stroke="rgba(255,255,255,0.85)" track="rgba(255,255,255,0.18)" textColor="#fff" fontSize={11} />
         <div className="text-xs text-white/75 pb-1" dir="ltr">
           {hebDate(startDate)} → {hebDate(endDate)}
         </div>
