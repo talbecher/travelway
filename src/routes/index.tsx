@@ -623,14 +623,11 @@ function Home() {
     sections.push({
       key: "next",
       node: (
-        <DayPreviewCard
-          heading={`היום הבא המתוכנן — יום ${nextDay.day_number}`}
-          subheading={hebDate(nextDay.date)}
+        <UpcomingDayPreviewCard
+          dayNumber={nextDay.day_number}
+          date={nextDay.date}
           entries={entries}
-          maxVisible={3}
           onOpen={() => navigate({ to: "/itinerary/$dayId", params: { dayId: nextDay.id } })}
-          emptyLabel=""
-          openLabel="פתח את היום"
         />
       ),
     });
