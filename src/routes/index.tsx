@@ -8,7 +8,7 @@ import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
-import { ils, todayISO, daysBetween, hebDate, hebWeekday } from "@/lib/format";
+import { ils, todayISO, todayLocal, daysBetween, hebDate, hebWeekday } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
@@ -451,7 +451,7 @@ function Home() {
     const budget = Number(trip.total_budget_ils);
     const remaining = budget - spent;
     const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-    const today = todayISO();
+    const today = todayLocal();
     const beforeTrip = today < trip.start_date;
     const afterTrip = today > trip.end_date;
     // Derive progress from the trip's real dates — itinerary day rows may be
