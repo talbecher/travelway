@@ -115,7 +115,7 @@ export function useTrip() { return useQuery(tripQuery(useActiveTripId())); }
 export function useTripIsActive(): boolean {
   const { data: trip } = useTrip();
   if (!trip?.start_date || !trip?.end_date) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   return today >= trip.start_date && today <= trip.end_date;
 }
 export function useDays() {
