@@ -296,6 +296,8 @@ function LiveNowCard({
                 src={currentEntry.photo_url}
                 alt=""
                 loading="lazy"
+                onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
                 className="w-[52px] h-[52px] rounded-xl object-cover shrink-0"
               />
             ) : (
@@ -1181,6 +1183,8 @@ function NearbyCard({ recs, onSeeAll }: { recs: NearbyRec[]; onSeeAll: () => voi
                     src={rec.photo_url}
                     alt=""
                     loading="lazy"
+                    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                    onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
                     className="w-10 h-10 rounded-lg object-cover shrink-0"
                   />
                 ) : (
