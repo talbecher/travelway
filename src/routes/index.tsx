@@ -8,7 +8,7 @@ import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
-import { ils, todayISO, daysBetween, hebDate } from "@/lib/format";
+import { ils, todayISO, daysBetween, hebDate, hebWeekday } from "@/lib/format";
 import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
