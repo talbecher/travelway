@@ -168,6 +168,10 @@ type OptimizeResult = {
  * and compares it with the current order. Returns the full suggested order —
  * entries without coordinates keep their relative position at the end.
  */
+function isLodgingEntry(e: EntryRow): boolean {
+  return e.entry_type === "hotel_checkin" || !!e.linked_hotel_id;
+}
+
 function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
   const none: OptimizeResult = {
     isSuboptimal: false,
@@ -176,7 +180,16 @@ function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
     optimalDistKm: 0,
     savedMinutes: 0,
   };
-  const withCoords = entries.filter((e) => coordsOf(e) !== null);
+  // Pin lodging entries at the start/end of the day — the day always begins
+  // and ends at the hotel. Only the "day body" (activities in between) is reordered.
+  const startAnchor = entries.length > 0 && isLodgingEntry(entries[0]) ? entries[0] : null;
+  const endAnchor =
+    entries.length > 1 && isLodgingEntry(entries[entries.length - 1]) && entries[entries.length - 1] !== startAnchor
+      ? entries[entries.length - 1]
+      : null;
+  const body = entries.filter((e) => e !== startAnchor && e !== endAnchor);
+
+  const withCoords = body.filter((e) => coordsOf(e) !== null);
   if (withCoords.length < 3) return none;
   const toPt = (e: EntryRow) => {
     const c = coordsOf(e)!;
@@ -188,12 +201,22 @@ function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
     return d;
   };
 
-  const currentDist = pathDist(withCoords);
+  // Include pinned lodging anchors (if they have coords) in the distance math,
+  // so current vs optimal comparison reflects the real full-day path.
+  const anchorPt = (e: EntryRow | null) => (e && coordsOf(e) ? e : null);
+  const start = anchorPt(startAnchor);
+  const end = anchorPt(endAnchor);
+  const withAnchors = (list: EntryRow[]) =>
+    [...(start ? [start] : []), ...list, ...(end ? [end] : [])];
 
-  const remaining = withCoords.slice(1);
-  const optimized = [withCoords[0]];
+  const currentDist = pathDist(withAnchors(withCoords));
+
+  // Nearest-neighbor starting from the lodging anchor (or first body entry).
+  const firstEntry = start ?? withCoords[0];
+  const remaining = withCoords.filter((e) => e !== firstEntry);
+  const optimized = start ? [] : [firstEntry];
+  let last = firstEntry;
   while (remaining.length > 0) {
-    const last = optimized[optimized.length - 1];
     let nearestIdx = 0;
     let nearestDist = Infinity;
     remaining.forEach((e, i) => {
@@ -203,17 +226,25 @@ function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
         nearestIdx = i;
       }
     });
-    optimized.push(remaining.splice(nearestIdx, 1)[0]);
+    last = remaining.splice(nearestIdx, 1)[0];
+    optimized.push(last);
   }
 
-  const optimalDist = pathDist(optimized);
+  const optimalDist = pathDist(withAnchors(optimized));
   const savedKm = currentDist - optimalDist;
 
-  const withoutCoords = entries.filter((e) => coordsOf(e) === null);
+  const withoutCoords = body.filter((e) => coordsOf(e) === null);
+
+  const optimalOrder = [
+    ...(startAnchor ? [startAnchor] : []),
+    ...optimized,
+    ...withoutCoords,
+    ...(endAnchor ? [endAnchor] : []),
+  ];
 
   return {
     isSuboptimal: currentDist > optimalDist * 1.3 && savedKm > 0,
-    optimalOrder: [...optimized, ...withoutCoords],
+    optimalOrder,
     currentDistKm: Math.round(currentDist * 10) / 10,
     optimalDistKm: Math.round(optimalDist * 10) / 10,
     savedMinutes: Math.max(0, Math.round((savedKm / 30) * 60)),
