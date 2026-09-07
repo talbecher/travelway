@@ -734,13 +734,13 @@ function Home() {
 
 
   return (
-    <div className="pt-4 pb-8 flex flex-col gap-4">
+    <div className="pt-4 pb-24 px-4 flex flex-col gap-3">
       {sections.map((s, i) => (
         <motion.div
           key={s.key}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: i * 0.08, ease: "easeOut" }}
+          transition={{ duration: 0.35, delay: i * 0.05, ease: "easeOut" }}
         >
           {s.node}
         </motion.div>
