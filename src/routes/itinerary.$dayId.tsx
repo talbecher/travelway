@@ -345,6 +345,25 @@ function DayDetail() {
     },
   });
 
+  const applyOptimalOrder = useMutation({
+    mutationFn: async (order: EntryRow[]) => {
+      assertOnline();
+      await Promise.all(
+        order.map((entry, idx) =>
+          supabase.from("day_entries").update({ display_order: idx }).eq("id", entry.id)
+        )
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      setShowOptimizePreview(false);
+      setZigzagDismissed(true);
+      toast.success("✅ המסלול סודר מחדש לפי מרחקים");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const moveEntry = useMutation({
     mutationFn: async ({ entryId, toDayId }: { entryId: string; toDayId: string }) => {
       const { error } = await supabase.from("day_entries").update({ day_id: toDayId }).eq("id", entryId);
@@ -639,20 +658,29 @@ function DayDetail() {
         );
       })()}
 
-      {isZigzag && !zigzagDismissed && mapStops.length >= 3 && (
-        <div className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3 py-2">
-          <span className="text-[14px]">⚠️</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium text-amber-800 dark:text-amber-200">סדר המסלול לא אופטימלי</div>
-            <div className="text-[11px] text-amber-600 dark:text-amber-400">יש נסיעות מיותרות — גרור פריטים לסידור יעיל יותר</div>
+      {optimize.isSuboptimal && !zigzagDismissed && (
+        <div className="mx-4 mt-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3.5 py-3">
+          <div className="text-[13px] font-medium text-amber-800 dark:text-amber-200">⚠️ סדר המסלול לא אופטימלי</div>
+          <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+            חיסכון אפשרי: ~{optimize.savedMinutes} דקות נסיעה{" "}
+            <span dir="ltr" className="tabular-nums">({optimize.currentDistKm} ק״מ → {optimize.optimalDistKm} ק״מ)</span>
           </div>
-          <button
-            type="button"
-            className="text-[11px] text-amber-700 dark:text-amber-300 underline shrink-0 min-h-[44px] px-1"
-            onClick={() => setZigzagDismissed(true)}
-          >
-            הבנתי
-          </button>
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              className="flex-1 h-10 rounded-xl bg-amber-500 text-white text-[13px] font-medium"
+              onClick={() => setShowOptimizePreview(true)}
+            >
+              ✨ הצג סדר מוצע
+            </button>
+            <button
+              type="button"
+              className="flex-1 h-10 rounded-xl bg-transparent border border-amber-300 text-amber-700 dark:text-amber-300 text-[13px]"
+              onClick={() => setZigzagDismissed(true)}
+            >
+              השאר כמו שהוא
+            </button>
+          </div>
         </div>
       )}
 
