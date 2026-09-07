@@ -2,6 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
+import { todayLocal } from "@/lib/format";
 
 /**
  * All trip-scoped query keys MUST include the active tripId so cached data
@@ -115,7 +116,7 @@ export function useTrip() { return useQuery(tripQuery(useActiveTripId())); }
 export function useTripIsActive(): boolean {
   const { data: trip } = useTrip();
   if (!trip?.start_date || !trip?.end_date) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   return today >= trip.start_date && today <= trip.end_date;
 }
 export function useDays() {
