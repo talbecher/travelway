@@ -1,89 +1,43 @@
-# מיפוי טכני לפני שדרוג UI/UX
+# Phase 1 — Visual foundation only
 
-דוח בלבד — לא בוצע שום שינוי בקוד.
+Implement a constrained visual foundation pass without changing application behavior.
 
-## 1. מפת מסכים ונתיבים
+## Scope
 
-| נתיב | קובץ | תפקיד |
-|---|---|---|
-| `/` | `src/routes/index.tsx` | בית / דשבורד |
-| `/onboarding` | `onboarding.tsx` | יצירה ועריכה של טיול (גם "הגדרות") |
-| `/itinerary` | `itinerary.tsx` + `itinerary.index.tsx` | רשימת ימים |
-| `/itinerary/$dayId` | `itinerary.$dayId.tsx` | מסך יום (2,700+ שורות) |
-| `/recommendations` | `recommendations.tsx` | מקומות שמורים + מפה |
-| `/budget` | `budget.tsx` | תקציב והוצאות |
-| `/checklist` | `checklist.tsx` | צ'קליסט |
-| `/documents` | `documents.tsx` | מסמכים וכרטיסים |
-| `/phrasebook` | `phrasebook.tsx` | שיחון |
-| `/join/$token` | `join.$token.tsx` | קבלת שיתוף טיול |
+### Design tokens
+- Update the existing warm light/dark palette in `src/styles.css` while preserving current variable names and CSS-variable representation.
+- Add semantic foreground values for success, warning, and destructive surfaces.
+- Add semantic entry-type colors for food, attraction, transport, hotel, note, and flight.
+- Standardize the global card recipe to 12px radius, token-based border/surface, and theme-appropriate subtle shadow.
+- Preserve RTL, light/dark switching, Leaflet styles, and existing legacy aliases.
 
-**מעטפת קבועה** (`__root.tsx`): כותרת עליונה (החלפת טיול, חיפוש גלובלי, ממיר מטבע, הגדרות, יציאה) → `AuthGate` → `Outlet` → `GlobalFab` → `BottomNav`; מחוץ לגייט: `OfflineBanner`, `Toaster`. בכל `/onboarding` הניווט התחתון וה־FAB מוסתרים.
+### Shared components
+- Refine the existing shared `Button` variants without changing their names or API: 44px minimum targets, 2px visible focus ring, clear primary/secondary/ghost/destructive hierarchy, and existing disabled behavior.
+- Refine shared `Card` styling to use the standardized surface, border, radius, shadow, and denser built-in spacing.
+- Refine shared `Input` styling to 44px minimum height, surface background, readable placeholder, and visible focus border/ring.
+- Polish the existing `BottomSheet` only within its current structure: surface, handle, 16px RTL title, padding, and single scroll container. No close control or footer will be invented because neither exists in its current public structure.
+- Compact `EmptyState` spacing and hierarchy while preserving its illustrations, props, text, and action slot.
 
-**ניווט תחתון (6):** שיחון · צ'קליסט · המלצות · בית · תקציב · מסלול. `/documents` ו־`/onboarding` אינם בניווט התחתון — רק דרך הכותרת/כרטיסי פעולה בבית.
+### Shared shell and navigation
+- Keep all six `BottomNav` tabs, icons, labels, order, routes, and active matching unchanged; update only surface treatment, active/inactive weight, 56px layout, 44px targets, safe-area handling, and an optional non-structural active indicator.
+- Update only header classes and the existing main bottom clearance in `src/routes/__root.tsx`: compact height, semantic background/border, 44px icon controls, 20px icons, compact spacing, and truncation-safe layout.
+- Preserve every header action and visibility condition, `AuthGate`, trip switching, `Outlet`, FAB, search behavior, and navigation behavior.
 
-**החלפת טיול:** `localStorage["active_trip_id"]` + אירוע `active-trip-changed`; `AuthGate` מאמת מול הטיולים הנגישים (0 → onboarding, 1 → נבחר אוטומטית, 2+ → `TripPicker`), `SwitchTripButton` מופיע רק מ־2 טיולים ומעלה, והחלפה מנקה את כל מטמון ה־Query.
+### Hardcoded colors
+- In `src/routes/index.tsx`, replace entry-type hardcoded colors and success/warning-equivalent colors only where the current value can be swapped directly for a semantic CSS variable without changing structure or behavior.
+- In `src/routes/recommendations.tsx`, replace type gradients and foreground/destructive literals only where direct CSS-variable substitution preserves existing gradients and transparency.
+- Leave brand-overlay whites, image-overlay alpha values, decorative hero gradient colors, and shadow alpha values unchanged when a semantic substitution would change visual meaning or require structural refactoring; list every intentional exception in the report.
 
-**מה נשמר בין רענונים:** טיול פעיל, ערכת נושא (`theme`), סשן התחברות, ומטמון React Query ב־IndexedDB ל־7 ימים. **היום הנבחר לא נשמר** — הוא רק פרמטר בכתובת.
+## Explicit exclusions
 
-**קישורים שעלולים להישבר:** `/join/$token` (קישורי שיתוף שכבר נשלחו למשתמשים — שינוי הנתיב שובר אותם לצמיתות) ו־`/itinerary/$dayId` (סימניות/שיתופים חיצוניים). מסקנה: אין לשנות את שני הנתיבים האלה בשדרוג.
+- No queries, mutations, backend calls, database, business logic, calculations, dates, offline behavior, caching, forms, validation, submission handlers, DnD, maps, Leaflet, or image fallbacks.
+- No route/path changes, new screens, tab changes, new menus, new dependencies, `CategoryPill` migration, or replacement of `BottomSheet`.
+- No public component API changes and no files outside the user's allowlist.
 
-## 2. יכולות שחייבים לשמר בכל מסך
+## Verification
 
-- **בית:** לוגיקת לפני/במהלך/אחרי טיול, Live Now, כרטיס היום/היום הבא, צ'קליסט, דדליינים, "מה קרוב אליי", "היינו כאן", הוצאה מהירה, חסימת פעולות במצב אופליין.
-- **מסלול:** גרירה ידנית עם ידית ייעודית (גלילה במגע חייבת להישאר), אזהרת זיגזג + תצוגה מקדימה לאופטימיזציה שמקבעת לינה בתחילת/סוף היום, גרסאות מסלול, snapshots ליום, ייצוא/ייבוא AI, העברת פריט ליום אחר, תצוגת מפה עם מספור ומסלול כבישים.
-- **המלצות:** חיפוש Google Places, ייבוא מ־My Maps, בחירה מרובה ומחיקה, סינון לפי סוג/טקסט/מרחק, סטטוס ביקרנו/דילגנו, העלאת תמונה.
-- **תקציב/צ'קליסט/מסמכים/שיחון:** המרת מטבע, גרף קטגוריות, תבניות צ'קליסט וקונפטי, ברקוד/QR במסמכים, הקראה (TTS) בשיחון.
-
-## 3. מקורות הנתונים של מסך הבית
-
-- הוקים: `useTrip`, `useExpenses`, `useDays` (מסונן לפי הגרסה הפעילה), `useRecs`, `useHotels`, `useChecklistItems`, `useActiveVersion`, שאילתת `day_entries` מקומית, מזג אוויר מ־Open‑Meteo.
-- ימים ואחוזים מחושבים מ־`start_date`/`end_date` בלבד (לא משורות המסלול): סה"כ ימים, "יום X מתוך Y", אחוז התקדמות, "עוד N ימים".
-- מקומות = `recs.length`. "מתוכננים/ריקים" = ספירת ימים עם/בלי פריטים (מבוסס שורות מסלול — לכן עלול לא להסתדר עם ספירת הימים בהירו).
-- תקציב: `total_budget_ils` פחות סכום ההוצאות בפועל; יומי = נותר חלקי ימים שנותרו.
-- היום המוצג: התאמה מדויקת של `date` לתאריך היום; לפני הטיול — היום הקרוב הראשון שיש בו פריטים.
-- **אין תמיכה באזור זמן של היעד** — "היום" מחושב לפי UTC (`todayISO`), והשעה הנוכחית לפי שעון המכשיר.
-- אין נתוני הזמנות/טיסות חיים: "תחנה הבאה", מלון וזמני מעבר נגזרים מנתונים שהמשתמש הזין; מרחקים הם קו אווירי (haversine) ולא זמן נסיעה אמיתי.
-
-## 4. פעולות כתיבה/מחיקה בסיכון גבוה
-
-- כתיבת `display_order` מחדש לכל פריטי היום בגרירה ובאופטימיזציה.
-- `syncHotelToItinerary` — יוצר/מוחק פריטי מסלול והוצאות לינה; מחיקת מלון מבצעת מחיקה מדורגת.
-- שחזור snapshot — מוחק את כל פריטי היום ומכניס מחדש.
-- ייבוא AI — יוצר snapshot ואז מוסיף פריטים לפי שעות.
-- מחיקה מרובה בהמלצות, מחיקת טיול, החלפת טיול (`qc.clear()`).
-- `AuthGate` מנקה מטמון בעת החלפת משתמש.
-
-## 5. רכיבים משותפים שאפשר לשדרג בבטחה
-
-`BottomSheet`, `EmptyState`, `DateField`, `ConverterPill`, `WeatherIcon`, `MapSkeleton`, `ChecklistCard`, `BottomNav`, כותרת המעטפת, וטוקנים ב־`src/styles.css` (מצב בהיר/כהה + RTL גלובלי כבר קיימים). ערכת shadcn מלאה קיימת אך כמעט לא בשימוש במסכים.
-
-## 6. פערים אפשריים בין הדמיות לבין המצב בפועל
-
-- אין מסך/מודל "הזמנה" אחיד — מסמכים, מלונות והמלצות הם שלוש ישויות נפרדות.
-- אין התחייבויות עתידיות בתקציב (רק הוצאות שנרשמו/שולמו).
-- אין זמני נסיעה אמיתיים, אין אזור זמן של היעד, אין נתוני טיסה חיים.
-- "משובץ ליום" אינו סטטוס שמור אלא נגזר מקיום שורת מסלול מקושרת.
-- אין העתקה בלחיצה בשיחון (למרות שהתוויות נראות לחיצות).
-
-## 7. באגים/סתירות שזוהו (ללא תיקון בשלב זה)
-
-1. `todayISO()` משתמש ב־UTC בעוד "עכשיו" בכרטיסים משתמש בשעון מקומי — חוסר עקביות שעלול להזיז יום שלם.
-2. ספירת ימים בהירו (לפי תאריכים) מול "מתוכננים/ריקים" (לפי שורות מסלול) יכולות לסתור זו את זו.
-3. `CategoryPill` מוגדר ואינו בשימוש; תקציב וצ'קליסט משכפלים אותו ידנית.
-4. שני מימושי drawer מקבילים על אותה ספרייה (`BottomSheet` מול `ui/drawer`).
-5. הצבע `#10B981` מקודד קשיח בשני מקומות למרות שקיים טוקן `--accent-3`; גרדיאנטים ומפות צבע לפי סוג מקודדים קשיח ב־`index.tsx` ו־`recommendations.tsx`.
-6. תמונות פריט/המלצה ללא `onError` — כתובת שבורה תציג אייקון תמונה שבורה (בהירו של היום כן יש fallback).
-7. `ThemeToggle` מיובא ב־`__root.tsx` אך בפועל מופיע רק במסך ההגדרות.
-8. מלון יכול להיות מיוצג פעמיים (שורת `hotels` ושורת `documents` מסוג hotel) ללא קישור ביניהן.
-
-## 8. המלצה להיקף בטוח לשלב מימוש ראשון
-
-שלב 1 — שכבה חזותית בלבד, ללא שינוי לוגיקה, נתונים או ניווט:
-
-1. איחוד טוקנים: העברת הצבעים הקשיחים (גרדיאנטים, מפות צבע לפי סוג, `#10B981`) לטוקנים ב־`styles.css`, כולל התנהגות נכונה במצב כהה.
-2. שדרוג רכיבי הבסיס המשותפים: `BottomSheet` (כותרת/פוטר דביק אחידים), כפתורים, כרטיסים, שדות קלט ו־`EmptyState` — כך שכל המסכים מרוויחים בבת אחת.
-3. ניקוי כפילות רכיבים: החזרת `CategoryPill` לשימוש בתקציב ובצ'קליסט, והחלטה על drawer יחיד.
-4. ליטוש `BottomNav` והכותרת (מצב פעיל, גדלי מגע 44px, בטיחות בתחתית המסך).
-5. הוספת fallback לתמונות שנכשלו בכל כרטיסי המקומות והפריטים.
-
-מחוץ להיקף שלב 1: אזור זמן של היעד, מודל הזמנות מאוחד, זמני נסיעה אמיתיים, שינוי ניווט או נתיבים, ומסכים חדשים. אלה ייבחנו כשלבים נפרדים אחרי אישור.
+- Inspect the final diff and confirm it contains only allowed files and visual changes.
+- Run the available project build command (`bun run build`). Since no dedicated TypeScript script exists, run the repository's compatible TypeScript checker (`bunx tsgo`) if available without installing anything; report it separately from the build.
+- Check the live app at 390px in light and dark modes, plus desktop, for overflow, RTL, header/nav/FAB overlap, long labels, touch targets, contrast, and focus visibility.
+- Capture mobile screenshots in both themes if the preview can be exercised.
+- Report exact files changed, token changes, replaced and intentionally retained literals, exact commands/results, interactions actually exercised, limitations, and any suspicious pre-existing issue without fixing it.
