@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, CheckCircle2, CalendarDays, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, MoreHorizontal } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, MoreHorizontal } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
 import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
