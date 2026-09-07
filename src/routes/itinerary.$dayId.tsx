@@ -485,11 +485,12 @@ function DayDetail() {
     return m;
   }, [mapStops]);
 
-  // ⚠️ zigzag detection: is the current stop order much longer than a
+  // ⚠️ route optimization: is the current stop order much longer than a
   // nearest-neighbor order starting from the first stop?
   const [zigzagDismissed, setZigzagDismissed] = useState(false);
-  const isZigzag = useMemo(() => detectZigzag(mapStops), [mapStops]);
-  useEffect(() => { setZigzagDismissed(false); }, [dayId]);
+  const [showOptimizePreview, setShowOptimizePreview] = useState(false);
+  const optimize = useMemo(() => computeOptimalOrder(entries), [entries]);
+  useEffect(() => { setZigzagDismissed(false); setShowOptimizePreview(false); }, [dayId]);
 
   const scrollToCard = useCallback((id: string) => {
     setHighlightId(id);
