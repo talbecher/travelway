@@ -922,6 +922,68 @@ function DayPreviewCard(props: {
   );
 }
 
+function UpcomingDayPreviewCard({ dayNumber, date, entries, onOpen }: {
+  dayNumber: number;
+  date: string;
+  entries: EntrySlim[];
+  onOpen: () => void;
+}) {
+  const visible = entries.slice(0, 3);
+  const extra = Math.max(0, entries.length - 3);
+  return (
+    <section className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex">
+        <div className="w-2 shrink-0 bg-accent" />
+        <div className="flex-1 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[12px] font-medium text-[color:var(--accent)]">
+              יום {dayNumber} · {hebDate(date)}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{hebWeekday(date)}</span>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {visible.map((e) => (
+              <li key={e.id} className="flex items-center gap-2">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: entryTypeColor(e.entry_type) }}
+                />
+                <span className="flex-1 min-w-0 text-[11px] text-foreground truncate">{e.title}</span>
+                {e.time_of_day && (
+                  <span className="text-[10px] text-muted-foreground tabular-nums shrink-0" dir="ltr">
+                    {e.time_of_day.slice(0, 5)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {extra > 0 && (
+            <div className="text-[10px] text-muted-foreground mt-1.5">+ {extra} נוספים</div>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={onOpen}
+        className="w-full text-center text-[11px] font-medium text-[color:var(--accent)] py-2 border-t border-border"
+      >
+        פתח את היום ›
+      </button>
+    </section>
+  );
+}
+
+function entryTypeColor(t: string) {
+  const map: Record<string, string> = {
+    flight: "#60A5FA",
+    hotel_checkin: "#F472B6",
+    attraction: "#34D399",
+    food: "#FBBF24",
+    transport: "#A78BFA",
+    note: "#9CA3AF",
+  };
+  return map[t] ?? "var(--accent)";
+}
+
 function CompactStatChip({ icon, value, label, to }: { icon: string; value: number; label: string; to: string }) {
   return (
     <Link
