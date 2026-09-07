@@ -452,12 +452,20 @@ function Home() {
     const remaining = budget - spent;
     const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
     const today = todayISO();
-    const daysTotal = days.length;
-    const daysPassed = Math.max(0, Math.min(daysTotal, days.filter((d) => d.date <= today).length));
-    const daysLeft = Math.max(1, daysTotal - daysPassed + 1);
-    const daily = remaining / daysLeft;
     const beforeTrip = today < trip.start_date;
     const afterTrip = today > trip.end_date;
+    // Derive progress from the trip's real dates — itinerary day rows may be
+    // stale/mismatched, so counting them gives wrong "day X of Y" values.
+    const daysTotal = trip.start_date && trip.end_date
+      ? Math.max(1, daysBetween(trip.start_date, trip.end_date) + 1)
+      : days.length;
+    const daysPassed = beforeTrip
+      ? 0
+      : afterTrip
+        ? daysTotal
+        : Math.max(1, Math.min(daysTotal, daysBetween(trip.start_date, today) + 1));
+    const daysLeft = Math.max(1, daysTotal - daysPassed + 1);
+    const daily = remaining / daysLeft;
     const daysToStart = daysBetween(today, trip.start_date);
     const tripProgressPct = daysTotal > 0 ? Math.round((daysPassed / daysTotal) * 100) : 0;
     return { spent, budget, remaining, pct, daysTotal, daysPassed, daily, beforeTrip, afterTrip, daysToStart, tripProgressPct };
@@ -765,16 +773,7 @@ function HeroCard(props: {
       }}
     >
       {/* top row */}
-      <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/onboarding" })}
-          className="w-7 h-7 rounded-full flex items-center justify-center text-white/90 shrink-0"
-          style={{ background: "rgba(255,255,255,0.15)" }}
-          aria-label="תפריט טיול"
-        >
-          <MoreHorizontal size={16} />
-        </button>
+      <div className="flex items-start justify-end gap-2">
         <div className="flex items-center gap-2">
           {wCondition && wTemp != null && (
             <a
