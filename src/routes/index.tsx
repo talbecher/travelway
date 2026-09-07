@@ -494,9 +494,9 @@ function Home() {
 
   const stats2 = useMemo(() => {
     const saved = recs.length;
-    const visited = recs.filter((r: { status?: string | null }) => r.status === "visited").length;
     const planned = days.reduce((n, d) => n + ((entriesByDay[d.id]?.length ?? 0) > 0 ? 1 : 0), 0);
-    return { saved, visited, planned };
+    const empty = Math.max(0, days.length - planned);
+    return { saved, planned, empty };
   }, [recs, days, entriesByDay]);
 
   const deadlines = useMemo(
