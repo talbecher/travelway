@@ -1,6 +1,6 @@
-# Phase 1B
+# Phase 1B — done
 
-- [ ] Image onError/onLoad handlers in 4 card areas (recs, day entries, hotels, home cards)
-- [ ] todayLocal() in format.ts; swap in useTripIsActive + index.tsx today comparisons
-- [ ] Report remaining todayISO() call sites (inspect only)
-- [ ] Build + verify broken-image behavior
+- [x] Image onError/onLoad handlers (7 imgs: recs card, day-entry card/header/details, lodging picker, Live Now, Nearby)
+- [x] todayLocal() in format.ts; swapped in useTripIsActive + index.tsx (stats, todayDay, nextDay)
+- [x] Remaining todayISO() sites inspected — intentionally unchanged
+- [x] Build passed; broken-image runtime-verified; TZ contexts spot-checked
