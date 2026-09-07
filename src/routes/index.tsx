@@ -802,7 +802,7 @@ function HeroCard(props: {
 
       {/* bottom row */}
       <div className="flex items-end justify-between mt-1">
-        <ProgressRing pct={ringPct} size={44} label={`${ringPct}%`} stroke={ringStroke} track={ringTrack} textColor="#fff" fontSize={9} />
+        <ProgressRing pct={ringPct} size={44} label={`${ringPct}%`} stroke={ringStroke} track={ringTrack} textColor="var(--primary-foreground)" fontSize={9} />
         <HeroStatusPill status={status} daysToStart={daysToStart} daysPassed={daysPassed} daysTotal={daysTotal} />
       </div>
     </section>
@@ -822,8 +822,8 @@ function HeroStatusPill({ status, daysToStart, daysPassed, daysTotal }: {
         style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
       >
         <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FCD34D] opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#FCD34D]" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-warning" />
         </span>
         עוד {daysToStart} ימים
       </span>
@@ -836,8 +836,8 @@ function HeroStatusPill({ status, daysToStart, daysPassed, daysTotal }: {
         style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
       >
         <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
         </span>
         יום {Math.min(daysPassed, daysTotal)} מתוך {daysTotal}
       </span>
@@ -956,12 +956,12 @@ function UpcomingDayPreviewCard({ dayNumber, date, entries, onOpen }: {
 
 function entryTypeColor(t: string) {
   const map: Record<string, string> = {
-    flight: "#60A5FA",
-    hotel_checkin: "#F472B6",
-    attraction: "#34D399",
-    food: "#FBBF24",
-    transport: "#A78BFA",
-    note: "#9CA3AF",
+    flight: "var(--color-flight)",
+    hotel_checkin: "var(--color-hotel)",
+    attraction: "var(--color-attraction)",
+    food: "var(--color-food)",
+    transport: "var(--color-transport)",
+    note: "var(--color-note)",
   };
   return map[t] ?? "var(--accent)";
 }

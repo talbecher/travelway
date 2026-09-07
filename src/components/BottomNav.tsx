@@ -15,8 +15,9 @@ export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 border-t border-border backdrop-blur-xl"
-      style={{ background: "color-mix(in oklab, var(--surface) 72%, transparent)" }}
+      data-bottom-nav
+      className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-surface backdrop-blur-xl"
+      style={{ background: "color-mix(in oklab, var(--surface) 92%, transparent)" }}
     >
       <div className="max-w-md mx-auto grid grid-cols-6">
         {tabs.map((t) => {
@@ -26,7 +27,7 @@ export function BottomNav() {
             <Link
               key={t.to}
               to={t.to}
-              className={`flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-[10px] transition-colors ${active ? "text-[color:var(--accent)]" : "text-muted-foreground"}`}
+              className={`relative flex min-h-[56px] min-w-11 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${active ? "font-medium text-primary after:absolute after:top-0 after:h-0.5 after:w-5 after:rounded-full after:bg-primary" : "font-normal text-muted-foreground"}`}
             >
               <Icon size={20} strokeWidth={1.6} />
               <span>{t.label}</span>

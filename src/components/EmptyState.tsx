@@ -14,13 +14,13 @@ export function EmptyState({
   cta?: ReactNode;
 }) {
   return (
-    <div className="text-center py-10 space-y-3 flex flex-col items-center">
+    <div className="flex flex-col items-center space-y-2.5 py-8 text-center">
       <div className="text-[color:var(--accent)]">
         <Illustration variant={variant} />
       </div>
       <div className="space-y-1">
-        <div className="text-[15px] font-medium text-foreground">{title}</div>
-        {hint && <div className="text-xs text-muted-foreground max-w-[220px]">{hint}</div>}
+        <div className="text-base font-medium text-foreground">{title}</div>
+        {hint && <div className="max-w-[240px] text-xs leading-relaxed text-muted-foreground">{hint}</div>}
       </div>
       {cta}
     </div>
