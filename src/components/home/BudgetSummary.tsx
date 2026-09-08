@@ -26,7 +26,7 @@ export function BudgetSummary({
       </div>
 
       {hasBudget ? (
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div>
             <div className="text-[11px] text-muted-foreground">תקציב</div>
             <div className="text-[14px] font-medium tabular-nums">{ils(budget)}</div>

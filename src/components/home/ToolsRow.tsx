@@ -21,7 +21,7 @@ export function ToolsRow({ actions }: { actions: ToolAction[] }) {
         const content = (
           <>
             <Icon size={18} strokeWidth={1.7} className="shrink-0 text-[color:var(--accent)]" />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{label}</span>
+            <span className="min-w-0 flex-1 text-[13px] font-medium leading-tight text-foreground">{label}</span>
           </>
         );
         if (to) {

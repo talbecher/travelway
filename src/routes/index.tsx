@@ -562,7 +562,7 @@ function Home() {
           weatherFallback={trip.destination_country ?? null}
         />
 
-        <div className="md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:items-start md:gap-4">
+        <div className="md:grid md:grid-cols-2 md:items-start md:gap-4">
           <div className="flex flex-col gap-3">
             {deadlines.length > 0 && <h2 className="text-sm font-semibold mt-1">מה צריך לסגור</h2>}
             {deadlines.length > 0 && (
