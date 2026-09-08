@@ -13,7 +13,7 @@ export function PreTripHero({
   endDate,
   daysTotal,
   daysToStart,
-  imageUrl,
+  imageUrls,
   fallbackBackground,
 }: {
   title: string;
@@ -23,23 +23,31 @@ export function PreTripHero({
   endDate: string;
   daysTotal: number;
   daysToStart: number;
-  imageUrl: string | null;
+  imageUrls: string[];
   fallbackBackground: string;
 }) {
   const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
+  const key = imageUrls.join("|");
   useEffect(() => {
+    let cancelled = false;
     setLoadedImageUrl(null);
-    if (!imageUrl) return;
-    const candidate = new Image();
-    candidate.onload = () => setLoadedImageUrl(imageUrl);
-    candidate.onerror = () => setLoadedImageUrl(null);
-    candidate.src = imageUrl;
-    return () => {
-      candidate.onload = null;
-      candidate.onerror = null;
+    const candidates = key ? key.split("|") : [];
+    const tryAt = (index: number) => {
+      if (cancelled || index >= candidates.length) return;
+      const url = candidates[index]!;
+      const img = new Image();
+      img.onload = () => {
+        if (!cancelled) setLoadedImageUrl(url);
+      };
+      img.onerror = () => tryAt(index + 1);
+      img.src = url;
     };
-  }, [imageUrl]);
-  const showImage = loadedImageUrl === imageUrl;
+    tryAt(0);
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+  const showImage = Boolean(loadedImageUrl);
   const countdown = daysToStart === 1 ? "עוד יום אחד יוצאים לדרך" : `עוד ${daysToStart} ימים יוצאים לדרך`;
 
   return (
@@ -52,7 +60,6 @@ export function PreTripHero({
           src={loadedImageUrl ?? undefined}
           alt=""
           className="absolute inset-0 -z-20 h-full w-full object-cover"
-          onError={() => setLoadedImageUrl(null)}
         />
       )}
       {/* readable scrim only where the text sits */}
