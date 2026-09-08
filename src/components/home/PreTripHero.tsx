@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { hebDate } from "@/lib/format";
 
 /**
@@ -26,8 +26,20 @@ export function PreTripHero({
   imageUrl: string | null;
   fallbackBackground: string;
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(imageUrl) && !imageFailed;
+  const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setLoadedImageUrl(null);
+    if (!imageUrl) return;
+    const candidate = new Image();
+    candidate.onload = () => setLoadedImageUrl(imageUrl);
+    candidate.onerror = () => setLoadedImageUrl(null);
+    candidate.src = imageUrl;
+    return () => {
+      candidate.onload = null;
+      candidate.onerror = null;
+    };
+  }, [imageUrl]);
+  const showImage = loadedImageUrl === imageUrl;
   const countdown = daysToStart === 1 ? "עוד יום אחד יוצאים לדרך" : `עוד ${daysToStart} ימים יוצאים לדרך`;
 
   return (
@@ -37,10 +49,10 @@ export function PreTripHero({
     >
       {showImage && (
         <img
-          src={imageUrl ?? undefined}
+          src={loadedImageUrl ?? undefined}
           alt=""
           className="absolute inset-0 -z-20 h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => setLoadedImageUrl(null)}
         />
       )}
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/35 to-black/15" />

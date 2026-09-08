@@ -7,8 +7,8 @@
 
 # Pre-trip home visual upgrade
 
-- [ ] Destination-focused opening image with local fallback
-- [ ] Day selector with stable manual selection and horizontal-only reveal
-- [ ] Saved-places preview from the active trip's existing records
-- [ ] Secondary preparation, budget, and tools presentation
-- [ ] Build, type check, browser verification, and screenshots
+- [x] Destination-focused opening image with local fallback
+- [x] Day selector with stable manual selection and horizontal-only reveal
+- [x] Saved-places preview from the active trip's existing records
+- [x] Secondary preparation, budget, and tools presentation
+- [x] Build, type check, browser verification, and screenshots
