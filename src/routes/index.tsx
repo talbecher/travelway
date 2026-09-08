@@ -562,7 +562,7 @@ function Home() {
 
   // ===== PRE-TRIP HOME =====
   if (stats?.beforeTrip) {
-    const planDataPending = daysLoading || entriesLoading;
+    const planDataPending = daysLoading || (!!activeVersion?.id && entriesLoading);
     const planDataFailed = daysError || entriesError;
     const urgent = deadlines.find((d) => d.urgency === "overdue" || d.urgency === "critical") ?? null;
     const openDeadline = (item: DeadlineItem) =>
@@ -622,7 +622,10 @@ function Home() {
         )}
 
         {deadlines.length > 0 && (
-          <DeadlinesCard items={deadlines} onOpen={openDeadline} />
+          <>
+            <h2 className="text-sm font-semibold mt-1">מה צריך לסגור</h2>
+            <DeadlinesCard items={deadlines} onOpen={openDeadline} />
+          </>
         )}
         <ChecklistCard />
 
