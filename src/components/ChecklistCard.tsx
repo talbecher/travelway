@@ -26,7 +26,7 @@ export function ChecklistCard({ variant = "default" }: { variant?: "default" | "
     .slice(0, 3);
 
   return (
-    <section className={variant === "preTripHome" ? "rounded-xl bg-card p-4 shadow-sm space-y-3" : "rounded-2xl border border-border bg-card p-4 space-y-3"}>
+    <section className={variant === "preTripHome" ? "rounded-[20px] bg-card px-3.5 py-3 shadow-sm space-y-2.5" : "rounded-2xl border border-border bg-card p-4 space-y-3"}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{variant === "preTripHome" ? "צ'קליסט לטיול" : "✅ צ'קליסט לטיול"}</h2>
         <Link to="/checklist" className="text-xs text-[color:var(--accent)] inline-flex items-center gap-0.5">
