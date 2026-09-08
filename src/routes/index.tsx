@@ -441,7 +441,12 @@ function Home() {
   const [hayinuOpen, setHayinuOpen] = useState(false);
 
   const { version: activeVersion } = useActiveVersion(tripId);
-  const { data: entriesByDay = {}, isLoading: entriesLoading } = useQuery<Record<string, EntrySlim[]>>({
+  const {
+    data: entriesByDay = {},
+    isLoading: entriesLoading,
+    isError: entriesError,
+    refetch: refetchEntries,
+  } = useQuery<Record<string, EntrySlim[]>>({
     queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null],
     enabled: !!tripId && !!activeVersion?.id,
     queryFn: async () => {
