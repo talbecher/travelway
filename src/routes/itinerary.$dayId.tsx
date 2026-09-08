@@ -12,7 +12,7 @@ import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import DayMap from "@/components/DayMap";
 import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendations";
-import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, walkTimeMin, TYPE_PIN_COLOR } from "@/lib/coords";
+import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
@@ -303,7 +303,7 @@ function DayDetail() {
   const [importOpen, setImportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [heroFailedUrl, setHeroFailedUrl] = useState<string | null>(null);
+  const [heroFailed, setHeroFailed] = useState<string[]>([]);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [ratingTarget, setRatingTarget] = useState<{
@@ -591,7 +591,28 @@ function DayDetail() {
     }, 0);
   }
 
-
+  // Pane height from the space actually left between the header and the bottom nav,
+  // so map overlays never sit on top of the navigation or the map attribution.
+  const paneRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const [paneH, setPaneH] = useState<number | null>(null);
+  const [overlayH, setOverlayH] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      const el = paneRef.current;
+      if (el) {
+        const top = el.getBoundingClientRect().top;
+        const nav = document.querySelector("[data-bottom-nav]") as HTMLElement | null;
+        const navH = nav ? nav.getBoundingClientRect().height : 0;
+        setPaneH(Math.max(260, Math.round(window.innerHeight - top - navH - 8)));
+      }
+      setOverlayH(overlayRef.current ? Math.round(overlayRef.current.getBoundingClientRect().height) : 0);
+    };
+    measure();
+    const t = window.setTimeout(measure, 120);
+    window.addEventListener("resize", measure);
+    return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); };
+  }, [view, selectedStopId, selectedSegment, entries.length]);
 
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
@@ -613,9 +634,18 @@ function DayDetail() {
       {/* Day header — panoramic in list mode, compact in map mode */}
       {(() => {
         const theme = getDestinationTheme(trip?.destination_country ?? "");
-        // Only photos that belong to this day are eligible for the header.
-        const heroPhoto = entries.find((e) => e.photo_url)?.photo_url ?? null;
-        const showPhoto = view === "list" && !!heroPhoto && heroFailedUrl !== heroPhoto;
+        // Header photo: only sight-like stops of THIS day, in a deterministic order.
+        // Food shots and note/document attachments are never used as the cover.
+        const HERO_RANK: Record<string, number> = { attraction: 0, hotel_checkin: 1, transport: 2 };
+        const heroPhoto =
+          entries
+            .filter((e) => e.photo_url && HERO_RANK[e.entry_type] != null && !heroFailed.includes(e.photo_url!))
+            .sort(
+              (x, y) =>
+                (HERO_RANK[x.entry_type] ?? 9) - (HERO_RANK[y.entry_type] ?? 9) ||
+                x.display_order - y.display_order,
+            )[0]?.photo_url ?? null;
+        const showPhoto = view === "list" && !!heroPhoto;
         const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
         const visitedCount = entries.filter(
           (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
@@ -628,18 +658,20 @@ function DayDetail() {
           <div
             className={
               "relative w-full overflow-hidden border-b border-border " +
-              (view === "list" ? "h-[124px]" : "h-[78px]")
+              (view === "list" ? "h-[112px]" : "h-[64px]")
             }
             dir="rtl"
           >
             {/* Background */}
             {showPhoto ? (
               <>
+                <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
                 <img
+                  key={heroPhoto!}
                   src={heroPhoto!}
                   alt=""
                   aria-hidden
-                  onError={() => setHeroFailedUrl(heroPhoto)}
+                  onError={() => setHeroFailed((f) => (f.includes(heroPhoto!) ? f : [...f, heroPhoto!]))}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div
@@ -651,18 +683,27 @@ function DayDetail() {
               <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
             )}
 
-            <div className="relative h-full px-4 py-2.5 flex flex-col justify-between">
-              {/* Top row — back (right) + more (left) */}
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  onClick={() => navigate({ to: "/itinerary" })}
-                  aria-label="חזרה למסלול"
-                  className="relative shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white/90 min-h-0 after:absolute after:-inset-1.5 after:content-['']"
-                  style={pillBg}
-                >
-                  <ChevronRight size={18} />
-                </button>
-                <div className="flex items-center gap-2">
+            <div
+              className={
+                "relative h-full px-3 " +
+                (view === "list" ? "py-2.5 flex flex-col justify-between" : "flex items-center gap-2")
+              }
+            >
+              {/* Back — always first in RTL */}
+              <button
+                onClick={() => navigate({ to: "/itinerary" })}
+                aria-label="חזרה למסלול"
+                className={
+                  "relative shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white/90 min-h-0 after:absolute after:-inset-1.5 after:content-[''] " +
+                  (view === "list" ? "absolute top-2.5 right-3" : "")
+                }
+                style={pillBg}
+              >
+                <ChevronRight size={18} />
+              </button>
+
+              {view === "list" && (
+                <div className="flex items-center justify-end">
                   <button
                     type="button"
                     onClick={() => setMoreOpen(true)}
@@ -673,16 +714,16 @@ function DayDetail() {
                     <MoreHorizontal size={14} />
                   </button>
                 </div>
-              </div>
+              )}
 
-              {/* Bottom section — title/date (right) + weather/city (left) */}
-              <div className="flex items-end justify-between gap-2">
+              {/* Title block */}
+              <div className={view === "list" ? "flex items-end justify-between gap-2" : "flex-1 min-w-0 flex items-center gap-2"}>
                 <div className="min-w-0">
-                  <h1 className={"text-white font-medium leading-tight " + (view === "list" ? "text-[22px]" : "text-[17px]")}>
+                  <h1 className={"text-white font-medium leading-tight truncate " + (view === "list" ? "text-[21px]" : "text-[15px]")}>
                     יום {day.day_number}
                     {day.city_label ? <span className="text-white/85"> · <span dir="ltr">{day.city_label}</span></span> : null}
                   </h1>
-                  <p className="text-white/70 text-[11px] leading-snug mt-0.5">
+                  <p className={"text-white/70 leading-snug truncate " + (view === "list" ? "text-[11px] mt-0.5" : "text-[10px]")}>
                     {hebWeekday(day.date)}, {hebDate(day.date)}
                   </p>
                   {view === "list" && totalLinked > 0 && (
@@ -691,7 +732,7 @@ function DayDetail() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className={"flex shrink-0 " + (view === "list" ? "flex-col items-end gap-1" : "items-center gap-1.5")}>
                   {view === "list" && <DayWeatherLine city={day.city_label ?? null} date={day.date} />}
                   {editingCity ? (
                     <div className="flex items-center gap-1.5">
@@ -705,24 +746,24 @@ function DayDetail() {
                         }}
                         dir="ltr"
                         placeholder="עיר / איזור"
-                        className="text-[12px] bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-2.5 py-1 outline-none focus:border-white min-w-0 w-[130px]"
+                        className="text-[12px] bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-2.5 py-1 outline-none focus:border-white min-w-0 w-[120px]"
                       />
                       <button
                         onClick={() => saveCity.mutate()}
                         aria-label="שמור עיר"
-                        className="w-7 h-7 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                        className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
                       >
                         <Check size={13} />
                       </button>
                       <button
                         onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
                         aria-label="בטל עריכת עיר"
-                        className="w-7 h-7 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
+                        className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
                       >
                         <X size={13} />
                       </button>
                     </div>
-                  ) : (
+                  ) : view === "list" ? (
                     <button
                       onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
                       className="relative inline-flex items-center gap-1 rounded-full text-white text-[10px] px-2 py-1 min-h-0 max-w-[120px] after:absolute after:-inset-2 after:content-['']"
@@ -731,6 +772,26 @@ function DayDetail() {
                       <span dir="ltr" className="truncate">{day.city_label ? "עריכת עיר" : "הוסף עיר / אזור"}</span>
                       <Pencil size={10} className="shrink-0" />
                     </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+                        aria-label={day.city_label ? "עריכת עיר" : "הוסף עיר או אזור"}
+                        className="relative w-8 h-8 rounded-full text-white flex items-center justify-center min-h-0 shrink-0 after:absolute after:-inset-1.5 after:content-['']"
+                        style={pillBg}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMoreOpen(true)}
+                        aria-label="פעולות נוספות"
+                        className="relative w-8 h-8 rounded-full text-white flex items-center justify-center min-h-0 shrink-0 after:absolute after:-inset-1.5 after:content-['']"
+                        style={pillBg}
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -740,8 +801,8 @@ function DayDetail() {
       })()}
 
       {/* View switch — same day, two modes */}
-      <div className="px-4 pt-3" dir="rtl">
-        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[color:var(--surface-2)] border border-border" role="tablist">
+      <div className="px-4 pt-2" dir="rtl">
+        <div className="inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
           {([
             { key: "list", label: "מסלול" },
             { key: "map", label: "מפה" },
@@ -755,7 +816,7 @@ function DayDetail() {
                 type="button"
                 onClick={() => (t.key === "map" ? showMap() : showList())}
                 className={
-                  "min-h-11 rounded-lg text-[13px] font-medium transition-colors " +
+                  "min-h-10 rounded-full text-[13px] font-medium transition-colors " +
                   (active ? "bg-[color:var(--accent)] text-white shadow-sm" : "text-muted-foreground")
                 }
               >
@@ -793,13 +854,20 @@ function DayDetail() {
       )}
 
       {view === "map" ? (
-        <div className="relative" style={{ height: "calc(100dvh - 220px)" }}>
+        <div
+          ref={paneRef}
+          className="relative mt-2 [&_.leaflet-bottom]:!bottom-[var(--map-card-h)]"
+          style={{
+            height: paneH ? `${paneH}px` : "calc(100dvh - 220px)",
+            ["--map-card-h" as string]: `${overlayH}px`,
+          } as React.CSSProperties}
+        >
           {mapStops.length > 0 ? (
             <DayMap
               stops={mapStops}
               highlightId={selectedStopId}
               segmentIds={selectedSegment}
-              bottomPadding={selectedEntry || selectedSegment ? 220 : 60}
+              bottomPadding={overlayH ? overlayH + 24 : 48}
               onPinTap={(id) => { setSelectedSegment(null); setSelectedStopId(id); }}
             />
           ) : (
@@ -810,13 +878,13 @@ function DayDetail() {
             </div>
           )}
 
-          {/* The drawn line is an OSRM driving estimate — say so, don't imply walking/transit. */}
+          {/* The drawn line is a driving estimate — label it plainly. */}
           {mapStops.length > 1 && !selectedEntry && !selectedSegment && (
             <div
-              className="absolute bottom-2 inset-x-3 z-[500] text-[10px] text-center text-muted-foreground bg-card/85 border border-border rounded-full py-1 px-2"
+              className="absolute bottom-2 right-3 z-[500] text-[10px] text-muted-foreground bg-card/85 border border-border rounded-full py-1 px-2.5"
               dir="rtl"
             >
-              קו המסלול הוא הערכת נסיעה (OSRM · פרופיל נהיגה), לא מסלול הליכה או תחבורה ציבורית.
+              מסלול נהיגה משוער
             </div>
           )}
 
@@ -824,6 +892,7 @@ function DayDetail() {
           {/* Selected stop card */}
           {selectedEntry && (
             <MapStopCard
+              cardRef={overlayRef}
               entry={selectedEntry}
               pinIndex={stopIndexById[selectedEntry.id] ?? null}
               onClose={() => setSelectedStopId(null)}
@@ -838,16 +907,17 @@ function DayDetail() {
             const to = entries.find((e) => e.id === selectedSegment.toId);
             const a = from ? coordsOf(from) : null;
             const b = to ? coordsOf(to) : null;
-            if (!from || !to || !a || !b) return null;
+            if (!from || !to) return null;
             return (
               <div
+                ref={overlayRef}
                 className="absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
                 style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
                 dir="rtl"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-[15px] font-semibold">המעבר בין התחנות</div>
+                    <div className="text-[15px] font-semibold">אפשרויות הגעה</div>
                     <div className="text-[12px] text-muted-foreground truncate">
                       {from.title} ← {to.title}
                     </div>
@@ -856,13 +926,19 @@ function DayDetail() {
                     type="button"
                     onClick={() => setSelectedSegment(null)}
                     aria-label="סגור"
-                    className="w-9 h-9 -mt-1 rounded-full flex items-center justify-center text-muted-foreground"
+                    className="w-9 h-9 -mt-1 rounded-full flex items-center justify-center text-muted-foreground shrink-0"
                   >
                     <X size={16} />
                   </button>
                 </div>
-                <div className="pt-2">
-                  <SegmentOptions a={a} b={b} from={from} to={to} isJapan={isJapan} city={day.city_label ?? ""} />
+                <div className="pt-2 overflow-y-auto overscroll-contain" style={{ maxHeight: paneH ? Math.round(paneH * 0.45) : 220 }}>
+                  {a && b ? (
+                    <SegmentOptions a={a} b={b} from={from} to={to} isJapan={isJapan} city={day.city_label ?? ""} />
+                  ) : (
+                    <div className="text-[12px] text-muted-foreground pb-2">
+                      לאחת התחנות אין מיקום שמור, ולכן אי אפשר להציג את המעבר במפה או לפתוח ניווט.
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -880,7 +956,7 @@ function DayDetail() {
           />
         </div>
       ) : (
-        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 254px)" }}>
+        <div ref={paneRef} className="relative flex flex-col" style={{ height: paneH ? `${paneH}px` : "calc(100dvh - 254px)" }}>
           {/* Summary + list actions */}
           <div className="px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
             <span className="text-[12px] text-muted-foreground">
@@ -932,8 +1008,6 @@ function DayDetail() {
                       <div key={e.id}>
                         {prev && a && b && (
                           <SegmentRow
-                            a={a}
-                            b={b}
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
                             onShowOnMap={() => {
                               setSelectedStopId(null);
@@ -1307,30 +1381,21 @@ function DayDetail() {
 
 /** Compact segment row in the list: air distance + entry into arrival options. */
 function SegmentRow({
-  a,
-  b,
   onOpen,
   onShowOnMap,
 }: {
-  a: { lat: number; lng: number };
-  b: { lat: number; lng: number };
   onOpen: () => void;
   onShowOnMap: () => void;
 }) {
-  const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
-  const walkMin = walkTimeMin(km);
   return (
-    <div className="my-1 flex items-center gap-2 flex-nowrap min-w-0" dir="rtl" style={{ paddingInlineStart: 72 }}>
-      <span className="text-[11px] text-muted-foreground truncate shrink">
-        מרחק אווירי {fmtDistance(km)} · ~{walkMin} דק׳ הליכה
-      </span>
+    <div className="my-1 flex items-center gap-2 flex-nowrap min-w-0" dir="rtl" style={{ paddingInlineStart: 52 }}>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onOpen(); }}
         onPointerDown={(e) => e.stopPropagation()}
         className="shrink-0 min-h-9 px-2.5 rounded-full border border-border bg-card text-[11px] text-muted-foreground inline-flex items-center gap-1"
       >
-        פרטי מעבר <ChevronRight size={12} className="rotate-180" />
+        אפשרויות הגעה <ChevronRight size={12} className="rotate-180" />
       </button>
       <button
         type="button"
@@ -1375,12 +1440,6 @@ function SegmentOptions({
 
   return (
     <div className="flex flex-col gap-2.5" dir="rtl">
-      <div className="rounded-xl bg-[color:var(--surface-2)] px-3 py-2 text-[12px] text-muted-foreground">
-        מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span> · ~{walkTimeMin(km)} דק׳ הליכה משוערות.
-        <div className="text-[11px] mt-0.5 opacity-80">זהו מרחק בקו ישר, לא אורך מסלול בפועל.</div>
-      </div>
-
-      <div className="text-[11px] text-muted-foreground">פתיחה בשירות חיצוני (לא משנה את סדר היום או את המפה):</div>
       <div className="grid grid-cols-2 gap-2">
         <a href={`${base}&travelmode=walking`} target="_blank" rel="noopener noreferrer" className={linkCls}>
           🚶 הליכה ב-Google Maps <ExternalLink size={11} />
@@ -1406,6 +1465,13 @@ function SegmentOptions({
           </a>
         )}
       </div>
+
+      <details className="text-[11px] text-muted-foreground">
+        <summary className="min-h-9 flex items-center cursor-pointer select-none">פרטים נוספים</summary>
+        <div className="pt-1">
+          מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span> — קו ישר בין התחנות, לא אורך מסלול ולא זמן הגעה.
+        </div>
+      </details>
     </div>
   );
 }
@@ -1440,10 +1506,13 @@ function SortableEntry({
   const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
+  const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? null;
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
   const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
   const isVisited = linkedRec?.status === "visited";
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const showThumb = !!entry.photo_url && !photoFailed;
 
   // Duration until next stop — only when BOTH times exist and result is positive.
   const duration = (() => {
@@ -1456,8 +1525,8 @@ function SortableEntry({
   })();
 
   const notesSnippet = entry.description
-    ? entry.description.length > 60
-      ? entry.description.slice(0, 60) + "..."
+    ? entry.description.length > 80
+      ? entry.description.slice(0, 80) + "..."
       : entry.description
     : null;
 
@@ -1470,24 +1539,27 @@ function SortableEntry({
 
   return (
     <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="relative flex items-stretch gap-2">
-      {/* Timeline rail (right in RTL) */}
-      <div className="w-[72px] shrink-0 relative flex flex-col items-center pt-1">
-        {/* Dashed line running through the rail */}
+      {/* Timeline rail (right in RTL) — narrow, content gets the width */}
+      <div className="w-[36px] shrink-0 relative flex flex-col items-center pt-2">
         <div
           className="absolute right-1/2 translate-x-1/2 top-0 bottom-[-16px] w-0 opacity-40"
           style={{ borderRight: "2px dashed var(--border-strong)" }}
           aria-hidden
         />
-        <span
-          className={`relative w-[44px] text-right text-[11px] tabular-nums bg-background ${entry.time_of_day ? "font-medium text-foreground" : "text-muted-foreground"}`}
-          dir="ltr"
-        >
-          {entry.time_of_day || "—"}
-        </span>
-        <span
-          className="relative mt-1.5 w-2.5 h-2.5 rounded-full"
-          style={{ background: hasCoords ? pinColor : "var(--border-strong)", border: "1.5px solid rgba(255,255,255,0.9)" }}
-        />
+        {hasCoords ? (
+          <span
+            aria-label={`תחנה ${pinIndex} במפה`}
+            className="relative w-[22px] h-[22px] rounded-full text-[11px] font-semibold text-white flex items-center justify-center tabular-nums"
+            style={{ background: pinColor }}
+          >
+            {pinIndex}
+          </span>
+        ) : (
+          <span
+            className="relative w-2.5 h-2.5 mt-1.5 rounded-full"
+            style={{ background: "var(--border-strong)", border: "1.5px solid rgba(255,255,255,0.9)" }}
+          />
+        )}
       </div>
 
       <motion.div
@@ -1497,115 +1569,106 @@ function SortableEntry({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetails(); } }}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 min-w-0 bg-card rounded-[12px] shadow-sm overflow-hidden cursor-pointer"
+        className="relative flex-1 min-w-0 bg-card rounded-[14px] shadow-sm cursor-pointer p-2.5"
         style={{ border: "0.5px solid var(--border)" }}
       >
-        {/* Drag handle — the ONLY drag surface (always available; emphasised in sort mode) */}
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="גרור לשינוי סדר"
-          className={
-            "absolute left-1 top-1 z-10 w-8 h-8 flex items-center justify-center rounded-md touch-none cursor-grab active:cursor-grabbing hover:bg-muted/60 " +
-            (sortMode ? "text-[color:var(--accent)] bg-[color:var(--surface-2)] " : "text-muted-foreground/70 ") +
-            (pulse ? "animate-pulse text-[color:var(--accent)]" : "")
-          }
-        >
-          <GripVertical size={16} />
-        </button>
+        <div className="flex items-start gap-2.5">
+          {/* Drag handle — only in sort mode */}
+          {sortMode && (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="גרור לשינוי סדר"
+              className={
+                "shrink-0 w-8 h-8 -mr-1 flex items-center justify-center rounded-md touch-none cursor-grab active:cursor-grabbing " +
+                "text-[color:var(--accent)] bg-[color:var(--surface-2)] " +
+                (pulse ? "animate-pulse" : "")
+              }
+            >
+              <GripVertical size={16} />
+            </button>
+          )}
 
-        {/* Edit — opens the real edit form */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          onPointerDown={(e) => e.stopPropagation()}
-          aria-label={`עריכת ${entry.title}`}
-          className="absolute left-1 bottom-1 z-10 min-h-9 px-2 rounded-md text-[11px] text-muted-foreground inline-flex items-center gap-1 hover:bg-muted/60"
-        >
-          <Pencil size={12} /> עריכה
-        </button>
+          {/* Thumbnail or small type icon */}
+          {showThumb ? (
+            <img
+              src={entry.photo_url!}
+              alt=""
+              loading="lazy"
+              onError={() => setPhotoFailed(true)}
+              className="w-[72px] h-[72px] rounded-xl object-cover shrink-0"
+            />
+          ) : (
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0"
+              style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
+            >
+              {icon}
+            </div>
+          )}
 
-
-        {/* Variant A: photo header (fixed 80px) */}
-        {entry.photo_url && (
-          <img
-            src={entry.photo_url}
-            alt=""
-            loading="lazy"
-            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
-            onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
-            className="w-full h-20 object-cover"
-          />
-        )}
-
-        <div className="p-3 pl-9">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="entry-title text-[14px] font-medium leading-tight text-right">{entry.title}</span>
-                {entry.photo_url && <span className="text-[14px] shrink-0">{icon}</span>}
-                {hasCoords && (
-                  <span
-                    aria-label="במפה"
-                    className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold text-white shrink-0"
-                    style={{ background: pinColor }}
-                  >
-                    {pinIndex}
-                  </span>
-                )}
-                {isVisited && (
-                  <>
-                    <span
-                      className="inline-flex w-2 h-2 rounded-full shrink-0"
-                      style={{ background: "#10B981" }}
-                      title="ביקרתם כאן"
-                    />
-                    {typeof linkedRec?.rating === "number" && (
-                      <span className="text-[11px] font-medium text-[color:var(--accent)]">★{linkedRec.rating}</span>
-                    )}
-                  </>
-                )}
-                {isLinked && !isVisited && (
-                  <span title="מסונכרן עם המלצות" className="inline-flex text-[color:var(--accent-3)] shrink-0">
-                    <Link2 size={12} aria-label="מסונכרן עם המלצות" />
-                  </span>
-                )}
-              </div>
-
-              {entry.location_name && (
-                <div className="entry-subtitle mt-1 text-[11px] text-muted-foreground truncate">
-                  <span>📍 </span>
-                  <span dir="ltr">{entry.location_name}</span>
-                </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-1.5 flex-wrap">
+              <span className="entry-title text-[14px] font-medium leading-snug text-right break-words">{entry.title}</span>
+              {isVisited && (
+                <>
+                  <span className="inline-flex w-2 h-2 mt-1.5 rounded-full shrink-0" style={{ background: "#10B981" }} title="ביקרתם כאן" />
+                  {typeof linkedRec?.rating === "number" && (
+                    <span className="text-[11px] font-medium text-[color:var(--accent)]">★{linkedRec.rating}</span>
+                  )}
+                </>
               )}
-
-              {duration && (
-                <div className="mt-1 text-[10px] text-muted-foreground">{duration}</div>
-              )}
-
-              {notesSnippet && (
-                <div className="text-[10px] text-muted-foreground italic mt-1 truncate">
-                  {notesSnippet}
-                </div>
+              {isLinked && !isVisited && (
+                <span title="מסונכרן עם המלצות" className="inline-flex mt-1 text-[color:var(--accent-3)] shrink-0">
+                  <Link2 size={12} aria-label="מסונכרן עם המלצות" />
+                </span>
               )}
             </div>
 
-            {/* Variant B: 48×48 icon when no photo */}
-            {!entry.photo_url && (
-              <div
-                className="w-12 h-12 rounded-lg flex items-center justify-center text-[22px] shrink-0"
-                style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
-              >
-                {icon}
-              </div>
+            {/* Meta — may wrap to two lines */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+              <span className={entry.time_of_day ? "font-medium text-foreground tabular-nums" : ""} dir={entry.time_of_day ? "ltr" : undefined}>
+                {entry.time_of_day || "ללא שעה"}
+              </span>
+              {typeLabel && <><span aria-hidden>·</span><span>{typeLabel}</span></>}
+              {duration && <><span aria-hidden>·</span><span>{duration}</span></>}
+              {entry.location_name && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="min-w-0 break-words">📍 <span dir="ltr">{entry.location_name}</span></span>
+                </>
+              )}
+            </div>
+
+            {notesSnippet && (
+              <div className="text-[11px] text-muted-foreground/90 italic mt-1 break-words">{notesSnippet}</div>
             )}
+
+            {/* Actions */}
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label={`עריכת ${entry.title}`}
+                className="min-h-9 px-2.5 rounded-full border border-border text-[11px] text-foreground inline-flex items-center gap-1"
+              >
+                <Pencil size={12} /> עריכה
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label={`פרטים ופעולות נוספות עבור ${entry.title}`}
+                className="min-h-9 w-9 rounded-full border border-border text-muted-foreground inline-flex items-center justify-center"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Subtle chevron — whole card is tappable */}
-        <span className="absolute bottom-1 left-2 text-muted-foreground/60 text-[14px] leading-none" aria-hidden>›</span>
       </motion.div>
     </div>
   );
@@ -1959,17 +2022,20 @@ function MapStopCard({
   onClose,
   onEdit,
   onMore,
+  cardRef,
 }: {
   entry: EntryRow;
   pinIndex: number | null;
   onClose: () => void;
   onEdit: () => void;
   onMore: () => void;
+  cardRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const coords = coordsOf(entry);
   const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
   return (
     <div
+      ref={cardRef}
       className="absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       dir="rtl"

@@ -108,7 +108,7 @@ function RoadRoute({ stops }: { stops: MapStop[] }) {
   );
 }
 
-function FitBounds({ stops, bottomPadding = 50 }: { stops: MapStop[]; bottomPadding?: number }) {
+function FitBounds({ stops, bottomPadding = 50, paused }: { stops: MapStop[]; bottomPadding?: number; paused?: boolean }) {
   const map = useMap();
   const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
   const userMoved = useRef(false);
@@ -123,7 +123,7 @@ function FitBounds({ stops, bottomPadding = 50 }: { stops: MapStop[]; bottomPadd
     };
   }, [map]);
   useEffect(() => {
-    if (!map) return;
+    if (!map || paused) return;
     const timer = setTimeout(() => {
       try {
         // Never re-frame after the user has panned/zoomed the map themselves.
@@ -147,13 +147,70 @@ function FitBounds({ stops, bottomPadding = 50 }: { stops: MapStop[]; bottomPadd
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [key, map, stops, bottomPadding]);
+    // Intentionally keyed on the coordinates only: a data refresh that returns
+    // identical coordinates must not reset the user's zoom/position.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map, bottomPadding, paused]);
+  return null;
+}
+
+/**
+ * Frames the current selection: for a segment, exactly its two endpoints;
+ * for a single stop, keeps the zoom and only pans it clear of the bottom card.
+ */
+function FocusSelection({
+  stops,
+  highlightId,
+  segmentIds,
+  bottomPadding,
+}: {
+  stops: MapStop[];
+  highlightId?: string | null;
+  segmentIds?: { fromId: string; toId: string } | null;
+  bottomPadding: number;
+}) {
+  const map = useMap();
+  const key = segmentIds ? `seg:${segmentIds.fromId}|${segmentIds.toId}` : highlightId ? `stop:${highlightId}` : "";
+  useEffect(() => {
+    if (!map || !key) return;
+    const timer = setTimeout(() => {
+      try {
+        if (segmentIds) {
+          const a = stops.find((s) => s.id === segmentIds.fromId);
+          const b = stops.find((s) => s.id === segmentIds.toId);
+          if (!a || !b) return;
+          const bounds = L.latLngBounds([
+            [a.lat, a.lng],
+            [b.lat, b.lng],
+          ]);
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, {
+              paddingTopLeft: [48, 48],
+              paddingBottomRight: [48, bottomPadding],
+              maxZoom: 16,
+              animate: true,
+            });
+          }
+          return;
+        }
+        const s = stops.find((x) => x.id === highlightId);
+        if (!s) return;
+        const zoom = map.getZoom();
+        const pt = map.project([s.lat, s.lng], zoom);
+        map.panTo(map.unproject([pt.x, pt.y + bottomPadding / 2], zoom), { animate: true });
+      } catch (e) {
+        console.warn("focus selection failed", e);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
   return null;
 }
 
 
 
-function FocusRouteButton({ stops }: { stops: MapStop[] }) {
+function FocusRouteButton({ stops, bottomOffset = 16 }: { stops: MapStop[]; bottomOffset?: number }) {
   const map = useMap();
   return (
     <button
@@ -167,11 +224,18 @@ function FocusRouteButton({ stops }: { stops: MapStop[] }) {
           return;
         }
         const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: true });
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, {
+            paddingTopLeft: [50, 50],
+            paddingBottomRight: [50, Math.max(50, bottomOffset)],
+            maxZoom: 15,
+            animate: true,
+          });
+        }
       }}
       aria-label="התמקד למסלול"
       style={{
-        position: "absolute", bottom: 16, right: 12, zIndex: 500,
+        position: "absolute", bottom: Math.max(16, bottomOffset - 8), right: 12, zIndex: 500,
         width: 40, height: 40, borderRadius: 999,
         background: "#fff", border: "1px solid rgba(0,0,0,0.15)",
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -331,8 +395,9 @@ export default function DayMap({
             );
           })}
         </MarkerClusterGroup>
-        <FitBounds stops={validStops} bottomPadding={bottomPadding} />
-        <FocusRouteButton stops={validStops} />
+        <FitBounds stops={validStops} bottomPadding={bottomPadding} paused={!!highlightId || !!segmentIds} />
+        <FocusSelection stops={validStops} highlightId={highlightId} segmentIds={segmentIds} bottomPadding={bottomPadding} />
+        <FocusRouteButton stops={validStops} bottomOffset={bottomPadding} />
 
       </MapContainer>
     </div>
