@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2, GripVertical } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, Link2, GripVertical, Footprints, Bus, TrainFront } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
@@ -532,7 +532,6 @@ function DayDetail() {
         stops.push({ id: e.id, lat: c.lat, lng: c.lng, type: e.entry_type, index: idx, title: e.title, time: e.time_of_day });
       }
     }
-    console.log("[mapStops]", stops.length, stops);
     return stops;
   }, [entries]);
 
@@ -881,7 +880,8 @@ function DayDetail() {
           {/* The drawn line is a driving estimate — label it plainly. */}
           {mapStops.length > 1 && !selectedEntry && !selectedSegment && (
             <div
-              className="absolute bottom-2 right-3 z-[500] text-[10px] text-muted-foreground bg-card/85 border border-border rounded-full py-1 px-2.5"
+              className="absolute right-3 z-[500] text-[10px] text-muted-foreground bg-card/90 border border-border rounded-full py-1 px-2.5"
+              style={{ bottom: `calc(var(--map-card-h) + 26px)` }}
               dir="rtl"
             >
               מסלול נהיגה משוער
@@ -917,10 +917,7 @@ function DayDetail() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-[15px] font-semibold">אפשרויות הגעה</div>
-                    <div className="text-[12px] text-muted-foreground truncate">
-                      {from.title} ← {to.title}
-                    </div>
+                    <div className="text-[14px] font-semibold">אפשרויות הגעה</div>
                   </div>
                   <button
                     type="button"
@@ -988,7 +985,7 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[120px] relative">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-6 relative">
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
@@ -1036,34 +1033,28 @@ function DayDetail() {
             </DndContext>
           </div>
 
-          {/* Floating action button — 56px circle */}
+          {/* Bottom action row — search takes the remaining width, add sits beside it */}
           <div
-            className="fixed right-4 z-40"
-            style={{ bottom: `calc(80px + env(safe-area-inset-bottom))` }}
+            className="sticky bottom-0 bg-card border-t border-border px-3 flex items-center gap-2"
+            style={{ minHeight: 56, paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))", paddingTop: "0.375rem" }}
           >
-            <button
-              onClick={openPicker}
-              aria-label="הוספת מקום או פעילות"
-              className="h-14 w-14 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center justify-center min-h-0 active:scale-95 transition-transform motion-reduce:transition-none"
-            >
-              <Plus size={24} />
-            </button>
-          </div>
-
-
-          {/* Sticky quick search bar */}
-          <div
-            className="sticky bottom-0 -mx-4 bg-card border-t border-border px-3 flex items-center"
-            style={{ minHeight: 52, paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))", paddingTop: "0.25rem" }}
-          >
-            <div className="flex-1 min-w-0 [&_input]:!h-10 [&_input]:!rounded-[20px] [&_input]:!text-[13px]">
+            <div className="flex-1 min-w-0 [&_input]:!h-11 [&_input]:!rounded-[22px] [&_input]:!text-[13px]">
               <PlacesSearch
                 key={`quick-${entries.length}`}
                 placeholder="חיפוש מהיר בגוגל..."
                 onSelect={(place) => quickAdd.mutate(place)}
               />
             </div>
+            <button
+              type="button"
+              onClick={openPicker}
+              aria-label="הוספת מקום או פעילות"
+              className="shrink-0 h-11 w-11 rounded-full bg-[color:var(--accent)] text-white shadow-sm flex items-center justify-center min-h-0 active:scale-95 transition-transform motion-reduce:transition-none"
+            >
+              <Plus size={22} />
+            </button>
           </div>
+
         </div>
       )}
 
@@ -1079,9 +1070,7 @@ function DayDetail() {
           if (!a || !b) return null;
           return (
             <div className="pb-3" dir="rtl">
-              <div className="text-[12px] text-muted-foreground mb-3 break-words">
-                {segmentEntries.from!.title} ← {segmentEntries.to!.title}
-              </div>
+
               <SegmentOptions
                 a={a}
                 b={b}
@@ -1434,47 +1423,73 @@ function SegmentOptions({
   const fromName = placeName(from, city);
   const toName = placeName(to, city);
   const hasNames = fromName && toName;
+  const [showMore, setShowMore] = useState(false);
 
-  const linkCls =
-    "min-h-11 rounded-xl border border-border bg-card text-[12px] inline-flex items-center justify-center gap-1.5 px-3";
+  const rowCls =
+    "w-full min-h-11 rounded-xl border border-border bg-card text-[13px] flex items-center gap-2 px-3";
 
   return (
-    <div className="flex flex-col gap-2.5" dir="rtl">
-      <div className="grid grid-cols-2 gap-2">
-        <a href={`${base}&travelmode=walking`} target="_blank" rel="noopener noreferrer" className={linkCls}>
-          🚶 הליכה ב-Google Maps <ExternalLink size={11} />
-        </a>
-        <a href={`${base}&travelmode=transit`} target="_blank" rel="noopener noreferrer" className={linkCls}>
-          🚌 תחבורה ציבורית ב-Google Maps <ExternalLink size={11} />
-        </a>
+    <div className="flex flex-col gap-2" dir="rtl">
+      {/* Explicit origin / destination — no arrows to misread in mixed scripts */}
+      <div className="rounded-xl bg-[color:var(--surface-2)] px-3 py-2 text-[12px] leading-tight">
+        <div className="flex gap-1.5">
+          <span className="text-muted-foreground shrink-0">מ־</span>
+          <span className="min-w-0 break-words font-medium">{from.title}</span>
+        </div>
+        <div className="flex gap-1.5 mt-1">
+          <span className="text-muted-foreground shrink-0">אל־</span>
+          <span className="min-w-0 break-words font-medium">{to.title}</span>
+        </div>
       </div>
 
-      <div className="text-[11px] text-muted-foreground pt-1">שירותי תכנון נסיעה:</div>
-      <div className="grid grid-cols-2 gap-2">
-        <a
-          href={hasNames ? rome2rioUrl(fromName, toName) : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={linkCls}
-        >
-          🗺 Rome2Rio <ExternalLink size={11} />
-        </a>
-        {isJapan && (
-          <a href={navitimeUrl(a, b, fromName, toName)} target="_blank" rel="noopener noreferrer" className={linkCls}>
-            🚄 NAVITIME <ExternalLink size={11} />
-          </a>
-        )}
-      </div>
+      <a href={`${base}&travelmode=walking`} target="_blank" rel="noopener noreferrer" className={rowCls}>
+        <Footprints size={16} className="shrink-0 text-[color:var(--accent)]" />
+        <span className="flex-1 min-w-0 truncate">הליכה ב‑Google Maps</span>
+        <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+      </a>
+      <a href={`${base}&travelmode=transit`} target="_blank" rel="noopener noreferrer" className={rowCls}>
+        <Bus size={16} className="shrink-0 text-[color:var(--accent)]" />
+        <span className="flex-1 min-w-0 truncate">תחבורה ציבורית ב‑Google Maps</span>
+        <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+      </a>
 
-      <details className="text-[11px] text-muted-foreground">
-        <summary className="min-h-9 flex items-center cursor-pointer select-none">פרטים נוספים</summary>
-        <div className="pt-1">
+      <div className="text-[11px] text-muted-foreground pt-0.5">שירותי תכנון נסיעה</div>
+      <a
+        href={hasNames ? rome2rioUrl(fromName, toName) : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={rowCls + " !min-h-10 !text-[12px]"}
+      >
+        <MapIcon size={15} className="shrink-0 text-muted-foreground" />
+        <span className="flex-1 min-w-0 truncate">Rome2Rio</span>
+        <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+      </a>
+      {isJapan && (
+        <a href={navitimeUrl(a, b, fromName, toName)} target="_blank" rel="noopener noreferrer" className={rowCls + " !min-h-10 !text-[12px]"}>
+          <TrainFront size={15} className="shrink-0 text-muted-foreground" />
+          <span className="flex-1 min-w-0 truncate">NAVITIME</span>
+          <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+        </a>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowMore((v) => !v)}
+        aria-expanded={showMore}
+        className="min-h-10 text-[11px] text-muted-foreground inline-flex items-center gap-1 self-start"
+      >
+        פרטים נוספים
+        <ChevronRight size={12} className={showMore ? "-rotate-90" : "rotate-180"} />
+      </button>
+      {showMore && (
+        <div className="text-[11px] text-muted-foreground -mt-1 pb-1">
           מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span> — קו ישר בין התחנות, לא אורך מסלול ולא זמן הגעה.
         </div>
-      </details>
+      )}
     </div>
   );
 }
+
 
 
 
@@ -1611,7 +1626,7 @@ function SortableEntry({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-1.5 flex-wrap">
-              <span className="entry-title text-[14px] font-medium leading-snug text-right break-words">{entry.title}</span>
+              <span className="entry-title text-[15px] font-semibold leading-snug text-right break-words">{entry.title}</span>
               {isVisited && (
                 <>
                   <span className="inline-flex w-2 h-2 mt-1.5 rounded-full shrink-0" style={{ background: "#10B981" }} title="ביקרתם כאן" />
@@ -1628,7 +1643,7 @@ function SortableEntry({
             </div>
 
             {/* Meta — may wrap to two lines */}
-            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
               <span className={entry.time_of_day ? "font-medium text-foreground tabular-nums" : ""} dir={entry.time_of_day ? "ltr" : undefined}>
                 {entry.time_of_day || "ללא שעה"}
               </span>
@@ -1643,11 +1658,11 @@ function SortableEntry({
             </div>
 
             {notesSnippet && (
-              <div className="text-[11px] text-muted-foreground/90 italic mt-1 break-words">{notesSnippet}</div>
+              <div className="text-[11px] text-muted-foreground/90 italic mt-0.5 break-words">{notesSnippet}</div>
             )}
 
             {/* Actions */}
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-1.5 flex items-center gap-2">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
