@@ -65,7 +65,7 @@ export function PlanNextCard({
         <button
           type="button"
           onClick={onOpenDay}
-          className="min-h-11 flex-1 rounded-xl bg-[color:var(--accent)] px-4 text-[14px] font-medium text-[color:var(--primary-foreground)]"
+          className="min-h-11 flex-1 whitespace-nowrap rounded-xl bg-[color:var(--accent)] px-4 text-[14px] font-medium text-[color:var(--primary-foreground)]"
         >
           פתח את היום
         </button>
