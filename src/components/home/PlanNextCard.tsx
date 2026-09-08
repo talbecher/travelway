@@ -25,9 +25,9 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-xl bg-card p-4 shadow-sm">
+    <section className="space-y-2.5 rounded-[22px] bg-card px-3.5 py-3 shadow-sm">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-        <h2 className="min-w-0 break-words text-[19px] font-semibold">{title}</h2>
+        <h2 className="min-w-0 break-words text-[18px] font-semibold">{title}</h2>
         {onOpenItinerary && (
           <button type="button" onClick={onOpenItinerary} className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] text-muted-foreground">
             לכל המסלול
@@ -49,6 +49,7 @@ function DayPicker({
   selectedDayId: string | null;
   onSelectDay: (id: string) => void;
 }) {
+  const showCity = days.length > 0 && days.every((day) => Boolean(day.city_label));
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
   const lastRevealedId = useRef<string | null>(null);
@@ -76,7 +77,7 @@ function DayPicker({
               aria-pressed={selected}
               onClick={() => onSelectDay(day.id)}
               className={
-                "min-h-[58px] w-[92px] shrink-0 rounded-lg border px-2 py-1.5 text-center transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                "min-h-[56px] w-[86px] shrink-0 rounded-lg border px-2 py-1.5 text-center transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                 (selected
                   ? "border-transparent bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
                   : "border-border bg-surface-2 text-foreground")
@@ -84,7 +85,7 @@ function DayPicker({
             >
               <span className="block text-[11px] font-semibold">יום {day.day_number}</span>
               <span className={"block text-[10px] " + (selected ? "text-[color:var(--accent-foreground)]/85" : "text-muted-foreground")}>{hebDate(day.date)}</span>
-              {day.city_label && <span className="mt-0.5 block truncate text-[10px]">{day.city_label}</span>}
+              {showCity && <span className="mt-0.5 block truncate text-[10px]">{day.city_label}</span>}
             </button>
           );
         })}
@@ -97,7 +98,7 @@ export function PlanLoadingCard() {
   return (
     <Shell>
       <div className="flex gap-2 overflow-hidden">
-        {[0, 1, 2].map((item) => <div key={item} className="h-[58px] w-[92px] shrink-0 animate-pulse rounded-lg bg-muted" />)}
+        {[0, 1, 2].map((item) => <div key={item} className="h-[56px] w-[86px] shrink-0 animate-pulse rounded-lg bg-muted" />)}
       </div>
       <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
       <div className="h-11 w-full animate-pulse rounded-lg bg-muted" />
@@ -125,7 +126,7 @@ export function PlanStartCard({ onOpenItinerary }: { onOpenItinerary: () => void
 
 function PrimaryAction({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className="min-h-11 w-full rounded-lg bg-[color:var(--accent)] px-4 text-[14px] font-semibold text-[color:var(--accent-foreground)] transition-opacity duration-200 motion-reduce:transition-none active:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+    <button type="button" onClick={onClick} className="min-h-11 w-full rounded-[15px] bg-[color:var(--accent)] px-4 text-[15px] font-semibold text-[color:var(--accent-foreground)] transition-opacity duration-200 motion-reduce:transition-none active:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       {children}
     </button>
   );
@@ -158,20 +159,20 @@ export function PlanNextCard({
       <DayPicker days={days} selectedDayId={selectedDayId} onSelectDay={onSelectDay} />
 
       {emptyCount > 0 && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground/80">
           {emptyCount === 1 ? "יום אחד במסלול ללא פעילויות" : `${emptyCount} ימים במסלול ללא פעילויות`}
         </p>
       )}
 
       {showReviewPrompt && !selectedDay ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <p className="text-[13px] text-muted-foreground">אפשר לעבור על הימים ולעדכן את המסלול.</p>
           <PrimaryAction onClick={onOpenItinerary}>לעריכת המסלול</PrimaryAction>
         </div>
       ) : selectedDay ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="min-w-0">
-            <h3 className="break-words text-[17px] font-semibold">
+            <h3 className="break-words text-[19px] font-semibold leading-tight">
               {isEmpty
                 ? selectedDay.city_label ? `מה עושים ב${selectedDay.city_label}?` : "מה מתכננים ליום הזה?"
                 : selectedDay.city_label ?? `יום ${selectedDay.day_number}`}
