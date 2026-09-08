@@ -63,7 +63,7 @@ export function PreTripHero({
         />
       )}
       {/* readable scrim only where the text sits */}
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-[72%] bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-[85%] bg-gradient-to-t from-black/85 via-black/50 to-transparent" />
 
       <div className="mt-auto min-w-0 max-w-full">
         <div className="mb-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-white/85">
