@@ -20,8 +20,14 @@ import { ChecklistCard } from "@/components/ChecklistCard";
 import { useOnline } from "@/hooks/use-online";
 import { toast } from "sonner";
 import { PreTripHero } from "@/components/home/PreTripHero";
-import { PlanNextCard, PlanStartCard } from "@/components/home/PlanNextCard";
-import { PrepStatsRow } from "@/components/home/PrepStatsRow";
+import {
+  PlanEmptyDayCard,
+  PlanErrorCard,
+  PlanLoadingCard,
+  PlanReviewCard,
+  PlanStartCard,
+} from "@/components/home/PlanNextCard";
+import { SavedPlacesRow } from "@/components/home/PrepStatsRow";
 import { BudgetSummary } from "@/components/home/BudgetSummary";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
 
