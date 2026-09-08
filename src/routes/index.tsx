@@ -593,12 +593,19 @@ function Home() {
           : firstEmptyDay?.id ?? null;
     const selectedPlanEntries = selectedPlanDayId ? entriesByDay[selectedPlanDayId] ?? [] : [];
     const destinationTheme = getDestinationTheme(trip.destination_country ?? "");
-    const destinationImage =
-      recs.find((rec) => rec.type === "attraction" && rec.photo_url)?.photo_url ??
-      Object.values(entriesByDay)
-        .flat()
-        .find((entry) => entry.entry_type === "attraction" && entry.photo_url)?.photo_url ??
-      null;
+    // Destination-flavoured candidates only (sights/attractions), never food or documents.
+    // The hero tries them in order and keeps the first one that actually loads.
+    const heroImageCandidates = Array.from(
+      new Set(
+        [
+          ...recs.filter((rec) => rec.type === "attraction").map((rec) => rec.photo_url),
+          ...Object.values(entriesByDay)
+            .flat()
+            .filter((entry) => entry.entry_type === "attraction")
+            .map((entry) => entry.photo_url),
+        ].filter((url): url is string => Boolean(url)),
+      ),
+    );
     const savedPlaces = recs.map((rec) => ({
       id: rec.id,
       name: rec.name,
@@ -617,7 +624,7 @@ function Home() {
           endDate={trip.end_date}
           daysTotal={stats.daysTotal}
           daysToStart={stats.daysToStart}
-          imageUrl={destinationImage}
+          imageUrls={heroImageCandidates}
           fallbackBackground={destinationTheme.heroGradient}
         />
 
