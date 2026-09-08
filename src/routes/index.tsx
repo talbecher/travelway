@@ -510,6 +510,13 @@ function Home() {
     return { saved, planned, empty };
   }, [recs, days, entriesByDay]);
 
+  // First itinerary day with no activities, using the exact same filter as
+  // stats2 so the count and the suggested day always agree.
+  const firstEmptyDay = useMemo(
+    () => days.find((d) => (entriesByDay[d.id]?.length ?? 0) === 0) ?? null,
+    [days, entriesByDay],
+  );
+
   const deadlines = useMemo(
     () => buildDeadlines(hotels as never, recs as never, todayISO()),
     [hotels, recs],
