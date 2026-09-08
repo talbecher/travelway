@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, ZoomControl, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -108,13 +108,26 @@ function RoadRoute({ stops }: { stops: MapStop[] }) {
   );
 }
 
-function FitBounds({ stops }: { stops: MapStop[] }) {
+function FitBounds({ stops, bottomPadding = 50 }: { stops: MapStop[]; bottomPadding?: number }) {
   const map = useMap();
   const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
+  const userMoved = useRef(false);
+  useEffect(() => {
+    if (!map) return;
+    const mark = () => { userMoved.current = true; };
+    map.on("dragstart", mark);
+    map.on("zoomstart", mark);
+    return () => {
+      map.off("dragstart", mark);
+      map.off("zoomstart", mark);
+    };
+  }, [map]);
   useEffect(() => {
     if (!map) return;
     const timer = setTimeout(() => {
       try {
+        // Never re-frame after the user has panned/zoomed the map themselves.
+        if (userMoved.current) return;
         if (stops.length === 0) return;
         if (stops.length === 1) {
           map.setView([stops[0].lat, stops[0].lng], 14, { animate: true });
@@ -122,16 +135,22 @@ function FitBounds({ stops }: { stops: MapStop[] }) {
         }
         const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
         if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14, animate: true });
+          map.fitBounds(bounds, {
+            paddingTopLeft: [40, 40],
+            paddingBottomRight: [40, bottomPadding],
+            maxZoom: 14,
+            animate: true,
+          });
         }
       } catch (e) {
         console.warn("fitBounds failed", e);
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [key, map, stops]);
+  }, [key, map, stops, bottomPadding]);
   return null;
 }
+
 
 
 function FocusRouteButton({ stops }: { stops: MapStop[] }) {
@@ -203,16 +222,22 @@ export default function DayMap({
   stops,
   highlightId,
   onPinTap,
+  bottomPadding = 50,
+  segmentIds = null,
 }: {
   stops: MapStop[];
   highlightId?: string | null;
   onPinTap?: (id: string) => void;
+  /** Space (px) reserved at the bottom of the map for an overlay card. */
+  bottomPadding?: number;
+  /** Endpoint ids of a selected segment — both endpoints get highlighted. */
+  segmentIds?: { fromId: string; toId: string } | null;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // Filter to valid coords, keep source order, then renumber sequentially
-  // so pin labels are always 1, 2, 3... regardless of incoming index values.
+  // Filter to valid coords and keep the numbering supplied by the list —
+  // filtering out stops without coordinates must never renumber the rest.
   const validStops = stops
     .filter(
       (s) =>
@@ -221,17 +246,18 @@ export default function DayMap({
         s.lng >= -180 && s.lng <= 180 &&
         !(s.lat === 0 && s.lng === 0),
     )
-    .sort((a, b) => a.index - b.index)
-    .map((s, idx) => ({ ...s, index: idx + 1 }));
+    .sort((a, b) => a.index - b.index);
 
   const center: [number, number] = validStops[0]
     ? [validStops[0].lat, validStops[0].lng]
     : [35.6812, 139.7671];
 
-  console.log("[DayMap] stops", validStops.length, validStops);
   const path = validStops.map((s) => [s.lat, s.lng] as [number, number]);
+  const isHighlighted = (id: string) =>
+    highlightId === id || segmentIds?.fromId === id || segmentIds?.toId === id;
 
   if (!mounted) return <MapSkeleton />;
+
 
 
   return (
@@ -272,39 +298,42 @@ export default function DayMap({
               <Marker
                 key={s.id}
                 position={[s.lat, s.lng]}
-                icon={pinIcon(color, s.index, highlightId === s.id)}
+                icon={pinIcon(color, s.index, isHighlighted(s.id))}
                 eventHandlers={{ click: () => onPinTap?.(s.id) }}
               >
-                <Popup className="custom-popup" closeButton={false}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        width: 22, height: 22, borderRadius: "50%",
-                        background: color, color: "#fff",
-                        fontSize: 11, fontWeight: 600,
-                        display: "inline-flex", alignItems: "center", justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {s.index}
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600 }}>
-                        <span style={{ marginInlineEnd: 4 }}>{emoji}</span>
-                        {s.title}
+                {!onPinTap && (
+                  <Popup className="custom-popup" closeButton={false}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span
+                        style={{
+                          width: 22, height: 22, borderRadius: "50%",
+                          background: color, color: "#fff",
+                          fontSize: 11, fontWeight: 600,
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {s.index}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600 }}>
+                          <span style={{ marginInlineEnd: 4 }}>{emoji}</span>
+                          {s.title}
+                        </div>
+                        {s.time && (
+                          <div style={{ fontSize: 11, opacity: 0.7, direction: "ltr" }}>{s.time}</div>
+                        )}
                       </div>
-                      {s.time && (
-                        <div style={{ fontSize: 11, opacity: 0.7, direction: "ltr" }}>{s.time}</div>
-                      )}
                     </div>
-                  </div>
-                </Popup>
+                  </Popup>
+                )}
               </Marker>
             );
           })}
         </MarkerClusterGroup>
-        <FitBounds stops={validStops} />
+        <FitBounds stops={validStops} bottomPadding={bottomPadding} />
         <FocusRouteButton stops={validStops} />
+
       </MapContainer>
     </div>
   );

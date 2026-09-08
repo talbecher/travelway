@@ -346,7 +346,14 @@ function DayDetail() {
   const [editingCity, setEditingCity] = useState(false);
   const [cityValue, setCityValue] = useState(day?.city_label ?? "");
 
-  const [mapOpen, setMapOpen] = useState(false);
+  // View state — list / map are two modes of the same day.
+  const [view, setView] = useState<"list" | "map">("list");
+  const [sortMode, setSortMode] = useState(false);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<{ fromId: string; toId: string } | null>(null);
+  const [segmentSheet, setSegmentSheet] = useState<{ fromId: string; toId: string } | null>(null);
+  const listScrollTop = useRef(0);
+
 
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -542,6 +549,23 @@ function DayDetail() {
   const optimize = useMemo(() => computeOptimalOrder(entries), [entries]);
   useEffect(() => { setZigzagDismissed(false); setShowOptimizePreview(false); }, [dayId]);
 
+  // Switching day clears any selection that belongs to the previous day.
+  useEffect(() => {
+    setSelectedStopId(null);
+    setSelectedSegment(null);
+    setSegmentSheet(null);
+    setSortMode(false);
+    setView("list");
+  }, [dayId]);
+
+  // Drop selections whose entries no longer exist (deleted / moved to another day).
+  useEffect(() => {
+    const ids = new Set(entries.map((e) => e.id));
+    setSelectedStopId((cur) => (cur && !ids.has(cur) ? null : cur));
+    setSelectedSegment((cur) => (cur && (!ids.has(cur.fromId) || !ids.has(cur.toId)) ? null : cur));
+    setSegmentSheet((cur) => (cur && (!ids.has(cur.fromId) || !ids.has(cur.toId)) ? null : cur));
+  }, [entries]);
+
   const scrollToCard = useCallback((id: string) => {
     setHighlightId(id);
     const el = cardRefs.current[id];
@@ -554,6 +578,20 @@ function DayDetail() {
     setPickerOpen(true);
   }
 
+  function showMap() {
+    listScrollTop.current = listRef.current?.scrollTop ?? 0;
+    setView("map");
+  }
+
+  function showList() {
+    setView("list");
+    // restore the previous scroll position of the list pane
+    window.setTimeout(() => {
+      if (listRef.current) listRef.current.scrollTop = listScrollTop.current;
+    }, 0);
+  }
+
+
 
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
@@ -562,13 +600,22 @@ function DayDetail() {
 
 
 
+  const selectedEntry = selectedStopId ? entries.find((e) => e.id === selectedStopId) ?? null : null;
+  const segmentEntries = segmentSheet
+    ? {
+        from: entries.find((e) => e.id === segmentSheet.fromId) ?? null,
+        to: entries.find((e) => e.id === segmentSheet.toId) ?? null,
+      }
+    : null;
+
   return (
     <div className="-mx-4">
-      {/* Hero header — fixed 110px, photo background with gradient fallback */}
+      {/* Day header — panoramic in list mode, compact in map mode */}
       {(() => {
         const theme = getDestinationTheme(trip?.destination_country ?? "");
+        // Only photos that belong to this day are eligible for the header.
         const heroPhoto = entries.find((e) => e.photo_url)?.photo_url ?? null;
-        const showPhoto = !!heroPhoto && heroFailedUrl !== heroPhoto;
+        const showPhoto = view === "list" && !!heroPhoto && heroFailedUrl !== heroPhoto;
         const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
         const visitedCount = entries.filter(
           (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
@@ -578,7 +625,13 @@ function DayDetail() {
           "after:absolute after:-inset-2 after:content-['']";
         const pillBg = { background: "rgba(255,255,255,0.18)" } as const;
         return (
-          <div className="relative w-full h-[110px] overflow-hidden border-b border-border" dir="rtl">
+          <div
+            className={
+              "relative w-full overflow-hidden border-b border-border " +
+              (view === "list" ? "h-[124px]" : "h-[78px]")
+            }
+            dir="rtl"
+          >
             {/* Background */}
             {showPhoto ? (
               <>
@@ -587,16 +640,19 @@ function DayDetail() {
                   alt=""
                   aria-hidden
                   onError={() => setHeroFailedUrl(heroPhoto)}
-                  className="absolute inset-0 w-full h-full object-cover scale-110 blur-[6px]"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)" }} />
+                <div
+                  className="absolute inset-0"
+                  style={{ background: "linear-gradient(to top, rgba(0,0,0,0.78) 12%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.35))" }}
+                />
               </>
             ) : (
               <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
             )}
 
             <div className="relative h-full px-4 py-2.5 flex flex-col justify-between">
-              {/* Top row — back (right) + map/more pills (left) */}
+              {/* Top row — back (right) + more (left) */}
               <div className="flex items-center justify-between gap-2">
                 <button
                   onClick={() => navigate({ to: "/itinerary" })}
@@ -607,17 +663,6 @@ function DayDetail() {
                   <ChevronRight size={18} />
                 </button>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMapOpen(true)}
-                    disabled={mapStops.length === 0}
-                    className={pillBtn + " px-3 disabled:opacity-50 disabled:cursor-not-allowed"}
-                    style={{ ...pillBg, height: 28 }}
-                  >
-                    <MapIcon size={12} />
-                    <span>מפה</span>
-                    {mapStops.length > 0 && <span className="text-white/70">· {mapStops.length}</span>}
-                  </button>
                   <button
                     type="button"
                     onClick={() => setMoreOpen(true)}
@@ -633,18 +678,21 @@ function DayDetail() {
               {/* Bottom section — title/date (right) + weather/city (left) */}
               <div className="flex items-end justify-between gap-2">
                 <div className="min-w-0">
-                  <h1 className="text-white text-[22px] font-medium leading-tight">יום {day.day_number}</h1>
+                  <h1 className={"text-white font-medium leading-tight " + (view === "list" ? "text-[22px]" : "text-[17px]")}>
+                    יום {day.day_number}
+                    {day.city_label ? <span className="text-white/85"> · <span dir="ltr">{day.city_label}</span></span> : null}
+                  </h1>
                   <p className="text-white/70 text-[11px] leading-snug mt-0.5">
                     {hebWeekday(day.date)}, {hebDate(day.date)}
                   </p>
-                  {totalLinked > 0 && (
+                  {view === "list" && totalLinked > 0 && (
                     <p className="text-white/60 text-[10px] mt-0.5">
                       ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
                     </p>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+                  {view === "list" && <DayWeatherLine city={day.city_label ?? null} date={day.date} />}
                   {editingCity ? (
                     <div className="flex items-center gap-1.5">
                       <input
@@ -661,12 +709,14 @@ function DayDetail() {
                       />
                       <button
                         onClick={() => saveCity.mutate()}
+                        aria-label="שמור עיר"
                         className="w-7 h-7 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
                       >
                         <Check size={13} />
                       </button>
                       <button
                         onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
+                        aria-label="בטל עריכת עיר"
                         className="w-7 h-7 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
                       >
                         <X size={13} />
@@ -675,10 +725,10 @@ function DayDetail() {
                   ) : (
                     <button
                       onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                      className="relative inline-flex items-center gap-1 rounded-full text-white text-[10px] px-2 py-1 min-h-0 max-w-[100px] after:absolute after:-inset-2 after:content-['']"
+                      className="relative inline-flex items-center gap-1 rounded-full text-white text-[10px] px-2 py-1 min-h-0 max-w-[120px] after:absolute after:-inset-2 after:content-['']"
                       style={{ background: "rgba(255,255,255,0.2)" }}
                     >
-                      <span dir="ltr" className="truncate">{day.city_label || "הוסף עיר / אזור"}</span>
+                      <span dir="ltr" className="truncate">{day.city_label ? "עריכת עיר" : "הוסף עיר / אזור"}</span>
                       <Pencil size={10} className="shrink-0" />
                     </button>
                   )}
@@ -689,7 +739,34 @@ function DayDetail() {
         );
       })()}
 
-      {optimize.isSuboptimal && !zigzagDismissed && (
+      {/* View switch — same day, two modes */}
+      <div className="px-4 pt-3" dir="rtl">
+        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[color:var(--surface-2)] border border-border" role="tablist">
+          {([
+            { key: "list", label: "מסלול" },
+            { key: "map", label: "מפה" },
+          ] as const).map((t) => {
+            const active = view === t.key;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active}
+                type="button"
+                onClick={() => (t.key === "map" ? showMap() : showList())}
+                className={
+                  "min-h-11 rounded-lg text-[13px] font-medium transition-colors " +
+                  (active ? "bg-[color:var(--accent)] text-white shadow-sm" : "text-muted-foreground")
+                }
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {view === "list" && optimize.isSuboptimal && !zigzagDismissed && (
         <div className="mx-4 mt-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3.5 py-3">
           <div className="text-[13px] font-medium text-amber-800 dark:text-amber-200">⚠️ סדר המסלול לא אופטימלי</div>
           <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
@@ -699,14 +776,14 @@ function DayDetail() {
           <div className="flex gap-2 mt-3">
             <button
               type="button"
-              className="flex-1 h-10 rounded-xl bg-amber-500 text-white text-[13px] font-medium"
+              className="flex-1 min-h-11 rounded-xl bg-amber-500 text-white text-[13px] font-medium"
               onClick={() => setShowOptimizePreview(true)}
             >
               ✨ הצג סדר מוצע
             </button>
             <button
               type="button"
-              className="flex-1 h-10 rounded-xl bg-transparent border border-amber-300 text-amber-700 dark:text-amber-300 text-[13px]"
+              className="flex-1 min-h-11 rounded-xl bg-transparent border border-amber-300 text-amber-700 dark:text-amber-300 text-[13px]"
               onClick={() => setZigzagDismissed(true)}
             >
               השאר כמו שהוא
@@ -715,15 +792,126 @@ function DayDetail() {
         </div>
       )}
 
-      {isLoading ? (
+      {view === "map" ? (
+        <div className="relative" style={{ height: "calc(100dvh - 220px)" }}>
+          {mapStops.length > 0 ? (
+            <DayMap
+              stops={mapStops}
+              highlightId={selectedStopId}
+              segmentIds={selectedSegment}
+              bottomPadding={selectedEntry || selectedSegment ? 220 : 60}
+              onPinTap={(id) => { setSelectedSegment(null); setSelectedStopId(id); }}
+            />
+          ) : (
+            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
+              <MapIcon size={28} className="text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">אין תחנות עם מיקום להצגה במפה</div>
+              <div className="text-[11px] text-muted-foreground">התחנות ללא מיקום נשארות ברשימת המסלול.</div>
+            </div>
+          )}
+
+          {/* The drawn line is an OSRM driving estimate — say so, don't imply walking/transit. */}
+          {mapStops.length > 1 && !selectedEntry && !selectedSegment && (
+            <div
+              className="absolute bottom-2 inset-x-3 z-[500] text-[10px] text-center text-muted-foreground bg-card/85 border border-border rounded-full py-1 px-2"
+              dir="rtl"
+            >
+              קו המסלול הוא הערכת נסיעה (OSRM · פרופיל נהיגה), לא מסלול הליכה או תחבורה ציבורית.
+            </div>
+          )}
+
+
+          {/* Selected stop card */}
+          {selectedEntry && (
+            <MapStopCard
+              entry={selectedEntry}
+              pinIndex={stopIndexById[selectedEntry.id] ?? null}
+              onClose={() => setSelectedStopId(null)}
+              onEdit={() => setEditEntry(selectedEntry)}
+              onMore={() => setDetailsFor(selectedEntry)}
+            />
+          )}
+
+          {/* Selected segment card */}
+          {!selectedEntry && selectedSegment && (() => {
+            const from = entries.find((e) => e.id === selectedSegment.fromId);
+            const to = entries.find((e) => e.id === selectedSegment.toId);
+            const a = from ? coordsOf(from) : null;
+            const b = to ? coordsOf(to) : null;
+            if (!from || !to || !a || !b) return null;
+            return (
+              <div
+                className="absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
+                style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+                dir="rtl"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[15px] font-semibold">המעבר בין התחנות</div>
+                    <div className="text-[12px] text-muted-foreground truncate">
+                      {from.title} ← {to.title}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSegment(null)}
+                    aria-label="סגור"
+                    className="w-9 h-9 -mt-1 rounded-full flex items-center justify-center text-muted-foreground"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="pt-2">
+                  <SegmentOptions a={a} b={b} from={from} to={to} isJapan={isJapan} city={day.city_label ?? ""} />
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      ) : isLoading ? (
         <div className="px-4 pt-3 space-y-2 animate-pulse">
           {[0, 1, 2].map((i) => <div key={i} className="h-20 bg-card border border-border rounded-2xl" />)}
         </div>
       ) : !hasAnyEntries ? (
-        <div className="px-4 pt-3"><EmptyDay onAdd={openPicker} /></div>
+        <div className="px-4 pt-3">
+          <EmptyDay
+            onAdd={openPicker}
+            onPickSaved={() => { setEntryType("attraction"); setPickerOpen(true); }}
+          />
+        </div>
       ) : (
-        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 240px)" }}>
-          {/* List pane (full height — map opens in bottom sheet) */}
+        <div className="relative flex flex-col" style={{ height: "calc(100dvh - 254px)" }}>
+          {/* Summary + list actions */}
+          <div className="px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
+            <span className="text-[12px] text-muted-foreground">
+              {entries.length} תחנות · סדר ידני
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSortMode((s) => !s)}
+                className={
+                  "min-h-9 px-3 rounded-full text-[12px] border inline-flex items-center gap-1 " +
+                  (sortMode
+                    ? "bg-[color:var(--accent)] text-white border-transparent"
+                    : "bg-card text-foreground border-border")
+                }
+                aria-pressed={sortMode}
+              >
+                <GripVertical size={13} /> {sortMode ? "סיום סידור" : "סידור"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowOptimizePreview(true)}
+                disabled={optimize.optimalOrder === entries || entries.length < 3}
+                className="min-h-9 px-3 rounded-full text-[12px] border border-[color:var(--accent)]/50 text-[color:var(--accent)] bg-card inline-flex items-center gap-1 disabled:opacity-40"
+              >
+                <Sparkles size={13} /> הצעת סדר
+              </button>
+            </div>
+          </div>
+
+          {/* List pane */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-[120px] relative">
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -743,13 +931,15 @@ function DayDetail() {
                     return (
                       <div key={e.id}>
                         {prev && a && b && (
-                          <SegmentConnector
+                          <SegmentRow
                             a={a}
                             b={b}
-                            from={prev}
-                            to={e}
-                            isJapan={isJapan}
-                            city={day?.city_label ?? ""}
+                            onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
+                            onShowOnMap={() => {
+                              setSelectedStopId(null);
+                              setSelectedSegment({ fromId: prev!.id, toId: e.id });
+                              showMap();
+                            }}
                           />
                         )}
                         <SortableEntry
@@ -757,9 +947,10 @@ function DayDetail() {
                           nextTime={entries[idx + 1]?.time_of_day ?? null}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
+                          sortMode={sortMode}
                           setRef={(el) => { cardRefs.current[e.id] = el; }}
                           onOpenDetails={() => setDetailsFor(e)}
-                          hintHandle={idx === 0 && entries.length >= 2}
+                          onEdit={() => setEditEntry(e)}
                           recById={recById}
                         />
 
@@ -778,8 +969,8 @@ function DayDetail() {
           >
             <button
               onClick={openPicker}
-              aria-label="הוסף פריט"
-              className="h-14 w-14 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center justify-center min-h-0 active:scale-95 transition-transform"
+              aria-label="הוספת מקום או פעילות"
+              className="h-14 w-14 rounded-full bg-[color:var(--accent)] text-white shadow-md flex items-center justify-center min-h-0 active:scale-95 transition-transform motion-reduce:transition-none"
             >
               <Plus size={24} />
             </button>
@@ -801,6 +992,35 @@ function DayDetail() {
           </div>
         </div>
       )}
+
+      {/* Arrival options for a segment (list mode) */}
+      <BottomSheet
+        open={!!segmentSheet}
+        onOpenChange={(o) => !o && setSegmentSheet(null)}
+        title="אפשרויות הגעה"
+      >
+        {segmentEntries?.from && segmentEntries.to && (() => {
+          const a = coordsOf(segmentEntries.from!);
+          const b = coordsOf(segmentEntries.to!);
+          if (!a || !b) return null;
+          return (
+            <div className="pb-3" dir="rtl">
+              <div className="text-[12px] text-muted-foreground mb-3 break-words">
+                {segmentEntries.from!.title} ← {segmentEntries.to!.title}
+              </div>
+              <SegmentOptions
+                a={a}
+                b={b}
+                from={segmentEntries.from!}
+                to={segmentEntries.to!}
+                isJapan={isJapan}
+                city={day.city_label ?? ""}
+              />
+            </div>
+          );
+        })()}
+      </BottomSheet>
+
 
 
 
@@ -1028,22 +1248,8 @@ function DayDetail() {
         />
       )}
 
-      <BottomSheet open={mapOpen} onOpenChange={setMapOpen} title="מפת היום">
-        <div className="h-[75vh] -mx-5 -mb-4 overflow-hidden rounded-b-2xl">
-          {mapStops.length > 0 ? (
-            <DayMap
-              stops={mapStops}
-              highlightId={highlightId}
-              onPinTap={(id) => { setMapOpen(false); setTimeout(() => scrollToCard(id), 250); }}
-            />
-          ) : (
-            <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
-              <MapIcon size={28} className="text-muted-foreground" />
-              <div className="text-sm text-muted-foreground">אין פריטים עם מיקום להצגה במפה</div>
-            </div>
-          )}
-        </div>
-      </BottomSheet>
+
+
 
       <BottomSheet open={showOptimizePreview} onOpenChange={setShowOptimizePreview} title="סדר מסלול מוצע">
         <div className="text-[12px] text-muted-foreground mb-3">
@@ -1099,7 +1305,51 @@ function DayDetail() {
   );
 }
 
-function SegmentConnector({
+/** Compact segment row in the list: air distance + entry into arrival options. */
+function SegmentRow({
+  a,
+  b,
+  onOpen,
+  onShowOnMap,
+}: {
+  a: { lat: number; lng: number };
+  b: { lat: number; lng: number };
+  onOpen: () => void;
+  onShowOnMap: () => void;
+}) {
+  const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
+  const walkMin = walkTimeMin(km);
+  return (
+    <div className="my-1 flex items-center gap-2 flex-nowrap min-w-0" dir="rtl" style={{ paddingInlineStart: 72 }}>
+      <span className="text-[11px] text-muted-foreground truncate shrink">
+        מרחק אווירי {fmtDistance(km)} · ~{walkMin} דק׳ הליכה
+      </span>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="shrink-0 min-h-9 px-2.5 rounded-full border border-border bg-card text-[11px] text-muted-foreground inline-flex items-center gap-1"
+      >
+        פרטי מעבר <ChevronRight size={12} className="rotate-180" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        aria-label="הצג מעבר במפה"
+        className="shrink-0 w-9 h-9 rounded-full border border-border bg-card text-muted-foreground inline-flex items-center justify-center"
+      >
+        <MapIcon size={13} />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Arrival options for a segment. These are external links only — they do not
+ * change the day's order, and they do not change the route line drawn on the map.
+ */
+function SegmentOptions({
   a,
   b,
   from,
@@ -1115,78 +1365,47 @@ function SegmentConnector({
   city?: string;
 }) {
   const km = haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
-  const isWalk = km < 1.5;
-  const suggested: "walking" | "transit" = isWalk ? "walking" : "transit";
   const base = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}`;
-  const modeMeta = {
-    walking: { label: "ברגל", emoji: "🚶" },
-    transit: { label: "תחבורה", emoji: "🚌" },
-  } as const;
-  const alt: "walking" | "transit" = isWalk ? "transit" : "walking";
-  const ordered: ("walking" | "transit")[] = [suggested, alt];
-
   const fromName = placeName(from, city);
   const toName = placeName(to, city);
   const hasNames = fromName && toName;
 
-  // Compact one-line connector: 28×28 visual circles with expanded 44px hit area.
-  const circle = (active: boolean): React.CSSProperties =>
-    active
-      ? { background: "var(--accent)", color: "#fff", border: "0.5px solid transparent" }
-      : { background: "var(--surface-2)", color: "var(--foreground)", border: "0.5px solid var(--border)" };
+  const linkCls =
+    "min-h-11 rounded-xl border border-border bg-card text-[12px] inline-flex items-center justify-center gap-1.5 px-3";
 
   return (
-    <div className="my-1 flex items-center gap-1 flex-nowrap min-w-0" dir="ltr" style={{ paddingInlineStart: 72 }}>
-      <span className="text-[11px] text-muted-foreground truncate shrink">→ {fmtDistance(km)}</span>
-      <a
-        href={
-          hasNames
-            ? rome2rioUrl(fromName, toName)
-            : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`
-        }
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="השווה דרכים (Rome2Rio)"
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="p-2 -m-2 inline-flex shrink-0"
-      >
-        <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[13px]" style={circle(false)}>🗺</span>
-      </a>
-      {isJapan && (
+    <div className="flex flex-col gap-2.5" dir="rtl">
+      <div className="rounded-xl bg-[color:var(--surface-2)] px-3 py-2 text-[12px] text-muted-foreground">
+        מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span> · ~{walkTimeMin(km)} דק׳ הליכה משוערות.
+        <div className="text-[11px] mt-0.5 opacity-80">זהו מרחק בקו ישר, לא אורך מסלול בפועל.</div>
+      </div>
+
+      <div className="text-[11px] text-muted-foreground">פתיחה בשירות חיצוני (לא משנה את סדר היום או את המפה):</div>
+      <div className="grid grid-cols-2 gap-2">
+        <a href={`${base}&travelmode=walking`} target="_blank" rel="noopener noreferrer" className={linkCls}>
+          🚶 הליכה ב-Google Maps <ExternalLink size={11} />
+        </a>
+        <a href={`${base}&travelmode=transit`} target="_blank" rel="noopener noreferrer" className={linkCls}>
+          🚌 תחבורה ציבורית ב-Google Maps <ExternalLink size={11} />
+        </a>
+      </div>
+
+      <div className="text-[11px] text-muted-foreground pt-1">שירותי תכנון נסיעה:</div>
+      <div className="grid grid-cols-2 gap-2">
         <a
-          href={navitimeUrl(a, b, fromName, toName)}
+          href={hasNames ? rome2rioUrl(fromName, toName) : `https://www.rome2rio.com/map/${a.lat},${a.lng}/${b.lat},${b.lng}`}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="NAVITIME"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="p-2 -m-2 inline-flex shrink-0"
+          className={linkCls}
         >
-          <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[13px]" style={circle(false)}>🚄</span>
+          🗺 Rome2Rio <ExternalLink size={11} />
         </a>
-      )}
-
-      {ordered.map((key) => {
-        const m = modeMeta[key];
-        const isOn = key === suggested;
-        return (
-          <a
-            key={key}
-            href={`${base}&travelmode=${key}`}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={m.label}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="p-2 -m-2 inline-flex shrink-0"
-          >
-            <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[13px]" style={circle(isOn)}>
-              {m.emoji}
-            </span>
+        {isJapan && (
+          <a href={navitimeUrl(a, b, fromName, toName)} target="_blank" rel="noopener noreferrer" className={linkCls}>
+            🚄 NAVITIME <ExternalLink size={11} />
           </a>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }
@@ -1195,8 +1414,9 @@ function SegmentConnector({
 
 
 
+
 function SortableEntry({
-  entry, nextTime, pinIndex, highlighted, setRef, onOpenDetails, hintHandle, recById,
+  entry, nextTime, pinIndex, highlighted, setRef, onOpenDetails, onEdit, sortMode, hintHandle, recById,
 }: {
   entry: EntryRow;
   nextTime?: string | null;
@@ -1204,9 +1424,12 @@ function SortableEntry({
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
   onOpenDetails: () => void;
+  onEdit: () => void;
+  sortMode?: boolean;
   hintHandle?: boolean;
   recById?: Record<string, { status: string; rating: number | null }>;
 }) {
+
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const style: React.CSSProperties = {
@@ -1277,7 +1500,7 @@ function SortableEntry({
         className="relative flex-1 min-w-0 bg-card rounded-[12px] shadow-sm overflow-hidden cursor-pointer"
         style={{ border: "0.5px solid var(--border)" }}
       >
-        {/* Drag handle — the ONLY drag surface */}
+        {/* Drag handle — the ONLY drag surface (always available; emphasised in sort mode) */}
         <button
           type="button"
           {...attributes}
@@ -1285,12 +1508,25 @@ function SortableEntry({
           onClick={(e) => e.stopPropagation()}
           aria-label="גרור לשינוי סדר"
           className={
-            "absolute left-1 top-1 z-10 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground touch-none cursor-grab active:cursor-grabbing hover:bg-muted/60 " +
+            "absolute left-1 top-1 z-10 w-8 h-8 flex items-center justify-center rounded-md touch-none cursor-grab active:cursor-grabbing hover:bg-muted/60 " +
+            (sortMode ? "text-[color:var(--accent)] bg-[color:var(--surface-2)] " : "text-muted-foreground/70 ") +
             (pulse ? "animate-pulse text-[color:var(--accent)]" : "")
           }
         >
           <GripVertical size={16} />
         </button>
+
+        {/* Edit — opens the real edit form */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={`עריכת ${entry.title}`}
+          className="absolute left-1 bottom-1 z-10 min-h-9 px-2 rounded-md text-[11px] text-muted-foreground inline-flex items-center gap-1 hover:bg-muted/60"
+        >
+          <Pencil size={12} /> עריכה
+        </button>
+
 
         {/* Variant A: photo header (fixed 80px) */}
         {entry.photo_url && (
@@ -1684,24 +1920,125 @@ function NavigateToForm({
 }
 
 
-function EmptyDay({ onAdd }: { onAdd: () => void }) {
+function EmptyDay({ onAdd, onPickSaved }: { onAdd: () => void; onPickSaved?: () => void }) {
   return (
-    <div className="text-center py-14 space-y-4 flex flex-col items-center">
-      <svg viewBox="0 0 96 96" width="96" height="96" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="text-[color:var(--accent)]">
-        <circle cx="48" cy="48" r="30" />
-        <path d="M48 30v18l12 8" />
-        <path d="M20 20l6 6M76 20l-6 6M48 80v6" />
+    <div className="text-center py-8 space-y-4 flex flex-col items-center" dir="rtl">
+      <svg viewBox="0 0 96 96" width="72" height="72" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="text-[color:var(--accent)]">
+        <path d="M48 22c-9 0-16 7-16 16 0 12 16 26 16 26s16-14 16-26c0-9-7-16-16-16z" />
+        <circle cx="48" cy="38" r="5" />
+        <path d="M22 74h52" />
       </svg>
       <div className="space-y-1">
-        <div className="text-[16px] font-medium">היום עדיין ריק</div>
-        <div className="text-xs text-muted-foreground max-w-[260px]">הוסף טיסות, מלונות, אטרקציות, ארוחות, תחבורה או הערות — הכל יופיע כטיימליין ועל המפה.</div>
+        <div className="text-[17px] font-semibold">איך מתחילים את היום?</div>
+        <div className="text-[12px] text-muted-foreground max-w-[280px]">מקום אחד שמסקרן אתכם הוא התחלה טובה.</div>
       </div>
-      <button onClick={onAdd} className="h-12 px-6 rounded-xl bg-[color:var(--accent)] text-white font-medium inline-flex items-center gap-2">
-        <Plus size={18} /> הוסף פעילות לאותו יום
+      <button
+        onClick={onAdd}
+        className="w-full max-w-[320px] min-h-12 px-6 rounded-xl bg-[color:var(--accent)] text-white font-medium inline-flex items-center justify-center gap-2"
+      >
+        <Plus size={18} /> הוספת מקום או פעילות
       </button>
+      {onPickSaved && (
+        <button
+          onClick={onPickSaved}
+          className="w-full max-w-[320px] min-h-12 px-4 rounded-xl border border-border bg-card text-[13px] inline-flex items-center justify-between"
+        >
+          <span className="inline-flex items-center gap-2">בחירה מהמקומות ששמרתם</span>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </button>
+      )}
+      <div className="text-[11px] text-muted-foreground pt-2">🌿 גם יום חופשי הוא חלק מהטיול.</div>
     </div>
   );
 }
+
+/** Bottom card for the stop selected on the map. */
+function MapStopCard({
+  entry,
+  pinIndex,
+  onClose,
+  onEdit,
+  onMore,
+}: {
+  entry: EntryRow;
+  pinIndex: number | null;
+  onClose: () => void;
+  onEdit: () => void;
+  onMore: () => void;
+}) {
+  const coords = coordsOf(entry);
+  const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
+  return (
+    <div
+      className="absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      dir="rtl"
+    >
+      <div className="flex items-start gap-3">
+        {entry.photo_url ? (
+          <img
+            src={entry.photo_url}
+            alt=""
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+            className="w-[76px] h-[64px] rounded-xl object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-[76px] h-[64px] rounded-xl bg-[color:var(--surface-2)] flex items-center justify-center text-[24px] shrink-0">
+            {icon}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-[15px] font-semibold truncate">
+            {pinIndex != null ? `${pinIndex} · ` : ""}{entry.title}
+          </div>
+          <div className="text-[12px] text-muted-foreground truncate">
+            {[ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label, entry.time_of_day].filter(Boolean).join(" · ")}
+          </div>
+          {entry.location_name && (
+            <div className="text-[11px] text-muted-foreground truncate" dir="ltr">{entry.location_name}</div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="סגור כרטיס"
+          className="w-9 h-9 -mt-1 rounded-full flex items-center justify-center text-muted-foreground shrink-0"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 pt-3">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex-1 min-h-11 rounded-xl bg-[color:var(--accent)] text-white text-[13px] font-medium inline-flex items-center justify-center gap-1.5"
+        >
+          <Pencil size={14} /> עריכת התחנה
+        </button>
+        {coords && (
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-h-11 px-4 rounded-xl border border-border bg-card text-[13px] inline-flex items-center gap-1.5"
+          >
+            ניווט <ExternalLink size={12} />
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={onMore}
+          aria-label="פרטי התחנה ופעולות נוספות"
+          className="w-11 h-11 rounded-xl border border-border bg-card inline-flex items-center justify-center text-muted-foreground"
+        >
+          <MoreHorizontal size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 // ─────────────────────────────────────────────────────────────────
 // Entry form
