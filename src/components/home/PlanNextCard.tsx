@@ -158,12 +158,6 @@ export function PlanNextCard({
     <Shell onOpenItinerary={onOpenItinerary}>
       <DayPicker days={days} selectedDayId={selectedDayId} onSelectDay={onSelectDay} />
 
-      {emptyCount > 0 && (
-        <p className="text-[11px] text-muted-foreground/80">
-          {emptyCount === 1 ? "יום אחד במסלול ללא פעילויות" : `${emptyCount} ימים במסלול ללא פעילויות`}
-        </p>
-      )}
-
       {showReviewPrompt && !selectedDay ? (
         <div className="space-y-2.5">
           <p className="text-[13px] text-muted-foreground">אפשר לעבור על הימים ולעדכן את המסלול.</p>
@@ -197,6 +191,12 @@ export function PlanNextCard({
           {isEmpty && <p className="text-[11px] text-muted-foreground">יום מנוחה או מעבר? אפשר להשאיר אותו כך.</p>}
         </div>
       ) : null}
+
+      {emptyCount > 0 && (
+        <p className="text-[11px] text-muted-foreground/80">
+          {emptyCount === 1 ? "יום אחד במסלול ללא פעילויות" : `${emptyCount} ימים במסלול ללא פעילויות`}
+        </p>
+      )}
     </Shell>
   );
 }
