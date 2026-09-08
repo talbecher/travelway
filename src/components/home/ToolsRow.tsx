@@ -16,7 +16,7 @@ export function ToolsRow({ actions }: { actions: ToolAction[] }) {
     "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
   return (
-    <section className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+    <section className="divide-y divide-border overflow-hidden rounded-xl bg-card shadow-sm">
       {actions.map(({ key, icon: Icon, label, to, onClick, disabled }) => {
         const content = (
           <>

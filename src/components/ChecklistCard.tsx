@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { celebrate, useChecklistItems, useToggleChecklistItem } from "@/hooks/use-checklist";
 import { categoryMeta } from "@/lib/checklist-templates";
 
-export function ChecklistCard() {
+export function ChecklistCard({ variant = "default" }: { variant?: "default" | "preTripHome" }) {
   const { data: items = [] } = useChecklistItems();
   const toggle = useToggleChecklistItem();
 
@@ -26,9 +26,9 @@ export function ChecklistCard() {
     .slice(0, 3);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
+    <section className={variant === "preTripHome" ? "rounded-xl bg-card p-4 shadow-sm space-y-3" : "rounded-2xl border border-border bg-card p-4 space-y-3"}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">✅ צ'קליסט לטיול</h2>
+        <h2 className="text-sm font-semibold">{variant === "preTripHome" ? "צ'קליסט לטיול" : "✅ צ'קליסט לטיול"}</h2>
         <Link to="/checklist" className="text-xs text-[color:var(--accent)] inline-flex items-center gap-0.5">
           הכל
           <ChevronLeft size={14} />
@@ -76,8 +76,8 @@ export function ChecklistCard() {
                   <Check size={12} className="text-transparent" />
                 </motion.span>
               </button>
-              <Link to="/checklist" className="flex-1 min-w-0 text-sm truncate py-1">
-                {item.priority === "high" && <span className="ml-1">🔴</span>}
+              <Link to="/checklist" className="flex-1 min-w-0 py-1 text-sm leading-snug break-words">
+                {variant === "default" && item.priority === "high" && <span className="ml-1">🔴</span>}
                 {item.title}
                 <span className="text-muted-foreground text-xs"> · {categoryMeta(item.category).label}</span>
               </Link>

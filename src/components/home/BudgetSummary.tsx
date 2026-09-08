@@ -16,7 +16,7 @@ export function BudgetSummary({
   const over = hasBudget && remaining < 0;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 space-y-2">
+    <section className="rounded-xl bg-card px-4 py-3.5 shadow-sm space-y-1.5">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <h2 className="min-w-0 truncate text-sm font-semibold">תקציב</h2>
         <Link
@@ -31,7 +31,7 @@ export function BudgetSummary({
       {hasBudget ? (
         <>
           <div>
-            <div className="text-[11px] text-muted-foreground">{over ? "חריגה מהתקציב" : "נשאר"}</div>
+            <div className="text-[11px] text-muted-foreground">{over ? "חריגה מהתקציב" : "נותרו לטיול"}</div>
             <div
               className="text-[24px] font-semibold tabular-nums leading-tight"
               style={over ? { color: "var(--destructive)" } : undefined}

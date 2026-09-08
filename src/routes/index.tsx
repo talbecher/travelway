@@ -21,15 +21,15 @@ import { useOnline } from "@/hooks/use-online";
 import { toast } from "sonner";
 import { PreTripHero } from "@/components/home/PreTripHero";
 import {
-  PlanEmptyDayCard,
   PlanErrorCard,
   PlanLoadingCard,
-  PlanReviewCard,
+  PlanNextCard,
   PlanStartCard,
 } from "@/components/home/PlanNextCard";
 import { SavedPlacesRow } from "@/components/home/PrepStatsRow";
 import { BudgetSummary } from "@/components/home/BudgetSummary";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
+import { getDestinationTheme } from "@/lib/destination-theme";
 
 
 
@@ -45,8 +45,8 @@ function DeadlineRow({ item, onOpen }: { item: DeadlineItem; onOpen: (i: Deadlin
       style={{ borderRightWidth: 4, borderRightColor: color }}
     >
       <div className="min-w-0">
-        <div className="text-sm font-semibold truncate">{item.name}</div>
-        <div className="text-xs text-muted-foreground mt-0.5 truncate">
+        <div className="text-sm font-semibold leading-snug break-words">{item.name}</div>
+        <div className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">
           {deadlineLabel(item)} ·{" "}
           <span
             className={strong ? "font-semibold" : undefined}
@@ -92,11 +92,11 @@ function DeadlineSection({
         onClick={onToggle}
         className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-0"
       >
-        <div className="min-w-0">
-          <div className="text-sm font-semibold truncate">
+      <div className="min-w-0">
+          <div className="text-sm font-semibold break-words">
             {group.title} ({group.items.length})
           </div>
-          <div className="text-[11px] text-muted-foreground truncate">{group.subtitle}</div>
+          <div className="text-[11px] text-muted-foreground break-words">{group.subtitle}</div>
         </div>
         <ChevronDown
           size={16}
@@ -163,7 +163,7 @@ function DeadlinesCard({
     <section className="space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium">
         <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
-        <span>⏰ דדליינים קרובים</span>
+        <span>דדליינים קרובים</span>
       </div>
       <div className="space-y-2">
         {groups.map((g) => (
@@ -439,6 +439,11 @@ function Home() {
   const tripIsActive = useTripIsActive();
   const isOnline = useOnline();
   const [hayinuOpen, setHayinuOpen] = useState(false);
+  const [planSelection, setPlanSelection] = useState<{ tripId: string; dayId: string | null; manual: boolean }>({
+    tripId,
+    dayId: null,
+    manual: false,
+  });
 
   const { version: activeVersion } = useActiveVersion(tripId);
   const {
@@ -517,6 +522,16 @@ function Home() {
     [days, entriesByDay],
   );
 
+  useEffect(() => {
+    if (planSelection.tripId !== tripId) {
+      setPlanSelection({ tripId, dayId: null, manual: false });
+      return;
+    }
+    if (planSelection.dayId && !days.some((day) => day.id === planSelection.dayId)) {
+      setPlanSelection({ tripId, dayId: firstEmptyDay?.id ?? null, manual: false });
+    }
+  }, [days, firstEmptyDay?.id, planSelection, tripId]);
+
   const deadlines = useMemo(
     () => buildDeadlines(hotels as never, recs as never, todayISO()),
     [hotels, recs],
@@ -570,9 +585,30 @@ function Home() {
         to: "/recommendations",
         search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
       });
+    const selectedPlanDayId =
+      planSelection.tripId === tripId && planSelection.dayId && days.some((day) => day.id === planSelection.dayId)
+        ? planSelection.dayId
+        : planSelection.tripId === tripId && planSelection.manual
+          ? null
+          : firstEmptyDay?.id ?? null;
+    const selectedPlanEntries = selectedPlanDayId ? entriesByDay[selectedPlanDayId] ?? [] : [];
+    const destinationTheme = getDestinationTheme(trip.destination_country ?? "");
+    const destinationImage =
+      recs.find((rec) => rec.type === "attraction" && rec.photo_url)?.photo_url ??
+      Object.values(entriesByDay)
+        .flat()
+        .find((entry) => entry.entry_type === "attraction" && entry.photo_url)?.photo_url ??
+      null;
+    const savedPlaces = recs.map((rec) => ({
+      id: rec.id,
+      name: rec.name,
+      type: rec.type,
+      photoUrl: rec.photo_url,
+      mapsUrl: rec.google_maps_url,
+    }));
 
     return (
-      <div className="pt-3 pb-24 flex flex-col gap-3">
+      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4 pb-28 pt-3">
         <PreTripHero
           title={trip.title}
           flag={flagFor(trip.destination_country)}
@@ -581,13 +617,15 @@ function Home() {
           endDate={trip.end_date}
           daysTotal={stats.daysTotal}
           daysToStart={stats.daysToStart}
+          imageUrl={destinationImage}
+          fallbackBackground={destinationTheme.heroGradient}
         />
 
         {urgent && (
           <button
             type="button"
             onClick={() => openDeadline(urgent)}
-            className="flex min-h-11 w-full items-start gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-right"
+            className="flex min-h-11 w-full items-start gap-2 rounded-xl bg-card px-3 py-2.5 text-right shadow-sm"
             style={{ borderRightWidth: 4, borderRightColor: URGENCY_COLOR[urgent.urgency] }}
           >
             <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: URGENCY_COLOR[urgent.urgency] }} />
@@ -608,28 +646,32 @@ function Home() {
           <PlanLoadingCard />
         ) : days.length === 0 ? (
           <PlanStartCard onOpenItinerary={() => navigate({ to: "/itinerary" })} />
-        ) : firstEmptyDay ? (
-          <PlanEmptyDayCard
-            dayNumber={firstEmptyDay.day_number}
-            date={firstEmptyDay.date}
-            cityLabel={firstEmptyDay.city_label}
+        ) : (
+          <PlanNextCard
+            days={days}
+            selectedDayId={selectedPlanDayId}
+            entries={selectedPlanEntries}
             emptyCount={stats2.empty}
-            onOpenDay={() => navigate({ to: "/itinerary/$dayId", params: { dayId: firstEmptyDay.id } })}
+            showReviewPrompt={stats2.empty === 0 && !planSelection.manual}
+            onSelectDay={(dayId) => setPlanSelection({ tripId, dayId, manual: true })}
+            onOpenDay={() => {
+              if (!selectedPlanDayId) return;
+              void navigate({ to: "/itinerary/$dayId", params: { dayId: selectedPlanDayId } });
+            }}
             onOpenItinerary={() => navigate({ to: "/itinerary" })}
           />
-        ) : (
-          <PlanReviewCard onOpenItinerary={() => navigate({ to: "/itinerary" })} />
         )}
+
+        <SavedPlacesRow places={savedPlaces} />
 
         {deadlines.length > 0 && (
           <>
-            <h2 className="text-sm font-semibold mt-1">מה צריך לסגור</h2>
+            <h2 className="mt-1 text-[17px] font-semibold">לקראת היציאה</h2>
             <DeadlinesCard items={deadlines} onOpen={openDeadline} />
           </>
         )}
-        <ChecklistCard />
+        <ChecklistCard variant="preTripHome" />
 
-        <SavedPlacesRow saved={stats2.saved} />
         <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} />
         <ToolsRow actions={toolActions} />
 
