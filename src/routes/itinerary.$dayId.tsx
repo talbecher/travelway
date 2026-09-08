@@ -1035,7 +1035,7 @@ function DayDetail() {
 
           {/* Bottom action row — search takes the remaining width, add sits beside it */}
           <div
-            className="sticky bottom-0 -mx-4 bg-card border-t border-border px-3 flex items-center gap-2"
+            className="sticky bottom-0 bg-card border-t border-border px-3 flex items-center gap-2"
             style={{ minHeight: 56, paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))", paddingTop: "0.375rem" }}
           >
             <div className="flex-1 min-w-0 [&_input]:!h-11 [&_input]:!rounded-[22px] [&_input]:!text-[13px]">
