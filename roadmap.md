@@ -4,3 +4,11 @@
 - [x] todayLocal() in format.ts; swapped in useTripIsActive + index.tsx (stats, todayDay, nextDay)
 - [x] Remaining todayISO() sites inspected — intentionally unchanged
 - [x] Build passed; broken-image runtime-verified; TZ contexts spot-checked
+
+# Pre-trip home visual upgrade
+
+- [ ] Destination-focused opening image with local fallback
+- [ ] Day selector with stable manual selection and horizontal-only reveal
+- [ ] Saved-places preview from the active trip's existing records
+- [ ] Secondary preparation, budget, and tools presentation
+- [ ] Build, type check, browser verification, and screenshots
