@@ -433,7 +433,7 @@ function Home() {
   const tripId = useActiveTripId();
   const { data: trip, isLoading } = useTrip();
   const { data: expenses = [] } = useExpenses();
-  const { data: days = [] } = useDays();
+  const { data: days = [], isLoading: daysLoading, isError: daysError, refetch: refetchDays } = useDays();
   const { data: recs = [] } = useRecs();
   const { data: hotels = [] } = useHotels();
   const tripIsActive = useTripIsActive();
