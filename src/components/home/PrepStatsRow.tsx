@@ -1,36 +1,16 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 
-/** "מצב ההכנות" — compact counters from data already loaded on the home screen. */
-export function PrepStatsRow({
-  saved,
-  planned,
-  empty,
-}: {
-  saved: number;
-  planned: number;
-  empty: number;
-}) {
-  const rows: Array<{ value: number; label: string; to: string }> = [
-    { value: saved, label: "מקומות שמורים", to: "/recommendations" },
-    { value: planned, label: "ימי מסלול עם פעילויות", to: "/itinerary" },
-    { value: empty, label: "ימי מסלול ללא פעילויות", to: "/itinerary" },
-  ];
-
+/** Quiet one-line summary of saved places. Hidden when there are none. */
+export function SavedPlacesRow({ saved }: { saved: number }) {
+  if (saved <= 0) return null;
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold">מצב ההכנות</h2>
-      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-        {rows.map((r) => (
-          <Link
-            key={r.label}
-            to={r.to}
-            className="flex min-h-11 items-center justify-between gap-3 px-4 py-2.5"
-          >
-            <span className="text-[13px] text-foreground">{r.label}</span>
-            <span className="text-[15px] font-semibold tabular-nums">{r.value}</span>
-          </Link>
-        ))}
-      </div>
-    </section>
+    <Link
+      to="/recommendations"
+      className="inline-flex min-h-11 items-center gap-1 px-1 text-[13px] text-muted-foreground"
+    >
+      <span className="tabular-nums">{saved}</span> מקומות שמורים
+      <ChevronLeft size={14} className="shrink-0" />
+    </Link>
   );
 }

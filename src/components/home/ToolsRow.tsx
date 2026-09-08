@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { LucideIcon } from "lucide-react";
+import { ChevronLeft, type LucideIcon } from "lucide-react";
 
 export type ToolAction = {
   key: string;
@@ -10,18 +10,21 @@ export type ToolAction = {
   disabled?: boolean;
 };
 
-/** Compact tools grid — same destinations and handlers as before. */
+/** Simple tool rows — only destinations that aren't in the fixed bottom nav. */
 export function ToolsRow({ actions }: { actions: ToolAction[] }) {
   const cls =
-    "flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-right";
+    "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
   return (
-    <section className="grid grid-cols-2 gap-2">
+    <section className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
       {actions.map(({ key, icon: Icon, label, to, onClick, disabled }) => {
         const content = (
           <>
             <Icon size={18} strokeWidth={1.7} className="shrink-0 text-[color:var(--accent)]" />
-            <span className="min-w-0 flex-1 text-[13px] font-medium leading-tight text-foreground">{label}</span>
+            <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug break-words text-foreground">
+              {label}
+            </span>
+            <ChevronLeft size={16} className="shrink-0 text-muted-foreground" />
           </>
         );
         if (to) {

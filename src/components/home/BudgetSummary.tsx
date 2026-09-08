@@ -16,41 +16,39 @@ export function BudgetSummary({
   const over = hasBudget && remaining < 0;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">תקציב</h2>
-        <Link to="/budget" className="inline-flex min-h-11 items-center gap-0.5 px-1 text-[12px] text-[color:var(--accent)]">
+    <section className="rounded-2xl border border-border bg-card p-4 space-y-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <h2 className="min-w-0 truncate text-sm font-semibold">תקציב</h2>
+        <Link
+          to="/budget"
+          className="inline-flex min-h-11 shrink-0 items-center gap-0.5 px-1 text-[12px] text-[color:var(--accent)]"
+        >
           למסך התקציב
           <ChevronLeft size={14} />
         </Link>
       </div>
 
       {hasBudget ? (
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <>
           <div>
-            <div className="text-[11px] text-muted-foreground">תקציב</div>
-            <div className="text-[14px] font-medium tabular-nums">{ils(budget)}</div>
-          </div>
-          <div>
-            <div className="text-[11px] text-muted-foreground">הוצאנו</div>
-            <div className="text-[14px] font-medium tabular-nums">{ils(spent)}</div>
-          </div>
-          <div>
-            <div className="text-[11px] text-muted-foreground">{over ? "חריגה" : "נשאר"}</div>
+            <div className="text-[11px] text-muted-foreground">{over ? "חריגה מהתקציב" : "נשאר"}</div>
             <div
-              className="text-[14px] font-semibold tabular-nums"
+              className="text-[24px] font-semibold tabular-nums leading-tight"
               style={over ? { color: "var(--destructive)" } : undefined}
+              dir="rtl"
             >
-              {ils(over ? Math.abs(remaining) : remaining)}
+              {over ? `-${ils(Math.abs(remaining))}` : ils(remaining)}
             </div>
           </div>
-        </div>
+          <div className="text-[12px] text-muted-foreground break-words" dir="rtl">
+            תקציב {ils(budget)} · הוצאנו {ils(spent)}
+          </div>
+        </>
       ) : (
-        <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1">
           <p className="text-[13px] text-muted-foreground">לא הוגדר תקציב לטיול</p>
-          <div className="text-left">
-            <div className="text-[11px] text-muted-foreground">הוצאנו</div>
-            <div className="text-[14px] font-medium tabular-nums">{ils(spent)}</div>
+          <div className="text-[12px] text-muted-foreground" dir="rtl">
+            הוצאנו {ils(spent)}
           </div>
         </div>
       )}
