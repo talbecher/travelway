@@ -19,6 +19,12 @@ import { NowNextCard } from "@/components/NowNextCard";
 import { ChecklistCard } from "@/components/ChecklistCard";
 import { useOnline } from "@/hooks/use-online";
 import { toast } from "sonner";
+import { PreTripHero } from "@/components/home/PreTripHero";
+import { PlanNextCard, PlanStartCard } from "@/components/home/PlanNextCard";
+import { PrepStatsRow } from "@/components/home/PrepStatsRow";
+import { BudgetSummary } from "@/components/home/BudgetSummary";
+import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
+
 
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
@@ -515,6 +521,94 @@ function Home() {
   }
 
   const sections: Array<{ key: string; node: React.ReactNode }> = [];
+
+  const toolActions: ToolAction[] = [
+    { key: "itinerary", icon: Calendar, label: "מסלול הטיול", to: "/itinerary" },
+    { key: "recs", icon: Star, label: "המלצות", to: "/recommendations" },
+    { key: "budget", icon: Wallet, label: "תקציב", to: "/budget" },
+    { key: "documents", icon: FileText, label: "מסמכים", to: "/documents" },
+    { key: "phrasebook", icon: MessagesSquare, label: "שיחון", to: "/phrasebook" },
+    {
+      key: "quick-expense",
+      icon: Plus,
+      label: "הוצאה מהירה",
+      onClick: () => {
+        if (!isOnline) {
+          toast.error("אין חיבור · לא ניתן להוסיף כרגע");
+          return;
+        }
+        openQuickExpense();
+      },
+      disabled: !isOnline,
+    },
+  ];
+
+  // ===== PRE-TRIP HOME =====
+  if (stats?.beforeTrip) {
+    const heroCity = days.find((d) => d.city_label)?.city_label ?? null;
+    const nextEntries = nextDay ? entriesByDay[nextDay.id] ?? [] : [];
+
+    return (
+      <div className="pt-4 pb-24 px-4 flex flex-col gap-3 md:mx-auto md:max-w-3xl">
+        <PreTripHero
+          title={trip.title}
+          flag={flagFor(trip.destination_country)}
+          destination={trip.destination_country ?? null}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+          daysTotal={stats.daysTotal}
+          daysToStart={stats.daysToStart}
+          weatherCity={heroCity}
+          weatherFallback={trip.destination_country ?? null}
+        />
+
+        <div className="md:grid md:grid-cols-2 md:items-start md:gap-4">
+          <div className="flex flex-col gap-3">
+            {deadlines.length > 0 && <h2 className="text-sm font-semibold mt-1">מה צריך לסגור</h2>}
+            {deadlines.length > 0 && (
+              <DeadlinesCard
+                items={deadlines}
+                onOpen={(item) =>
+                  navigate({
+                    to: "/recommendations",
+                    search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
+                  })
+                }
+              />
+            )}
+            <ChecklistCard />
+
+            {nextDay ? (
+              <PlanNextCard
+                dayNumber={nextDay.day_number}
+                date={nextDay.date}
+                cityLabel={nextDay.city_label}
+                entries={nextEntries}
+                entryIcon={iconFor}
+                onOpenDay={() => navigate({ to: "/itinerary/$dayId", params: { dayId: nextDay.id } })}
+                onOpenItinerary={() => navigate({ to: "/itinerary" })}
+              />
+            ) : entriesLoading ? (
+              <div className="h-28 rounded-2xl border border-border bg-card animate-pulse" />
+            ) : (
+              <PlanStartCard onOpenItinerary={() => navigate({ to: "/itinerary" })} />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 mt-3 md:mt-0">
+            <PrepStatsRow saved={stats2.saved} planned={stats2.planned} empty={stats2.empty} />
+            <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} />
+            <ToolsRow actions={toolActions} />
+            <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations" })} />
+          </div>
+        </div>
+
+        <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
+      </div>
+    );
+  }
+
+
 
   // 0. LIVE NOW
   if (tripIsActive && todayDay) {
