@@ -1,73 +1,84 @@
 import { ChevronLeft } from "lucide-react";
 import { hebDate, hebWeekday } from "@/lib/format";
 
-type Entry = {
-  id: string;
-  entry_type: string;
-  title: string;
-  time_of_day: string | null;
-};
+/** Shell for the main pre-trip planning card. */
+function PlanShell({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section
+      className="rounded-2xl border border-border bg-card p-4 space-y-3"
+      style={{ borderTopWidth: 3, borderTopColor: "var(--accent)" }}
+    >
+      <h2 className="text-[15px] font-semibold">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
-/**
- * "ממשיכים לתכנן" — display only. Entries arrive already ordered by the
- * itinerary's own order; nothing is re-sorted here.
- */
-export function PlanNextCard({
+/** Loading state — never implies "no days" or "no activities". */
+export function PlanLoadingCard() {
+  return (
+    <PlanShell title="ממשיכים לתכנן">
+      <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+      <div className="h-11 w-full rounded-xl bg-muted animate-pulse" />
+    </PlanShell>
+  );
+}
+
+/** Data failed to load — no conclusions about the planning state. */
+export function PlanErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <PlanShell title="ממשיכים לתכנן">
+      <p className="text-[13px] text-muted-foreground">לא הצלחנו לטעון את המסלול כרגע.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="min-h-11 w-full rounded-xl border border-border px-4 text-[14px] font-medium"
+      >
+        נסה שוב
+      </button>
+    </PlanShell>
+  );
+}
+
+/** A day with no activities was found — offered as a suggestion, not a problem. */
+export function PlanEmptyDayCard({
   dayNumber,
   date,
   cityLabel,
-  entries,
-  entryIcon,
+  emptyCount,
   onOpenDay,
   onOpenItinerary,
 }: {
   dayNumber: number;
   date: string;
   cityLabel: string | null;
-  entries: Entry[];
-  entryIcon: (t: string) => string;
+  emptyCount: number;
   onOpenDay: () => void;
   onOpenItinerary: () => void;
 }) {
-  const visible = entries.slice(0, 3);
-  const extra = Math.max(0, entries.length - 3);
-
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold">ממשיכים לתכנן</h2>
-        <span className="text-[11px] text-muted-foreground">{hebWeekday(date)}</span>
+    <PlanShell title="ממשיכים לתכנן">
+      <p className="text-[13px] text-muted-foreground break-words">
+        {emptyCount === 1 ? "יש יום במסלול ללא פעילויות" : `יש ${emptyCount} ימים במסלול ללא פעילויות`}
+      </p>
+
+      <div className="rounded-xl bg-muted/50 px-3 py-2.5">
+        <div className="text-[14px] font-medium break-words">
+          יום {dayNumber}
+          {cityLabel ? ` · ${cityLabel}` : ""}
+        </div>
+        <div className="mt-0.5 text-[12px] text-muted-foreground">
+          {hebWeekday(date)} · {hebDate(date)}
+        </div>
       </div>
 
-      <div className="text-[13px] text-muted-foreground">
-        יום {dayNumber} · {hebDate(date)}
-        {cityLabel ? ` · ${cityLabel}` : ""}
-      </div>
-
-      {visible.length > 0 && (
-        <ul className="space-y-1.5">
-          {visible.map((e) => (
-            <li key={e.id} className="flex items-center gap-2 text-[13px]">
-              <span className="shrink-0 text-base leading-none">{entryIcon(e.entry_type)}</span>
-              <span className="min-w-0 flex-1 truncate">{e.title}</span>
-              {e.time_of_day && (
-                <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums" dir="ltr">
-                  {e.time_of_day.slice(0, 5)}
-                </span>
-              )}
-            </li>
-          ))}
-          {extra > 0 && <li className="pr-6 text-[11px] text-muted-foreground">+ {extra} נוספים</li>}
-        </ul>
-      )}
-
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={onOpenDay}
-          className="min-h-11 flex-1 whitespace-nowrap rounded-xl bg-[color:var(--accent)] px-4 text-[14px] font-medium text-[color:var(--primary-foreground)]"
+          className="min-h-11 flex-1 min-w-[160px] rounded-xl bg-[color:var(--accent)] px-4 text-[14px] font-medium text-[color:var(--primary-foreground)]"
         >
-          פתח את היום
+          לתכנון היום הזה
         </button>
         <button
           type="button"
@@ -78,23 +89,40 @@ export function PlanNextCard({
           <ChevronLeft size={14} />
         </button>
       </div>
-    </section>
+
+      <p className="text-[11px] text-muted-foreground break-words">יום מנוחה או מעבר? אפשר להשאיר אותו כך.</p>
+    </PlanShell>
   );
 }
 
-/** Shown when no upcoming day with content is available. */
-export function PlanStartCard({ onOpenItinerary }: { onOpenItinerary: () => void }) {
+/** Every itinerary day has activities. */
+export function PlanReviewCard({ onOpenItinerary }: { onOpenItinerary: () => void }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
-      <h2 className="text-sm font-semibold">ממשיכים לתכנן</h2>
-      <p className="text-[13px] text-muted-foreground">עוד לא נוספו פעילויות למסלול. אפשר להתחיל מהיום הראשון.</p>
+    <PlanShell title="ממשיכים לתכנן">
+      <p className="text-[13px] text-muted-foreground break-words">אפשר לעבור על הימים ולעדכן את המסלול.</p>
       <button
         type="button"
         onClick={onOpenItinerary}
         className="min-h-11 w-full rounded-xl bg-[color:var(--accent)] px-4 text-[14px] font-medium text-[color:var(--primary-foreground)]"
       >
-        פתח את המסלול
+        לעריכת המסלול
       </button>
-    </section>
+    </PlanShell>
+  );
+}
+
+/** No itinerary days exist yet. */
+export function PlanStartCard({ onOpenItinerary }: { onOpenItinerary: () => void }) {
+  return (
+    <PlanShell title="מתחילים לתכנן">
+      <p className="text-[13px] text-muted-foreground break-words">אפשר להתחיל ולבנות את ימי המסלול של הטיול.</p>
+      <button
+        type="button"
+        onClick={onOpenItinerary}
+        className="min-h-11 w-full rounded-xl bg-[color:var(--accent)] px-4 text-[14px] font-medium text-[color:var(--primary-foreground)]"
+      >
+        לבניית המסלול
+      </button>
+    </PlanShell>
   );
 }
