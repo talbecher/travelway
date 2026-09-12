@@ -744,6 +744,7 @@ function Home() {
           weatherLocation={weatherLocation}
           imageUrls={heroImageCandidates}
           fallbackBackground={destinationTheme.heroGradient}
+          destination={trip.destination_country ?? null}
         />
 
         {urgent && (
