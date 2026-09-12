@@ -96,9 +96,10 @@ export function ActiveTripHero({
   const forecast = useDayWeather(reliableWeatherLocation, date);
   const current = useCurrentWeather(reliableWeatherLocation);
   const condition = forecast?.condition ?? current?.condition ?? null;
-  const temperature = forecast ? forecast.tempMax : current?.temp ?? null;
+  const temperature = forecast?.tempMax ?? current?.temp ?? null;
   const weatherLabel = condition ? WEATHER_LABELS_HE[condition] : null;
   const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
+  const showWeather = !!reliableWeatherLocation && (temperature != null || !!condition);
 
   return (
     <section
@@ -130,40 +131,45 @@ export function ActiveTripHero({
             </p>
           </div>
 
-          {condition && temperature != null && reliableWeatherLocation && (
+          {showWeather && (
             <a
               href={forecastUrl ?? undefined}
               target={forecastUrl ? "_blank" : undefined}
               rel={forecastUrl ? "noreferrer" : undefined}
               className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-primary-foreground/25 bg-foreground/35 px-3 text-[12px] text-primary-foreground backdrop-blur-sm"
-              aria-label={`${temperature} מעלות, ${weatherLabel ?? "מזג אוויר"}, ${reliableWeatherLocation}`}
+              aria-label={`${temperature != null ? `${temperature} מעלות` : "מזג אוויר"}${weatherLabel ? `, ${weatherLabel}` : ""}, ${reliableWeatherLocation}`}
             >
-              <WeatherIcon condition={condition} size="sm" />
-              <span className="font-semibold tabular-nums" dir="ltr">{temperature}°</span>
+              <WeatherIcon condition={condition ?? "unknown"} size="sm" />
+              {temperature != null ? (
+                <span className="font-semibold tabular-nums" dir="ltr">{temperature}°</span>
+              ) : (
+                weatherLabel && <span className="font-medium">{weatherLabel}</span>
+              )}
             </a>
           )}
         </div>
 
         <div className="flex items-end justify-between gap-2">
-          {condition && temperature != null && reliableWeatherLocation ? (
+          {showWeather ? (
             <p className="text-[11px] font-medium text-primary-foreground/90">
-              מזג האוויר ב{reliableWeatherLocation}{weatherLabel ? ` · ${weatherLabel}` : ""}
+              מזג האוויר ב{reliableWeatherLocation}{weatherLabel && temperature != null ? ` · ${weatherLabel}` : ""}
             </p>
           ) : (
             <span />
           )}
 
           {showsPlacesPhoto && (
-            <p className="max-w-[60%] truncate text-left text-[10px] text-primary-foreground/80" dir="ltr">
-              Photo: Google
-              {attributions.length > 0 && (
+            <p
+              className="max-w-[65%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] leading-tight text-primary-foreground/90"
+            >
+              {attributions.length > 0 ? (
                 <>
-                  {" · "}
+                  צילום:{" "}
                   {attributions.map((a, i) => (
                     <span key={`${a.name}-${i}`}>
                       {i > 0 ? ", " : ""}
                       {a.uri ? (
-                        <a href={a.uri} target="_blank" rel="noreferrer" className="underline">
+                        <a href={a.uri} target="_blank" rel="noreferrer" className="hover:underline">
                           {a.name}
                         </a>
                       ) : (
@@ -171,7 +177,10 @@ export function ActiveTripHero({
                       )}
                     </span>
                   ))}
+                  {" · Google Maps"}
                 </>
+              ) : (
+                "Google Maps"
               )}
             </p>
           )}
