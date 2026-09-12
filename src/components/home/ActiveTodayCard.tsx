@@ -45,7 +45,7 @@ function navigationHref(entry: ActiveTodayEntry) {
 function EntryImage({ entry }: { entry: ActiveTodayEntry }) {
   const [failed, setFailed] = useState(false);
   if (!entry.photo_url || failed) {
-    return <span className="flex h-11 w-11 shrink-0 items-center justify-center text-lg" aria-hidden="true">{entry.icon_emoji ?? iconFor(entry.entry_type)}</span>;
+    return <span className="flex h-12 w-12 shrink-0 items-center justify-center text-lg" aria-hidden="true">{entry.icon_emoji ?? iconFor(entry.entry_type)}</span>;
   }
   return (
     <img
@@ -61,7 +61,7 @@ function EntryImage({ entry }: { entry: ActiveTodayEntry }) {
 function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boolean }) {
   const { entry, originalIndex, label } = item;
   return (
-    <div className="flex min-w-0 items-center gap-2.5 py-2">
+    <div className="flex min-w-0 items-center gap-2 py-1.5">
       <span
         className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold tabular-nums ${
           emphasized
@@ -72,9 +72,10 @@ function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boole
       >
         {originalIndex + 1}
       </span>
+      <EntryImage entry={entry} />
       <div className="min-w-0 flex-1">
         {label && <p className={`text-[11px] font-medium ${emphasized ? "text-[color:var(--accent)]" : "text-muted-foreground"}`}>{label}</p>}
-        <p className={`break-words text-[14px] leading-snug ${emphasized ? "font-bold" : "font-semibold"}`}>{entry.title}</p>
+        <p className={`break-words text-[14px] leading-snug text-foreground ${emphasized ? "font-bold" : "font-semibold"}`}>{entry.title}</p>
         {(entry.time_of_day || entry.location_name) && (
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
             {entry.time_of_day && <span className="inline-flex items-center gap-1 tabular-nums" dir="ltr"><Clock size={11} aria-hidden="true" /> {entry.time_of_day.slice(0, 5)}</span>}
@@ -82,14 +83,13 @@ function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boole
           </div>
         )}
       </div>
-      <EntryImage entry={entry} />
     </div>
   );
 }
 
 function SequenceConnector({ directional }: { directional: boolean }) {
   return (
-    <div className="relative mr-3.5 h-4 w-px bg-border" aria-hidden="true">
+    <div className="relative mr-3.5 h-3 w-px bg-border" aria-hidden="true">
       {directional
         ? <ChevronDown size={12} className="absolute -bottom-1.5 -right-[5.5px] text-[color:var(--accent)]" />
         : <span className="absolute bottom-0 right-1/2 h-1 w-1 translate-x-1/2 rounded-full bg-muted-foreground" />}
@@ -148,11 +148,11 @@ export function ActiveTodayCard({ dayId, entries }: { dayId: string; entries: Ac
       <CardShell planned={false}>
         <div className="text-center">
           <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-[color:var(--accent)]"><Route size={19} /></span>
-          <h3 className="mt-1.5 text-[18px] font-semibold">מה מתחשק לכם היום?</h3>
+          <h3 className="mt-1 text-[18px] font-semibold">מה מתחשק לכם היום?</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">אפשר להתחיל ממקום ששמרתם.</p>
         </div>
         <Link to="/itinerary/$dayId" params={{ dayId }} className="flex min-h-11 w-full items-center justify-center rounded-lg bg-[color:var(--accent)] px-4 font-semibold text-[color:var(--accent-foreground)]">לתכנון היום</Link>
-        <Link to="/recommendations" className="-mt-2 flex min-h-11 items-center justify-center gap-1 text-[13px] font-medium text-[color:var(--accent)]">למקומות השמורים <ChevronLeft size={15} /></Link>
+        <Link to="/recommendations" className="-mt-2.5 flex min-h-11 items-center justify-center gap-1 text-[13px] font-medium text-[color:var(--accent)]">למקומות השמורים <ChevronLeft size={15} /></Link>
       </CardShell>
     );
   }
