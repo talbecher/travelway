@@ -729,7 +729,7 @@ function Home() {
           .filter((url): url is string => Boolean(url)),
       ),
     );
-    const weatherLocation = todayDay?.city_label?.trim() || trip.destination_country?.trim() || null;
+    const weatherLocation = todayDay?.city_label?.trim() || null;
     const budgetDefined = Number.isFinite(stats.budget) && stats.budget > 0;
     const overBudget = budgetDefined && stats.remaining < 0;
 
@@ -780,7 +780,7 @@ function Home() {
           <button
             type="button"
             onClick={() => setHayinuOpen(true)}
-            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1.5 text-center shadow-sm"
+            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card px-1.5 text-center shadow-sm"
           >
             <MapPin size={20} className="text-[color:var(--accent)]" />
             <span className="break-words text-[11px] font-medium">היינו כאן</span>
@@ -795,14 +795,14 @@ function Home() {
               }
               openQuickExpense();
             }}
-            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1.5 text-center shadow-sm disabled:opacity-50"
+            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card px-1.5 text-center shadow-sm disabled:opacity-50"
           >
             <ReceiptText size={20} className="text-[color:var(--accent)]" />
             <span className="break-words text-[11px] font-medium">הוצאה מהירה</span>
           </button>
           <Link
             to="/documents"
-            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1.5 text-center shadow-sm"
+            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card px-1.5 text-center shadow-sm"
           >
             <FileText size={20} className="text-[color:var(--accent)]" />
             <span className="break-words text-[11px] font-medium">מסמכים</span>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { CloudSun } from "lucide-react";
 import { hebDate } from "@/lib/format";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
@@ -48,8 +47,9 @@ export function ActiveTripHero({
     };
   }, [imageKey]);
 
-  const forecast = useDayWeather(weatherLocation, date);
-  const current = useCurrentWeather(weatherLocation);
+  const reliableWeatherLocation = weatherLocation?.trim() || null;
+  const forecast = useDayWeather(reliableWeatherLocation, date);
+  const current = useCurrentWeather(reliableWeatherLocation);
   const condition = forecast?.condition ?? current?.condition ?? null;
   const temperature = forecast ? forecast.tempMax : current?.temp ?? null;
   const weatherLabel = condition ? WEATHER_LABELS_HE[condition] : null;
@@ -57,15 +57,15 @@ export function ActiveTripHero({
 
   return (
     <section
-      className="relative isolate flex min-h-[154px] overflow-hidden rounded-2xl px-4 py-3.5 text-primary-foreground shadow-sm sm:min-h-[170px] sm:px-5"
+      className="relative isolate flex overflow-hidden rounded-2xl px-4 py-4 text-primary-foreground shadow-sm sm:px-5 sm:py-5"
       style={loadedImageUrl ? undefined : { background: fallbackBackground }}
     >
       {loadedImageUrl && (
         <img src={loadedImageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
       )}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-foreground/90 via-foreground/40 to-foreground/10" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-foreground/95 via-foreground/55 to-foreground/20" />
 
-      <div className="flex w-full min-w-0 flex-col justify-between gap-3">
+      <div className="flex w-full min-w-0 flex-col gap-5">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="break-words text-[25px] font-bold leading-tight text-primary-foreground drop-shadow-sm">
@@ -77,13 +77,13 @@ export function ActiveTripHero({
             </p>
           </div>
 
-          {condition && temperature != null && weatherLocation && (
+          {condition && temperature != null && reliableWeatherLocation && (
             <a
               href={forecastUrl ?? undefined}
               target={forecastUrl ? "_blank" : undefined}
               rel={forecastUrl ? "noreferrer" : undefined}
               className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-primary-foreground/25 bg-foreground/35 px-3 text-[12px] text-primary-foreground backdrop-blur-sm"
-              aria-label={`${temperature} מעלות, ${weatherLabel ?? "מזג אוויר"}, ${weatherLocation}`}
+              aria-label={`${temperature} מעלות, ${weatherLabel ?? "מזג אוויר"}, ${reliableWeatherLocation}`}
             >
               <WeatherIcon condition={condition} size="sm" />
               <span className="font-semibold tabular-nums" dir="ltr">{temperature}°</span>
@@ -91,10 +91,11 @@ export function ActiveTripHero({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-primary-foreground/85">
-          <CloudSun size={14} aria-hidden="true" />
-          {weatherLocation ? `מזג האוויר ב${weatherLocation}` : "פרטי היום"}
-        </div>
+        {condition && temperature != null && reliableWeatherLocation && (
+          <p className="text-[11px] font-medium text-primary-foreground/90">
+            מזג האוויר ב{reliableWeatherLocation}{weatherLabel ? ` · ${weatherLabel}` : ""}
+          </p>
+        )}
       </div>
     </section>
   );
