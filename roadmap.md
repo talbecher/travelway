@@ -21,3 +21,11 @@
 - [ ] Arrival details: remove air-distance walking estimates, "אפשרויות הגעה" row, cleaned sheet, correct from/to direction
 - [ ] Routing feasibility research + concrete proposal (separate deliverable)
 - [ ] build + tsgo + browser screenshots (light/dark, 360/390/desktop)
+
+# Active-trip home redesign
+
+- [ ] Active-only panoramic opening with today imagery and contextual weather
+- [ ] Unified “today” card with timed, untimed, empty, missing, loading, and error states
+- [ ] Compact active-trip actions, nearby places, budget, checklist, and deadlines
+- [ ] Preserve pre-trip/post-trip behavior and existing handlers
+- [ ] Build and TypeScript checks
