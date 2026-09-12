@@ -29,3 +29,10 @@
 - [x] Compact active-trip actions, nearby places, budget, checklist, and deadlines
 - [x] Preserve pre-trip/post-trip behavior and existing handlers
 - [x] Build and TypeScript checks
+
+# Active-trip home polish
+
+- [ ] Improve active-trip image contrast and show weather only for a reliable day city
+- [ ] Replace today rows with an RTL itinerary sequence using original full-list numbering
+- [ ] Compact the empty-day state and active quick actions
+- [ ] Run TypeScript and build checks
