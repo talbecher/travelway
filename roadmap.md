@@ -32,7 +32,7 @@
 
 # Active-trip home polish
 
-- [ ] Improve active-trip image contrast and show weather only for a reliable day city
-- [ ] Replace today rows with an RTL itinerary sequence using original full-list numbering
-- [ ] Compact the empty-day state and active quick actions
-- [ ] Run TypeScript and build checks
+- [x] Improve active-trip image contrast and show weather only for a reliable day city
+- [x] Replace today rows with an RTL itinerary sequence using original full-list numbering
+- [x] Compact the empty-day state and active quick actions
+- [x] Run TypeScript and build checks
