@@ -5,15 +5,36 @@ import { toast } from "sonner";
 import { celebrate, useChecklistItems, useToggleChecklistItem } from "@/hooks/use-checklist";
 import { categoryMeta } from "@/lib/checklist-templates";
 
-export function ChecklistCard({ variant = "default" }: { variant?: "default" | "preTripHome" }) {
-  const { data: items = [] } = useChecklistItems();
+export function ChecklistCard({ variant = "default" }: { variant?: "default" | "preTripHome" | "activeHome" }) {
+  const { data: items, isLoading, isError } = useChecklistItems();
   const toggle = useToggleChecklistItem();
 
-  if (items.length === 0) return null;
+  if (variant === "activeHome") {
+    const openCount = items?.filter((item) => !item.is_done).length;
+    return (
+      <Link to="/checklist" className="flex min-h-14 items-center gap-3 rounded-xl bg-card px-3.5 py-2.5 shadow-sm">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-[color:var(--accent)]">
+          <Check size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold">הכנות ומשימות</span>
+          {!isLoading && !isError && openCount != null && (
+            <span className="block text-[11px] text-muted-foreground">
+              {openCount === 0 ? "אין משימות פתוחות" : `${openCount} משימות פתוחות`}
+            </span>
+          )}
+        </span>
+        <ChevronLeft size={16} className="shrink-0 text-muted-foreground" />
+      </Link>
+    );
+  }
 
-  const done = items.filter((i) => i.is_done).length;
-  const pct = Math.round((done / items.length) * 100);
-  const open = items
+  const resolvedItems = items ?? [];
+  if (resolvedItems.length === 0) return null;
+
+  const done = resolvedItems.filter((i) => i.is_done).length;
+  const pct = Math.round((done / resolvedItems.length) * 100);
+  const open = resolvedItems
     .filter((i) => !i.is_done)
     .sort((a, b) => {
       const rank = { high: 0, normal: 1, low: 2 } as const;
@@ -39,14 +60,14 @@ export function ChecklistCard({ variant = "default" }: { variant?: "default" | "
         <div className="h-2 rounded-full bg-muted overflow-hidden">
           <motion.div
             className="h-full rounded-full"
-            style={{ background: done === items.length ? "#10B981" : "var(--accent)" }}
+            style={{ background: done === resolvedItems.length ? "#10B981" : "var(--accent)" }}
             initial={false}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.4 }}
           />
         </div>
         <div className="text-xs text-muted-foreground">
-          {done}/{items.length} הושלמו
+          {done}/{resolvedItems.length} הושלמו
         </div>
       </div>
 

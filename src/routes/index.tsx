@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
 import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
@@ -30,6 +30,13 @@ import { SavedPlacesRow } from "@/components/home/PrepStatsRow";
 import { BudgetSummary } from "@/components/home/BudgetSummary";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
 import { getDestinationTheme } from "@/lib/destination-theme";
+import { ActiveTripHero } from "@/components/home/ActiveTripHero";
+import {
+  ActiveTodayCard,
+  ActiveTodayErrorCard,
+  ActiveTodayLoadingCard,
+  ActiveTodayMissingCard,
+} from "@/components/home/ActiveTodayCard";
 
 
 
@@ -184,6 +191,16 @@ function DeadlinesCard({
 
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "TravelWay — הבית של הטיול" },
+      { name: "description", content: "היום, המסלול, המקומות והתקציב של הטיול הפעיל ב־TravelWay." },
+      { property: "og:title", content: "TravelWay — הבית של הטיול" },
+      { property: "og:description", content: "היום, המסלול, המקומות והתקציב של הטיול הפעיל ב־TravelWay." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Home,
 });
 
@@ -681,6 +698,156 @@ function Home() {
 
         <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} />
         <ToolsRow actions={toolActions} />
+
+        <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
+      </div>
+    );
+  }
+
+  // ===== ACTIVE-TRIP HOME =====
+  if (tripIsActive && stats) {
+    const todayEntries = todayDay ? entriesByDay[todayDay.id] ?? [] : [];
+    const todayDataPending = daysLoading || (!!activeVersion?.id && entriesLoading);
+    const todayDataFailed = daysError || entriesError;
+    const urgent = deadlines.find((deadline) => deadline.urgency === "overdue" || deadline.urgency === "critical") ?? null;
+    const remainingDeadlines = urgent ? deadlines.filter((deadline) => deadline.id !== urgent.id) : deadlines;
+    const openDeadline = (item: DeadlineItem) =>
+      navigate({
+        to: "/recommendations",
+        search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
+      });
+    const destinationTheme = getDestinationTheme(trip.destination_country ?? "");
+    const heroImageCandidates = Array.from(
+      new Set(
+        todayEntries
+          .filter((entry) => !["food", "note"].includes(entry.entry_type))
+          .sort((a, b) => {
+            const rank: Record<string, number> = { attraction: 0, hotel_checkin: 1, transport: 2, flight: 3 };
+            return (rank[a.entry_type] ?? 4) - (rank[b.entry_type] ?? 4);
+          })
+          .map((entry) => entry.photo_url)
+          .filter((url): url is string => Boolean(url)),
+      ),
+    );
+    const weatherLocation = todayDay?.city_label?.trim() || trip.destination_country?.trim() || null;
+    const budgetDefined = Number.isFinite(stats.budget) && stats.budget > 0;
+    const overBudget = budgetDefined && stats.remaining < 0;
+
+    return (
+      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
+        <ActiveTripHero
+          title={trip.title}
+          dayNumber={todayDay?.day_number ?? null}
+          daysTotal={stats.daysTotal}
+          date={todayLocal()}
+          city={todayDay?.city_label ?? null}
+          weatherLocation={weatherLocation}
+          imageUrls={heroImageCandidates}
+          fallbackBackground={destinationTheme.heroGradient}
+        />
+
+        {urgent && (
+          <button
+            type="button"
+            onClick={() => openDeadline(urgent)}
+            className="flex min-h-11 w-full items-start gap-2 rounded-xl bg-card px-3 py-2.5 text-right shadow-sm"
+            style={{ borderRightWidth: 4, borderRightColor: URGENCY_COLOR[urgent.urgency] }}
+          >
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: URGENCY_COLOR[urgent.urgency] }} />
+            <span className="min-w-0 flex-1 break-words text-[13px] leading-snug">
+              {urgent.name} · {daysLeftLabel(urgent.daysLeft)}
+            </span>
+            <ChevronLeft size={16} className="shrink-0 text-muted-foreground" />
+          </button>
+        )}
+
+        {todayDataFailed ? (
+          <ActiveTodayErrorCard
+            onRetry={() => {
+              void refetchDays();
+              void refetchEntries();
+            }}
+          />
+        ) : todayDataPending ? (
+          <ActiveTodayLoadingCard />
+        ) : !todayDay ? (
+          <ActiveTodayMissingCard />
+        ) : (
+          <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} />
+        )}
+
+        <section className="grid grid-cols-3 gap-2" aria-label="פעולות שימושיות">
+          <button
+            type="button"
+            onClick={() => setHayinuOpen(true)}
+            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1.5 text-center shadow-sm"
+          >
+            <MapPin size={20} className="text-[color:var(--accent)]" />
+            <span className="break-words text-[11px] font-medium">היינו כאן</span>
+          </button>
+          <button
+            type="button"
+            disabled={!isOnline}
+            onClick={() => {
+              if (!isOnline) {
+                toast.error("אין חיבור · לא ניתן להוסיף כרגע");
+                return;
+              }
+              openQuickExpense();
+            }}
+            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1.5 text-center shadow-sm disabled:opacity-50"
+          >
+            <ReceiptText size={20} className="text-[color:var(--accent)]" />
+            <span className="break-words text-[11px] font-medium">הוצאה מהירה</span>
+          </button>
+          <Link
+            to="/documents"
+            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1.5 text-center shadow-sm"
+          >
+            <FileText size={20} className="text-[color:var(--accent)]" />
+            <span className="break-words text-[11px] font-medium">מסמכים</span>
+          </Link>
+        </section>
+
+        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations" })} variant="activeHome" />
+
+        <section className="rounded-xl bg-card px-3.5 py-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground">{overBudget ? "חריגה מהתקציב" : budgetDefined ? "נשאר לטיול" : "תקציב"}</p>
+              <p className={`mt-0.5 break-words text-[22px] font-semibold tabular-nums leading-tight ${overBudget ? "text-destructive" : "text-foreground"}`}>
+                {!budgetDefined ? "לא הוגדר תקציב" : overBudget ? `-${ils(Math.abs(stats.remaining))}` : ils(stats.remaining)}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">הוצאות עד עכשיו: {ils(stats.spent)}</p>
+            </div>
+            <Link to="/budget" className="flex min-h-11 shrink-0 items-center gap-1 px-1 text-[12px] font-medium text-[color:var(--accent)]">
+              לתקציב <ChevronLeft size={15} />
+            </Link>
+          </div>
+          {budgetDefined && (
+            <details className="mt-2 border-t border-border pt-1.5 text-[12px]">
+              <summary className="min-h-11 cursor-pointer py-3 text-muted-foreground">יתרה ממוצעת ליום שנותר</summary>
+              <p className={overBudget ? "pb-2 text-destructive" : "pb-2 text-foreground"}>
+                {overBudget ? "אין יתרה זמינה לחלוקה יומית" : `${ils(stats.daily)} ליום`}
+              </p>
+            </details>
+          )}
+        </section>
+
+        <ChecklistCard variant="activeHome" />
+
+        {remainingDeadlines.length > 0 && (
+          <details className="rounded-xl bg-card shadow-sm">
+            <summary className="flex min-h-14 cursor-pointer items-center gap-3 px-3.5 py-2.5">
+              <AlertTriangle size={18} className="shrink-0 text-[color:var(--accent-2)]" />
+              <span className="min-w-0 flex-1 text-[14px] font-semibold">דדליינים נוספים</span>
+              <span className="text-[12px] text-muted-foreground">{remainingDeadlines.length}</span>
+            </summary>
+            <div className="border-t border-border px-3 pb-3 pt-2">
+              <DeadlinesCard items={remainingDeadlines} onOpen={openDeadline} />
+            </div>
+          </details>
+        )}
 
         <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
       </div>
@@ -1253,7 +1420,19 @@ function typeEmoji(t: string) {
   return "⛩";
 }
 
-function NearbyCard({ recs, onSeeAll }: { recs: NearbyRec[]; onSeeAll: () => void }) {
+function NearbyImage({ rec }: { rec: NearbyRec }) {
+  const [failed, setFailed] = useState(false);
+  if (!rec.photo_url || failed) {
+    return (
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-lg" aria-hidden="true">
+        {typeEmoji(rec.type)}
+      </div>
+    );
+  }
+  return <img src={rec.photo_url} alt="" loading="lazy" onError={() => setFailed(true)} className="h-10 w-10 shrink-0 rounded-lg object-cover" />;
+}
+
+function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]; onSeeAll: () => void; variant?: "default" | "activeHome" }) {
   const [filter, setFilter] = useState<"all" | "food" | "attraction">("all");
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState(false);
@@ -1295,14 +1474,29 @@ function NearbyCard({ recs, onSeeAll }: { recs: NearbyRec[]; onSeeAll: () => voi
     { key: "all", label: "הכל" },
   ];
 
+  if (variant === "activeHome" && geoError) {
+    return (
+      <section className="rounded-xl bg-card px-3.5 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <MapPin size={18} className="shrink-0 text-[color:var(--accent)]" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[14px] font-semibold">מהמקומות ששמרתם, לידכם</h2>
+            <p className="text-[11px] text-muted-foreground">אין כרגע גישה למיקום.</p>
+          </div>
+          <button type="button" onClick={onSeeAll} className="min-h-11 shrink-0 px-1 text-[12px] font-medium text-[color:var(--accent)]">לשמורים</button>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+    <section className={variant === "activeHome" ? "rounded-xl bg-card p-3.5 shadow-sm" : "bg-card border border-border rounded-2xl p-4 shadow-sm"}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="text-sm font-semibold flex items-center gap-1.5">
-            <MapPin size={14} /> מה קרוב אליי?
+            <MapPin size={14} /> {variant === "activeHome" ? "מהמקומות ששמרתם, לידכם" : "מה קרוב אליי?"}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">מהמקומות השמורים שלך</div>
+          {variant !== "activeHome" && <div className="text-[11px] text-muted-foreground mt-0.5">מהמקומות השמורים שלך</div>}
         </div>
       </div>
 
@@ -1351,24 +1545,11 @@ function NearbyCard({ recs, onSeeAll }: { recs: NearbyRec[]; onSeeAll: () => voi
                 key={rec.id}
                 className="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2"
               >
-                {rec.photo_url ? (
-                  <img
-                    src={rec.photo_url}
-                    alt=""
-                    loading="lazy"
-                    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
-                    onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
-                    className="w-10 h-10 rounded-lg object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-lg shrink-0">
-                    {typeEmoji(rec.type)}
-                  </div>
-                )}
+                <NearbyImage rec={rec} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-semibold truncate">{rec.name}</div>
                   <div className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">
-                    {fmtDistKm(distance)}
+                    מרחק בקו אווירי · {fmtDistKm(distance)}
                   </div>
                 </div>
                 <a
@@ -1391,7 +1572,7 @@ function NearbyCard({ recs, onSeeAll }: { recs: NearbyRec[]; onSeeAll: () => voi
         onClick={onSeeAll}
         className="mt-3 w-full text-center text-[12px] text-[color:var(--accent)] font-medium"
       >
-        ראה הכל ›
+        {variant === "activeHome" ? "למקומות השמורים" : "ראה הכל ›"}
       </button>
     </section>
   );
