@@ -58,12 +58,12 @@ export function ActiveTripHero({
   return (
     <section
       className="relative isolate flex overflow-hidden rounded-2xl px-4 py-4 text-primary-foreground shadow-sm sm:px-5 sm:py-5"
-      style={loadedImageUrl ? undefined : { background: fallbackBackground }}
+      style={loadedImageUrl ? undefined : { backgroundColor: "var(--warning-foreground)", backgroundImage: fallbackBackground }}
     >
       {loadedImageUrl && (
         <img src={loadedImageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
       )}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-foreground/95 via-foreground/55 to-foreground/20" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-l from-warning-foreground/85 via-warning-foreground/45 to-transparent" />
 
       <div className="flex w-full min-w-0 flex-col gap-5">
         <div className="flex min-w-0 items-start justify-between gap-3">
