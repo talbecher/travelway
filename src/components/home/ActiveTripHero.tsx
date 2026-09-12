@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { hebDate } from "@/lib/format";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
+import { useOnline } from "@/hooks/use-online";
+import { getDestinationPhoto } from "@/lib/places.functions";
+import ambienceImage from "@/assets/travel-ambience.jpg";
 
 export function ActiveTripHero({
   title,
@@ -13,6 +18,7 @@ export function ActiveTripHero({
   weatherLocation,
   imageUrls,
   fallbackBackground,
+  destination,
 }: {
   title: string;
   dayNumber: number | null;
@@ -22,16 +28,30 @@ export function ActiveTripHero({
   weatherLocation: string | null;
   imageUrls: string[];
   fallbackBackground: string;
+  destination?: string | null;
 }) {
   const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
+  const [dayImagesExhausted, setDayImagesExhausted] = useState(false);
+  const [ambienceFailed, setAmbienceFailed] = useState(false);
   const imageKey = imageUrls.join("|");
+  const isOnline = useOnline();
+  const fetchDestinationPhoto = useServerFn(getDestinationPhoto);
+
+  const destinationTerm = destination?.trim() || null;
+  const cityTerm = city?.trim() || null;
 
   useEffect(() => {
     let cancelled = false;
     setLoadedImageUrl(null);
+    setDayImagesExhausted(false);
     const candidates = imageKey ? imageKey.split("|") : [];
+    if (candidates.length === 0) setDayImagesExhausted(true);
     const loadAt = (index: number) => {
-      if (cancelled || index >= candidates.length) return;
+      if (cancelled) return;
+      if (index >= candidates.length) {
+        setDayImagesExhausted(true);
+        return;
+      }
       const url = candidates[index];
       if (!url) return;
       const image = new Image();
@@ -47,6 +67,31 @@ export function ActiveTripHero({
     };
   }, [imageKey]);
 
+  const { data: destinationPhoto } = useQuery({
+    queryKey: ["destination-photo", destinationTerm, cityTerm],
+    enabled: dayImagesExhausted && isOnline && !!destinationTerm,
+    retry: false,
+    // Google photo URIs are short-lived references; refetch on a new session
+    // rather than caching them long-term.
+    gcTime: 15 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      fetchDestinationPhoto({ data: { city: cityTerm, destination: destinationTerm! } }),
+  });
+
+  const [destinationPhotoFailed, setDestinationPhotoFailed] = useState(false);
+  const destinationUrl =
+    dayImagesExhausted && !destinationPhotoFailed ? destinationPhoto?.url ?? null : null;
+
+  useEffect(() => {
+    setDestinationPhotoFailed(false);
+  }, [destinationPhoto?.url]);
+
+  const backgroundUrl =
+    loadedImageUrl ?? destinationUrl ?? (dayImagesExhausted && !ambienceFailed ? ambienceImage : null);
+  const showsPlacesPhoto = !loadedImageUrl && !!destinationUrl;
+  const attributions = showsPlacesPhoto ? destinationPhoto?.attributions ?? [] : [];
+
   const reliableWeatherLocation = weatherLocation?.trim() || null;
   const forecast = useDayWeather(reliableWeatherLocation, date);
   const current = useCurrentWeather(reliableWeatherLocation);
@@ -58,10 +103,18 @@ export function ActiveTripHero({
   return (
     <section
       className="relative isolate flex overflow-hidden rounded-2xl px-4 py-4 text-primary-foreground shadow-sm sm:px-5 sm:py-5"
-      style={loadedImageUrl ? undefined : { backgroundColor: "var(--warning-foreground)", backgroundImage: fallbackBackground }}
+      style={backgroundUrl ? undefined : { backgroundColor: "var(--warning-foreground)", backgroundImage: fallbackBackground }}
     >
-      {loadedImageUrl && (
-        <img src={loadedImageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
+      {backgroundUrl && (
+        <img
+          src={backgroundUrl}
+          alt=""
+          className="absolute inset-0 -z-20 h-full w-full object-cover"
+          onError={() => {
+            if (destinationUrl && backgroundUrl === destinationUrl) setDestinationPhotoFailed(true);
+            else if (backgroundUrl === ambienceImage) setAmbienceFailed(true);
+          }}
+        />
       )}
       <div className="absolute inset-0 -z-10 bg-gradient-to-l from-warning-foreground/85 via-warning-foreground/45 to-transparent" />
 
@@ -91,11 +144,38 @@ export function ActiveTripHero({
           )}
         </div>
 
-        {condition && temperature != null && reliableWeatherLocation && (
-          <p className="text-[11px] font-medium text-primary-foreground/90">
-            מזג האוויר ב{reliableWeatherLocation}{weatherLabel ? ` · ${weatherLabel}` : ""}
-          </p>
-        )}
+        <div className="flex items-end justify-between gap-2">
+          {condition && temperature != null && reliableWeatherLocation ? (
+            <p className="text-[11px] font-medium text-primary-foreground/90">
+              מזג האוויר ב{reliableWeatherLocation}{weatherLabel ? ` · ${weatherLabel}` : ""}
+            </p>
+          ) : (
+            <span />
+          )}
+
+          {showsPlacesPhoto && (
+            <p className="max-w-[60%] truncate text-left text-[10px] text-primary-foreground/80" dir="ltr">
+              Photo: Google
+              {attributions.length > 0 && (
+                <>
+                  {" · "}
+                  {attributions.map((a, i) => (
+                    <span key={`${a.name}-${i}`}>
+                      {i > 0 ? ", " : ""}
+                      {a.uri ? (
+                        <a href={a.uri} target="_blank" rel="noreferrer" className="underline">
+                          {a.name}
+                        </a>
+                      ) : (
+                        a.name
+                      )}
+                    </span>
+                  ))}
+                </>
+              )}
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );
