@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type PlaceResult = {
   id: string;
@@ -274,4 +275,197 @@ export const enrichRecommendationPhoto = createServerFn({ method: "POST" })
     }
 
     return { updated: true, photo_url, google_rating, google_rating_count };
+  });
+
+/* ---------- destination ambience photo (read-only) ---------- */
+
+export type PhotoAttribution = { name: string; uri: string | null };
+
+export type DestinationPhoto = {
+  url: string | null;
+  attributions: PhotoAttribution[];
+  matched: "city" | "destination" | null;
+};
+
+type PlaceLite = {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  types?: string[];
+  addressComponents?: AddressComponent[];
+  photos?: Array<{
+    name: string;
+    widthPx?: number;
+    heightPx?: number;
+    authorAttributions?: Array<{ displayName?: string; uri?: string }>;
+  }>;
+};
+
+const GEO_TYPES = new Set([
+  "locality",
+  "administrative_area_level_1",
+  "administrative_area_level_2",
+  "administrative_area_level_3",
+  "country",
+  "sublocality",
+  "neighborhood",
+  "postal_town",
+  "tourist_attraction",
+  "natural_feature",
+  "landmark",
+  "point_of_interest",
+]);
+
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/** Does the place's address/components plausibly contain the requested term? */
+function componentsMatch(place: PlaceLite, term: string): boolean {
+  const t = norm(term);
+  if (!t) return false;
+  const haystack: string[] = [];
+  for (const c of place.addressComponents ?? []) {
+    if (c.longText) haystack.push(norm(c.longText));
+    if (c.shortText) haystack.push(norm(c.shortText));
+  }
+  if (place.formattedAddress) haystack.push(norm(place.formattedAddress));
+  if (place.displayName?.text) haystack.push(norm(place.displayName.text));
+  return haystack.some((h) => h === t || h.includes(t) || t.includes(h));
+}
+
+function isGeographic(place: PlaceLite): boolean {
+  const types = place.types ?? [];
+  // `political` alone is not proof — require a real geographic/landmark type.
+  return types.some((t) => GEO_TYPES.has(t));
+}
+
+async function searchDestinationPlace(
+  apiKey: string,
+  textQuery: string,
+): Promise<PlaceLite | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+          "places.id,places.displayName,places.formattedAddress,places.types,places.addressComponents,places.photos",
+      },
+      body: JSON.stringify({ textQuery, languageCode: "he", pageSize: 5 }),
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error("[destinationPhoto] search http", res.status);
+      return null;
+    }
+    const json = (await res.json()) as { places?: PlaceLite[] };
+    return (json.places ?? [])[0] ?? null;
+  } catch (e) {
+    clearTimeout(timeout);
+    console.error("[destinationPhoto] search error", e);
+    return null;
+  }
+}
+
+async function resolvePhotoUri(
+  apiKey: string,
+  photoName: string,
+): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const url = `https://places.googleapis.com/v1/${encodeURI(photoName)}/media?maxWidthPx=1200&skipHttpRedirect=true`;
+    const res = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { "X-Goog-Api-Key": apiKey },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { photoUri?: string };
+    return json.photoUri ?? null;
+  } catch (e) {
+    clearTimeout(timeout);
+    console.error("[destinationPhoto] photo error", e);
+    return null;
+  }
+}
+
+/** Pick landscape photos first, then anything else. */
+function rankPhotos(place: PlaceLite) {
+  return [...(place.photos ?? [])]
+    .filter((p) => !!p.name)
+    .sort((a, b) => {
+      const la = (a.widthPx ?? 0) > (a.heightPx ?? 0) ? 0 : 1;
+      const lb = (b.widthPx ?? 0) > (b.heightPx ?? 0) ? 0 : 1;
+      if (la !== lb) return la - lb;
+      return (b.widthPx ?? 0) - (a.widthPx ?? 0);
+    })
+    .slice(0, 2);
+}
+
+export const getDestinationPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { city?: string | null; destination: string }) => {
+    if (!input || typeof input.destination !== "string") throw new Error("destination required");
+    return {
+      city: typeof input.city === "string" ? input.city.slice(0, 100).trim() : null,
+      destination: input.destination.slice(0, 120).trim(),
+    };
+  })
+  .handler(async ({ data }): Promise<DestinationPhoto> => {
+    const empty: DestinationPhoto = { url: null, attributions: [], matched: null };
+    const apiKey = process.env.GOOGLE_PLACES_KEY;
+    if (!apiKey || !data.destination) return empty;
+
+    // Ambiguous / multi-country destination text — don't guess.
+    if (/[,/|]|\band\b|\bו-|\+/.test(data.destination)) {
+      if (!data.city) return empty;
+    }
+
+    const attempts: Array<{ query: string; verify: string[]; matched: "city" | "destination" }> = [];
+    if (data.city) {
+      attempts.push({
+        query: `${data.city} ${data.destination}`,
+        verify: [data.city],
+        matched: "city",
+      });
+    }
+    attempts.push({
+      query: data.destination,
+      verify: [data.destination],
+      matched: "destination",
+    });
+
+    let photoTries = 0;
+    for (const attempt of attempts.slice(0, 2)) {
+      const place = await searchDestinationPlace(apiKey, attempt.query);
+      if (!place) continue;
+      if (!isGeographic(place)) continue;
+      if (!attempt.verify.some((term) => componentsMatch(place, term))) continue;
+
+      for (const photo of rankPhotos(place)) {
+        if (photoTries >= 2) break;
+        photoTries += 1;
+        const uri = await resolvePhotoUri(apiKey, photo.name);
+        if (!uri) continue;
+        const attributions: PhotoAttribution[] = (photo.authorAttributions ?? [])
+          .filter((a) => a.displayName)
+          .map((a) => ({ name: a.displayName!, uri: a.uri ?? null }));
+        return { url: uri, attributions, matched: attempt.matched };
+      }
+      if (photoTries >= 2) break;
+    }
+
+    return empty;
   });
