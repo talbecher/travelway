@@ -161,11 +161,10 @@ export function ActiveTripHero({
           {showsPlacesPhoto && (
             <p
               className="max-w-[65%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] leading-tight text-primary-foreground/90"
-              dir="ltr"
             >
               {attributions.length > 0 ? (
                 <>
-                  Photo:{" "}
+                  צילום:{" "}
                   {attributions.map((a, i) => (
                     <span key={`${a.name}-${i}`}>
                       {i > 0 ? ", " : ""}
