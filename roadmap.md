@@ -24,8 +24,8 @@
 
 # Active-trip home redesign
 
-- [ ] Active-only panoramic opening with today imagery and contextual weather
-- [ ] Unified “today” card with timed, untimed, empty, missing, loading, and error states
-- [ ] Compact active-trip actions, nearby places, budget, checklist, and deadlines
-- [ ] Preserve pre-trip/post-trip behavior and existing handlers
-- [ ] Build and TypeScript checks
+- [x] Active-only panoramic opening with today imagery and contextual weather
+- [x] Unified “today” card with timed, untimed, empty, missing, loading, and error states
+- [x] Compact active-trip actions, nearby places, budget, checklist, and deadlines
+- [x] Preserve pre-trip/post-trip behavior and existing handlers
+- [x] Build and TypeScript checks
