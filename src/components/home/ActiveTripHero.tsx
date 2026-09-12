@@ -170,9 +170,9 @@ export function ActiveTripHero({
                 size="icon"
                 onClick={() => setAttributionOpen(true)}
                 aria-label="פרטי התמונה והצלם"
-                className="shrink-0 rounded-full border border-primary-foreground/20 bg-foreground/30 text-primary-foreground/80 backdrop-blur-sm hover:bg-foreground/45 hover:text-primary-foreground"
+                className="h-7 w-7 min-h-7 shrink-0 rounded-full border border-primary-foreground/20 bg-foreground/30 p-0 text-primary-foreground/80 backdrop-blur-sm hover:bg-foreground/45 hover:text-primary-foreground"
               >
-                <Info aria-hidden="true" />
+                <Info aria-hidden="true" className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
