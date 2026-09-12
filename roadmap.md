@@ -39,6 +39,6 @@
 
 # Destination photo attribution sheet
 
-- [ ] Replace the on-image Google credit line with a compact info button
-- [ ] Show structured Google Maps and photographer attribution in the existing bottom sheet
-- [ ] Run TypeScript and build checks
+- [x] Replace the on-image Google credit line with a compact info button
+- [x] Show structured Google Maps and photographer attribution in the existing bottom sheet
+- [x] Run TypeScript and build checks
