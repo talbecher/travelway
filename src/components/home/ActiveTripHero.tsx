@@ -96,9 +96,10 @@ export function ActiveTripHero({
   const forecast = useDayWeather(reliableWeatherLocation, date);
   const current = useCurrentWeather(reliableWeatherLocation);
   const condition = forecast?.condition ?? current?.condition ?? null;
-  const temperature = forecast ? forecast.tempMax : current?.temp ?? null;
+  const temperature = forecast?.tempMax ?? current?.temp ?? null;
   const weatherLabel = condition ? WEATHER_LABELS_HE[condition] : null;
   const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
+  const showWeather = !!reliableWeatherLocation && (temperature != null || !!condition);
 
   return (
     <section
