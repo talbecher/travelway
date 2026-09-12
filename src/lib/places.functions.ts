@@ -279,11 +279,16 @@ export const enrichRecommendationPhoto = createServerFn({ method: "POST" })
 
 /* ---------- destination ambience photo (read-only) ---------- */
 
-export type PhotoAttribution = { name: string; uri: string | null };
+export type PhotoAttribution = {
+  name: string;
+  uri: string | null;
+  photoUri: string | null;
+};
 
 export type DestinationPhoto = {
   url: string | null;
   attributions: PhotoAttribution[];
+  googleMapsUri: string | null;
   matched: "city" | "destination" | null;
 };
 
@@ -297,7 +302,8 @@ type PlaceLite = {
     name: string;
     widthPx?: number;
     heightPx?: number;
-    authorAttributions?: Array<{ displayName?: string; uri?: string }>;
+    googleMapsUri?: string;
+    authorAttributions?: Array<{ displayName?: string; uri?: string; photoUri?: string }>;
   }>;
 };
 
@@ -424,7 +430,12 @@ export const getDestinationPhoto = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<DestinationPhoto> => {
-    const empty: DestinationPhoto = { url: null, attributions: [], matched: null };
+    const empty: DestinationPhoto = {
+      url: null,
+      attributions: [],
+      googleMapsUri: null,
+      matched: null,
+    };
     const apiKey = process.env.GOOGLE_PLACES_KEY;
     if (!apiKey || !data.destination) return empty;
 
@@ -461,8 +472,17 @@ export const getDestinationPhoto = createServerFn({ method: "POST" })
         if (!uri) continue;
         const attributions: PhotoAttribution[] = (photo.authorAttributions ?? [])
           .filter((a) => a.displayName)
-          .map((a) => ({ name: a.displayName!, uri: a.uri ?? null }));
-        return { url: uri, attributions, matched: attempt.matched };
+          .map((a) => ({
+            name: a.displayName ?? "",
+            uri: a.uri ?? null,
+            photoUri: a.photoUri ?? null,
+          }));
+        return {
+          url: uri,
+          attributions,
+          googleMapsUri: photo.googleMapsUri ?? null,
+          matched: attempt.matched,
+        };
       }
       if (photoTries >= 2) break;
     }

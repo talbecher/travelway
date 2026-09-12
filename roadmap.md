@@ -36,3 +36,9 @@
 - [x] Replace today rows with an RTL itinerary sequence using original full-list numbering
 - [x] Compact the empty-day state and active quick actions
 - [x] Run TypeScript and build checks
+
+# Destination photo attribution sheet
+
+- [ ] Replace the on-image Google credit line with a compact info button
+- [ ] Show structured Google Maps and photographer attribution in the existing bottom sheet
+- [ ] Run TypeScript and build checks
