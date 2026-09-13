@@ -49,4 +49,4 @@
 - [x] Separate the displayed day area, weather city, and destination-photo search location
 - [x] Refine active-trip weather and photo-info placement
 - [x] Tighten the active today sequence and update remaining-stop copy
-- [ ] Run TypeScript and build checks
+- [x] Run TypeScript and build checks
