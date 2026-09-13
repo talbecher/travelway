@@ -61,7 +61,7 @@ function EntryImage({ entry }: { entry: ActiveTodayEntry }) {
 function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boolean }) {
   const { entry, originalIndex, label } = item;
   return (
-    <div className="flex min-w-0 items-center gap-2 py-1.5">
+    <div className="flex min-w-0 items-center gap-2 py-1">
       <span
         className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold tabular-nums ${
           emphasized
@@ -77,7 +77,7 @@ function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boole
         {label && <p className={`text-[11px] font-medium ${emphasized ? "text-[color:var(--accent)]" : "text-muted-foreground"}`}>{label}</p>}
         <p className={`break-words text-[14px] leading-snug text-foreground ${emphasized ? "font-bold" : "font-semibold"}`}>{entry.title}</p>
         {(entry.time_of_day || entry.location_name) && (
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
             {entry.time_of_day && <span className="inline-flex items-center gap-1 tabular-nums" dir="ltr"><Clock size={11} aria-hidden="true" /> {entry.time_of_day.slice(0, 5)}</span>}
             {entry.location_name && <span className="inline-flex min-w-0 items-center gap-1"><MapPin size={11} className="shrink-0" aria-hidden="true" /><span className="break-words">{entry.location_name}</span></span>}
           </div>
@@ -89,7 +89,7 @@ function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boole
 
 function SequenceConnector({ directional }: { directional: boolean }) {
   return (
-    <div className="relative mr-3.5 h-3 w-px bg-border" aria-hidden="true">
+    <div className="relative mr-3.5 h-2.5 w-px bg-border" aria-hidden="true">
       {directional
         ? <ChevronDown size={12} className="absolute -bottom-1.5 -right-[5.5px] text-[color:var(--accent)]" />
         : <span className="absolute bottom-0 right-1/2 h-1 w-1 translate-x-1/2 rounded-full bg-muted-foreground" />}
@@ -99,10 +99,10 @@ function SequenceConnector({ directional }: { directional: boolean }) {
 
 function CardShell({ children, planned = true }: { children: React.ReactNode; planned?: boolean }) {
   return (
-    <section className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div>
+    <section className="space-y-2.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="leading-tight">
         <h2 className="text-[20px] font-semibold">היום שלכם</h2>
-        {planned && <p className="text-[12px] text-muted-foreground">לפי התכנון</p>}
+        {planned && <p className="mt-0.5 text-[12px] text-muted-foreground">לפי התכנון</p>}
       </div>
       {children}
     </section>
@@ -179,7 +179,7 @@ export function ActiveTodayCard({ dayId, entries }: { dayId: string; entries: Ac
             </div>
           );
         })}
-        {remainingCount > 0 && <p className="mr-9 mt-1 text-[11px] text-muted-foreground">{remainingCount === 1 ? "ועוד תחנה אחת ביום המלא" : `ועוד ${remainingCount} תחנות ביום המלא`}</p>}
+        {remainingCount > 0 && <p className="mr-9 mt-1 text-[11px] text-muted-foreground">{remainingCount === 1 ? "ועוד תחנה אחת בהמשך היום" : `ועוד ${remainingCount} תחנות בהמשך היום`}</p>}
       </div>
       <Link to="/itinerary/$dayId" params={{ dayId }} className="flex min-h-11 w-full items-center justify-center rounded-lg bg-[color:var(--accent)] px-4 font-semibold text-[color:var(--accent-foreground)]">פתחו את היום</Link>
       {navigationTarget && <a href={navigationHref(navigationTarget)} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center gap-1.5 text-[13px] font-medium text-[color:var(--accent)]"><Navigation size={15} /> ניווט אל {navigationTarget.title}</a>}

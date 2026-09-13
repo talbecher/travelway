@@ -720,7 +720,6 @@ function DayDetail() {
                 <div className="min-w-0">
                   <h1 className={"text-white font-medium leading-tight truncate " + (view === "list" ? "text-[21px]" : "text-[15px]")}>
                     יום {day.day_number}
-                    {day.city_label ? <span className="text-white/85"> · <span dir="ltr">{day.city_label}</span></span> : null}
                   </h1>
                   <p className={"text-white/70 leading-snug truncate " + (view === "list" ? "text-[11px] mt-0.5" : "text-[10px]")}>
                     {hebWeekday(day.date)}, {hebDate(day.date)}
@@ -733,64 +732,16 @@ function DayDetail() {
                 </div>
                 <div className={"flex shrink-0 " + (view === "list" ? "flex-col items-end gap-1" : "items-center gap-1.5")}>
                   {view === "list" && <DayWeatherLine city={day.city_label ?? null} date={day.date} />}
-                  {editingCity ? (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        autoFocus
-                        value={cityValue}
-                        onChange={(e) => setCityValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveCity.mutate();
-                          if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
-                        }}
-                        dir="ltr"
-                        placeholder="עיר / איזור"
-                        className="text-[12px] bg-white/10 border border-white/30 text-white placeholder:text-white/50 rounded-full px-2.5 py-1 outline-none focus:border-white min-w-0 w-[120px]"
-                      />
-                      <button
-                        onClick={() => saveCity.mutate()}
-                        aria-label="שמור עיר"
-                        className="w-8 h-8 rounded-full bg-white/20 border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
-                      >
-                        <Check size={13} />
-                      </button>
-                      <button
-                        onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }}
-                        aria-label="בטל עריכת עיר"
-                        className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center min-h-0 shrink-0"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ) : view === "list" ? (
+                  {view === "map" && (
                     <button
-                      onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                      className="relative inline-flex items-center gap-1 rounded-full text-white text-[10px] px-2 py-1 min-h-0 max-w-[120px] after:absolute after:-inset-2 after:content-['']"
-                      style={{ background: "rgba(255,255,255,0.2)" }}
+                      type="button"
+                      onClick={() => setMoreOpen(true)}
+                      aria-label="פעולות נוספות"
+                      className="relative w-8 h-8 rounded-full text-white flex items-center justify-center min-h-0 shrink-0 after:absolute after:-inset-1.5 after:content-['']"
+                      style={pillBg}
                     >
-                      <span dir="ltr" className="truncate">{day.city_label ? "עריכת עיר" : "הוסף עיר / אזור"}</span>
-                      <Pencil size={10} className="shrink-0" />
+                      <MoreHorizontal size={14} />
                     </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
-                        aria-label={day.city_label ? "עריכת עיר" : "הוסף עיר או אזור"}
-                        className="relative w-8 h-8 rounded-full text-white flex items-center justify-center min-h-0 shrink-0 after:absolute after:-inset-1.5 after:content-['']"
-                        style={pillBg}
-                      >
-                        <Pencil size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMoreOpen(true)}
-                        aria-label="פעולות נוספות"
-                        className="relative w-8 h-8 rounded-full text-white flex items-center justify-center min-h-0 shrink-0 after:absolute after:-inset-1.5 after:content-['']"
-                        style={pillBg}
-                      >
-                        <MoreHorizontal size={14} />
-                      </button>
-                    </>
                   )}
                 </div>
               </div>
@@ -798,6 +749,49 @@ function DayDetail() {
           </div>
         );
       })()}
+
+      <div className="border-b border-border bg-card px-4 py-2" dir="rtl">
+        {editingCity ? (
+          <div className="space-y-1.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <MapPin size={17} className="shrink-0 text-[color:var(--accent)]" aria-hidden="true" />
+              <input
+                autoFocus
+                value={cityValue}
+                onChange={(e) => setCityValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveCity.mutate();
+                  if (e.key === "Escape") { setEditingCity(false); setCityValue(day.city_label ?? ""); }
+                }}
+                dir="auto"
+                placeholder="עיר או אזור"
+                className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-[14px] outline-none focus:border-[color:var(--accent)]"
+              />
+              <button type="button" onClick={() => saveCity.mutate()} aria-label="שמור עיר ואזור" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[color:var(--accent)] text-white">
+                <Check size={17} />
+              </button>
+              <button type="button" onClick={() => { setEditingCity(false); setCityValue(day.city_label ?? ""); }} aria-label="בטל עריכת עיר ואזור" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground">
+                <X size={17} />
+              </button>
+            </div>
+            <p className="mr-6 text-[11px] text-muted-foreground">אפשר לציין גם אזור, למשל: טוקיו · שינג׳וקו</p>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+            className="flex min-h-11 w-full items-center gap-2 text-right"
+            aria-label={day.city_label ? "עריכת עיר ואזור היום" : "הוספת עיר או אזור היום"}
+          >
+            <MapPin size={17} className="shrink-0 text-[color:var(--accent)]" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-medium text-muted-foreground">עיר ואזור היום</span>
+              <span className="block break-words text-[14px] font-medium text-foreground" dir="auto">{day.city_label?.trim() || "הוסיפו עיר או אזור"}</span>
+            </span>
+            <Pencil size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+          </button>
+        )}
+      </div>
 
       {/* View switch — same day, two modes */}
       <div className="px-4 pt-2" dir="rtl">

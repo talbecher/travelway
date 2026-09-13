@@ -19,6 +19,7 @@ export function ActiveTripHero({
   date,
   city,
   weatherLocation,
+  photoLocation,
   imageUrls,
   fallbackBackground,
   destination,
@@ -29,6 +30,7 @@ export function ActiveTripHero({
   date: string;
   city: string | null;
   weatherLocation: string | null;
+  photoLocation: string | null;
   imageUrls: string[];
   fallbackBackground: string;
   destination?: string | null;
@@ -42,7 +44,7 @@ export function ActiveTripHero({
   const fetchDestinationPhoto = useServerFn(getDestinationPhoto);
 
   const destinationTerm = destination?.trim() || null;
-  const cityTerm = city?.trim() || null;
+  const photoLocationTerm = photoLocation?.trim() || null;
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +74,7 @@ export function ActiveTripHero({
   }, [imageKey]);
 
   const { data: destinationPhoto } = useQuery({
-    queryKey: ["destination-photo", destinationTerm, cityTerm],
+    queryKey: ["destination-photo", destinationTerm, photoLocationTerm],
     enabled: dayImagesExhausted && isOnline && !!destinationTerm,
     retry: false,
     // Google photo URIs are short-lived references; refetch on a new session
@@ -80,7 +82,7 @@ export function ActiveTripHero({
     gcTime: 15 * 60 * 1000,
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
-      fetchDestinationPhoto({ data: { city: cityTerm, destination: destinationTerm! } }),
+      fetchDestinationPhoto({ data: { city: photoLocationTerm, destination: destinationTerm! } }),
   });
 
   const [destinationPhotoFailed, setDestinationPhotoFailed] = useState(false);
@@ -145,24 +147,15 @@ export function ActiveTripHero({
                 aria-label={`${temperature != null ? `${temperature} מעלות` : "מזג אוויר"}${weatherLabel ? `, ${weatherLabel}` : ""}, ${reliableWeatherLocation}`}
               >
                 <WeatherIcon condition={condition ?? "unknown"} size="sm" />
-                {temperature != null ? (
-                  <span className="font-semibold tabular-nums" dir="ltr">{temperature}°</span>
-                ) : (
-                  weatherLabel && <span className="font-medium">{weatherLabel}</span>
-                )}
+                <span className="min-w-0">
+                  {temperature != null ? <span className="font-semibold tabular-nums" dir="ltr">{temperature}°</span> : weatherLabel && <span className="font-medium">{weatherLabel}</span>}
+                  <span className="mr-1.5 max-w-24 truncate align-middle font-medium">{reliableWeatherLocation}</span>
+                </span>
               </a>
             )}
           </div>
 
-          <div className="flex items-end justify-between gap-2">
-            {showWeather ? (
-              <p className="text-[11px] font-medium text-primary-foreground/90">
-                מזג האוויר ב{reliableWeatherLocation}{weatherLabel && temperature != null ? ` · ${weatherLabel}` : ""}
-              </p>
-            ) : (
-              <span />
-            )}
-
+          <div className="flex min-h-11 items-end justify-end">
             {showsPlacesPhoto && (
               <Button
                 type="button"
@@ -170,9 +163,9 @@ export function ActiveTripHero({
                 size="icon"
                 onClick={() => setAttributionOpen(true)}
                 aria-label="פרטי התמונה והצלם"
-                className="h-5 w-5 min-h-5 shrink-0 rounded-full border border-primary-foreground/15 bg-foreground/20 p-0 text-primary-foreground/50 backdrop-blur-sm hover:bg-foreground/35 hover:text-primary-foreground/80"
+                className="h-11 w-11 min-h-11 shrink-0 border-0 bg-transparent p-0 text-primary-foreground/65 shadow-none hover:bg-transparent hover:text-primary-foreground focus-visible:ring-primary-foreground"
               >
-                <Info aria-hidden="true" className="h-3 w-3" />
+                <Info aria-hidden="true" className="h-4 w-4" />
               </Button>
             )}
           </div>
