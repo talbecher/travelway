@@ -254,7 +254,21 @@ type EntrySlim = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   google_maps_url?: string | null;
+  linked_recommendation_id?: string | null;
+  recommendations?: { city?: string | null } | null;
 };
+
+function cleanLocationLabel(value: string | null | undefined): string | null {
+  const label = value?.trim() || null;
+  if (!label || label.length > 80 || /^https?:\/\//i.test(label)) return null;
+  return label;
+}
+
+function firstLocationPart(value: string | null | undefined): string | null {
+  const label = cleanLocationLabel(value);
+  if (!label) return null;
+  return label.split(/\s*(?:·|–|—|\/|\|)\s*/)[0]?.trim() || null;
+}
 
 
 /* ---------- live now card ---------- */
@@ -474,7 +488,7 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("day_entries")
-        .select("id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, itinerary_days!inner(trip_id, version_id)")
+        .select("id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations(city), itinerary_days!inner(trip_id, version_id)")
         .eq("itinerary_days.trip_id", tripId)
         .eq("itinerary_days.version_id", activeVersion!.id)
         .order("display_order")
@@ -729,7 +743,15 @@ function Home() {
           .filter((url): url is string => Boolean(url)),
       ),
     );
-    const weatherLocation = todayDay?.city_label?.trim() || null;
+    const entryCity = todayEntries
+      .map((entry) => cleanLocationLabel(entry.recommendations?.city))
+      .find((value): value is string => Boolean(value)) ?? null;
+    const entryLocation = todayEntries
+      .map((entry) => cleanLocationLabel(entry.location_name))
+      .find((value): value is string => Boolean(value)) ?? null;
+    const dayAreaLabel = cleanLocationLabel(todayDay?.city_label) ?? entryCity ?? entryLocation;
+    const weatherCity = entryCity ?? firstLocationPart(todayDay?.city_label);
+    const photoLocation = dayAreaLabel ?? weatherCity ?? cleanLocationLabel(trip.destination_country);
     const budgetDefined = Number.isFinite(stats.budget) && stats.budget > 0;
     const overBudget = budgetDefined && stats.remaining < 0;
 
@@ -740,8 +762,9 @@ function Home() {
           dayNumber={todayDay?.day_number ?? null}
           daysTotal={stats.daysTotal}
           date={todayLocal()}
-          city={todayDay?.city_label ?? null}
-          weatherLocation={weatherLocation}
+          city={dayAreaLabel}
+          weatherLocation={weatherCity}
+          photoLocation={photoLocation}
           imageUrls={heroImageCandidates}
           fallbackBackground={destinationTheme.heroGradient}
           destination={trip.destination_country ?? null}
