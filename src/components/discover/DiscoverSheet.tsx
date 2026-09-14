@@ -44,16 +44,25 @@ function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): numb
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/** Result of adding saved recommendations to a specific day. */
+export type AddToDayResult = { added: number; skipped: number; failed: string[] };
+
 export function DiscoverSheet({
   open,
   onOpenChange,
   defaultCity,
   defaultCountry,
+  dayId,
+  onAddToDay,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultCity?: string | null;
   defaultCountry?: string | null;
+  /** When the sheet is opened from a specific itinerary day. */
+  dayId?: string | null;
+  /** Adds the given recommendation ids to that day. Required for the add block. */
+  onAddToDay?: (recIds: string[]) => Promise<AddToDayResult>;
 }) {
   const [city, setCity] = useState(defaultCity ?? "");
   const [country, setCountry] = useState(defaultCountry ?? "");
@@ -61,21 +70,38 @@ export function DiscoverSheet({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
+  const [savedRecIds, setSavedRecIds] = useState<string[]>([]);
+  const [addFailedRecIds, setAddFailedRecIds] = useState<string[]>([]);
+  const [addDone, setAddDone] = useState<string | null>(null);
   const [data, setData] = useState<DiscoverResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const qc = useQueryClient();
   const tripId = getActiveTripId();
 
+  const resetSaveState = () => {
+    setSavedIds(new Set());
+    setFailedIds(new Set());
+    setSavedRecIds([]);
+    setAddFailedRecIds([]);
+    setAddDone(null);
+  };
+
   // reset transient state when the sheet closes — nothing persisted
   useEffect(() => {
     if (open) return;
     setSelected(new Set());
-    setSavedIds(new Set());
-    setFailedIds(new Set());
+    resetSaveState();
     setData(null);
     setErrorMsg(null);
   }, [open]);
+
+  // keep prefilled destination in sync when opened from different days
+  useEffect(() => {
+    if (!open) return;
+    setCity(defaultCity ?? "");
+    setCountry(defaultCountry ?? "");
+  }, [open, defaultCity, defaultCountry]);
 
   const { data: existing } = useQuery({
     queryKey: ["recs", tripId, "discover-dup"],
@@ -117,8 +143,7 @@ export function DiscoverSheet({
     onSuccess: (res) => {
       setData(res);
       setSelected(new Set());
-      setSavedIds(new Set());
-      setFailedIds(new Set());
+      resetSaveState();
       setErrorMsg(res.ok ? null : (res.message ?? "החיפוש נכשל."));
     },
     onError: () => {
@@ -127,25 +152,32 @@ export function DiscoverSheet({
     },
   });
 
+  const findExistingRecId = async (placeId: string): Promise<string | null> => {
+    const { data: dup, error } = await supabase
+      .from("recommendations")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("provider", PROVIDER)
+      .eq("provider_place_id", placeId)
+      .limit(1);
+    if (error) throw error;
+    return dup && dup.length > 0 ? dup[0].id : null;
+  };
+
   const save = useMutation({
     mutationFn: async (places: DiscoverPlace[]) => {
       const ok: string[] = [];
       const failed: string[] = [];
+      const recIds: string[] = [];
       for (const p of places) {
         try {
-          const { data: dup, error: dupErr } = await supabase
-            .from("recommendations")
-            .select("id")
-            .eq("trip_id", tripId)
-            .eq("provider", PROVIDER)
-            .eq("provider_place_id", p.id)
-            .limit(1);
-          if (dupErr) throw dupErr;
-          if (dup && dup.length > 0) {
+          const existingId = await findExistingRecId(p.id);
+          if (existingId) {
             ok.push(p.id);
+            recIds.push(existingId);
             continue;
           }
-          await saveRecommendation({
+          const recId = await saveRecommendation({
             type: p.recType,
             name: p.name,
             city: p.city,
@@ -159,26 +191,58 @@ export function DiscoverSheet({
             provider_place_id: p.id,
           });
           ok.push(p.id);
+          recIds.push(recId);
         } catch (e) {
           const err = e as { code?: string; message?: string };
           if (err?.code === "23505" && (err.message ?? "").includes(DUP_INDEX)) {
             ok.push(p.id);
+            try {
+              const raced = await findExistingRecId(p.id);
+              if (raced) recIds.push(raced);
+            } catch {
+              /* the recommendation exists; only the day-link id is unknown */
+            }
           } else {
             failed.push(p.id);
           }
         }
       }
-      return { ok, failed };
+      return { ok, failed, recIds };
     },
-    onSuccess: ({ ok, failed }) => {
+    onSuccess: ({ ok, failed, recIds }) => {
       setSavedIds((prev) => new Set([...prev, ...ok]));
       setFailedIds(new Set(failed));
       setSelected(new Set(failed));
+      setSavedRecIds((prev) => Array.from(new Set([...prev, ...recIds])));
+      setAddFailedRecIds([]);
+      setAddDone(null);
       qc.invalidateQueries({ queryKey: ["recs"] });
       if (ok.length > 0) toast.success(`נשמרו ${ok.length} מקומות להמלצות שלי`);
       if (failed.length > 0) toast.error(`${failed.length} מקומות לא נשמרו. אפשר לנסות שוב.`);
     },
     onError: () => toast.error("השמירה נכשלה. נסו שוב."),
+  });
+
+  const addToDay = useMutation({
+    mutationFn: async (recIds: string[]) => {
+      if (!onAddToDay) throw new Error("no handler");
+      return onAddToDay(recIds);
+    },
+    onSuccess: ({ added, skipped, failed }) => {
+      setAddFailedRecIds(failed);
+      if (failed.length === 0) {
+        setAddDone(
+          added > 0
+            ? `נוספו ${added} מקומות ליום הזה${skipped > 0 ? ` (${skipped} כבר היו ביום)` : ""}`
+            : "כל המקומות שנבחרו כבר נמצאים ביום הזה",
+        );
+        if (added > 0) toast.success(`נוספו ${added} מקומות ליום הזה`);
+      } else {
+        setAddDone(null);
+        toast.error(`${failed.length} מקומות לא נוספו ליום. אפשר לנסות שוב.`);
+      }
+    },
+    onError: () => toast.error("ההוספה ליום נכשלה. נסו שוב."),
   });
 
   const toggleInterest = (i: DiscoverInterest) => {
@@ -323,6 +387,39 @@ export function DiscoverSheet({
                 />
               ))}
             </div>
+
+            {dayId && onAddToDay && savedRecIds.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                <p className="text-[13px] font-medium">להוסיף גם ליום הזה?</p>
+                {addDone ? (
+                  <p className="text-xs text-muted-foreground">{addDone}</p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-muted-foreground">
+                      המקומות כבר נשמרו ברשימת ההמלצות. ההוספה ליום מתבצעת רק בלחיצה.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        !addToDay.isPending &&
+                        addToDay.mutate(
+                          addFailedRecIds.length > 0 ? addFailedRecIds : savedRecIds,
+                        )
+                      }
+                      disabled={addToDay.isPending}
+                      className="w-full h-10 rounded-lg border border-[color:var(--accent)] text-[color:var(--accent)] text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+                    >
+                      {addToDay.isPending && <Loader2 size={16} className="animate-spin" />}
+                      {addToDay.isPending
+                        ? "מוסיף…"
+                        : addFailedRecIds.length > 0
+                          ? `נסו שוב (${addFailedRecIds.length})`
+                          : `הוסיפו ליום הזה (${savedRecIds.length})`}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="sticky bottom-0 pt-2 bg-surface">
               <button

@@ -96,7 +96,8 @@ function Recs() {
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const { data: recs = [] } = useRecs();
   const { data: trip } = useTrip();
-  const discoverEnabled = import.meta.env.VITE_DISCOVER_ENABLED === "true";
+  // Discover is on unless the flag explicitly turns it off.
+  const discoverEnabled = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
 

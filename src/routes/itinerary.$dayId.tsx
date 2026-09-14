@@ -30,7 +30,25 @@ import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
-import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
+import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
+import { DiscoverSheet, type AddToDayResult } from "@/components/discover/DiscoverSheet";
+
+/** Discover is on unless the flag explicitly turns it off. */
+const DISCOVER_ENABLED = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
+
+/** "טוקיו · שינג׳וקו" → "טוקיו". Returns "" when no clear city can be read. */
+function cityFromLabel(label: string | null | undefined): string {
+  const first = (label ?? "").split(/[·|,\/]|\s-\s/)[0]?.trim() ?? "";
+  return first.length >= 2 ? first : "";
+}
+
+/** Only prefill a destination that reads as one country. */
+function singleCountry(value: string | null | undefined): string {
+  const v = (value ?? "").trim();
+  if (!v || v.length > 40) return "";
+  if (/[·,\/+&]|\sו[א-ת]/.test(v)) return "";
+  return v;
+}
 
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
@@ -304,6 +322,7 @@ function DayDetail() {
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [heroFailed, setHeroFailed] = useState<string[]>([]);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [ratingTarget, setRatingTarget] = useState<{
@@ -495,6 +514,43 @@ function DayDetail() {
     if (oldIndex < 0 || newIndex < 0) return;
     const next = arrayMove(entries, oldIndex, newIndex);
     reorder.mutate(next.map((r, i) => ({ id: r.id, display_order: i })));
+  }
+
+  /** Adds already-saved recommendations to this day; skips ones already linked. */
+  async function addSavedRecsToDay(recIds: string[]): Promise<AddToDayResult> {
+    const linked = new Set(
+      (rawEntries as EntryRow[])
+        .map((e) => e.linked_recommendation_id)
+        .filter((v): v is string => !!v),
+    );
+    const pending = recIds.filter((id) => !linked.has(id));
+    const skipped = recIds.length - pending.length;
+    if (pending.length === 0) return { added: 0, skipped, failed: [] };
+
+    const { data: recs, error } = await supabase
+      .from("recommendations")
+      .select("id, type, name, city, google_maps_url, latitude, longitude, photo_url")
+      .in("id", pending);
+    if (error) return { added: 0, skipped, failed: pending };
+
+    let added = 0;
+    const failed: string[] = [];
+    for (const rec of recs ?? []) {
+      try {
+        await addRecommendationToDay(rec, dayId);
+        added++;
+      } catch {
+        failed.push(rec.id);
+      }
+    }
+    const missing = pending.filter((id) => !(recs ?? []).some((r) => r.id === id));
+    failed.push(...missing);
+    if (added > 0) {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["linked-recs"] });
+    }
+    return { added, skipped, failed };
   }
 
   async function handleMarkVisited(entry: EntryRow) {
@@ -793,6 +849,18 @@ function DayDetail() {
         )}
       </div>
 
+      {DISCOVER_ENABLED && view === "list" && (
+        <div className="px-4 pt-2" dir="rtl">
+          <button
+            type="button"
+            onClick={() => setDiscoverOpen(true)}
+            className="min-h-9 px-3 rounded-full text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
+          >
+            <Compass size={14} className="text-[color:var(--accent)]" /> השראה למקומות
+          </button>
+        </div>
+      )}
+
       {/* View switch — same day, two modes */}
       <div className="px-4 pt-2" dir="rtl">
         <div className="inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
@@ -944,6 +1012,7 @@ function DayDetail() {
           <EmptyDay
             onAdd={openPicker}
             onPickSaved={() => { setEntryType("attraction"); setPickerOpen(true); }}
+            onDiscover={DISCOVER_ENABLED ? () => setDiscoverOpen(true) : undefined}
           />
         </div>
       ) : (
@@ -1231,6 +1300,17 @@ function DayDetail() {
         )}
       </BottomSheet>
 
+
+      {DISCOVER_ENABLED && (
+        <DiscoverSheet
+          open={discoverOpen}
+          onOpenChange={setDiscoverOpen}
+          defaultCity={cityFromLabel(day.city_label)}
+          defaultCountry={singleCountry(trip?.destination_country)}
+          dayId={dayId}
+          onAddToDay={addSavedRecsToDay}
+        />
+      )}
 
       {/* Day map sheet */}
       <ExportAISheet
@@ -1992,7 +2072,7 @@ function NavigateToForm({
 }
 
 
-function EmptyDay({ onAdd, onPickSaved }: { onAdd: () => void; onPickSaved?: () => void }) {
+function EmptyDay({ onAdd, onPickSaved, onDiscover }: { onAdd: () => void; onPickSaved?: () => void; onDiscover?: () => void }) {
   return (
     <div className="text-center py-8 space-y-4 flex flex-col items-center" dir="rtl">
       <svg viewBox="0 0 96 96" width="72" height="72" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="text-[color:var(--accent)]">
@@ -2018,6 +2098,18 @@ function EmptyDay({ onAdd, onPickSaved }: { onAdd: () => void; onPickSaved?: () 
           <span className="inline-flex items-center gap-2">בחירה מהמקומות ששמרתם</span>
           <ChevronRight size={16} className="text-muted-foreground" />
         </button>
+      )}
+      {onDiscover && (
+        <div className="w-full max-w-[320px] rounded-xl border border-[color:var(--accent)]/40 bg-card p-3.5 text-right space-y-2">
+          <div className="text-[13px] font-medium">אין עדיין כלום ביום הזה. רוצים השראה?</div>
+          <div className="text-[11px] text-muted-foreground">נמצא מקומות מומלצים לפי היעד של היום.</div>
+          <button
+            onClick={onDiscover}
+            className="w-full min-h-11 rounded-xl bg-[color:var(--accent)] text-white text-[13px] inline-flex items-center justify-center gap-2"
+          >
+            <Compass size={16} /> השראה למקומות
+          </button>
+        </div>
       )}
       <div className="text-[11px] text-muted-foreground pt-2">🌿 גם יום חופשי הוא חלק מהטיול.</div>
     </div>
