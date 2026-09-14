@@ -515,6 +515,43 @@ function DayDetail() {
     reorder.mutate(next.map((r, i) => ({ id: r.id, display_order: i })));
   }
 
+  /** Adds already-saved recommendations to this day; skips ones already linked. */
+  async function addSavedRecsToDay(recIds: string[]): Promise<AddToDayResult> {
+    const linked = new Set(
+      (rawEntries as EntryRow[])
+        .map((e) => e.linked_recommendation_id)
+        .filter((v): v is string => !!v),
+    );
+    const pending = recIds.filter((id) => !linked.has(id));
+    const skipped = recIds.length - pending.length;
+    if (pending.length === 0) return { added: 0, skipped, failed: [] };
+
+    const { data: recs, error } = await supabase
+      .from("recommendations")
+      .select("id, type, name, city, google_maps_url, latitude, longitude, photo_url")
+      .in("id", pending);
+    if (error) return { added: 0, skipped, failed: pending };
+
+    let added = 0;
+    const failed: string[] = [];
+    for (const rec of recs ?? []) {
+      try {
+        await addRecommendationToDay(rec, dayId);
+        added++;
+      } catch {
+        failed.push(rec.id);
+      }
+    }
+    const missing = pending.filter((id) => !(recs ?? []).some((r) => r.id === id));
+    failed.push(...missing);
+    if (added > 0) {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["linked-recs"] });
+    }
+    return { added, skipped, failed };
+  }
+
   async function handleMarkVisited(entry: EntryRow) {
     if (!entry.linked_recommendation_id) return;
     const { error } = await supabase
