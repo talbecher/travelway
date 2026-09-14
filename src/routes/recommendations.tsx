@@ -521,6 +521,7 @@ function PlacesList({
     );
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
     items = items.filter((r) => recMatchesQuery(r, query));
+    if (recentOnly) items = items.filter((r) => recentIds.has(r.id));
     if (type === "all") {
       items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     } else if (pos) {
