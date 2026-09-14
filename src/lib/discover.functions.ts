@@ -381,31 +381,25 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     /* 4. interleave for interest representation + light area diversity */
     const selected: Candidate[] = [];
     const areaCount = new Map<string, number>();
-    const cursors = new Map<DiscoverInterest, number>();
-    for (const b of byInterest) cursors.set(b.interest, 0);
 
     let progress = true;
     while (selected.length < MAX_RESULTS && progress) {
       progress = false;
       for (const bucket of byInterest) {
         if (selected.length >= MAX_RESULTS) break;
-        let i = cursors.get(bucket.interest) ?? 0;
+        if (bucket.items.length === 0) continue;
         // prefer an item from a less-represented area, without dropping anything
-        let pickIndex = -1;
-        for (let j = i; j < bucket.items.length; j++) {
+        let pickIndex = 0;
+        for (let j = 0; j < bucket.items.length; j++) {
           const a = bucket.items[j]!.area;
           if (!a || (areaCount.get(a) ?? 0) < 2) {
             pickIndex = j;
             break;
           }
         }
-        if (pickIndex === -1 && i < bucket.items.length) pickIndex = i;
-        if (pickIndex === -1) continue;
         const item = bucket.items.splice(pickIndex, 1)[0]!;
         if (item.area) areaCount.set(item.area, (areaCount.get(item.area) ?? 0) + 1);
         selected.push(item);
-        cursors.set(bucket.interest, i);
-        i = i;
         progress = true;
       }
     }
