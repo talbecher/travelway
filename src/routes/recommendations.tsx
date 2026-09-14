@@ -574,7 +574,7 @@ const TYPE_GRADIENT: Record<string, string> = {
 };
 
 function PlaceCard({
-  rec, distance, onEdit, selectionMode, selected, onToggleSelect,
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false,
 }: {
   rec: Rec;
   distance: number | null;
@@ -582,6 +582,7 @@ function PlaceCard({
   selectionMode: boolean;
   selected: boolean;
   onToggleSelect: () => void;
+  isRecent?: boolean;
 }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
