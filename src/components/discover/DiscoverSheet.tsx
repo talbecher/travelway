@@ -143,8 +143,7 @@ export function DiscoverSheet({
     onSuccess: (res) => {
       setData(res);
       setSelected(new Set());
-      setSavedIds(new Set());
-      setFailedIds(new Set());
+      resetSaveState();
       setErrorMsg(res.ok ? null : (res.message ?? "החיפוש נכשל."));
     },
     onError: () => {
