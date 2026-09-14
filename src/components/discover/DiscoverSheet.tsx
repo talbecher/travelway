@@ -1,16 +1,48 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Compass, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { BottomSheet } from "@/components/BottomSheet";
+import { supabase } from "@/integrations/supabase/client";
+import { getActiveTripId } from "@/lib/constants";
+import { saveRecommendation } from "@/lib/recommendations";
 import {
   discoverPlaces,
   DISCOVER_INTERESTS,
   INTEREST_LABELS,
   type DiscoverInterest,
+  type DiscoverPlace,
   type DiscoverResponse,
 } from "@/lib/discover.functions";
 import { DiscoverCard } from "@/components/discover/DiscoverCard";
+
+const PROVIDER = "google";
+const DUP_INDEX = "recommendations_trip_provider_place_uidx";
+
+type ExistingRec = {
+  name: string;
+  latitude: number | string | null;
+  longitude: number | string | null;
+  provider: string | null;
+  provider_place_id: string | null;
+};
+
+function normName(s: string): string {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+/** approx metres between two coordinates */
+function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const la1 = (aLat * Math.PI) / 180;
+  const la2 = (bLat * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
 
 export function DiscoverSheet({
   open,
@@ -27,8 +59,56 @@ export function DiscoverSheet({
   const [country, setCountry] = useState(defaultCountry ?? "");
   const [interests, setInterests] = useState<DiscoverInterest[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
   const [data, setData] = useState<DiscoverResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const qc = useQueryClient();
+  const tripId = getActiveTripId();
+
+  // reset transient state when the sheet closes — nothing persisted
+  useEffect(() => {
+    if (open) return;
+    setSelected(new Set());
+    setSavedIds(new Set());
+    setFailedIds(new Set());
+    setData(null);
+    setErrorMsg(null);
+  }, [open]);
+
+  const { data: existing } = useQuery({
+    queryKey: ["recs", tripId, "discover-dup"],
+    enabled: open && !!tripId,
+    queryFn: async (): Promise<ExistingRec[]> => {
+      const { data, error } = await supabase
+        .from("recommendations")
+        .select("name, latitude, longitude, provider, provider_place_id")
+        .eq("trip_id", tripId);
+      if (error) throw error;
+      return (data ?? []) as ExistingRec[];
+    },
+  });
+
+  const alreadySavedPlaceIds = new Set(
+    (existing ?? [])
+      .filter((r) => r.provider === PROVIDER && r.provider_place_id)
+      .map((r) => r.provider_place_id as string),
+  );
+
+  const isSoftDuplicate = (p: DiscoverPlace): boolean => {
+    if (p.latitude == null || p.longitude == null) return false;
+    const n = normName(p.name);
+    return (existing ?? []).some((r) => {
+      if (r.provider === PROVIDER && r.provider_place_id === p.id) return false;
+      if (r.latitude == null || r.longitude == null) return false;
+      const rn = normName(r.name ?? "");
+      if (!rn || (rn !== n && !rn.includes(n) && !n.includes(rn))) return false;
+      return (
+        distanceM(Number(r.latitude), Number(r.longitude), p.latitude!, p.longitude!) <= 150
+      );
+    });
+  };
 
   const run = useServerFn(discoverPlaces);
   const search = useMutation({
@@ -37,12 +117,68 @@ export function DiscoverSheet({
     onSuccess: (res) => {
       setData(res);
       setSelected(new Set());
+      setSavedIds(new Set());
+      setFailedIds(new Set());
       setErrorMsg(res.ok ? null : (res.message ?? "החיפוש נכשל."));
     },
     onError: () => {
       setData(null);
       setErrorMsg("החיפוש נכשל. נסו שוב מאוחר יותר.");
     },
+  });
+
+  const save = useMutation({
+    mutationFn: async (places: DiscoverPlace[]) => {
+      const ok: string[] = [];
+      const failed: string[] = [];
+      for (const p of places) {
+        try {
+          const { data: dup, error: dupErr } = await supabase
+            .from("recommendations")
+            .select("id")
+            .eq("trip_id", tripId)
+            .eq("provider", PROVIDER)
+            .eq("provider_place_id", p.id)
+            .limit(1);
+          if (dupErr) throw dupErr;
+          if (dup && dup.length > 0) {
+            ok.push(p.id);
+            continue;
+          }
+          await saveRecommendation({
+            type: p.recType,
+            name: p.name,
+            city: p.city,
+            address: p.address || null,
+            google_maps_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              p.name,
+            )}&query_place_id=${encodeURIComponent(p.id)}`,
+            latitude: p.latitude,
+            longitude: p.longitude,
+            provider: PROVIDER,
+            provider_place_id: p.id,
+          });
+          ok.push(p.id);
+        } catch (e) {
+          const err = e as { code?: string; message?: string };
+          if (err?.code === "23505" && (err.message ?? "").includes(DUP_INDEX)) {
+            ok.push(p.id);
+          } else {
+            failed.push(p.id);
+          }
+        }
+      }
+      return { ok, failed };
+    },
+    onSuccess: ({ ok, failed }) => {
+      setSavedIds((prev) => new Set([...prev, ...ok]));
+      setFailedIds(new Set(failed));
+      setSelected(new Set(failed));
+      qc.invalidateQueries({ queryKey: ["recs"] });
+      if (ok.length > 0) toast.success(`נשמרו ${ok.length} מקומות להמלצות שלי`);
+      if (failed.length > 0) toast.error(`${failed.length} מקומות לא נשמרו. אפשר לנסות שוב.`);
+    },
+    onError: () => toast.error("השמירה נכשלה. נסו שוב."),
   });
 
   const toggleInterest = (i: DiscoverInterest) => {
@@ -67,6 +203,14 @@ export function DiscoverSheet({
   };
 
   const results = data?.ok ? data.results : [];
+  const isSaved = (p: DiscoverPlace) => savedIds.has(p.id) || alreadySavedPlaceIds.has(p.id);
+  const selectedPlaces = results.filter((p) => selected.has(p.id) && !isSaved(p));
+
+  const saveSelected = () => {
+    if (save.isPending || selectedPlaces.length === 0) return;
+    setFailedIds(new Set());
+    save.mutate(selectedPlaces);
+  };
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Discover — גילוי מקומות">
@@ -165,6 +309,9 @@ export function DiscoverSheet({
                   key={p.id}
                   place={p}
                   selected={selected.has(p.id)}
+                  saved={isSaved(p)}
+                  maybeDuplicate={isSoftDuplicate(p)}
+                  failed={failedIds.has(p.id)}
                   onToggle={() =>
                     setSelected((prev) => {
                       const next = new Set(prev);
@@ -180,11 +327,16 @@ export function DiscoverSheet({
             <div className="sticky bottom-0 pt-2 bg-surface">
               <button
                 type="button"
-                disabled
-                className="w-full h-11 rounded-lg border border-border bg-card text-xs text-muted-foreground opacity-60"
+                onClick={saveSelected}
+                disabled={selectedPlaces.length === 0 || save.isPending}
+                className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm flex items-center justify-center gap-2 disabled:opacity-40"
               >
-                תצוגה מקדימה — השמירה תתווסף בהמשך
-                {selected.size > 0 ? ` (${selected.size})` : ""}
+                {save.isPending && <Loader2 size={16} className="animate-spin" />}
+                {save.isPending
+                  ? "שומר…"
+                  : failedIds.size > 0
+                    ? `נסו שוב (${selectedPlaces.length})`
+                    : `הוסיפו להמלצות שלי${selectedPlaces.length > 0 ? ` (${selectedPlaces.length})` : ""}`}
               </button>
               <p className="text-[10px] text-muted-foreground text-center mt-1.5">
                 נתוני המקומות והתמונות מ־Google
