@@ -849,6 +849,18 @@ function DayDetail() {
         )}
       </div>
 
+      {DISCOVER_ENABLED && view === "list" && (
+        <div className="px-4 pt-2" dir="rtl">
+          <button
+            type="button"
+            onClick={() => setDiscoverOpen(true)}
+            className="min-h-9 px-3 rounded-full text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
+          >
+            <Compass size={14} className="text-[color:var(--accent)]" /> השראה למקומות
+          </button>
+        </div>
+      )}
+
       {/* View switch — same day, two modes */}
       <div className="px-4 pt-2" dir="rtl">
         <div className="inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
