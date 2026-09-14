@@ -68,22 +68,33 @@ export function DiscoverCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2">
           <h3 className="text-sm font-medium leading-snug flex-1 min-w-0 truncate">{place.name}</h3>
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label={selected ? `בטל בחירה ב${place.name}` : `בחר את ${place.name}`}
-            aria-pressed={selected}
-            className={`shrink-0 w-6 h-6 rounded-md border flex items-center justify-center min-h-0 ${
-              selected
-                ? "bg-[color:var(--accent)] text-white border-transparent"
-                : "border-border text-transparent"
-            }`}
-          >
-            <Check size={14} />
-          </button>
+          {saved ? (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[11px] text-[color:var(--accent)]">
+              <Check size={13} /> נשמר
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={selected ? `בטל בחירה ב${place.name}` : `בחר את ${place.name}`}
+              aria-pressed={selected}
+              className={`shrink-0 w-6 h-6 rounded-md border flex items-center justify-center min-h-0 ${
+                selected
+                  ? "bg-[color:var(--accent)] text-white border-transparent"
+                  : "border-border text-transparent"
+              }`}
+            >
+              <Check size={14} />
+            </button>
+          )}
         </div>
 
         <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{explanation(place)}</p>
+
+        {!saved && maybeDuplicate && (
+          <p className="text-[11px] text-muted-foreground mt-0.5">ייתכן שכבר קיים ברשימת ההמלצות</p>
+        )}
+        {failed && <p className="text-[11px] text-[color:var(--accent-2)] mt-0.5">השמירה נכשלה</p>}
 
         <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
           {place.rating != null && (
