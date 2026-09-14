@@ -1012,6 +1012,7 @@ function DayDetail() {
           <EmptyDay
             onAdd={openPicker}
             onPickSaved={() => { setEntryType("attraction"); setPickerOpen(true); }}
+            onDiscover={DISCOVER_ENABLED ? () => setDiscoverOpen(true) : undefined}
           />
         </div>
       ) : (
