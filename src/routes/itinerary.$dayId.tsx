@@ -849,7 +849,7 @@ function DayDetail() {
         )}
       </div>
 
-      {DISCOVER_ENABLED && view === "list" && (
+      {DISCOVER_ENABLED && view === "list" && hasAnyEntries && (
         <div className="px-4 pt-2" dir="rtl">
           <button
             type="button"
