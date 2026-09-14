@@ -50,3 +50,11 @@
 - [x] Refine active-trip weather and photo-info placement
 - [x] Tighten the active today sequence and update remaining-stop copy
 - [x] Run TypeScript and build checks
+
+# Discover — סבב 1 (פיילוט, תצוגה מקדימה)
+
+- [x] פונקציית שרת discoverPlaces: אימות, הרשאת פיילוט, זיהוי יעד, חיפוש לכל תחום, סינון ודירוג ממתן
+- [x] תחימה ב-locationRestriction לפי viewport היעד + אימות עיר/מדינה מובנה
+- [x] גיליון Discover וכרטיס תוצאה, בחירה מרובה ושמירה מנוטרלת
+- [x] כניסה במסך ההמלצות מאחורי feature flag כבוי כברירת מחדל
+- [x] בנייה ובדיקת טיפוסים
