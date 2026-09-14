@@ -152,25 +152,32 @@ export function DiscoverSheet({
     },
   });
 
+  const findExistingRecId = async (placeId: string): Promise<string | null> => {
+    const { data: dup, error } = await supabase
+      .from("recommendations")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("provider", PROVIDER)
+      .eq("provider_place_id", placeId)
+      .limit(1);
+    if (error) throw error;
+    return dup && dup.length > 0 ? dup[0].id : null;
+  };
+
   const save = useMutation({
     mutationFn: async (places: DiscoverPlace[]) => {
       const ok: string[] = [];
       const failed: string[] = [];
+      const recIds: string[] = [];
       for (const p of places) {
         try {
-          const { data: dup, error: dupErr } = await supabase
-            .from("recommendations")
-            .select("id")
-            .eq("trip_id", tripId)
-            .eq("provider", PROVIDER)
-            .eq("provider_place_id", p.id)
-            .limit(1);
-          if (dupErr) throw dupErr;
-          if (dup && dup.length > 0) {
+          const existingId = await findExistingRecId(p.id);
+          if (existingId) {
             ok.push(p.id);
+            recIds.push(existingId);
             continue;
           }
-          await saveRecommendation({
+          const recId = await saveRecommendation({
             type: p.recType,
             name: p.name,
             city: p.city,
@@ -184,26 +191,58 @@ export function DiscoverSheet({
             provider_place_id: p.id,
           });
           ok.push(p.id);
+          recIds.push(recId);
         } catch (e) {
           const err = e as { code?: string; message?: string };
           if (err?.code === "23505" && (err.message ?? "").includes(DUP_INDEX)) {
             ok.push(p.id);
+            try {
+              const raced = await findExistingRecId(p.id);
+              if (raced) recIds.push(raced);
+            } catch {
+              /* the recommendation exists; only the day-link id is unknown */
+            }
           } else {
             failed.push(p.id);
           }
         }
       }
-      return { ok, failed };
+      return { ok, failed, recIds };
     },
-    onSuccess: ({ ok, failed }) => {
+    onSuccess: ({ ok, failed, recIds }) => {
       setSavedIds((prev) => new Set([...prev, ...ok]));
       setFailedIds(new Set(failed));
       setSelected(new Set(failed));
+      setSavedRecIds((prev) => Array.from(new Set([...prev, ...recIds])));
+      setAddFailedRecIds([]);
+      setAddDone(null);
       qc.invalidateQueries({ queryKey: ["recs"] });
       if (ok.length > 0) toast.success(`נשמרו ${ok.length} מקומות להמלצות שלי`);
       if (failed.length > 0) toast.error(`${failed.length} מקומות לא נשמרו. אפשר לנסות שוב.`);
     },
     onError: () => toast.error("השמירה נכשלה. נסו שוב."),
+  });
+
+  const addToDay = useMutation({
+    mutationFn: async (recIds: string[]) => {
+      if (!onAddToDay) throw new Error("no handler");
+      return onAddToDay(recIds);
+    },
+    onSuccess: ({ added, skipped, failed }) => {
+      setAddFailedRecIds(failed);
+      if (failed.length === 0) {
+        setAddDone(
+          added > 0
+            ? `נוספו ${added} מקומות ליום הזה${skipped > 0 ? ` (${skipped} כבר היו ביום)` : ""}`
+            : "כל המקומות שנבחרו כבר נמצאים ביום הזה",
+        );
+        if (added > 0) toast.success(`נוספו ${added} מקומות ליום הזה`);
+      } else {
+        setAddDone(null);
+        toast.error(`${failed.length} מקומות לא נוספו ליום. אפשר לנסות שוב.`);
+      }
+    },
+    onError: () => toast.error("ההוספה ליום נכשלה. נסו שוב."),
   });
 
   const toggleInterest = (i: DiscoverInterest) => {
