@@ -30,7 +30,25 @@ import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
-import { Sparkles, Download, History, MoreHorizontal } from "lucide-react";
+import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
+import { DiscoverSheet, type AddToDayResult } from "@/components/discover/DiscoverSheet";
+
+/** Discover is on unless the flag explicitly turns it off. */
+const DISCOVER_ENABLED = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
+
+/** "טוקיו · שינג׳וקו" → "טוקיו". Returns "" when no clear city can be read. */
+function cityFromLabel(label: string | null | undefined): string {
+  const first = (label ?? "").split(/[·|,\/]|\s-\s/)[0]?.trim() ?? "";
+  return first.length >= 2 ? first : "";
+}
+
+/** Only prefill a destination that reads as one country. */
+function singleCountry(value: string | null | undefined): string {
+  const v = (value ?? "").trim();
+  if (!v || v.length > 40) return "";
+  if (/[·,\/+&]|\sו[א-ת]/.test(v)) return "";
+  return v;
+}
 
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
