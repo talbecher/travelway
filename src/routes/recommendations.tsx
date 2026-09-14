@@ -491,6 +491,7 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
 
 function PlacesList({
   type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
+  recentIds, recentOnly,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
@@ -499,6 +500,8 @@ function PlacesList({
   selectionMode: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
+  recentIds: Set<string>;
+  recentOnly: boolean;
 }) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
