@@ -698,7 +698,14 @@ function PlaceCard({
 
       {/* Content */}
       <div className="p-3">
-        <div className="font-semibold text-[15px] leading-snug" dir="ltr">{rec.name}</div>
+        <div className="flex items-start gap-2">
+          <div className="font-semibold text-[15px] leading-snug flex-1 min-w-0" dir="ltr">{rec.name}</div>
+          {isRecent && (
+            <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-[color:var(--accent)]/15 text-[color:var(--accent)]">
+              נוסף עכשיו
+            </span>
+          )}
+        </div>
         {(rec.city || rec.address) && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5" dir="ltr">
             <MapPin size={11} className="shrink-0" />
