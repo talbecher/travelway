@@ -30,6 +30,10 @@ export async function saveRecommendation(input: {
   address?: string | null;
   google_maps_url?: string | null;
   notes?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  provider?: string | null;
+  provider_place_id?: string | null;
 }): Promise<string> {
   const coords = parseLatLngFromMapsUrl(input.google_maps_url);
   const { data, error } = await supabase
@@ -42,8 +46,10 @@ export async function saveRecommendation(input: {
       address: input.address || null,
       google_maps_url: input.google_maps_url || null,
       notes: input.notes || null,
-      latitude: coords?.lat ?? null,
-      longitude: coords?.lng ?? null,
+      latitude: input.latitude ?? coords?.lat ?? null,
+      longitude: input.longitude ?? coords?.lng ?? null,
+      provider: input.provider ?? null,
+      provider_place_id: input.provider_place_id ?? null,
     })
     .select("id")
     .single();

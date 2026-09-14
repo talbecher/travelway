@@ -499,6 +499,8 @@ export type Database = {
           name: string
           notes: string | null
           photo_url: string | null
+          provider: string | null
+          provider_place_id: string | null
           rating: number | null
           review: string | null
           status: Database["public"]["Enums"]["rec_status"]
@@ -523,6 +525,8 @@ export type Database = {
           name: string
           notes?: string | null
           photo_url?: string | null
+          provider?: string | null
+          provider_place_id?: string | null
           rating?: number | null
           review?: string | null
           status?: Database["public"]["Enums"]["rec_status"]
@@ -547,6 +551,8 @@ export type Database = {
           name?: string
           notes?: string | null
           photo_url?: string | null
+          provider?: string | null
+          provider_place_id?: string | null
           rating?: number | null
           review?: string | null
           status?: Database["public"]["Enums"]["rec_status"]
