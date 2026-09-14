@@ -2072,7 +2072,7 @@ function NavigateToForm({
 }
 
 
-function EmptyDay({ onAdd, onPickSaved }: { onAdd: () => void; onPickSaved?: () => void }) {
+function EmptyDay({ onAdd, onPickSaved, onDiscover }: { onAdd: () => void; onPickSaved?: () => void; onDiscover?: () => void }) {
   return (
     <div className="text-center py-8 space-y-4 flex flex-col items-center" dir="rtl">
       <svg viewBox="0 0 96 96" width="72" height="72" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="text-[color:var(--accent)]">
