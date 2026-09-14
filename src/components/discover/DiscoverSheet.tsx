@@ -388,6 +388,39 @@ export function DiscoverSheet({
               ))}
             </div>
 
+            {dayId && onAddToDay && savedRecIds.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                <p className="text-[13px] font-medium">להוסיף גם ליום הזה?</p>
+                {addDone ? (
+                  <p className="text-xs text-muted-foreground">{addDone}</p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-muted-foreground">
+                      המקומות כבר נשמרו ברשימת ההמלצות. ההוספה ליום מתבצעת רק בלחיצה.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        !addToDay.isPending &&
+                        addToDay.mutate(
+                          addFailedRecIds.length > 0 ? addFailedRecIds : savedRecIds,
+                        )
+                      }
+                      disabled={addToDay.isPending}
+                      className="w-full h-10 rounded-lg border border-[color:var(--accent)] text-[color:var(--accent)] text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+                    >
+                      {addToDay.isPending && <Loader2 size={16} className="animate-spin" />}
+                      {addToDay.isPending
+                        ? "מוסיף…"
+                        : addFailedRecIds.length > 0
+                          ? `נסו שוב (${addFailedRecIds.length})`
+                          : `הוסיפו ליום הזה (${savedRecIds.length})`}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="sticky bottom-0 pt-2 bg-surface">
               <button
                 type="button"
