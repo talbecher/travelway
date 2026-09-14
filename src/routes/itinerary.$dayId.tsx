@@ -322,6 +322,7 @@ function DayDetail() {
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [heroFailed, setHeroFailed] = useState<string[]>([]);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [ratingTarget, setRatingTarget] = useState<{
