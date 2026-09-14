@@ -560,6 +560,7 @@ function PlacesList({
           selectionMode={selectionMode}
           selected={selectedIds.has(r.id)}
           onToggleSelect={() => onToggleSelect(r.id)}
+          isRecent={recentIds.has(r.id)}
         />
       ))}
     </div>
