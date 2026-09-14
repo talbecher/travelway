@@ -44,16 +44,25 @@ function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): numb
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/** Result of adding saved recommendations to a specific day. */
+export type AddToDayResult = { added: number; skipped: number; failed: string[] };
+
 export function DiscoverSheet({
   open,
   onOpenChange,
   defaultCity,
   defaultCountry,
+  dayId,
+  onAddToDay,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultCity?: string | null;
   defaultCountry?: string | null;
+  /** When the sheet is opened from a specific itinerary day. */
+  dayId?: string | null;
+  /** Adds the given recommendation ids to that day. Required for the add block. */
+  onAddToDay?: (recIds: string[]) => Promise<AddToDayResult>;
 }) {
   const [city, setCity] = useState(defaultCity ?? "");
   const [country, setCountry] = useState(defaultCountry ?? "");
@@ -61,21 +70,38 @@ export function DiscoverSheet({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
+  const [savedRecIds, setSavedRecIds] = useState<string[]>([]);
+  const [addFailedRecIds, setAddFailedRecIds] = useState<string[]>([]);
+  const [addDone, setAddDone] = useState<string | null>(null);
   const [data, setData] = useState<DiscoverResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const qc = useQueryClient();
   const tripId = getActiveTripId();
 
+  const resetSaveState = () => {
+    setSavedIds(new Set());
+    setFailedIds(new Set());
+    setSavedRecIds([]);
+    setAddFailedRecIds([]);
+    setAddDone(null);
+  };
+
   // reset transient state when the sheet closes — nothing persisted
   useEffect(() => {
     if (open) return;
     setSelected(new Set());
-    setSavedIds(new Set());
-    setFailedIds(new Set());
+    resetSaveState();
     setData(null);
     setErrorMsg(null);
   }, [open]);
+
+  // keep prefilled destination in sync when opened from different days
+  useEffect(() => {
+    if (!open) return;
+    setCity(defaultCity ?? "");
+    setCountry(defaultCountry ?? "");
+  }, [open, defaultCity, defaultCountry]);
 
   const { data: existing } = useQuery({
     queryKey: ["recs", tripId, "discover-dup"],
