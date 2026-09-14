@@ -96,6 +96,15 @@ function Recs() {
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const { data: recs = [] } = useRecs();
   const { data: trip } = useTrip();
+  const { user } = useAuth();
+  const activeTripId = useActiveTripId();
+  const recentIdsAll = useRecentDiscoverIds(user?.id, activeTripId);
+  const recentIds = useMemo(() => {
+    const existing = new Set((recs as Rec[]).map((r) => r.id));
+    return new Set(recentIdsAll.filter((id) => existing.has(id)));
+  }, [recentIdsAll, recs]);
+  const [recentOnly, setRecentOnly] = useState(false);
+  useEffect(() => { if (recentIds.size === 0) setRecentOnly(false); }, [recentIds.size]);
   // Discover is on unless the flag explicitly turns it off.
   const discoverEnabled = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
 
