@@ -27,13 +27,30 @@ export const INTEREST_LABELS: Record<DiscoverInterest, string> = {
   nightlife: "חיי לילה",
 };
 
+export type DiscoverRecType = "food" | "attraction";
+
+export const INTEREST_REC_TYPE: Record<DiscoverInterest, DiscoverRecType> = {
+  food: "food",
+  coffee: "food",
+  bars: "food",
+  nightlife: "food",
+  attractions: "attraction",
+  nature: "attraction",
+  views: "attraction",
+  shopping: "attraction",
+};
+
 export type DiscoverPlace = {
   id: string;
   name: string;
   interest: DiscoverInterest;
+  recType: DiscoverRecType;
   categoryLabel: string;
   area: string | null;
   address: string;
+  city: string;
+  latitude: number | null;
+  longitude: number | null;
   photoUrl: string | null;
   rating: number | null;
   ratingCount: number | null;
