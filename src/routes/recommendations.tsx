@@ -291,6 +291,23 @@ function Recs() {
 
       <AdminBackfillButton recs={recs as Rec[]} />
 
+      {tab !== "hotels" && recentIds.size > 0 && (
+        <div dir="rtl">
+          <button
+            type="button"
+            onClick={() => setRecentOnly((v) => !v)}
+            aria-pressed={recentOnly}
+            className={`h-8 px-3 rounded-full text-xs border min-h-0 ${
+              recentOnly
+                ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            נוספו הרגע ({recentIds.size})
+          </button>
+        </div>
+      )}
+
       {tab !== "hotels" && cities.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           <Pill active={city === "all"} onClick={() => setCity("all")}>הכל</Pill>
