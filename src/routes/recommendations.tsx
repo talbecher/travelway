@@ -326,6 +326,8 @@ function Recs() {
           selectionMode={selectionMode}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
+          recentIds={recentIds}
+          recentOnly={recentOnly}
         />
       )}
 
