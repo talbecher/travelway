@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useRecs, useHotels, useDays } from "@/hooks/use-trip";
+import { useRecs, useHotels, useDays, useTrip } from "@/hooks/use-trip";
+import { DiscoverSheet } from "@/components/discover/DiscoverSheet";
 import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
@@ -92,7 +93,10 @@ function Recs() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
+  const [discoverOpen, setDiscoverOpen] = useState(false);
   const { data: recs = [] } = useRecs();
+  const { data: trip } = useTrip();
+  const discoverEnabled = import.meta.env.VITE_DISCOVER_ENABLED === "true";
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
 
@@ -216,6 +220,12 @@ function Recs() {
                 <CheckSquare size={14} /> בחר
               </button>
             )
+          )}
+          {!selectionMode && discoverEnabled && (
+            <button onClick={() => setDiscoverOpen(true)} aria-label="Discover — גילוי מקומות"
+              className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
+              <Compass size={14} /> Discover
+            </button>
           )}
           {!selectionMode && (
             <button onClick={() => setAiImportOpen(true)} aria-label="ייבוא מ-AI"
@@ -342,6 +352,15 @@ function Recs() {
       )}
 
       <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
+
+      {discoverEnabled && (
+        <DiscoverSheet
+          open={discoverOpen}
+          onOpenChange={setDiscoverOpen}
+          defaultCity={city !== "all" ? city : null}
+          defaultCountry={trip?.destination_country ?? null}
+        />
+      )}
 
       <ImportAISheet
         open={aiImportOpen}
