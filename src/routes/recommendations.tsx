@@ -535,7 +535,7 @@ function PlacesList({
       items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     }
     return items;
-  }, [recs, type, cityFilter, pos, query]);
+  }, [recs, type, cityFilter, pos, query, recentOnly, recentIds]);
 
 
   if (isLoading) return <ListSkeleton />;
