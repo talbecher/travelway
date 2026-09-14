@@ -1301,6 +1301,17 @@ function DayDetail() {
       </BottomSheet>
 
 
+      {DISCOVER_ENABLED && (
+        <DiscoverSheet
+          open={discoverOpen}
+          onOpenChange={setDiscoverOpen}
+          defaultCity={cityFromLabel(day.city_label)}
+          defaultCountry={singleCountry(trip?.destination_country)}
+          dayId={dayId}
+          onAddToDay={addSavedRecsToDay}
+        />
+      )}
+
       {/* Day map sheet */}
       <ExportAISheet
         open={exportOpen}
