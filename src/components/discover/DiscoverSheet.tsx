@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Compass, Loader2 } from "lucide-react";
+import { Check, Compass, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { BottomSheet } from "@/components/BottomSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
 import { saveRecommendation } from "@/lib/recommendations";
+import { useAuth } from "@/hooks/use-auth";
+import { addRecentDiscoverIds } from "@/lib/discover-recent";
 import {
   discoverPlaces,
   DISCOVER_INTERESTS,
@@ -19,6 +21,7 @@ import { DiscoverCard } from "@/components/discover/DiscoverCard";
 
 const PROVIDER = "google";
 const DUP_INDEX = "recommendations_trip_provider_place_uidx";
+const DISCOVER_NOTE = "נבחר דרך Discover לפי תחומי העניין שלך";
 
 type ExistingRec = {
   name: string;
@@ -27,6 +30,8 @@ type ExistingRec = {
   provider: string | null;
   provider_place_id: string | null;
 };
+
+type SavedRec = { id: string; name: string };
 
 function normName(s: string): string {
   return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -70,31 +75,27 @@ export function DiscoverSheet({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
-  const [savedRecIds, setSavedRecIds] = useState<string[]>([]);
+  const [savedRecs, setSavedRecs] = useState<SavedRec[]>([]);
+  const [addedRecIds, setAddedRecIds] = useState<Set<string>>(new Set());
   const [addFailedRecIds, setAddFailedRecIds] = useState<string[]>([]);
-  const [addDone, setAddDone] = useState<string | null>(null);
   const [data, setData] = useState<DiscoverResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const qc = useQueryClient();
   const tripId = getActiveTripId();
+  const { user } = useAuth();
 
-  const resetSaveState = () => {
+  // reset everything — sheet closed, or a different user / trip / day
+  useEffect(() => {
+    setSelected(new Set());
     setSavedIds(new Set());
     setFailedIds(new Set());
-    setSavedRecIds([]);
+    setSavedRecs([]);
+    setAddedRecIds(new Set());
     setAddFailedRecIds([]);
-    setAddDone(null);
-  };
-
-  // reset transient state when the sheet closes — nothing persisted
-  useEffect(() => {
-    if (open) return;
-    setSelected(new Set());
-    resetSaveState();
     setData(null);
     setErrorMsg(null);
-  }, [open]);
+  }, [open, dayId, tripId, user?.id]);
 
   // keep prefilled destination in sync when opened from different days
   useEffect(() => {
@@ -142,8 +143,10 @@ export function DiscoverSheet({
       run({ data: vars }),
     onSuccess: (res) => {
       setData(res);
+      // results change, but the saved list stays — it accumulates per sheet session
       setSelected(new Set());
-      resetSaveState();
+      setSavedIds(new Set());
+      setFailedIds(new Set());
       setErrorMsg(res.ok ? null : (res.message ?? "החיפוש נכשל."));
     },
     onError: () => {
@@ -168,13 +171,15 @@ export function DiscoverSheet({
     mutationFn: async (places: DiscoverPlace[]) => {
       const ok: string[] = [];
       const failed: string[] = [];
-      const recIds: string[] = [];
+      const recs: SavedRec[] = [];
+      const createdIds: string[] = [];
       for (const p of places) {
         try {
           const existingId = await findExistingRecId(p.id);
           if (existingId) {
+            // already in the list — never touch its notes
             ok.push(p.id);
-            recIds.push(existingId);
+            recs.push({ id: existingId, name: p.name });
             continue;
           }
           const recId = await saveRecommendation({
@@ -182,6 +187,7 @@ export function DiscoverSheet({
             name: p.name,
             city: p.city,
             address: p.address || null,
+            notes: DISCOVER_NOTE,
             google_maps_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
               p.name,
             )}&query_place_id=${encodeURIComponent(p.id)}`,
@@ -191,14 +197,15 @@ export function DiscoverSheet({
             provider_place_id: p.id,
           });
           ok.push(p.id);
-          recIds.push(recId);
+          recs.push({ id: recId, name: p.name });
+          createdIds.push(recId);
         } catch (e) {
           const err = e as { code?: string; message?: string };
           if (err?.code === "23505" && (err.message ?? "").includes(DUP_INDEX)) {
             ok.push(p.id);
             try {
               const raced = await findExistingRecId(p.id);
-              if (raced) recIds.push(raced);
+              if (raced) recs.push({ id: raced, name: p.name });
             } catch {
               /* the recommendation exists; only the day-link id is unknown */
             }
@@ -207,15 +214,19 @@ export function DiscoverSheet({
           }
         }
       }
-      return { ok, failed, recIds };
+      return { ok, failed, recs, createdIds };
     },
-    onSuccess: ({ ok, failed, recIds }) => {
+    onSuccess: ({ ok, failed, recs, createdIds }) => {
       setSavedIds((prev) => new Set([...prev, ...ok]));
       setFailedIds(new Set(failed));
       setSelected(new Set(failed));
-      setSavedRecIds((prev) => Array.from(new Set([...prev, ...recIds])));
+      setSavedRecs((prev) => {
+        const byId = new Map(prev.map((r) => [r.id, r]));
+        for (const r of recs) if (!byId.has(r.id)) byId.set(r.id, r);
+        return Array.from(byId.values());
+      });
       setAddFailedRecIds([]);
-      setAddDone(null);
+      addRecentDiscoverIds(user?.id, tripId, createdIds);
       qc.invalidateQueries({ queryKey: ["recs"] });
       if (ok.length > 0) toast.success(`נשמרו ${ok.length} מקומות להמלצות שלי`);
       if (failed.length > 0) toast.error(`${failed.length} מקומות לא נשמרו. אפשר לנסות שוב.`);
@@ -226,19 +237,18 @@ export function DiscoverSheet({
   const addToDay = useMutation({
     mutationFn: async (recIds: string[]) => {
       if (!onAddToDay) throw new Error("no handler");
-      return onAddToDay(recIds);
+      const res = await onAddToDay(recIds);
+      return { res, requested: recIds };
     },
-    onSuccess: ({ added, skipped, failed }) => {
+    onSuccess: ({ res, requested }) => {
+      const { added, skipped, failed } = res;
+      const done = requested.filter((id) => !failed.includes(id));
+      setAddedRecIds((prev) => new Set([...prev, ...done]));
       setAddFailedRecIds(failed);
       if (failed.length === 0) {
-        setAddDone(
-          added > 0
-            ? `נוספו ${added} מקומות ליום הזה${skipped > 0 ? ` (${skipped} כבר היו ביום)` : ""}`
-            : "כל המקומות שנבחרו כבר נמצאים ביום הזה",
-        );
         if (added > 0) toast.success(`נוספו ${added} מקומות ליום הזה`);
+        else if (skipped > 0) toast.success("כל המקומות שנבחרו כבר נמצאים ביום הזה");
       } else {
-        setAddDone(null);
         toast.error(`${failed.length} מקומות לא נוספו ליום. אפשר לנסות שוב.`);
       }
     },
@@ -275,6 +285,11 @@ export function DiscoverSheet({
     setFailedIds(new Set());
     save.mutate(selectedPlaces);
   };
+
+  const showAddBlock = !!dayId && !!onAddToDay && savedRecs.length > 0;
+  const pendingRecs = savedRecs.filter((r) => !addedRecIds.has(r.id));
+  const retryRecs = pendingRecs.filter((r) => addFailedRecIds.includes(r.id));
+  const targetIds = (retryRecs.length > 0 ? retryRecs : pendingRecs).map((r) => r.id);
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Discover — גילוי מקומות">
@@ -366,33 +381,54 @@ export function DiscoverSheet({
         )}
 
         {results.length > 0 && (
-          <>
-            <div className="space-y-2">
-              {results.map((p) => (
-                <DiscoverCard
-                  key={p.id}
-                  place={p}
-                  selected={selected.has(p.id)}
-                  saved={isSaved(p)}
-                  maybeDuplicate={isSoftDuplicate(p)}
-                  failed={failedIds.has(p.id)}
-                  onToggle={() =>
-                    setSelected((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(p.id)) next.delete(p.id);
-                      else next.add(p.id);
-                      return next;
-                    })
-                  }
-                />
-              ))}
-            </div>
+          <div className="space-y-2">
+            {results.map((p) => (
+              <DiscoverCard
+                key={p.id}
+                place={p}
+                selected={selected.has(p.id)}
+                saved={isSaved(p)}
+                maybeDuplicate={isSoftDuplicate(p)}
+                failed={failedIds.has(p.id)}
+                onToggle={() =>
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(p.id)) next.delete(p.id);
+                    else next.add(p.id);
+                    return next;
+                  })
+                }
+              />
+            ))}
+          </div>
+        )}
 
-            {dayId && onAddToDay && savedRecIds.length > 0 && (
+        {(results.length > 0 || showAddBlock) && (
+          <div className="sticky bottom-0 pt-2 bg-surface space-y-2">
+            {showAddBlock && (
               <div className="rounded-xl border border-border bg-card p-3 space-y-2">
                 <p className="text-[13px] font-medium">להוסיף גם ליום הזה?</p>
-                {addDone ? (
-                  <p className="text-xs text-muted-foreground">{addDone}</p>
+                <ul className="max-h-24 overflow-y-auto overscroll-contain space-y-1 pl-1">
+                  {savedRecs.map((r) => {
+                    const added = addedRecIds.has(r.id);
+                    return (
+                      <li
+                        key={r.id}
+                        className={`text-[12px] flex items-center gap-1.5 ${
+                          added ? "text-muted-foreground" : "text-foreground"
+                        }`}
+                      >
+                        {added && <Check size={12} className="shrink-0 text-[color:var(--accent)]" />}
+                        <span className="truncate">{r.name}</span>
+                        {added && <span className="shrink-0 text-[11px]">כבר ביום</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {pendingRecs.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    כל המקומות שנשמרו כבר נמצאים ביום הזה.
+                  </p>
                 ) : (
                   <>
                     <p className="text-[11px] text-muted-foreground">
@@ -400,46 +436,46 @@ export function DiscoverSheet({
                     </p>
                     <button
                       type="button"
-                      onClick={() =>
-                        !addToDay.isPending &&
-                        addToDay.mutate(
-                          addFailedRecIds.length > 0 ? addFailedRecIds : savedRecIds,
-                        )
-                      }
+                      onClick={() => {
+                        if (addToDay.isPending || targetIds.length === 0) return;
+                        addToDay.mutate(targetIds);
+                      }}
                       disabled={addToDay.isPending}
                       className="w-full h-10 rounded-lg border border-[color:var(--accent)] text-[color:var(--accent)] text-sm flex items-center justify-center gap-2 disabled:opacity-40"
                     >
                       {addToDay.isPending && <Loader2 size={16} className="animate-spin" />}
                       {addToDay.isPending
                         ? "מוסיף…"
-                        : addFailedRecIds.length > 0
-                          ? `נסו שוב (${addFailedRecIds.length})`
-                          : `הוסיפו ליום הזה (${savedRecIds.length})`}
+                        : retryRecs.length > 0
+                          ? `נסו שוב (${retryRecs.length})`
+                          : `הוסיפו ליום הזה (${pendingRecs.length})`}
                     </button>
                   </>
                 )}
               </div>
             )}
 
-            <div className="sticky bottom-0 pt-2 bg-surface">
-              <button
-                type="button"
-                onClick={saveSelected}
-                disabled={selectedPlaces.length === 0 || save.isPending}
-                className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                {save.isPending && <Loader2 size={16} className="animate-spin" />}
-                {save.isPending
-                  ? "שומר…"
-                  : failedIds.size > 0
-                    ? `נסו שוב (${selectedPlaces.length})`
-                    : `הוסיפו להמלצות שלי${selectedPlaces.length > 0 ? ` (${selectedPlaces.length})` : ""}`}
-              </button>
-              <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                נתוני המקומות והתמונות מ־Google
-              </p>
-            </div>
-          </>
+            {results.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={saveSelected}
+                  disabled={selectedPlaces.length === 0 || save.isPending}
+                  className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+                >
+                  {save.isPending && <Loader2 size={16} className="animate-spin" />}
+                  {save.isPending
+                    ? "שומר…"
+                    : failedIds.size > 0
+                      ? `נסו שוב (${selectedPlaces.length})`
+                      : `הוסיפו להמלצות שלי${selectedPlaces.length > 0 ? ` (${selectedPlaces.length})` : ""}`}
+                </button>
+                <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                  נתוני המקומות והתמונות מ־Google
+                </p>
+              </>
+            )}
+          </div>
         )}
       </div>
     </BottomSheet>

@@ -24,6 +24,8 @@ import { PhotoUploader } from "@/components/PhotoUploader";
 import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
+import { useAuth } from "@/hooks/use-auth";
+import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
@@ -96,6 +98,15 @@ function Recs() {
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const { data: recs = [] } = useRecs();
   const { data: trip } = useTrip();
+  const { user } = useAuth();
+  const activeTripId = useActiveTripId();
+  const recentIdsAll = useRecentDiscoverIds(user?.id, activeTripId);
+  const recentIds = useMemo(() => {
+    const existing = new Set((recs as Rec[]).map((r) => r.id));
+    return new Set(recentIdsAll.filter((id) => existing.has(id)));
+  }, [recentIdsAll, recs]);
+  const [recentOnly, setRecentOnly] = useState(false);
+  useEffect(() => { if (recentIds.size === 0) setRecentOnly(false); }, [recentIds.size]);
   // Discover is on unless the flag explicitly turns it off.
   const discoverEnabled = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
 
@@ -280,6 +291,23 @@ function Recs() {
 
       <AdminBackfillButton recs={recs as Rec[]} />
 
+      {tab !== "hotels" && recentIds.size > 0 && (
+        <div dir="rtl">
+          <button
+            type="button"
+            onClick={() => setRecentOnly((v) => !v)}
+            aria-pressed={recentOnly}
+            className={`h-8 px-3 rounded-full text-xs border min-h-0 ${
+              recentOnly
+                ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            נוספו הרגע ({recentIds.size})
+          </button>
+        </div>
+      )}
+
       {tab !== "hotels" && cities.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           <Pill active={city === "all"} onClick={() => setCity("all")}>הכל</Pill>
@@ -315,6 +343,8 @@ function Recs() {
           selectionMode={selectionMode}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
+          recentIds={recentIds}
+          recentOnly={recentOnly}
         />
       )}
 
@@ -461,6 +491,7 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
 
 function PlacesList({
   type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
+  recentIds, recentOnly,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
@@ -469,6 +500,8 @@ function PlacesList({
   selectionMode: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
+  recentIds: Set<string>;
+  recentOnly: boolean;
 }) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
@@ -488,6 +521,7 @@ function PlacesList({
     );
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
     items = items.filter((r) => recMatchesQuery(r, query));
+    if (recentOnly) items = items.filter((r) => recentIds.has(r.id));
     if (type === "all") {
       items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     } else if (pos) {
@@ -501,7 +535,7 @@ function PlacesList({
       items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     }
     return items;
-  }, [recs, type, cityFilter, pos, query]);
+  }, [recs, type, cityFilter, pos, query, recentOnly, recentIds]);
 
 
   if (isLoading) return <ListSkeleton />;
@@ -526,6 +560,7 @@ function PlacesList({
           selectionMode={selectionMode}
           selected={selectedIds.has(r.id)}
           onToggleSelect={() => onToggleSelect(r.id)}
+          isRecent={recentIds.has(r.id)}
         />
       ))}
     </div>
@@ -539,7 +574,7 @@ const TYPE_GRADIENT: Record<string, string> = {
 };
 
 function PlaceCard({
-  rec, distance, onEdit, selectionMode, selected, onToggleSelect,
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false,
 }: {
   rec: Rec;
   distance: number | null;
@@ -547,6 +582,7 @@ function PlaceCard({
   selectionMode: boolean;
   selected: boolean;
   onToggleSelect: () => void;
+  isRecent?: boolean;
 }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
@@ -662,7 +698,14 @@ function PlaceCard({
 
       {/* Content */}
       <div className="p-3">
-        <div className="font-semibold text-[15px] leading-snug" dir="ltr">{rec.name}</div>
+        <div className="flex items-start gap-2">
+          <div className="font-semibold text-[15px] leading-snug flex-1 min-w-0" dir="ltr">{rec.name}</div>
+          {isRecent && (
+            <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-[color:var(--accent)]/15 text-[color:var(--accent)]">
+              נוסף עכשיו
+            </span>
+          )}
+        </div>
         {(rec.city || rec.address) && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5" dir="ltr">
             <MapPin size={11} className="shrink-0" />
