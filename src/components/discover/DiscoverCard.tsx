@@ -18,23 +18,34 @@ export function DiscoverCard({
   place,
   selected,
   onToggle,
+  saved = false,
+  maybeDuplicate = false,
+  failed = false,
 }: {
   place: DiscoverPlace;
   selected: boolean;
   onToggle: () => void;
+  saved?: boolean;
+  maybeDuplicate?: boolean;
+  failed?: boolean;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const showImg = !!place.photoUrl && !imgFailed;
+  const toggle = () => {
+    if (saved) return;
+    onToggle();
+  };
 
   return (
     <div
       className={`flex gap-3 p-2.5 rounded-xl border bg-card ${
         selected ? "border-[color:var(--accent)]" : "border-border"
-      }`}
+      } ${saved ? "opacity-70" : ""}`}
     >
       <button
         type="button"
-        onClick={onToggle}
+        disabled={saved}
+        onClick={toggle}
         aria-label={selected ? `בטל בחירה ב${place.name}` : `בחר את ${place.name}`}
         aria-pressed={selected}
         className={`shrink-0 w-[72px] h-[72px] rounded-lg overflow-hidden flex items-center justify-center min-h-0 p-0 ${
