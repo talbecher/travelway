@@ -24,6 +24,8 @@ import { PhotoUploader } from "@/components/PhotoUploader";
 import { ImportFromMyMapsSheet } from "@/components/ImportFromMyMapsSheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
+import { useAuth } from "@/hooks/use-auth";
+import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
