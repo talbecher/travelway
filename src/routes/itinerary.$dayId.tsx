@@ -2099,6 +2099,18 @@ function EmptyDay({ onAdd, onPickSaved, onDiscover }: { onAdd: () => void; onPic
           <ChevronRight size={16} className="text-muted-foreground" />
         </button>
       )}
+      {onDiscover && (
+        <div className="w-full max-w-[320px] rounded-xl border border-[color:var(--accent)]/40 bg-card p-3.5 text-right space-y-2">
+          <div className="text-[13px] font-medium">אין עדיין כלום ביום הזה. רוצים השראה?</div>
+          <div className="text-[11px] text-muted-foreground">נמצא מקומות מומלצים לפי היעד של היום.</div>
+          <button
+            onClick={onDiscover}
+            className="w-full min-h-11 rounded-xl bg-[color:var(--accent)] text-white text-[13px] inline-flex items-center justify-center gap-2"
+          >
+            <Compass size={16} /> השראה למקומות
+          </button>
+        </div>
+      )}
       <div className="text-[11px] text-muted-foreground pt-2">🌿 גם יום חופשי הוא חלק מהטיול.</div>
     </div>
   );
