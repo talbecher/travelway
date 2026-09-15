@@ -5,7 +5,7 @@ import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, D
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays, useTrip } from "@/hooks/use-trip";
-import { DiscoverSheet } from "@/components/discover/DiscoverSheet";
+import { DiscoverSheet, useDiscoverAccess } from "@/components/discover/DiscoverSheet";
 import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
@@ -107,8 +107,10 @@ function Recs() {
   }, [recentIdsAll, recs]);
   const [recentOnly, setRecentOnly] = useState(false);
   useEffect(() => { if (recentIds.size === 0) setRecentOnly(false); }, [recentIds.size]);
-  // Discover is on unless the flag explicitly turns it off.
-  const discoverEnabled = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
+  // Discover is on unless the flag explicitly turns it off, and only for pilot users.
+  const discoverAllowed = useDiscoverAccess();
+  const discoverEnabled =
+    import.meta.env.VITE_DISCOVER_ENABLED !== "false" && discoverAllowed;
 
   useEffect(() => { if (search.tab) setTab(search.tab as Tab); }, [search.tab]);
 
