@@ -447,14 +447,9 @@ export function DiscoverSheet({
   const saveAndAddSelected = () => {
     if (busy || selectedAll.length === 0 || !fromDay) return;
     setFailedIds(new Set());
-    // fresh places go through save+add; already-saved ones go straight to the day
-    saveAndAdd.mutate(selectedFresh);
-    const alreadySavedSelected = selectedAll.filter((p) => isSaved(p));
-    const savedLookup = new Map(savedRecs.map((r) => [r.name, r.id]));
-    const directIds = alreadySavedSelected
-      .map((p) => savedLookup.get(p.name) ?? null)
-      .filter((id): id is string => !!id);
-    if (directIds.length > 0) addToDay.mutate(directIds);
+    // already-saved places reuse their existing recommendation_id inside
+    // savePlaces and go straight to the day — no duplicate is created
+    saveAndAdd.mutate(selectedAll);
   };
 
   const showAddBlock = fromDay && savedRecs.length > 0;
