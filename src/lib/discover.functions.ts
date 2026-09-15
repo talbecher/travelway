@@ -242,7 +242,14 @@ function isPilotUser(userId: string): boolean {
   return allow.includes(userId);
 }
 
-/* ---------- server function ---------- */
+/* ---------- server functions ---------- */
+
+/** Lightweight pilot-access check — never calls Google. */
+export const checkPilotAccess = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ allowed: boolean }> => {
+    return { allowed: isPilotUser(context.userId) };
+  });
 
 export const discoverPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
