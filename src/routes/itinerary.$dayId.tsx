@@ -31,7 +31,7 @@ import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
-import { DiscoverSheet, type AddToDayResult } from "@/components/discover/DiscoverSheet";
+import { DiscoverSheet, useDiscoverAccess, type AddToDayResult } from "@/components/discover/DiscoverSheet";
 
 /** Discover is on unless the flag explicitly turns it off. */
 const DISCOVER_ENABLED = import.meta.env.VITE_DISCOVER_ENABLED !== "false";
@@ -323,6 +323,9 @@ function DayDetail() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [heroFailed, setHeroFailed] = useState<string[]>([]);
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  // hidden from non-pilot users — same shared check as the recommendations screen
+  const discoverAllowed = useDiscoverAccess();
+  const discoverVisible = DISCOVER_ENABLED && discoverAllowed;
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [ratingTarget, setRatingTarget] = useState<{
