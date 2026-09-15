@@ -852,7 +852,7 @@ function DayDetail() {
         )}
       </div>
 
-      {DISCOVER_ENABLED && view === "list" && hasAnyEntries && (
+      {discoverVisible && view === "list" && hasAnyEntries && (
         <div className="px-4 pt-2" dir="rtl">
           <button
             type="button"
@@ -1015,7 +1015,7 @@ function DayDetail() {
           <EmptyDay
             onAdd={openPicker}
             onPickSaved={() => { setEntryType("attraction"); setPickerOpen(true); }}
-            onDiscover={DISCOVER_ENABLED ? () => setDiscoverOpen(true) : undefined}
+            onDiscover={discoverVisible ? () => setDiscoverOpen(true) : undefined}
           />
         </div>
       ) : (
@@ -1304,13 +1304,14 @@ function DayDetail() {
       </BottomSheet>
 
 
-      {DISCOVER_ENABLED && (
+      {discoverVisible && (
         <DiscoverSheet
           open={discoverOpen}
           onOpenChange={setDiscoverOpen}
           defaultCity={cityFromLabel(day.city_label)}
           defaultCountry={singleCountry(trip?.destination_country)}
           dayId={dayId}
+          dayNumber={days.findIndex((d) => d.id === dayId) + 1 || null}
           onAddToDay={addSavedRecsToDay}
         />
       )}
