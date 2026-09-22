@@ -1413,24 +1413,46 @@ function SegmentRow({
   onShowOnMap: () => void;
 }) {
   return (
-    <div className="my-1 flex items-center gap-2 flex-nowrap min-w-0" dir="rtl" style={{ paddingInlineStart: 52 }}>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onOpen(); }}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="shrink-0 min-h-9 px-2.5 rounded-full border border-border bg-card text-[11px] text-muted-foreground inline-flex items-center gap-1"
+    <div className="relative flex items-center min-h-[56px]" dir="rtl">
+      {/* Bridge tie — visually connects the bridge to the timeline rail (display only) */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 -translate-y-1/2 right-[8px] w-[22px]"
+        style={{ borderTop: "2px solid var(--terracotta-soft)" }}
+      />
+      <div
+        className="flex-1 flex items-center gap-2 flex-nowrap min-w-0 rounded-2xl py-2 pe-2"
+        style={{
+          background: "color-mix(in oklab, var(--accent) 8%, var(--background))",
+          paddingInlineStart: 52,
+        }}
       >
-        אפשרויות הגעה <ChevronRight size={12} className="rotate-180" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
-        onPointerDown={(e) => e.stopPropagation()}
-        aria-label="הצג מעבר במפה"
-        className="shrink-0 w-9 h-9 rounded-full border border-border bg-card text-muted-foreground inline-flex items-center justify-center"
-      >
-        <MapIcon size={13} />
-      </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="shrink-0 min-h-11 px-3 rounded-full text-[12px] font-medium inline-flex items-center gap-1 transition-colors"
+          style={{
+            background: "color-mix(in oklab, var(--accent) 14%, var(--card))",
+            color: "var(--accent)",
+          }}
+        >
+          אפשרויות הגעה <ChevronRight size={12} className="rotate-180" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label="הצג מעבר במפה"
+          className="shrink-0 w-11 h-11 rounded-full inline-flex items-center justify-center transition-colors"
+          style={{
+            background: "color-mix(in oklab, var(--accent) 14%, var(--card))",
+            color: "var(--accent)",
+          }}
+        >
+          <MapIcon size={14} />
+        </button>
+      </div>
     </div>
   );
 }
