@@ -55,12 +55,12 @@ function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   if (!w) return null;
   return (
     <div className="flex flex-col items-end gap-0.5">
-      <div className="inline-flex items-center gap-1 text-white/70 text-[10px]">
+      <div className="inline-flex items-center gap-1 text-muted-foreground text-[10px]">
         <WeatherIcon condition={w.condition} size="sm" />
         <span dir="ltr" className="tabular-nums">{w.tempMax}° / {w.tempMin}°</span>
       </div>
       {w.precipitation > 5 && (
-        <div className="inline-flex items-center gap-1 text-[10px] text-white bg-white/15 rounded-full px-2 py-0.5">
+        <div className="inline-flex items-center gap-1 text-[10px] text-foreground bg-[color:var(--surface-2)] rounded-full px-2 py-0.5">
           💧 צפוי גשם
         </div>
       )}
@@ -687,121 +687,78 @@ function DayDetail() {
 
   return (
     <div className="-mx-4">
-      {/* Day header — panoramic in list mode, compact in map mode */}
+      {/* Day header — clean warm header in list mode, compact in map mode */}
       {(() => {
-        const theme = getDestinationTheme(trip?.destination_country ?? "");
-        // Header photo: only sight-like stops of THIS day, in a deterministic order.
-        // Food shots and note/document attachments are never used as the cover.
-        const HERO_RANK: Record<string, number> = { attraction: 0, hotel_checkin: 1, transport: 2 };
-        const heroPhoto =
-          entries
-            .filter((e) => e.photo_url && HERO_RANK[e.entry_type] != null && !heroFailed.includes(e.photo_url!))
-            .sort(
-              (x, y) =>
-                (HERO_RANK[x.entry_type] ?? 9) - (HERO_RANK[y.entry_type] ?? 9) ||
-                x.display_order - y.display_order,
-            )[0]?.photo_url ?? null;
-        const showPhoto = view === "list" && !!heroPhoto;
         const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
         const visitedCount = entries.filter(
           (e) => e.linked_recommendation_id && recById[e.linked_recommendation_id]?.status === "visited"
         ).length;
-        const pillBtn =
-          "relative inline-flex items-center justify-center gap-1 rounded-full text-white text-[11px] min-h-0 " +
-          "after:absolute after:-inset-2 after:content-['']";
-        const pillBg = { background: "rgba(255,255,255,0.18)" } as const;
         return (
           <div
             className={
-              "relative w-full overflow-hidden border-b border-border " +
-              (view === "list" ? "h-[112px]" : "h-[64px]")
+              "relative w-full bg-background border-b border-border " +
+              (view === "list" ? "pt-2 pb-2.5" : "py-1.5")
             }
             dir="rtl"
           >
-            {/* Background */}
-            {showPhoto ? (
-              <>
-                <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
-                <img
-                  key={heroPhoto!}
-                  src={heroPhoto!}
-                  alt=""
-                  aria-hidden
-                  onError={() => setHeroFailed((f) => (f.includes(heroPhoto!) ? f : [...f, heroPhoto!]))}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: "linear-gradient(to top, rgba(0,0,0,0.78) 12%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.35))" }}
-                />
-              </>
-            ) : (
-              <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
-            )}
-
-            <div
-              className={
-                "relative h-full px-3 " +
-                (view === "list" ? "py-2.5 flex flex-col justify-between" : "flex items-center gap-2")
-              }
-            >
-              {/* Back — always first in RTL */}
+            <div className={"px-3 " + (view === "list" ? "flex items-start gap-1" : "flex items-center gap-1")}>
+              {/* Back — always first in RTL, 44×44 hit area */}
               <button
                 onClick={() => navigate({ to: "/itinerary" })}
                 aria-label="חזרה למסלול"
-                className={
-                  "relative shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white/90 min-h-0 after:absolute after:-inset-1.5 after:content-[''] " +
-                  (view === "list" ? "absolute top-2.5 right-3" : "")
-                }
-                style={pillBg}
+                className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-foreground active:bg-[color:var(--surface-2)] transition-colors"
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={20} />
               </button>
 
-              {view === "list" && (
-                <div className="flex items-center justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setMoreOpen(true)}
-                    aria-label="פעולות נוספות"
-                    className={pillBtn}
-                    style={{ ...pillBg, height: 28, width: 28 }}
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* Title block */}
-              <div className={view === "list" ? "flex items-end justify-between gap-2" : "flex-1 min-w-0 flex items-center gap-2"}>
-                <div className="min-w-0">
-                  <h1 className={"text-white font-medium leading-tight truncate " + (view === "list" ? "text-[21px]" : "text-[15px]")}>
-                    יום {day.day_number}
-                  </h1>
-                  <p className={"text-white/70 leading-snug truncate " + (view === "list" ? "text-[11px] mt-0.5" : "text-[10px]")}>
-                    {hebWeekday(day.date)}, {hebDate(day.date)}
-                  </p>
-                  {view === "list" && totalLinked > 0 && (
-                    <p className="text-white/60 text-[10px] mt-0.5">
-                      ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
+              {view === "list" ? (
+                <>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <h1 className="text-[28px] font-bold leading-none tracking-tight text-foreground">
+                      יום {day.day_number}
+                    </h1>
+                    <p className="text-[12px] text-muted-foreground leading-snug mt-1">
+                      {hebWeekday(day.date)}, {hebDate(day.date)}
                     </p>
-                  )}
-                </div>
-                <div className={"flex shrink-0 " + (view === "list" ? "flex-col items-end gap-1" : "items-center gap-1.5")}>
-                  {view === "list" && <DayWeatherLine city={day.city_label ?? null} date={day.date} />}
-                  {view === "map" && (
+                    {totalLinked > 0 && (
+                      <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                        ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1 pt-1">
                     <button
                       type="button"
                       onClick={() => setMoreOpen(true)}
                       aria-label="פעולות נוספות"
-                      className="relative w-8 h-8 rounded-full text-white flex items-center justify-center min-h-0 shrink-0 after:absolute after:-inset-1.5 after:content-['']"
-                      style={pillBg}
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground active:bg-[color:var(--surface-2)] transition-colors"
                     >
-                      <MoreHorizontal size={14} />
+                      <MoreHorizontal size={18} />
                     </button>
-                  )}
-                </div>
-              </div>
+                    <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-[15px] font-semibold leading-tight truncate text-foreground">
+                      יום {day.day_number}
+                    </h1>
+                    <p className="text-[10px] text-muted-foreground leading-snug truncate">
+                      {hebWeekday(day.date)}, {hebDate(day.date)}
+                    </p>
+                  </div>
+                  <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen(true)}
+                    aria-label="פעולות נוספות"
+                    className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground active:bg-[color:var(--surface-2)] transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         );
