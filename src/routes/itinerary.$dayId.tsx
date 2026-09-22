@@ -764,7 +764,8 @@ function DayDetail() {
         );
       })()}
 
-      <div className="border-b border-border bg-card px-4 py-2" dir="rtl">
+      <div className="px-4 pt-2" dir="rtl">
+        <div className="rounded-2xl border border-border bg-card px-3 py-1.5">
         {editingCity ? (
           <div className="space-y-1.5">
             <div className="flex min-w-0 items-center gap-2">
@@ -1036,6 +1037,7 @@ function DayDetail() {
                         )}
                         <SortableEntry
                           entry={e}
+                          isLast={idx === entries.length - 1}
                           nextTime={entries[idx + 1]?.time_of_day ?? null}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
@@ -1070,7 +1072,7 @@ function DayDetail() {
               type="button"
               onClick={openPicker}
               aria-label="הוספת מקום או פעילות"
-              className="shrink-0 h-11 w-11 rounded-full bg-[color:var(--accent)] text-white shadow-sm flex items-center justify-center min-h-0 active:scale-95 transition-transform motion-reduce:transition-none"
+              className="shrink-0 h-12 w-12 rounded-full bg-[color:var(--accent)] text-white shadow-sm flex items-center justify-center min-h-0 active:scale-95 transition-transform motion-reduce:transition-none"
             >
               <Plus size={22} />
             </button>
@@ -1530,9 +1532,10 @@ function SegmentOptions({
 
 
 function SortableEntry({
-  entry, nextTime, pinIndex, highlighted, setRef, onOpenDetails, onEdit, sortMode, hintHandle, recById,
+  entry, nextTime, pinIndex, highlighted, setRef, onOpenDetails, onEdit, sortMode, hintHandle, recById, isLast,
 }: {
   entry: EntryRow;
+  isLast?: boolean;
   nextTime?: string | null;
   pinIndex: number | null;
   highlighted: boolean;
@@ -1588,12 +1591,14 @@ function SortableEntry({
   return (
     <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="relative flex items-stretch gap-2">
       {/* Timeline rail (right in RTL) — narrow, content gets the width */}
-      <div className="w-[36px] shrink-0 relative flex flex-col items-center pt-2">
-        <div
-          className="absolute right-1/2 translate-x-1/2 top-0 bottom-[-16px] w-0 opacity-40"
-          style={{ borderRight: "2px dashed var(--border-strong)" }}
-          aria-hidden
-        />
+      <div className="w-[36px] shrink-0 relative flex flex-col items-center pt-2 pointer-events-none">
+        {!isLast && (
+          <div
+            className="absolute right-1/2 translate-x-1/2 top-[30px] bottom-[-16px] w-0"
+            style={{ borderRight: "2px solid var(--terracotta-soft)" }}
+            aria-hidden
+          />
+        )}
         {hasCoords ? (
           <span
             aria-label={`תחנה ${pinIndex} במפה`}
@@ -1617,8 +1622,8 @@ function SortableEntry({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetails(); } }}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 min-w-0 bg-card rounded-[14px] shadow-sm cursor-pointer p-2.5"
-        style={{ border: "0.5px solid var(--border)" }}
+        className="relative flex-1 min-w-0 bg-card rounded-2xl cursor-pointer p-2.5"
+        style={{ border: "1px solid var(--border)" }}
       >
         <div className="flex items-start gap-2.5">
           {/* Drag handle — only in sort mode */}
@@ -2045,7 +2050,7 @@ function EmptyDay({ onAdd, onPickSaved, onDiscover }: { onAdd: () => void; onPic
       </div>
       <button
         onClick={onAdd}
-        className="w-full max-w-[320px] min-h-12 px-6 rounded-xl bg-[color:var(--accent)] text-white font-medium inline-flex items-center justify-center gap-2"
+        className="w-full max-w-[320px] min-h-12 px-6 rounded-2xl bg-[color:var(--accent)] text-white font-medium inline-flex items-center justify-center gap-2"
       >
         <Plus size={18} /> הוספת מקום או פעילות
       </button>
@@ -2059,7 +2064,10 @@ function EmptyDay({ onAdd, onPickSaved, onDiscover }: { onAdd: () => void; onPic
         </button>
       )}
       {onDiscover && (
-        <div className="w-full max-w-[320px] rounded-xl border border-[color:var(--accent)]/40 bg-card p-3.5 text-right space-y-2">
+        <div
+          className="w-full max-w-[320px] rounded-2xl border border-[color:var(--accent)]/30 p-3.5 text-right space-y-2"
+          style={{ background: "color-mix(in oklab, var(--accent) 6%, var(--card))" }}
+        >
           <div className="text-[13px] font-medium">אין עדיין כלום ביום הזה. רוצים השראה?</div>
           <div className="text-[11px] text-muted-foreground">נמצא מקומות מומלצים לפי היעד של היום.</div>
           <button
