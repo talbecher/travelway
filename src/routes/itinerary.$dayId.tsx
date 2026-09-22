@@ -806,6 +806,7 @@ function DayDetail() {
             <Pencil size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
           </button>
         )}
+        </div>
       </div>
 
       {discoverVisible && view === "list" && hasAnyEntries && (
