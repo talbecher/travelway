@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { hebDate, hebWeekday, hebWeekdayShort, daysBetween } from "@/lib/format";
-import { getDestinationTheme } from "@/lib/destination-theme";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import DayMap from "@/components/DayMap";
@@ -321,7 +320,6 @@ function DayDetail() {
   const [importOpen, setImportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [heroFailed, setHeroFailed] = useState<string[]>([]);
   const [discoverOpen, setDiscoverOpen] = useState(false);
   // hidden from non-pilot users — same shared check as the recommendations screen
   const discoverAllowed = useDiscoverAccess();
