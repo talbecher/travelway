@@ -1075,7 +1075,7 @@ function DayDetail() {
               aria-label="הוספת מקום או פעילות"
               className="shrink-0 h-12 w-12 rounded-full bg-[color:var(--accent)] text-white shadow-sm flex items-center justify-center min-h-0 active:scale-95 transition-transform motion-reduce:transition-none"
             >
-              <Plus size={22} />
+              <Plus size={24} />
             </button>
           </div>
 
