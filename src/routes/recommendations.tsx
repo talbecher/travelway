@@ -96,6 +96,7 @@ function Recs() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [nestedOverlayOpen, setNestedOverlayOpen] = useState(false);
   const { data: recs = [], isError: recsError } = useRecs();
   const { data: trip } = useTrip();
   const { user } = useAuth();
@@ -225,6 +226,8 @@ function Recs() {
     if (tab !== "hotels") setTab("all");
   };
 
+  const mainOverlayOpen = discoverOpen || addOpen || importOpen || aiImportOpen || !!editRec || !!mapPickRec || nestedOverlayOpen;
+
   return (
     <div className="-mx-4 -mt-2 min-h-full bg-background px-4 pb-4 pt-5" dir="rtl">
       <div className="space-y-4">
@@ -326,7 +329,7 @@ function Recs() {
                   aria-pressed={recentOnly}
                   className={`min-h-11 rounded-xl border px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${recentOnly ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
                 >
-                  נוספו הרגע ({recentIds.size})
+                  נשמרו מ־Discover ({recentIds.size})
                 </button>
               )}
               {hasActiveFilters && (
@@ -342,7 +345,13 @@ function Recs() {
         <AdminBackfillButton recs={recs as Rec[]} />
 
         {tab === "hotels" ? (
-          <HotelsList onEdit={setEditRec} query={q} onResetFilters={resetFilters} />
+          <HotelsList
+            onEdit={setEditRec}
+            query={q}
+            onResetFilters={resetFilters}
+            onAdd={() => setAddOpen(true)}
+            onOverlayOpenChange={setNestedOverlayOpen}
+          />
         ) : recsError ? (
           <EmptyState variant="recs" title="לא הצלחנו לטעון את ההמלצות" hint="כדאי לנסות שוב בעוד רגע" />
         ) : view === "map" ? (
@@ -372,6 +381,10 @@ function Recs() {
             recentIds={recentIds}
             recentOnly={recentOnly}
             onResetFilters={resetFilters}
+            onAdd={() => setAddOpen(true)}
+            discoverEnabled={discoverEnabled}
+            onDiscover={() => setDiscoverOpen(true)}
+            onOverlayOpenChange={setNestedOverlayOpen}
           />
         )}
 
@@ -387,11 +400,18 @@ function Recs() {
                 <Sparkles size={17} className="shrink-0" /> <span className="break-words">ייבוא מ־AI</span>
               </button>
             </div>
-            <button onClick={() => setAddOpen(true)} aria-label={tab === "hotels" ? "הוסף מלון" : "הוסף מקום"}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              <Plus size={20} /> {tab === "hotels" ? "הוספת מלון" : "הוספת מקום"}
-            </button>
           </section>
+        )}
+
+        {!selectionMode && !mainOverlayOpen && (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            aria-label={tab === "hotels" ? "הוספת מלון" : "הוספת המלצה"}
+            className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-[max(16px,calc((100vw-448px)/2))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Plus size={24} />
+          </button>
         )}
 
       {selectionMode && (
@@ -517,7 +537,7 @@ function TabBtn({ active, children, onClick }: { active: boolean; children: Reac
 
 function PlacesList({
   type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
-  recentIds, recentOnly, onResetFilters,
+  recentIds, recentOnly, onResetFilters, onAdd, discoverEnabled, onDiscover, onOverlayOpenChange,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
@@ -529,6 +549,10 @@ function PlacesList({
   recentIds: Set<string>;
   recentOnly: boolean;
   onResetFilters: () => void;
+  onAdd: () => void;
+  discoverEnabled: boolean;
+  onDiscover: () => void;
+  onOverlayOpenChange: (open: boolean) => void;
 }) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
@@ -575,7 +599,20 @@ function PlacesList({
         </button>
       } />;
     }
-    return <EmptyState variant="recs" title="אין המלצות עדיין" hint="אפשר להוסיף מקום או לייבא המלצות באמצעות הפעולות שמתחת" />;
+    return <EmptyState variant="recs" title="אין המלצות עדיין" hint="אפשר להתחיל מהמלצה משלך או לגלות מקומות חדשים" cta={
+      <div className="flex flex-wrap justify-center gap-2">
+        <button type="button" onClick={onAdd}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Plus size={18} /> הוספת המלצה ראשונה
+        </button>
+        {discoverEnabled && (
+          <button type="button" onClick={onDiscover}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Compass size={17} /> Discover
+          </button>
+        )}
+      </div>
+    } />;
   }
 
   return (
@@ -590,6 +627,7 @@ function PlacesList({
           selected={selectedIds.has(r.id)}
           onToggleSelect={() => onToggleSelect(r.id)}
           isRecent={recentIds.has(r.id)}
+          onOverlayOpenChange={onOverlayOpenChange}
         />
       ))}
     </div>
@@ -597,7 +635,7 @@ function PlacesList({
 }
 
 function PlaceCard({
-  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false,
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, onOverlayOpenChange,
 }: {
   rec: Rec;
   distance: number | null;
@@ -606,6 +644,7 @@ function PlaceCard({
   selected: boolean;
   onToggleSelect: () => void;
   isRecent?: boolean;
+  onOverlayOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
@@ -663,7 +702,7 @@ function PlaceCard({
             className={`rounded-full px-2 py-1 text-[10px] ${statusBadge.cls}`}
           >{statusBadge.label}</motion.span>
           {isRecent && (
-            <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">נוסף עכשיו</span>
+            <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">חדש מ־Discover</span>
           )}
         </div>
         {selectionMode ? (
@@ -812,7 +851,7 @@ function PlaceCard({
         cardInner
       )}
 
-      <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${rec.name} ליום`}>
+      <BottomSheet open={dayPickerOpen} onOpenChange={(open) => { setDayPickerOpen(open); onOverlayOpenChange(open); }} title={`הוסף את ${rec.name} ליום`}>
         <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
           {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
           {days.map((d) => (
