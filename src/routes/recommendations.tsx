@@ -485,6 +485,7 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
       qc.invalidateQueries({ queryKey: ["day-entries"] });
       toast.success("נוסף ליום");
       setDayPickerOpen(false);
+      onOverlayOpenChange(false);
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -795,7 +796,7 @@ function PlaceCard({
                   <Navigation size={14} /> ניווט
                 </a>
               )}
-              <button onClick={(e) => { stop(e); setDayPickerOpen(true); }}
+              <button onClick={(e) => { stop(e); setDayPickerOpen(true); onOverlayOpenChange(true); }}
                 className={`${rec.google_maps_url ? "" : "col-span-2"} inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>
                 <Plus size={15} /> הוסף ליום
               </button>
@@ -1149,7 +1150,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ─────────────────────────────────────────────────────────────────
 
 
-function HotelsList({ onEdit: _onEdit, query, onResetFilters }: { onEdit: (r: Rec) => void; query: string; onResetFilters: () => void }) {
+function HotelsList({ onEdit: _onEdit, query, onResetFilters, onAdd, onOverlayOpenChange }: {
+  onEdit: (r: Rec) => void;
+  query: string;
+  onResetFilters: () => void;
+  onAdd: () => void;
+  onOverlayOpenChange: (open: boolean) => void;
+}) {
   const { data: hotels = [], isLoading, isError } = useHotels();
   const [editHotel, setEditHotel] = useState<Hotel | null>(null);
 
@@ -1166,20 +1173,25 @@ function HotelsList({ onEdit: _onEdit, query, onResetFilters }: { onEdit: (r: Re
   return (
     <>
       {filtered.length === 0 ? (
-        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="אפשר להוסיף מלון או לייבא מקומות באמצעות הפעולות שמתחת" cta={query ? (
+        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint={query ? "אפשר לאפס את החיפוש ולנסות שוב" : "אפשר להתחיל בהוספת המלון הראשון לטיול"} cta={query ? (
           <button type="button" onClick={onResetFilters}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <RotateCcw size={16} /> איפוס מסננים
           </button>
-        ) : undefined} />
+        ) : (
+          <button type="button" onClick={onAdd}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Plus size={18} /> הוספת מלון ראשון
+          </button>
+        )} />
       ) : (
         <div className="space-y-2">
-          {filtered.map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
+          {filtered.map((h) => <HotelCard key={h.id} h={h} onEdit={() => { setEditHotel(h); onOverlayOpenChange(true); }} />)}
         </div>
       )}
 
-      <BottomSheet open={!!editHotel} onOpenChange={(o) => !o && setEditHotel(null)} title="ערוך מלון">
-        {editHotel && <HotelForm existing={editHotel} onDone={() => setEditHotel(null)} />}
+      <BottomSheet open={!!editHotel} onOpenChange={(open) => { if (!open) setEditHotel(null); onOverlayOpenChange(open); }} title="ערוך מלון">
+        {editHotel && <HotelForm existing={editHotel} onDone={() => { setEditHotel(null); onOverlayOpenChange(false); }} />}
       </BottomSheet>
     </>
   );
