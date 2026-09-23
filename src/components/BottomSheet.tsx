@@ -28,6 +28,7 @@ export function BottomSheet({
   footer,
   contentClassName,
   bodyClassName,
+  repositionInputs = true,
   children,
 }: {
   open: boolean;
@@ -37,6 +38,7 @@ export function BottomSheet({
   footer?: ReactNode;
   contentClassName?: string;
   bodyClassName?: string;
+  repositionInputs?: boolean;
   children: ReactNode;
 }) {
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
@@ -59,7 +61,7 @@ export function BottomSheet({
       open={open}
       onOpenChange={onOpenChange}
       direction="bottom"
-      repositionInputs
+      repositionInputs={repositionInputs}
       onAnimationEnd={(isOpen) => {
         if (!isOpen) setCycle((c) => c + 1);
       }}
