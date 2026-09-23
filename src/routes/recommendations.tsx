@@ -769,8 +769,8 @@ function PlaceCard({
           </>
         )}
       </div>
-    </div>
   );
+
 
   return (
     <>
