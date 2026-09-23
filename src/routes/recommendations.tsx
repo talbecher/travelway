@@ -9,7 +9,7 @@ import { DiscoverSheet, useDiscoverAccess } from "@/components/discover/Discover
 import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
-import { BottomSheet } from "@/components/BottomSheet";
+import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
@@ -1030,8 +1030,9 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
 
   return (
     <form
+      id="recommendation-form"
       onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }}
-      className="flex flex-col pt-1 pb-2"
+      className="flex min-w-0 max-w-full flex-col pt-1 pb-2"
     >
       <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-card">
         <div className="flex gap-1 bg-muted rounded-lg p-1">
