@@ -324,16 +324,35 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
   );
 }
 
+const BASE_CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY"] as const;
+
 function BudgetSettings({ onDone }: { onDone: () => void }) {
   const { data: trip } = useTrip();
   const { data: settings } = useSettings();
+  const { data: expenses = [] } = useExpenses();
   const qc = useQueryClient();
+  const base = useBaseCurrency();
+  const target = useTargetCurrency();
+  const conv = useConversion();
   const [budget, setBudget] = useState(String(trip?.total_budget_ils ?? 0));
-  const [rate, setRate] = useState(String(settings?.manual_exchange_rate ?? 38));
+  const [rate, setRate] = useState(
+    settings?.manual_exchange_rate ? String(settings.manual_exchange_rate) : "",
+  );
+  const [baseCurrency, setBaseCurrency] = useState(base);
+
+  const baseLocked = expenses.length > 0 || Number(trip?.total_budget_ils ?? 0) > 0;
+  const baseChanged = baseCurrency !== base;
 
   async function save() {
     if (trip) await supabase.from("trips").update({ total_budget_ils: Number(budget) }).eq("id", trip.id);
-    if (settings) await supabase.from("settings").update({ manual_exchange_rate: Number(rate) }).eq("id", settings.id);
+    if (settings) {
+      const manual = Number(rate);
+      await supabase.from("settings").update({
+        base_currency: baseLocked ? base : baseCurrency,
+        // Changing the currency pair invalidates any manual rate.
+        manual_exchange_rate: baseChanged && !baseLocked ? null : manual > 0 ? manual : null,
+      }).eq("id", settings.id);
+    }
     qc.invalidateQueries({ queryKey: ["trip"] });
     qc.invalidateQueries({ queryKey: ["settings"] });
     toast.success("נשמר");
@@ -343,15 +362,37 @@ function BudgetSettings({ onDone }: { onDone: () => void }) {
   return (
     <div className="space-y-3 pt-2">
       <div>
-        <label className="text-xs text-muted-foreground">תקציב כולל (₪)</label>
+        <label className="text-xs text-muted-foreground">מטבע התקציב</label>
+        <select
+          value={baseCurrency}
+          disabled={baseLocked}
+          onChange={(e) => setBaseCurrency(e.target.value)}
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11 disabled:opacity-60"
+        >
+          {Array.from(new Set([base, ...BASE_CURRENCIES])).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        {baseLocked && (
+          <p className="mt-1 text-[11px] text-muted-foreground">לא ניתן לשנות — כבר קיימים תקציב או הוצאות</p>
+        )}
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">תקציב כולל ({base})</label>
         <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)}
           className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
       </div>
-      <div>
-        <label className="text-xs text-muted-foreground">שער ידני ₪ → מטבע יעד</label>
-        <input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)}
-          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
-      </div>
+      {base !== target && (
+        <div>
+          <label className="text-xs text-muted-foreground">שער ידני — 1 {base} = X {target}</label>
+          <input type="number" step="0.01" value={rate} placeholder="ריק = שער שוק יומי"
+            onChange={(e) => setRate(e.target.value)}
+            className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {conv.rate ? conversionLabel(conv) : NO_RATE_MESSAGE}
+          </p>
+        </div>
+      )}
       <button onClick={save} className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium">שמור</button>
     </div>
   );
