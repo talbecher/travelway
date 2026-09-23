@@ -28,6 +28,7 @@ import {
 } from "@/components/home/PlanNextCard";
 import { SavedPlacesRow } from "@/components/home/PrepStatsRow";
 import { BudgetSummary } from "@/components/home/BudgetSummary";
+import { formatMoney, useBaseCurrency } from "@/lib/currency";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ActiveTripHero } from "@/components/home/ActiveTripHero";
@@ -840,9 +841,9 @@ function Home() {
             <div className="min-w-0">
               <p className="text-[11px] text-muted-foreground">{overBudget ? "חריגה מהתקציב" : budgetDefined ? "נשאר לטיול" : "תקציב"}</p>
               <p className={`mt-0.5 break-words text-[22px] font-semibold tabular-nums leading-tight ${overBudget ? "text-destructive" : "text-foreground"}`}>
-                {!budgetDefined ? "לא הוגדר תקציב" : overBudget ? `-${ils(Math.abs(stats.remaining))}` : ils(stats.remaining)}
+                {!budgetDefined ? "לא הוגדר תקציב" : overBudget ? `-${formatMoney(Math.abs(stats.remaining), baseCurrency)}` : formatMoney(stats.remaining, baseCurrency)}
               </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">הוצאות עד עכשיו: {ils(stats.spent)}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">הוצאות עד עכשיו: {formatMoney(stats.spent, baseCurrency)}</p>
             </div>
             <Link to="/budget" className="flex min-h-11 shrink-0 items-center gap-1 px-1 text-[12px] font-medium text-[color:var(--accent)]">
               לתקציב <ChevronLeft size={15} />
@@ -852,7 +853,7 @@ function Home() {
             <details className="mt-2 border-t border-border pt-1.5 text-[12px]">
               <summary className="min-h-11 cursor-pointer py-3 text-muted-foreground">יתרה ממוצעת ליום שנותר</summary>
               <p className={overBudget ? "pb-2 text-destructive" : "pb-2 text-foreground"}>
-                {overBudget ? "אין יתרה זמינה לחלוקה יומית" : `${ils(stats.daily)} ליום`}
+                {overBudget ? "אין יתרה זמינה לחלוקה יומית" : `${formatMoney(stats.daily, baseCurrency)} ליום`}
               </p>
             </details>
           )}
@@ -1007,16 +1008,16 @@ function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-[28px] font-semibold tabular-nums leading-none mt-1"
               >
-                {ils(stats.remaining)}
+                {formatMoney(stats.remaining, baseCurrency)}
               </motion.div>
               <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
                 <div>
                   <div className="text-muted-foreground">הוצאנו</div>
-                  <div className="font-medium tabular-nums">{ils(stats.spent)}</div>
+                  <div className="font-medium tabular-nums">{formatMoney(stats.spent, baseCurrency)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">ליום</div>
-                  <div className="font-medium tabular-nums">{ils(stats.daily)}</div>
+                  <div className="font-medium tabular-nums">{formatMoney(stats.daily, baseCurrency)}</div>
                 </div>
               </div>
             </div>
