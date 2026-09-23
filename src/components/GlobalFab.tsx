@@ -8,7 +8,14 @@ export function openQuickExpense() {
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
-import { useSettings } from "@/hooks/use-trip";
+import { useActiveTripId } from "@/hooks/use-active-trip";
+import {
+  useBaseCurrency,
+  useTargetCurrency,
+  useConversion,
+  conversionLabel,
+  NO_RATE_MESSAGE,
+} from "@/lib/currency";
 import { BottomSheet, BottomSheetFooter } from "./BottomSheet";
 import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
