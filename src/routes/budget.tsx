@@ -227,24 +227,40 @@ function Budget() {
 
 function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: settings } = useSettings();
-  const rate = Number(settings?.manual_exchange_rate ?? 1);
-  const [amount, setAmount] = useState(String(expense.amount_foreign ?? expense.amount_ils));
-  const [currency, setCurrency] = useState<"ILS" | "FX">(expense.amount_foreign ? "FX" : "ILS");
+  const base = useBaseCurrency();
+  const tripTarget = useTargetCurrency();
+  // Open with the expense's own currency, not the trip default.
+  const fxCurrency = (expense.foreign_currency || tripTarget).toUpperCase();
+  const conv = useConversion(fxCurrency);
+  const initialAmount = String(expense.amount_foreign ?? expense.amount_ils);
+  const initialCurrency: "ILS" | "FX" = expense.amount_foreign ? "FX" : "ILS";
+  const [amount, setAmount] = useState(initialAmount);
+  const [currency, setCurrency] = useState<"ILS" | "FX">(initialCurrency);
   const [category, setCategory] = useState(expense.category);
   const [description, setDescription] = useState(expense.description ?? "");
   const [location, setLocation] = useState(expense.location_name ?? "");
   const [date, setDate] = useState(expense.expense_date);
 
+  const moneyChanged = amount !== initialAmount || currency !== initialCurrency;
+
   const save = useMutation({
     mutationFn: async () => {
       const n = Number(amount);
       if (!n || n <= 0) throw new Error("סכום לא תקין");
-      const amount_ils = currency === "ILS" ? n : n / rate;
-      const amount_foreign = currency === "FX" ? n : null;
+      // Non-money edits must never recalculate the stored base amount.
+      let amount_ils = Number(expense.amount_ils);
+      if (moneyChanged) {
+        if (currency === "ILS" || conv.sameCurrency) {
+          amount_ils = n;
+        } else {
+          if (!conv.rate || conv.rate <= 0) throw new Error(NO_RATE_MESSAGE);
+          amount_ils = n / conv.rate;
+        }
+      }
+      const amount_foreign = currency === "FX" && !conv.sameCurrency ? n : null;
       const { error } = await supabase.from("expenses").update({
         amount_ils, amount_foreign,
-        foreign_currency: currency === "FX" ? (expense.foreign_currency ?? "JPY") : null,
+        foreign_currency: amount_foreign != null ? fxCurrency : null,
         category: category as "food" | "attraction" | "transport" | "shopping" | "accommodation" | "other",
         description: description || null,
         location_name: location || null, expense_date: date,
