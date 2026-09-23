@@ -744,6 +744,8 @@ function PlaceCard({
         {rec.status === "visited" && rec.review && (
           <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rec.review}</div>
         )}
+        </div>
+      </div>
 
         {!selectionMode && (
           <>
