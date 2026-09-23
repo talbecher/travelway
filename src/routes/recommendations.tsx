@@ -1041,7 +1041,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         </div>
       </div>
 
-      <div className="space-y-3 -mx-1 px-1">
+      <div className="min-w-0 max-w-full space-y-3 -mx-1 px-1 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
         {!manualMode && !placeSelected && (
           <>
             <PlacesSearch onSelect={handlePlace} autoFocus />
@@ -1127,7 +1127,11 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
                 </div>
               )}
             </div>
-            <Field label="תמונה ראשית"><PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" /></Field>
+            <Field label="תמונה ראשית">
+              <div className="max-w-full [&_.aspect-video]:h-36 [&_.aspect-video]:max-h-40 [&_.aspect-video]:max-w-full [&_.aspect-video]:aspect-auto">
+                <PhotoUploader value={photoUrl} onChange={setPhotoUrl} folder="recs" />
+              </div>
+            </Field>
 
             {type === "hotel" && !existing && (
               <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
@@ -1139,12 +1143,12 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       </div>
 
       {(manualMode || placeSelected) && (
-        <div className="sticky bottom-0 z-10 -mx-5 mt-3 px-5 pt-3 pb-2 bg-card border-t border-border/60 shrink-0">
-          <button type="submit" disabled={save.isPending}
+        <BottomSheetFooter>
+          <button type="submit" form="recommendation-form" disabled={save.isPending}
             className="w-full h-11 rounded-xl bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
             {save.isPending ? "שומר..." : "שמור"}
           </button>
-        </div>
+        </BottomSheetFooter>
       )}
     </form>
   );
