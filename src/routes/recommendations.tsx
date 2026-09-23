@@ -1034,18 +1034,18 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }}
       className="flex min-w-0 max-w-full flex-col pt-1 pb-2"
     >
-      <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-card">
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+      <div className="sticky top-0 z-10 min-w-0 max-w-full pt-1 pb-2 bg-card">
+        <div className="flex min-w-0 gap-1 bg-muted rounded-lg p-1">
           {seg("food", "אוכל", "🍜", "var(--accent-2)")}
           {seg("attraction", "אטרקציה", "⛩", "var(--accent)")}
           {seg("hotel", "לינה", "🏨", "var(--accent-3)")}
         </div>
       </div>
 
-      <div className="min-w-0 max-w-full space-y-3 -mx-1 px-1 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
+      <div className="min-w-0 max-w-full space-y-3 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
         {!manualMode && !placeSelected && (
           <>
-            <PlacesSearch onSelect={handlePlace} autoFocus />
+            <PlacesSearch onSelect={handlePlace} />
             <button
               type="button"
               onClick={() => setManualMode(true)}
