@@ -6,7 +6,15 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrip, useExpenses, useSettings } from "@/hooks/use-trip";
-import { ils, hebDate } from "@/lib/format";
+import { hebDate } from "@/lib/format";
+import {
+  formatMoney,
+  useBaseCurrency,
+  useTargetCurrency,
+  useConversion,
+  conversionLabel,
+  NO_RATE_MESSAGE,
+} from "@/lib/currency";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
