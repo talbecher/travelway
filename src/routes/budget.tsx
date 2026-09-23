@@ -280,11 +280,18 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
             className="min-w-0 w-full rounded-lg bg-background border border-input px-3 h-11" />
           <div className="flex rounded-lg border border-input overflow-hidden">
             <button type="button" onClick={() => setCurrency("ILS")}
-              className={`px-3 ${currency === "ILS" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>₪</button>
-            <button type="button" onClick={() => setCurrency("FX")}
-              className={`px-3 ${currency === "FX" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>{expense.foreign_currency ?? "¥"}</button>
+              className={`px-3 ${currency === "ILS" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>{base}</button>
+            {!conv.sameCurrency && (
+              <button type="button" onClick={() => setCurrency("FX")}
+                className={`px-3 ${currency === "FX" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>{fxCurrency}</button>
+            )}
           </div>
         </div>
+        {currency === "FX" && !conv.sameCurrency && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {conv.rate ? `יומר לפי ${conversionLabel(conv)}` : NO_RATE_MESSAGE}
+          </p>
+        )}
       </div>
       <div>
         <label className="text-xs text-muted-foreground">קטגוריה</label>
