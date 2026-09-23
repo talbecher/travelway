@@ -465,11 +465,11 @@ function Recs() {
         existingRecNames={recs.map((r) => r.name)}
       />
 
-      <BottomSheet open={addOpen} onOpenChange={setAddOpen} title={tab === "hotels" ? "הוסף מלון" : "הוסף המלצה"}>
+      <BottomSheet open={addOpen} onOpenChange={setAddOpen} title={tab === "hotels" ? "הוסף מלון" : "הוסף המלצה"} repositionInputs={false}>
         <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
       </BottomSheet>
 
-      <BottomSheet open={!!editRec} onOpenChange={(o) => !o && setEditRec(null)} title="ערוך המלצה">
+      <BottomSheet open={!!editRec} onOpenChange={(o) => !o && setEditRec(null)} title="ערוך המלצה" repositionInputs={false}>
         {editRec && <RecForm defaultType={editRec.type as RecType} existing={editRec} onDone={() => setEditRec(null)} />}
       </BottomSheet>
 
