@@ -41,6 +41,9 @@ export function BottomSheet({
 }) {
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
   const [portalFooterCount, setPortalFooterCount] = useState(0);
+  // Each open/close cycle gets a fresh Vaul instance, so keyboard-height refs
+  // (initial height, previous viewport diff) never leak into the next opening.
+  const [cycle, setCycle] = useState(0);
   const footerContext = useMemo<BottomSheetFooterContextValue>(() => ({
     target: footerTarget,
     register: () => {
@@ -52,11 +55,14 @@ export function BottomSheet({
 
   return (
     <Drawer.Root
+      key={cycle}
       open={open}
       onOpenChange={onOpenChange}
       direction="bottom"
-      fixed
       repositionInputs
+      onAnimationEnd={(isOpen) => {
+        if (!isOpen) setCycle((c) => c + 1);
+      }}
     >
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-[1000] bg-black/40" />
