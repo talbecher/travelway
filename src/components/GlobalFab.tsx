@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
 import { useSettings } from "@/hooks/use-trip";
-import { BottomSheet } from "./BottomSheet";
+import { BottomSheet, BottomSheetFooter } from "./BottomSheet";
 import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
@@ -86,15 +86,15 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }} className="space-y-4 pt-2">
+    <form id="quick-expense-form" onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }} className="min-w-0 max-w-full space-y-4 pt-2 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
       <div>
         <label className="text-sm text-muted-foreground">סכום</label>
-        <div className="flex gap-2 mt-1">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 mt-1">
           <input
             type="number" step="0.01" inputMode="decimal" value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 rounded-lg bg-background border border-input px-3 text-lg h-12"
-            placeholder="0" autoFocus
+            className="min-w-0 w-full rounded-lg bg-background border border-input px-3 text-lg h-12"
+            placeholder="0"
           />
           <div className="flex rounded-lg border border-input overflow-hidden">
             <button type="button" onClick={() => setCurrency("ILS")}
@@ -146,10 +146,12 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         <label className="text-sm text-muted-foreground">תאריך</label>
         <div className="mt-1"><DateField value={date} onChange={setDate} /></div>
       </div>
-      <button type="submit" disabled={mut.isPending}
-        className="w-full h-12 rounded-xl bg-[color:var(--accent-2)] text-white font-medium disabled:opacity-50">
-        {mut.isPending ? "שומר..." : "שמור הוצאה"}
-      </button>
+      <BottomSheetFooter>
+        <button type="submit" form="quick-expense-form" disabled={mut.isPending}
+          className="w-full h-12 rounded-xl bg-[color:var(--accent-2)] text-white font-medium disabled:opacity-50">
+          {mut.isPending ? "שומר..." : "שמור הוצאה"}
+        </button>
+      </BottomSheetFooter>
     </form>
   );
 }

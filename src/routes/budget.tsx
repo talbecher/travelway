@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTrip, useExpenses, useSettings } from "@/hooks/use-trip";
 import { ils, hebDate } from "@/lib/format";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
-import { BottomSheet } from "@/components/BottomSheet";
+import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
@@ -222,12 +222,12 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }} className="space-y-3 pt-2">
+    <form id="edit-expense-form" onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }} className="min-w-0 max-w-full space-y-3 pt-2 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
       <div>
         <label className="text-xs text-muted-foreground">סכום</label>
-        <div className="flex gap-2 mt-1">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 mt-1">
           <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 rounded-lg bg-background border border-input px-3 h-11" />
+            className="min-w-0 w-full rounded-lg bg-background border border-input px-3 h-11" />
           <div className="flex rounded-lg border border-input overflow-hidden">
             <button type="button" onClick={() => setCurrency("ILS")}
               className={`px-3 ${currency === "ILS" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>₪</button>
@@ -257,10 +257,12 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
         <label className="text-xs text-muted-foreground">תאריך</label>
         <div className="mt-1"><DateField value={date} onChange={setDate} /></div>
       </div>
-      <button type="submit" disabled={save.isPending}
-        className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
-        {save.isPending ? "שומר..." : "שמור"}
-      </button>
+      <BottomSheetFooter>
+        <button type="submit" form="edit-expense-form" disabled={save.isPending}
+          className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium disabled:opacity-50">
+          {save.isPending ? "שומר..." : "שמור"}
+        </button>
+      </BottomSheetFooter>
     </form>
   );
 }
