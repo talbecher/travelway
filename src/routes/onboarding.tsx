@@ -149,6 +149,13 @@ function Onboarding() {
         }).eq("id", existingTrip.id);
         if (upErr) throw upErr;
 
+        // Target currency changed -> the stored manual rate is no longer valid.
+        if (existingTrip.currency_code !== currency) {
+          await supabase.from("settings")
+            .update({ foreign_currency: currency, manual_exchange_rate: null })
+            .eq("trip_id", existingTrip.id);
+        }
+
         // Active itinerary version for this trip (create one if missing)
         const { data: versions, error: vErr } = await supabase
           .from("itinerary_versions")
@@ -349,7 +356,7 @@ function Onboarding() {
                 className="w-11 h-11 rounded-lg border border-input text-lg min-h-0">+</button>
             </div>
           </Field>
-          <Field label="תקציב (₪)">
+          <Field label="תקציב (ILS)">
             <input type="number" min={0} step={100} value={budget}
               onChange={(e) => setBudget(Number(e.target.value))}
               className="w-full rounded-lg bg-background border border-input px-3 h-11" />

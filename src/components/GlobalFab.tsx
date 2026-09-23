@@ -8,7 +8,14 @@ export function openQuickExpense() {
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
-import { useSettings } from "@/hooks/use-trip";
+import { useActiveTripId } from "@/hooks/use-active-trip";
+import {
+  useBaseCurrency,
+  useTargetCurrency,
+  useConversion,
+  conversionLabel,
+  NO_RATE_MESSAGE,
+} from "@/lib/currency";
 import { BottomSheet, BottomSheetFooter } from "./BottomSheet";
 import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
@@ -18,6 +25,7 @@ import { assertOnline } from "@/hooks/use-online";
 
 export function GlobalFab() {
   const [open, setOpen] = useState(false);
+  const tripId = useActiveTripId();
   useEffect(() => {
     const h = () => setOpen(true);
     window.addEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
@@ -25,7 +33,8 @@ export function GlobalFab() {
   }, []);
   return (
     <BottomSheet open={open} onOpenChange={setOpen} title="הוסף הוצאה מהירה">
-      <QuickExpenseForm onDone={() => setOpen(false)} />
+      {/* Remount per trip and per opening so the currency never carries over. */}
+      <QuickExpenseForm key={`${tripId}-${open}`} onDone={() => setOpen(false)} />
     </BottomSheet>
   );
 }
@@ -34,10 +43,12 @@ type Category = "food" | "attraction" | "transport" | "shopping" | "accommodatio
 
 function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: settings } = useSettings();
-  const rate = Number(settings?.manual_exchange_rate ?? 38);
+  const base = useBaseCurrency();
+  const target = useTargetCurrency();
+  const conv = useConversion();
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<"ILS" | "JPY">("JPY");
+  // Default to the target currency when it differs from the base currency.
+  const [currency, setCurrency] = useState<"BASE" | "TARGET">(conv.sameCurrency ? "BASE" : "TARGET");
   const [category, setCategory] = useState<Category>("food");
   const [description, setDescription] = useState("");
   const [locationName, setLocationName] = useState("");
@@ -51,8 +62,10 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
     mutationFn: async () => {
       const n = Number(amount);
       if (!n || n <= 0) throw new Error("סכום לא תקין");
-      const amount_ils = currency === "ILS" ? n : n / rate;
-      const amount_foreign = currency === "JPY" ? n : null;
+      const useTarget = currency === "TARGET" && !conv.sameCurrency;
+      if (useTarget && (!conv.rate || conv.rate <= 0)) throw new Error(NO_RATE_MESSAGE);
+      const amount_ils = useTarget ? n / conv.rate! : n;
+      const amount_foreign = useTarget ? n : null;
 
       let linkedId: string | null = null;
       if (saveToRecs && recType && locationName.trim()) {
@@ -67,7 +80,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         trip_id: getActiveTripId(),
         amount_ils,
         amount_foreign,
-        foreign_currency: currency === "JPY" ? "JPY" : null,
+        foreign_currency: useTarget ? target : null,
         category,
         description: description.trim() || null,
         location_name: locationName.trim() || null,
@@ -97,12 +110,19 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
             placeholder="0"
           />
           <div className="flex rounded-lg border border-input overflow-hidden">
-            <button type="button" onClick={() => setCurrency("ILS")}
-              className={`px-4 text-lg ${currency === "ILS" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>₪</button>
-            <button type="button" onClick={() => setCurrency("JPY")}
-              className={`px-4 text-lg ${currency === "JPY" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>¥</button>
+            <button type="button" onClick={() => setCurrency("BASE")}
+              className={`px-4 text-lg ${currency === "BASE" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>{base}</button>
+            {!conv.sameCurrency && (
+              <button type="button" onClick={() => setCurrency("TARGET")}
+                className={`px-4 text-lg ${currency === "TARGET" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>{target}</button>
+            )}
           </div>
         </div>
+        {currency === "TARGET" && !conv.sameCurrency && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {conv.rate ? `יומר לפי ${conversionLabel(conv)}` : NO_RATE_MESSAGE}
+          </p>
+        )}
       </div>
       <div>
         <label className="text-sm text-muted-foreground">קטגוריה</label>

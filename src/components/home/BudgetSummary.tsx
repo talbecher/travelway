@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
-import { ils } from "@/lib/format";
+import { formatMoney, useBaseCurrency } from "@/lib/currency";
 
 /** Compact budget summary — values are calculated by the home screen. */
 export function BudgetSummary({
@@ -12,6 +12,8 @@ export function BudgetSummary({
   spent: number;
   remaining: number;
 }) {
+  const base = useBaseCurrency();
+  const ils = (n: number) => formatMoney(n, base);
   const hasBudget = Number.isFinite(budget) && budget > 0;
   const over = hasBudget && remaining < 0;
 

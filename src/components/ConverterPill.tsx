@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { useSettings } from "@/hooks/use-trip";
+import { useBaseCurrency, useTargetCurrency } from "@/lib/currency";
 import { getRates, convert } from "@/lib/fx";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,7 +30,9 @@ export function ConverterPill() {
 function Converter() {
   const { data: settings } = useSettings();
   const qc = useQueryClient();
-  const manual = Number(settings?.manual_exchange_rate ?? 38);
+  const manual = Number(settings?.manual_exchange_rate ?? 0);
+  const base = useBaseCurrency();
+  const target = useTargetCurrency();
   const [rates, setRates] = useState<Awaited<ReturnType<typeof getRates>>>(null);
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState("ILS");
@@ -42,7 +45,7 @@ function Converter() {
   }, []);
 
   const n = Number(amount) || 0;
-  const result = convert(n, from, to, rates, useManual ? manual : null);
+  const result = convert(n, from, to, rates, useManual && manual > 0 ? manual : null);
 
   async function setPair(f: string, t: string) { setFrom(f); setTo(t); }
 
@@ -96,11 +99,11 @@ function Converter() {
 
       {useManual && (
         <div>
-          <label className="text-xs text-muted-foreground">שער ידני ₪ → ¥</label>
+          <label className="text-xs text-muted-foreground">שער ידני — 1 {base} = X {target}</label>
           <input
             type="number"
             step="0.01"
-            defaultValue={manual}
+            defaultValue={manual > 0 ? manual : ""}
             onBlur={async (e) => {
               const v = Number(e.target.value);
               if (!v) return;
@@ -113,7 +116,7 @@ function Converter() {
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        {loading ? "טוען שערים..." : rates ? `עודכן: ${rates.date}` : "אין חיבור — משתמש בשער ידני"}
+        {loading ? "טוען שערים..." : rates ? `שער שוק יומי · exchangerate-api.com · עודכן ${rates.date}` : "אין חיבור — נדרש שער ידני"}
       </p>
     </div>
   );

@@ -6,7 +6,15 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrip, useExpenses, useSettings } from "@/hooks/use-trip";
-import { ils, hebDate } from "@/lib/format";
+import { hebDate } from "@/lib/format";
+import {
+  formatMoney,
+  useBaseCurrency,
+  useTargetCurrency,
+  useConversion,
+  conversionLabel,
+  NO_RATE_MESSAGE,
+} from "@/lib/currency";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
@@ -33,6 +41,7 @@ type Expense = {
 function Budget() {
   const { data: trip } = useTrip();
   const { data: expenses = [], isLoading } = useExpenses();
+  const base = useBaseCurrency();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
@@ -105,13 +114,13 @@ function Budget() {
               key={remaining}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
               className="text-3xl font-medium tabular-nums"
-            >{ils(remaining)}</motion.div>
+            >{formatMoney(remaining, base)}</motion.div>
             <div className="text-xs text-muted-foreground">נשאר</div>
           </div>
         </div>
         <div className="grid grid-cols-2 text-center gap-3 mt-2 text-sm">
-          <div><div className="text-muted-foreground text-xs">תקציב</div><div>{ils(budget)}</div></div>
-          <div><div className="text-muted-foreground text-xs">הוצאנו</div><div>{ils(totalSpent)}</div></div>
+          <div><div className="text-muted-foreground text-xs">תקציב</div><div>{formatMoney(budget, base)}</div></div>
+          <div><div className="text-muted-foreground text-xs">הוצאנו</div><div>{formatMoney(totalSpent, base)}</div></div>
         </div>
       </div>
 
@@ -139,7 +148,7 @@ function Budget() {
                     <span>{CATEGORY_LABELS[k]}</span>
                   </div>
                   <div className="flex items-center gap-2 tabular-nums">
-                    <span>{ils(amount)} · {Math.round(pct)}%</span>
+                    <span>{formatMoney(amount, base)} · {Math.round(pct)}%</span>
                     <ChevronDown size={14} className={`transition-transform ${active ? "rotate-180" : ""}`} />
                   </div>
                 </div>
@@ -166,7 +175,7 @@ function Budget() {
                               {hebDate(e.expense_date)}{e.location_name ? ` · ${e.location_name}` : ""}
                             </div>
                           </div>
-                          <div className="tabular-nums text-sm">{ils(e.amount_ils)}</div>
+                          <div className="tabular-nums text-sm">{formatMoney(e.amount_ils, base)}</div>
                           <div className="flex gap-1">
                             <button onClick={() => setEditExpense(e)} aria-label="ערוך"
                               className="w-8 h-8 rounded-full border border-border flex items-center justify-center min-h-0">
@@ -218,24 +227,40 @@ function Budget() {
 
 function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: settings } = useSettings();
-  const rate = Number(settings?.manual_exchange_rate ?? 1);
-  const [amount, setAmount] = useState(String(expense.amount_foreign ?? expense.amount_ils));
-  const [currency, setCurrency] = useState<"ILS" | "FX">(expense.amount_foreign ? "FX" : "ILS");
+  const base = useBaseCurrency();
+  const tripTarget = useTargetCurrency();
+  // Open with the expense's own currency, not the trip default.
+  const fxCurrency = (expense.foreign_currency || tripTarget).toUpperCase();
+  const conv = useConversion(fxCurrency);
+  const initialAmount = String(expense.amount_foreign ?? expense.amount_ils);
+  const initialCurrency: "ILS" | "FX" = expense.amount_foreign ? "FX" : "ILS";
+  const [amount, setAmount] = useState(initialAmount);
+  const [currency, setCurrency] = useState<"ILS" | "FX">(initialCurrency);
   const [category, setCategory] = useState(expense.category);
   const [description, setDescription] = useState(expense.description ?? "");
   const [location, setLocation] = useState(expense.location_name ?? "");
   const [date, setDate] = useState(expense.expense_date);
 
+  const moneyChanged = amount !== initialAmount || currency !== initialCurrency;
+
   const save = useMutation({
     mutationFn: async () => {
       const n = Number(amount);
       if (!n || n <= 0) throw new Error("סכום לא תקין");
-      const amount_ils = currency === "ILS" ? n : n / rate;
-      const amount_foreign = currency === "FX" ? n : null;
+      // Non-money edits must never recalculate the stored base amount.
+      let amount_ils = Number(expense.amount_ils);
+      if (moneyChanged) {
+        if (currency === "ILS" || conv.sameCurrency) {
+          amount_ils = n;
+        } else {
+          if (!conv.rate || conv.rate <= 0) throw new Error(NO_RATE_MESSAGE);
+          amount_ils = n / conv.rate;
+        }
+      }
+      const amount_foreign = currency === "FX" && !conv.sameCurrency ? n : null;
       const { error } = await supabase.from("expenses").update({
         amount_ils, amount_foreign,
-        foreign_currency: currency === "FX" ? (expense.foreign_currency ?? "JPY") : null,
+        foreign_currency: amount_foreign != null ? fxCurrency : null,
         category: category as "food" | "attraction" | "transport" | "shopping" | "accommodation" | "other",
         description: description || null,
         location_name: location || null, expense_date: date,
@@ -255,11 +280,18 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
             className="min-w-0 w-full rounded-lg bg-background border border-input px-3 h-11" />
           <div className="flex rounded-lg border border-input overflow-hidden">
             <button type="button" onClick={() => setCurrency("ILS")}
-              className={`px-3 ${currency === "ILS" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>₪</button>
-            <button type="button" onClick={() => setCurrency("FX")}
-              className={`px-3 ${currency === "FX" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>{expense.foreign_currency ?? "¥"}</button>
+              className={`px-3 ${currency === "ILS" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>{base}</button>
+            {!conv.sameCurrency && (
+              <button type="button" onClick={() => setCurrency("FX")}
+                className={`px-3 ${currency === "FX" ? "bg-[color:var(--accent)] text-white" : "bg-background"}`}>{fxCurrency}</button>
+            )}
           </div>
         </div>
+        {currency === "FX" && !conv.sameCurrency && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {conv.rate ? `יומר לפי ${conversionLabel(conv)}` : NO_RATE_MESSAGE}
+          </p>
+        )}
       </div>
       <div>
         <label className="text-xs text-muted-foreground">קטגוריה</label>
@@ -292,16 +324,35 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
   );
 }
 
+const BASE_CURRENCIES = ["ILS", "USD", "EUR", "GBP", "JPY"] as const;
+
 function BudgetSettings({ onDone }: { onDone: () => void }) {
   const { data: trip } = useTrip();
   const { data: settings } = useSettings();
+  const { data: expenses = [] } = useExpenses();
   const qc = useQueryClient();
+  const base = useBaseCurrency();
+  const target = useTargetCurrency();
+  const conv = useConversion();
   const [budget, setBudget] = useState(String(trip?.total_budget_ils ?? 0));
-  const [rate, setRate] = useState(String(settings?.manual_exchange_rate ?? 38));
+  const [rate, setRate] = useState(
+    settings?.manual_exchange_rate ? String(settings.manual_exchange_rate) : "",
+  );
+  const [baseCurrency, setBaseCurrency] = useState(base);
+
+  const baseLocked = expenses.length > 0 || Number(trip?.total_budget_ils ?? 0) > 0;
+  const baseChanged = baseCurrency !== base;
 
   async function save() {
     if (trip) await supabase.from("trips").update({ total_budget_ils: Number(budget) }).eq("id", trip.id);
-    if (settings) await supabase.from("settings").update({ manual_exchange_rate: Number(rate) }).eq("id", settings.id);
+    if (settings) {
+      const manual = Number(rate);
+      await supabase.from("settings").update({
+        base_currency: baseLocked ? base : baseCurrency,
+        // Changing the currency pair invalidates any manual rate.
+        manual_exchange_rate: baseChanged && !baseLocked ? null : manual > 0 ? manual : null,
+      }).eq("id", settings.id);
+    }
     qc.invalidateQueries({ queryKey: ["trip"] });
     qc.invalidateQueries({ queryKey: ["settings"] });
     toast.success("נשמר");
@@ -311,15 +362,37 @@ function BudgetSettings({ onDone }: { onDone: () => void }) {
   return (
     <div className="space-y-3 pt-2">
       <div>
-        <label className="text-xs text-muted-foreground">תקציב כולל (₪)</label>
+        <label className="text-xs text-muted-foreground">מטבע התקציב</label>
+        <select
+          value={baseCurrency}
+          disabled={baseLocked}
+          onChange={(e) => setBaseCurrency(e.target.value)}
+          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11 disabled:opacity-60"
+        >
+          {Array.from(new Set([base, ...BASE_CURRENCIES])).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        {baseLocked && (
+          <p className="mt-1 text-[11px] text-muted-foreground">לא ניתן לשנות — כבר קיימים תקציב או הוצאות</p>
+        )}
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">תקציב כולל ({base})</label>
         <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)}
           className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
       </div>
-      <div>
-        <label className="text-xs text-muted-foreground">שער ידני ₪ → מטבע יעד</label>
-        <input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)}
-          className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
-      </div>
+      {base !== target && (
+        <div>
+          <label className="text-xs text-muted-foreground">שער ידני — 1 {base} = X {target}</label>
+          <input type="number" step="0.01" value={rate} placeholder="ריק = שער שוק יומי"
+            onChange={(e) => setRate(e.target.value)}
+            className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {conv.rate ? conversionLabel(conv) : NO_RATE_MESSAGE}
+          </p>
+        </div>
+      )}
       <button onClick={save} className="w-full h-12 rounded-lg bg-[color:var(--accent)] text-white font-medium">שמור</button>
     </div>
   );

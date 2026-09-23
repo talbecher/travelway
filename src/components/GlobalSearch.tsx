@@ -8,7 +8,8 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { useDays, useRecs, useExpenses } from "@/hooks/use-trip";
 import { useDocuments } from "@/hooks/use-documents";
-import { hebDate, ils } from "@/lib/format";
+import { hebDate } from "@/lib/format";
+import { formatMoney, useBaseCurrency } from "@/lib/currency";
 
 type Hit = {
   id: string;
@@ -44,6 +45,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
   const { data: recs = [] } = useRecs();
   const { data: expenses = [] } = useExpenses();
   const { data: documents = [] } = useDocuments(tripId);
+  const baseCurrency = useBaseCurrency();
 
   const { data: entries = [] } = useQuery<EntryHit[]>({
     queryKey: ["global-search-entries", tripId, version?.id ?? null],
@@ -123,7 +125,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         group: "expenses",
         icon: "💸",
         title: label || "הוצאה",
-        subtitle: ils(Number(x["amount_ils"] ?? 0)),
+        subtitle: formatMoney(Number(x["amount_ils"] ?? 0), baseCurrency),
         go: () => {
           onOpenChange(false);
           navigate({ to: "/budget" });
@@ -133,7 +135,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
 
 
     return out;
-  }, [term, entries, days, recs, documents, expenses, navigate, onOpenChange]);
+  }, [term, entries, days, recs, documents, expenses, baseCurrency, navigate, onOpenChange]);
 
   const groups = (["itinerary", "recs", "documents", "expenses"] as const)
     .map((g) => ({ key: g, items: hits.filter((h) => h.group === g).slice(0, 8) }))
