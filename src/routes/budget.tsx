@@ -41,6 +41,7 @@ type Expense = {
 function Budget() {
   const { data: trip } = useTrip();
   const { data: expenses = [], isLoading } = useExpenses();
+  const base = useBaseCurrency();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
@@ -113,13 +114,13 @@ function Budget() {
               key={remaining}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
               className="text-3xl font-medium tabular-nums"
-            >{ils(remaining)}</motion.div>
+            >{formatMoney(remaining, base)}</motion.div>
             <div className="text-xs text-muted-foreground">נשאר</div>
           </div>
         </div>
         <div className="grid grid-cols-2 text-center gap-3 mt-2 text-sm">
-          <div><div className="text-muted-foreground text-xs">תקציב</div><div>{ils(budget)}</div></div>
-          <div><div className="text-muted-foreground text-xs">הוצאנו</div><div>{ils(totalSpent)}</div></div>
+          <div><div className="text-muted-foreground text-xs">תקציב</div><div>{formatMoney(budget, base)}</div></div>
+          <div><div className="text-muted-foreground text-xs">הוצאנו</div><div>{formatMoney(totalSpent, base)}</div></div>
         </div>
       </div>
 
@@ -147,7 +148,7 @@ function Budget() {
                     <span>{CATEGORY_LABELS[k]}</span>
                   </div>
                   <div className="flex items-center gap-2 tabular-nums">
-                    <span>{ils(amount)} · {Math.round(pct)}%</span>
+                    <span>{formatMoney(amount, base)} · {Math.round(pct)}%</span>
                     <ChevronDown size={14} className={`transition-transform ${active ? "rotate-180" : ""}`} />
                   </div>
                 </div>
@@ -174,7 +175,7 @@ function Budget() {
                               {hebDate(e.expense_date)}{e.location_name ? ` · ${e.location_name}` : ""}
                             </div>
                           </div>
-                          <div className="tabular-nums text-sm">{ils(e.amount_ils)}</div>
+                          <div className="tabular-nums text-sm">{formatMoney(e.amount_ils, base)}</div>
                           <div className="flex gap-1">
                             <button onClick={() => setEditExpense(e)} aria-label="ערוך"
                               className="w-8 h-8 rounded-full border border-border flex items-center justify-center min-h-0">
