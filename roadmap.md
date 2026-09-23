@@ -76,3 +76,12 @@
 - [x] גשר „אפשרויות הגעה" coral בהיר, min-height 56, גמיש, מתחבר לציר
 - [x] סרגל הוספה תחתון: + ≥48px, safe-area נשמר; יום ריק בשפת A2
 - [x] בלי שינוי handlers/queries/mutations/routes/drag/map/Discover/BottomNav; רק tsgo + build
+
+# מסך ההמלצות — ניסוח Discover וגישה קבועה להוספה
+
+- [ ] להבהיר את ניסוחי ההמלצות שנשמרו מ־Discover בלי לשנות recent/sessionStorage
+- [ ] להשאיר FAB הוספה יחיד במסך, מותאם להמלצות ולמלונות
+- [ ] להסתיר את ה־FAB בכל overlay פעיל, כולל Discover
+- [ ] להשאיר בסוף הרשימה רק את שתי פעולות הייבוא
+- [ ] להוסיף פעולת הוספה ישירה למצבי ריק אמיתיים
+- [ ] להריץ רק TypeScript ו־build
