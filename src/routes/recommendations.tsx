@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays, useTrip } from "@/hooks/use-trip";
@@ -216,113 +216,135 @@ function Recs() {
     tab === "food" ? "food" : tab === "attractions" ? "attraction" : "all";
 
   const selectableInList = tab !== "hotels" && view === "list";
+  const hasActiveFilters = q.trim().length > 0 || city !== "all" || recentOnly || (tab !== "all" && tab !== "hotels");
+
+  const resetFilters = () => {
+    setQ("");
+    setCity("all");
+    setRecentOnly(false);
+    if (tab !== "hotels") setTab("all");
+  };
 
   return (
-    <div className="pt-2 space-y-4 pb-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1>המלצות ומקומות שמורים</h1>
-        <div className="flex items-center gap-2">
+    <div className="-mx-4 -mt-2 min-h-full bg-background px-4 pb-4 pt-5" dir="rtl">
+      <div className="space-y-4">
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0 pt-0.5">
+            <h1 className="text-2xl font-bold leading-tight text-foreground">המלצות</h1>
+            <p className="mt-1 text-sm text-muted-foreground">המקומות ששמרת לטיול</p>
+          </div>
           {selectableInList && (
             selectionMode ? (
               <button onClick={exitSelection} aria-label="בטל בחירה"
-                className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
-                <X size={14} /> בטל
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <X size={16} /> בטל
               </button>
             ) : (
               <button onClick={() => setSelectionMode(true)} aria-label="בחירה מרובה"
-                className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
-                <CheckSquare size={14} /> בחר
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <CheckSquare size={16} /> בחירה
               </button>
             )
           )}
-          {!selectionMode && discoverEnabled && (
-            <button onClick={() => setDiscoverOpen(true)} aria-label="Discover — גילוי מקומות"
-              className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
-              <Compass size={14} /> Discover
-            </button>
-          )}
-          {!selectionMode && (
-            <button onClick={() => setAiImportOpen(true)} aria-label="ייבוא מ-AI"
-              className="h-9 px-3 rounded-lg border border-border bg-card text-xs flex items-center gap-1 min-h-0">
-              ✨ ייבא מ-AI
-            </button>
-          )}
+        </header>
+
+        {!selectionMode && (
+          <div className="flex items-stretch gap-2">
+            {discoverEnabled && (
+              <button onClick={() => setDiscoverOpen(true)} aria-label="Discover — גילוי מקומות"
+                className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-accent/25 bg-accent/10 px-3 text-sm font-medium text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Compass size={17} /> Discover
+              </button>
+            )}
           {tab !== "hotels" && !selectionMode && (
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <div className="flex shrink-0 gap-1 rounded-xl bg-muted p-1" aria-label="בחירת תצוגה">
               <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
-                className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "list" ? "bg-card" : "text-muted-foreground"}`}>
-                <List size={16} />
+                aria-pressed={view === "list"}
+                className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${view === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+                <List size={18} />
               </button>
               <button onClick={() => setView("map")} aria-label="תצוגת מפה"
-                className={`w-9 h-9 rounded-md flex items-center justify-center min-h-0 ${view === "map" ? "bg-card" : "text-muted-foreground"}`}>
-                <MapIcon size={16} />
+                aria-pressed={view === "map"}
+                className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${view === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+                <MapIcon size={18} />
               </button>
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="flex gap-1 bg-muted rounded-lg p-1">
-        <TabBtn active={tab === "all"} onClick={() => setTab("all")}>הכל</TabBtn>
-        <TabBtn active={tab === "food"} onClick={() => setTab("food")}>🍜 אוכל</TabBtn>
-        <TabBtn active={tab === "attractions"} onClick={() => setTab("attractions")}>⛩ אטרקציות</TabBtn>
-        <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>🏨 מלונות</TabBtn>
-      </div>
-
-      <div className="relative">
-        <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="חפש: סושי, גיוזה, מוזיאון..."
-          dir="rtl"
-          className="w-full rounded-lg bg-background border border-input pr-9 pl-9 h-10 text-sm outline-none focus:border-[color:var(--accent)]"
-        />
-        {q && (
-          <button
-            type="button"
-            aria-label="נקה חיפוש"
-            onClick={() => setQ("")}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground min-h-0"
-          >
-            <X size={14} />
-          </button>
+          </div>
         )}
-      </div>
 
-      <AdminBackfillButton recs={recs as Rec[]} />
+        <section className="space-y-3" aria-label="סינון המלצות">
+          <div className="relative">
+            <Search size={18} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="חיפוש לפי שם, עיר או סוג"
+              dir="rtl"
+              className="h-12 w-full rounded-xl border border-input bg-card pr-11 pl-11 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/20"
+            />
+            {q && (
+              <button
+                type="button"
+                aria-label="נקה חיפוש"
+                onClick={() => setQ("")}
+                className="absolute left-1.5 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
 
-      {tab !== "hotels" && recentIds.size > 0 && (
-        <div dir="rtl">
-          <button
-            type="button"
-            onClick={() => setRecentOnly((v) => !v)}
-            aria-pressed={recentOnly}
-            className={`h-8 px-3 rounded-full text-xs border min-h-0 ${
-              recentOnly
-                ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]"
-                : "border-border text-muted-foreground"
-            }`}
-          >
-            נוספו הרגע ({recentIds.size})
-          </button>
-        </div>
-      )}
+          <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-1">
+            <TabBtn active={tab === "all"} onClick={() => setTab("all")}>הכל</TabBtn>
+            <TabBtn active={tab === "food"} onClick={() => setTab("food")}>אוכל</TabBtn>
+            <TabBtn active={tab === "attractions"} onClick={() => setTab("attractions")}>אטרקציות</TabBtn>
+            <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>מלונות</TabBtn>
+          </div>
 
-      {tab !== "hotels" && cities.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-          <Pill active={city === "all"} onClick={() => setCity("all")}>הכל</Pill>
-          {cities.map((c) => (
-            <Pill key={c} active={city === c} onClick={() => setCity(c)}>{c}</Pill>
-          ))}
-        </div>
-      )}
+          {(tab !== "hotels" && (cities.length > 0 || recentIds.size > 0 || hasActiveFilters)) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {cities.length > 0 && (
+                <label className="relative min-w-0 flex-1">
+                  <span className="sr-only">סינון לפי עיר</span>
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    aria-label="סינון לפי עיר"
+                    className="min-h-11 w-full appearance-none rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
+                  >
+                    <option value="all">כל הערים</option>
+                    {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+              )}
+              {recentIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setRecentOnly((v) => !v)}
+                  aria-pressed={recentOnly}
+                  className={`min-h-11 rounded-xl border px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${recentOnly ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+                >
+                  נוספו הרגע ({recentIds.size})
+                </button>
+              )}
+              {hasActiveFilters && (
+                <button type="button" onClick={resetFilters}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs font-medium text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <RotateCcw size={14} /> איפוס
+                </button>
+              )}
+            </div>
+          )}
+        </section>
 
-      {tab === "hotels" ? (
-        <HotelsList onEdit={setEditRec} query={q} />
-      ) : view === "map" ? (
-        <div className="-mx-4 rounded-none overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
+        <AdminBackfillButton recs={recs as Rec[]} />
+
+        {tab === "hotels" ? (
+          <HotelsList onEdit={setEditRec} query={q} />
+        ) : view === "map" ? (
+          <div className="-mx-4 overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
           <ClientOnly fallback={<MapSkeleton />}>
             <Suspense fallback={<MapSkeleton />}>
               <RecsMap
@@ -335,24 +357,44 @@ function Recs() {
               />
             </Suspense>
           </ClientOnly>
-        </div>
-      ) : (
-        <PlacesList
-          type={listType}
-          cityFilter={city}
-          query={q}
-          onEdit={setEditRec}
-          selectionMode={selectionMode}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          recentIds={recentIds}
-          recentOnly={recentOnly}
-        />
-      )}
+          </div>
+        ) : (
+          <PlacesList
+            type={listType}
+            cityFilter={city}
+            query={q}
+            onEdit={setEditRec}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            recentIds={recentIds}
+            recentOnly={recentOnly}
+            onResetFilters={resetFilters}
+          />
+        )}
+
+        {!selectionMode && view === "list" && (
+          <section className="space-y-2 border-t border-border pt-4" aria-label="הוספה וייבוא">
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
+                className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl border border-border bg-card px-2 text-center text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Download size={17} className="shrink-0" /> <span className="break-words">ייבוא ממפה</span>
+              </button>
+              <button onClick={() => setAiImportOpen(true)} aria-label="ייבוא מ-AI"
+                className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl border border-border bg-card px-2 text-center text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Sparkles size={17} className="shrink-0" /> <span className="break-words">ייבוא מ־AI</span>
+              </button>
+            </div>
+            <button onClick={() => setAddOpen(true)} aria-label={tab === "hotels" ? "הוסף מלון" : "הוסף מקום"}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Plus size={20} /> {tab === "hotels" ? "הוספת מלון" : "הוספת מקום"}
+            </button>
+          </section>
+        )}
 
       {selectionMode && (
-        <div className="fixed bottom-[70px] inset-x-0 z-40 px-4">
-          <div className="max-w-[720px] mx-auto bg-card border border-border rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+        <div className="fixed inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 px-4">
+          <div className="mx-auto flex max-w-[720px] items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg">
             <span className="text-sm font-medium">נבחרו {selectedIds.size}</span>
             <button onClick={selectAllVisible} className="text-xs text-[color:var(--accent)] min-h-0 h-auto p-0">בחר הכל</button>
             <div className="flex-1" />
@@ -363,25 +405,12 @@ function Recs() {
                 if (confirm(`למחוק ${selectedIds.size} המלצות?`)) bulkDelete.mutate();
               }}
               disabled={selectedIds.size === 0 || bulkDelete.isPending}
-              className="text-xs h-8 px-3 rounded-lg bg-[color:var(--accent-2)] text-white disabled:opacity-40 flex items-center gap-1 min-h-0"
+              className="flex h-9 min-h-0 items-center gap-1 rounded-lg bg-destructive px-3 text-xs text-destructive-foreground disabled:opacity-40"
             >
               <Trash2 size={12} /> מחק
             </button>
           </div>
         </div>
-      )}
-
-      {!selectionMode && (
-        <>
-          <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
-            className="fixed bottom-[84px] right-[76px] z-40 h-12 px-3 rounded-full bg-card border border-border text-foreground flex items-center gap-1.5 shadow-lg text-sm">
-            <Download size={16} /> ייבוא ממפה
-          </button>
-          <button onClick={() => setAddOpen(true)} aria-label="הוסף המלצה"
-            className="fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-full bg-[color:var(--accent)] text-white flex items-center justify-center shadow-lg">
-            <Plus size={26} strokeWidth={1.8} />
-          </button>
-        </>
       )}
 
       <ImportFromMyMapsSheet open={importOpen} onOpenChange={setImportOpen} />
@@ -415,6 +444,7 @@ function Recs() {
       <BottomSheet open={!!mapPickRec} onOpenChange={(o) => !o && setMapPickRec(null)} title={mapPickRec?.name}>
         {mapPickRec && <MapPickCard rec={mapPickRec} onDone={() => setMapPickRec(null)} />}
       </BottomSheet>
+      </div>
     </div>
   );
 }
@@ -476,16 +506,8 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
 function TabBtn({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className={`flex-1 h-10 rounded-md text-sm min-h-0 ${active ? "bg-card text-foreground" : "text-muted-foreground"}`}>
-      {children}
-    </button>
-  );
-}
-
-function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border min-h-0 h-auto ${active ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]" : "border-border text-muted-foreground"}`}>
+      aria-pressed={active}
+      className={`min-h-11 min-w-0 rounded-lg px-1 text-xs sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "bg-card font-medium text-foreground shadow-sm" : "text-muted-foreground"}`}>
       {children}
     </button>
   );
@@ -493,7 +515,7 @@ function Pill({ active, children, onClick }: { active: boolean; children: React.
 
 function PlacesList({
   type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
-  recentIds, recentOnly,
+  recentIds, recentOnly, onResetFilters,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
@@ -504,8 +526,9 @@ function PlacesList({
   onToggleSelect: (id: string) => void;
   recentIds: Set<string>;
   recentOnly: boolean;
+  onResetFilters: () => void;
 }) {
-  const { data: recs = [], isLoading } = useRecs();
+  const { data: recs = [], isLoading, isError } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
@@ -541,18 +564,26 @@ function PlacesList({
 
 
   if (isLoading) return <ListSkeleton />;
+  if (isError) {
+    return <EmptyState variant="recs" title="לא הצלחנו לטעון את ההמלצות" hint="כדאי לנסות שוב בעוד רגע" />;
+  }
   if (list.length === 0) {
-    if (query.trim()) {
-      return <EmptyState variant="recs" title={`לא נמצאו תוצאות עבור "${query}"`} hint="נסה מילה אחרת או נקה את החיפוש" />;
+    if (query.trim() || cityFilter !== "all" || recentOnly || type !== "all") {
+      return <EmptyState variant="recs" title={query.trim() ? `לא נמצאו תוצאות עבור "${query}"` : "לא נמצאו תוצאות במסננים האלה"} hint="אפשר לאפס את המסננים ולנסות שוב" cta={
+        <button type="button" onClick={onResetFilters}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <RotateCcw size={16} /> איפוס מסננים
+        </button>
+      } />;
     }
     const title = type === "food" ? "אין המלצות אוכל עדיין"
       : type === "attraction" ? "אין אטרקציות עדיין"
       : "אין המלצות עדיין";
-    return <EmptyState variant="recs" title={title} hint="הוסף המלצה עם הכפתור בפינה" />;
+    return <EmptyState variant="recs" title={title} hint="אפשר להוסיף מקום או לייבא המלצות באמצעות הפעולות שמתחת" />;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {list.map((r) => (
         <PlaceCard
           key={r.id}
@@ -568,12 +599,6 @@ function PlacesList({
     </div>
   );
 }
-
-const TYPE_GRADIENT: Record<string, string> = {
-  food: "linear-gradient(135deg,var(--color-food),color-mix(in oklab,var(--color-food) 70%, white))",
-  attraction: "linear-gradient(135deg,var(--color-attraction),color-mix(in oklab,var(--color-attraction) 70%, white))",
-  hotel: "linear-gradient(135deg,var(--color-hotel),color-mix(in oklab,var(--color-hotel) 70%, white))",
-};
 
 function PlaceCard({
   rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false,
@@ -618,9 +643,7 @@ function PlaceCard({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const typeChipColor = rec.type === "food" ? "var(--color-food)" : rec.type === "hotel" ? "var(--color-hotel)" : "var(--color-attraction)";
   const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
-  const typeEmoji = rec.type === "food" ? "🍜" : rec.type === "hotel" ? "🏨" : "⛩";
 
   const statusBadge = {
     wishlist: { label: "רשימה", cls: "bg-muted text-muted-foreground" },
@@ -632,86 +655,51 @@ function PlaceCard({
   const googleRating = rec.google_rating != null ? Number(rec.google_rating) : null;
 
   const cardInner = (
-    <div className={`bg-card border rounded-2xl overflow-hidden relative transition-all ${selected ? "border-[color:var(--accent)] ring-2 ring-[color:var(--accent)]/40" : "border-border"}`}>
-      {/* Hero */}
-      <div className="relative w-full h-32">
-        {rec.photo_url ? (
-          <img
-            src={rec.photo_url}
-            alt=""
-            loading="lazy"
-            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
-            onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div
-            className="w-full h-full flex items-center justify-center text-5xl"
-            style={{ background: TYPE_GRADIENT[rec.type] ?? TYPE_GRADIENT.attraction }}
-          >
-            <span style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.25))" }}>{typeEmoji}</span>
-          </div>
-        )}
-        {/* Gradient overlay for legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10 pointer-events-none" />
-
-        {/* Type badge — top-right */}
-        <span
-          className="absolute top-2 right-2 text-[11px] px-2 py-1 rounded-full font-medium backdrop-blur-sm"
-          style={{ background: "rgba(255,255,255,0.92)", color: typeChipColor }}
-        >
-          {typeEmoji} {typeLabel}
-        </span>
-
-        {/* Top-left: selection checkbox OR edit/delete */}
+    <div className={`relative overflow-hidden rounded-2xl border bg-card p-3.5 transition-colors ${selected ? "border-primary ring-2 ring-ring/30" : "border-border"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="rounded-full bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent">{typeLabel}</span>
+          <motion.span
+            key={rec.status}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={"style" in statusBadge ? statusBadge.style : undefined}
+            className={`rounded-full px-2 py-1 text-[10px] ${statusBadge.cls}`}
+          >{statusBadge.label}</motion.span>
+          {isRecent && (
+            <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">נוסף עכשיו</span>
+          )}
+        </div>
         {selectionMode ? (
           <button
             onClick={(e) => { stop(e); onToggleSelect(); }}
             aria-label={selected ? "בטל בחירה" : "בחר"}
-            className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center min-h-0"
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {selected
-              ? <CheckSquare size={18} className="text-[color:var(--accent)]" />
+              ? <CheckSquare size={19} className="text-primary" />
               : <Square size={18} className="text-muted-foreground" />}
           </button>
         ) : (
-          <div className="absolute top-2 left-2 flex flex-col gap-1.5">
+          <div className="flex shrink-0 items-center gap-1">
             <button onClick={(e) => { stop(e); onEdit(); }} aria-label="ערוך"
-              className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center min-h-0 border border-black/10"
-              style={{ color: "var(--foreground)" }}>
-              <Pencil size={13} />
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Pencil size={16} />
             </button>
             <button onClick={(e) => { stop(e); if (confirm(`למחוק את ${rec.name}?`)) del.mutate(); }} aria-label="מחק"
-              className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center min-h-0 border border-black/10"
-              style={{ color: "var(--destructive)" }}>
-              <Trash2 size={13} />
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Trash2 size={16} />
             </button>
           </div>
         )}
-
-        {/* Status badge — bottom-right */}
-        <motion.span
-          key={rec.status}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          style={"style" in statusBadge ? statusBadge.style : undefined}
-          className={`absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded-full ${statusBadge.cls}`}
-        >{statusBadge.label}</motion.span>
       </div>
 
-      {/* Content */}
-      <div className="p-3">
-        <div className="flex items-start gap-2">
-          <div className="font-semibold text-[15px] leading-snug flex-1 min-w-0" dir="ltr">{rec.name}</div>
-          {isRecent && (
-            <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-[color:var(--accent)]/15 text-[color:var(--accent)]">
-              נוסף עכשיו
-            </span>
-          )}
-        </div>
-        {(rec.city || rec.address) && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5" dir="ltr">
-            <MapPin size={11} className="shrink-0" />
-            <span className="truncate">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>
+      <div className="mt-2 min-w-0">
+        <h2 className="break-words text-base font-bold leading-snug text-foreground" dir="auto">{rec.name}</h2>
+        {rec.city && <div className="mt-1 text-xs font-medium text-muted-foreground" dir="auto">{rec.city}</div>}
+        {rec.address && (
+          <div className="mt-1 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground" dir="auto">
+            <MapPin size={13} className="mt-0.5 shrink-0" />
+            <span className="min-w-0 break-words">{rec.address}</span>
           </div>
         )}
         {(() => {
@@ -728,7 +716,7 @@ function PlaceCard({
             </span>
           );
         })()}
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
           {googleRating != null && (
             <span className="inline-flex items-center gap-0.5" dir="ltr">
               <Star size={11} className="text-yellow-500 fill-yellow-500" />
@@ -752,19 +740,19 @@ function PlaceCard({
 
         {!selectionMode && (
           <>
-            <div className="flex gap-2 mt-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {rec.google_maps_url && (
                 <a href={rec.google_maps_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                  className="flex-1 h-9 rounded-md border border-border flex items-center justify-center gap-1 text-xs">
-                  <Navigation size={12} /> ניווט
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-background text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Navigation size={14} /> ניווט
                 </a>
               )}
               <button onClick={(e) => { stop(e); setDayPickerOpen(true); }}
-                className="flex-1 h-9 rounded-md bg-[color:var(--accent)] text-white text-xs min-h-0">
-                + הוסף ליום
+                className={`${rec.google_maps_url ? "" : "col-span-2"} inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>
+                <Plus size={15} /> הוסף ליום
               </button>
             </div>
-            <div className="flex gap-3 mt-2 text-xs flex-wrap">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 border-t border-border/60 pt-2 text-xs">
               {rec.status !== "visited" && <button onClick={(e) => { stop(e); setStatus.mutate("visited"); }} className="text-muted-foreground min-h-0 h-auto p-0">סמן שביקרנו</button>}
               {rec.status !== "skipped" && <button onClick={(e) => { stop(e); setStatus.mutate("skipped"); }} className="text-muted-foreground min-h-0 h-auto p-0">דילגנו</button>}
               {rec.status !== "wishlist" && <button onClick={(e) => { stop(e); setStatus.mutate("wishlist"); }} className="text-muted-foreground min-h-0 h-auto p-0">חזרה לרשימה</button>}
@@ -782,14 +770,21 @@ function PlaceCard({
           {cardInner}
         </div>
       ) : rec.google_maps_url ? (
-        <a
-          href={rec.google_maps_url}
-          target="_blank"
-          rel="noreferrer"
-          style={{ display: "block", textDecoration: "none", color: "inherit" }}
+        <div
+          role="link"
+          tabIndex={0}
+          aria-label={`פתח את ${rec.name} ב-Google Maps`}
+          className="cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => window.open(rec.google_maps_url ?? "", "_blank", "noopener,noreferrer")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              window.open(rec.google_maps_url ?? "", "_blank", "noopener,noreferrer");
+            }
+          }}
         >
           {cardInner}
-        </a>
+        </div>
       ) : (
         cardInner
       )}
@@ -1093,7 +1088,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 
 function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; query: string }) {
-  const { data: hotels = [], isLoading } = useHotels();
+  const { data: hotels = [], isLoading, isError } = useHotels();
   const [editHotel, setEditHotel] = useState<Hotel | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
@@ -1105,15 +1100,12 @@ function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; quer
   );
 
   if (isLoading) return <ListSkeleton />;
+  if (isError) return <EmptyState variant="hotels" title="לא הצלחנו לטעון את המלונות" hint="כדאי לנסות שוב בעוד רגע" />;
 
   return (
     <>
       {filtered.length === 0 ? (
-        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="הוסף מלון עם הכפתור בפינה או דרך כפתור זה" cta={
-          <button onClick={() => setAddOpen(true)} className="h-11 px-5 rounded-xl bg-[color:var(--accent-3)] text-white text-sm font-medium">
-            + הוסף מלון
-          </button>
-        } />
+        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="אפשר להוסיף מלון או לייבא מקומות באמצעות הפעולות שמתחת" />
       ) : (
         <div className="space-y-2">
           {filtered.map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
@@ -1186,18 +1178,21 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   const canAddToItinerary = !!(h.checkin_date && h.checkout_date) && matchingDays.length > 0;
 
   return (
-    <div className={`bg-card border rounded-2xl p-3 ${urgent ? "border-[color:var(--accent-2)]" : "border-border"}`}>
+    <div className={`rounded-2xl border bg-card p-3.5 ${urgent ? "border-accent-2" : "border-border"}`}>
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
+        {h.photo_url && (
+          <img src={h.photo_url} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+        )}
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium">{h.hotel_name}</span>
+            <span className="break-words font-semibold text-foreground" dir="auto">{h.hotel_name}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
               {h.type === "ryokan" ? "ריוקאן" : "מלון"}
             </span>
           </div>
           {h.city && <div className="text-xs text-muted-foreground" dir="ltr">{h.city}</div>}
         </div>
-        <div className="flex items-start gap-1">
+        <div className="flex shrink-0 items-start gap-1">
           {statusLabel && (
             <motion.span
               animate={urgent ? { opacity: [1, 0.6, 1] } : {}}
@@ -1207,7 +1202,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
           )}
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-muted/60 p-2.5 text-xs">
         <div><span className="text-muted-foreground">Check-in </span><span dir="ltr">{h.checkin_date && hebDate(h.checkin_date)}</span></div>
         <div><span className="text-muted-foreground">Check-out </span><span dir="ltr">{h.checkout_date && hebDate(h.checkout_date)}</span></div>
         <div><span className="text-muted-foreground">לילות </span>{nights}</div>
@@ -1225,17 +1220,17 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
         <button
           onClick={() => addToItinerary.mutate()}
           disabled={!canAddToItinerary || addToItinerary.isPending}
-          className="w-full h-9 rounded-lg bg-[color:var(--accent-3)] text-white text-xs font-medium disabled:opacity-40 inline-flex items-center justify-center gap-1"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl bg-accent-3 px-3 text-xs font-medium text-primary-foreground disabled:opacity-40"
           title={!h.checkin_date || !h.checkout_date ? "חסרים תאריכים" : matchingDays.length === 0 ? "התאריכים לא חופפים למסלול" : ""}
         >
           {addToItinerary.isPending ? "מוסיף..." : `➕ הוסף למסלול${matchingDays.length ? ` (${matchingDays.length} לילות)` : ""}`}
         </button>
       </div>
       <div className="flex gap-2 mt-2 pt-2 border-t border-border/60">
-        <button onClick={onEdit} className="flex-1 h-8 rounded-md border border-border text-xs inline-flex items-center justify-center gap-1 min-h-0">
+        <button onClick={onEdit} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-xl border border-border text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Pencil size={11} /> ערוך
         </button>
-        <button onClick={() => { if (confirm(`למחוק את ${h.hotel_name}?\n\nהמלון, כניסות המסלול שלו וכל הוצאות הלינה שלו יימחקו.`)) del.mutate(); }} className="flex-1 h-8 rounded-md border border-border text-[color:var(--accent-2)] text-xs inline-flex items-center justify-center gap-1 min-h-0">
+        <button onClick={() => { if (confirm(`למחוק את ${h.hotel_name}?\n\nהמלון, כניסות המסלול שלו וכל הוצאות הלינה שלו יימחקו.`)) del.mutate(); }} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-xl border border-border text-xs text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Trash2 size={11} /> מחק
         </button>
       </div>
@@ -1275,7 +1270,7 @@ function PostStayForm({ hotel }: { hotel: Hotel }) {
 
 
 function ListSkeleton() {
-  return <div className="space-y-2 animate-pulse">{[0, 1, 2, 3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl" />)}</div>;
+  return <div className="space-y-2.5 animate-pulse">{[0, 1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl border border-border bg-card" />)}</div>;
 }
 
 function AdminBackfillButton({ recs }: { recs: Rec[] }) {
