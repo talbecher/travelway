@@ -85,3 +85,11 @@
 - [x] להשאיר בסוף הרשימה רק את שתי פעולות הייבוא
 - [x] להוסיף פעולת הוספה ישירה למצבי ריק אמיתיים
 - [x] להריץ רק TypeScript ו־build
+
+# שלב 1 — BottomSheet במובייל (מקלדת, Footer, overflow)
+
+- [x] `BottomSheet`: הוסר `fixed`, נוסף איפוס מופע אחרי סגירה, Header/Body/Footer באותה מעטפת
+- [x] `RecForm`: הוסרו margins שליליים בתוך גוף הגלילה והוסר `autoFocus` בפתיחה
+- [x] טופסי הוצאה: כפתור שמירה ב־Footer חיצוני עם אותו submit
+- [x] TypeScript ו־build עברו
+- [ ] אימות ידני במכשיר Samsung (באחריות המשתמש)
