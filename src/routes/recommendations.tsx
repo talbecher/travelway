@@ -610,6 +610,7 @@ function PlaceCard({
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
 
   const setStatus = useMutation({
     mutationFn: async (status: "wishlist" | "visited" | "skipped") => {
@@ -689,7 +690,17 @@ function PlaceCard({
         )}
       </div>
 
-      <div className="mt-2 min-w-0">
+      <div className="mt-2 flex items-start gap-3">
+        {rec.photo_url && !imgFailed && (
+          <img
+            src={rec.photo_url}
+            alt=""
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            className="h-[72px] w-[72px] shrink-0 rounded-[13px] border border-border object-cover min-[390px]:h-20 min-[390px]:w-20"
+          />
+        )}
+        <div className="min-w-0 flex-1">
         <h2 className="break-words text-base font-bold leading-snug text-foreground" dir="auto">{rec.name}</h2>
         {rec.city && <div className="mt-1 text-xs font-medium text-muted-foreground" dir="auto">{rec.city}</div>}
         {rec.address && (
@@ -733,6 +744,8 @@ function PlaceCard({
         {rec.status === "visited" && rec.review && (
           <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rec.review}</div>
         )}
+        </div>
+      </div>
 
         {!selectionMode && (
           <>
@@ -756,8 +769,8 @@ function PlaceCard({
           </>
         )}
       </div>
-    </div>
   );
+
 
   return (
     <>
@@ -1137,6 +1150,7 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const today = todayISO();
+  const [imgFailed, setImgFailed] = useState(false);
   const nights = h.checkin_date && h.checkout_date ? Math.max(1, daysBetween(h.checkin_date, h.checkout_date)) : 0;
   const totalCalc = nights > 0 && h.price_per_night_ils
     ? Number(h.price_per_night_ils) * nights
@@ -1190,8 +1204,9 @@ function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   return (
     <div className={`rounded-2xl border bg-card p-3.5 ${urgent ? "border-accent-2" : "border-border"}`}>
       <div className="flex items-start justify-between gap-2">
-        {h.photo_url && (
-          <img src={h.photo_url} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+        {h.photo_url && !imgFailed && (
+          <img src={h.photo_url} alt="" loading="lazy" onError={() => setImgFailed(true)}
+            className="h-[72px] w-[72px] shrink-0 rounded-[13px] border border-border object-cover min-[390px]:h-20 min-[390px]:w-20" />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
