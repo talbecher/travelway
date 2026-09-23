@@ -62,8 +62,10 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
     mutationFn: async () => {
       const n = Number(amount);
       if (!n || n <= 0) throw new Error("סכום לא תקין");
-      const amount_ils = currency === "ILS" ? n : n / rate;
-      const amount_foreign = currency === "JPY" ? n : null;
+      const useTarget = currency === "TARGET" && !conv.sameCurrency;
+      if (useTarget && (!conv.rate || conv.rate <= 0)) throw new Error(NO_RATE_MESSAGE);
+      const amount_ils = useTarget ? n / conv.rate! : n;
+      const amount_foreign = useTarget ? n : null;
 
       let linkedId: string | null = null;
       if (saveToRecs && recType && locationName.trim()) {
@@ -78,7 +80,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         trip_id: getActiveTripId(),
         amount_ils,
         amount_foreign,
-        foreign_currency: currency === "JPY" ? "JPY" : null,
+        foreign_currency: useTarget ? target : null,
         category,
         description: description.trim() || null,
         location_name: locationName.trim() || null,
@@ -108,12 +110,19 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
             placeholder="0"
           />
           <div className="flex rounded-lg border border-input overflow-hidden">
-            <button type="button" onClick={() => setCurrency("ILS")}
-              className={`px-4 text-lg ${currency === "ILS" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>₪</button>
-            <button type="button" onClick={() => setCurrency("JPY")}
-              className={`px-4 text-lg ${currency === "JPY" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>¥</button>
+            <button type="button" onClick={() => setCurrency("BASE")}
+              className={`px-4 text-lg ${currency === "BASE" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>{base}</button>
+            {!conv.sameCurrency && (
+              <button type="button" onClick={() => setCurrency("TARGET")}
+                className={`px-4 text-lg ${currency === "TARGET" ? "bg-[color:var(--accent-2)] text-white" : "bg-background"}`}>{target}</button>
+            )}
           </div>
         </div>
+        {currency === "TARGET" && !conv.sameCurrency && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {conv.rate ? `יומר לפי ${conversionLabel(conv)}` : NO_RATE_MESSAGE}
+          </p>
+        )}
       </div>
       <div>
         <label className="text-sm text-muted-foreground">קטגוריה</label>
