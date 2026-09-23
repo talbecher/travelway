@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pencil, Settings, Trash2, ChevronDown } from "lucide-react";
+import { Pencil, Plus, Settings, Trash2, ChevronDown } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
+import { openQuickExpense } from "@/components/GlobalFab";
 
 export const Route = createFileRoute("/budget")({
   component: Budget,
@@ -70,11 +71,22 @@ function Budget() {
 
   return (
     <div className="pt-2 space-y-5">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-2">
         <h1>תקציב</h1>
-        <button onClick={() => setSettingsOpen(true)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center min-h-0">
-          <Settings size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          {expenses.length > 0 && (
+            <button
+              onClick={() => openQuickExpense()}
+              className="h-10 min-h-0 rounded-full bg-[color:var(--accent)] px-3.5 text-sm font-medium text-white inline-flex items-center gap-1.5"
+            >
+              <Plus size={16} />
+              הוספת הוצאה
+            </button>
+          )}
+          <button onClick={() => setSettingsOpen(true)} aria-label="הגדרות תקציב" className="w-10 h-10 rounded-full border border-border flex items-center justify-center min-h-0">
+            <Settings size={16} />
+          </button>
+        </div>
       </header>
 
       <div className="bg-card border border-border rounded-2xl p-4">
@@ -177,7 +189,20 @@ function Budget() {
       </section>
 
       {expenses.length === 0 && (
-        <EmptyState variant="expenses" title="אין הוצאות עדיין" hint="הוסיפו הוצאה מהירה מהכפתור הצף" />
+        <EmptyState
+          variant="expenses"
+          title="אין הוצאות עדיין"
+          hint="הוסיפו את ההוצאה הראשונה של הטיול"
+          cta={
+            <button
+              onClick={() => openQuickExpense()}
+              className="h-11 min-h-0 rounded-full bg-[color:var(--accent)] px-5 text-sm font-medium text-white inline-flex items-center gap-1.5"
+            >
+              <Plus size={16} />
+              הוספת הוצאה
+            </button>
+          }
+        />
       )}
 
       <BottomSheet open={settingsOpen} onOpenChange={setSettingsOpen} title="הגדרות תקציב">
