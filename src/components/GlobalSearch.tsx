@@ -8,7 +8,8 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { useDays, useRecs, useExpenses } from "@/hooks/use-trip";
 import { useDocuments } from "@/hooks/use-documents";
-import { hebDate, ils } from "@/lib/format";
+import { hebDate } from "@/lib/format";
+import { formatMoney, useBaseCurrency } from "@/lib/currency";
 
 type Hit = {
   id: string;
