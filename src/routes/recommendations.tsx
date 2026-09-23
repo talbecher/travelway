@@ -39,6 +39,16 @@ const searchSchema = z.object({ tab: z.enum(["all", "food", "attractions", "hote
 
 export const Route = createFileRoute("/recommendations")({
   validateSearch: searchSchema,
+  head: () => ({
+    meta: [
+      { title: "המלצות לטיול | TravelWay" },
+      { name: "description", content: "שמירה, סינון וגילוי של מקומות ומלונות לטיול ב־TravelWay." },
+      { property: "og:title", content: "המלצות לטיול | TravelWay" },
+      { property: "og:description", content: "שמירה, סינון וגילוי של מקומות ומלונות לטיול ב־TravelWay." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Recs,
 });
 
