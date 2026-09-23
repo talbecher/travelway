@@ -575,10 +575,7 @@ function PlacesList({
         </button>
       } />;
     }
-    const title = type === "food" ? "אין המלצות אוכל עדיין"
-      : type === "attraction" ? "אין אטרקציות עדיין"
-      : "אין המלצות עדיין";
-    return <EmptyState variant="recs" title={title} hint="אפשר להוסיף מקום או לייבא המלצות באמצעות הפעולות שמתחת" />;
+    return <EmptyState variant="recs" title="אין המלצות עדיין" hint="אפשר להוסיף מקום או לייבא המלצות באמצעות הפעולות שמתחת" />;
   }
 
   return (
