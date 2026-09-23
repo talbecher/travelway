@@ -96,7 +96,7 @@ function Recs() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [discoverOpen, setDiscoverOpen] = useState(false);
-  const { data: recs = [] } = useRecs();
+  const { data: recs = [], isError: recsError } = useRecs();
   const { data: trip } = useTrip();
   const { user } = useAuth();
   const activeTripId = useActiveTripId();
@@ -342,7 +342,9 @@ function Recs() {
         <AdminBackfillButton recs={recs as Rec[]} />
 
         {tab === "hotels" ? (
-          <HotelsList onEdit={setEditRec} query={q} />
+          <HotelsList onEdit={setEditRec} query={q} onResetFilters={resetFilters} />
+        ) : recsError ? (
+          <EmptyState variant="recs" title="לא הצלחנו לטעון את ההמלצות" hint="כדאי לנסות שוב בעוד רגע" />
         ) : view === "map" ? (
           <div className="-mx-4 overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
           <ClientOnly fallback={<MapSkeleton />}>
@@ -528,7 +530,7 @@ function PlacesList({
   recentOnly: boolean;
   onResetFilters: () => void;
 }) {
-  const { data: recs = [], isLoading, isError } = useRecs();
+  const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
@@ -564,9 +566,6 @@ function PlacesList({
 
 
   if (isLoading) return <ListSkeleton />;
-  if (isError) {
-    return <EmptyState variant="recs" title="לא הצלחנו לטעון את ההמלצות" hint="כדאי לנסות שוב בעוד רגע" />;
-  }
   if (list.length === 0) {
     if (query.trim() || cityFilter !== "all" || recentOnly || type !== "all") {
       return <EmptyState variant="recs" title={query.trim() ? `לא נמצאו תוצאות עבור "${query}"` : "לא נמצאו תוצאות במסננים האלה"} hint="אפשר לאפס את המסננים ולנסות שוב" cta={
@@ -766,7 +765,20 @@ function PlaceCard({
   return (
     <>
       {selectionMode ? (
-        <div onClick={onToggleSelect} className="cursor-pointer">
+        <div
+          role="checkbox"
+          tabIndex={0}
+          aria-checked={selected}
+          aria-label={`${selected ? "בטל בחירה של" : "בחר את"} ${rec.name}`}
+          onClick={onToggleSelect}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onToggleSelect();
+            }
+          }}
+          className="cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
           {cardInner}
         </div>
       ) : rec.google_maps_url ? (
@@ -777,6 +789,7 @@ function PlaceCard({
           className="cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           onClick={() => window.open(rec.google_maps_url ?? "", "_blank", "noopener,noreferrer")}
           onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return;
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               window.open(rec.google_maps_url ?? "", "_blank", "noopener,noreferrer");
@@ -1087,10 +1100,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ─────────────────────────────────────────────────────────────────
 
 
-function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; query: string }) {
+function HotelsList({ onEdit: _onEdit, query, onResetFilters }: { onEdit: (r: Rec) => void; query: string; onResetFilters: () => void }) {
   const { data: hotels = [], isLoading, isError } = useHotels();
   const [editHotel, setEditHotel] = useState<Hotel | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = useMemo(
     () => (hotels as Hotel[]).filter((h) =>
@@ -1105,17 +1117,18 @@ function HotelsList({ onEdit: _onEdit, query }: { onEdit: (r: Rec) => void; quer
   return (
     <>
       {filtered.length === 0 ? (
-        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="אפשר להוסיף מלון או לייבא מקומות באמצעות הפעולות שמתחת" />
+        <EmptyState variant="hotels" title={query ? `לא נמצאו מלונות עבור "${query}"` : "אין מלונות עדיין"} hint="אפשר להוסיף מלון או לייבא מקומות באמצעות הפעולות שמתחת" cta={query ? (
+          <button type="button" onClick={onResetFilters}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <RotateCcw size={16} /> איפוס מסננים
+          </button>
+        ) : undefined} />
       ) : (
         <div className="space-y-2">
           {filtered.map((h) => <HotelCard key={h.id} h={h} onEdit={() => setEditHotel(h)} />)}
         </div>
       )}
 
-
-      <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף מלון">
-        <HotelForm onDone={() => setAddOpen(false)} />
-      </BottomSheet>
       <BottomSheet open={!!editHotel} onOpenChange={(o) => !o && setEditHotel(null)} title="ערוך מלון">
         {editHotel && <HotelForm existing={editHotel} onDone={() => setEditHotel(null)} />}
       </BottomSheet>
