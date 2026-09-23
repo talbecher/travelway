@@ -18,6 +18,7 @@ import { assertOnline } from "@/hooks/use-online";
 
 export function GlobalFab() {
   const [open, setOpen] = useState(false);
+  const tripId = useActiveTripId();
   useEffect(() => {
     const h = () => setOpen(true);
     window.addEventListener(OPEN_QUICK_EXPENSE_EVENT, h);
@@ -25,7 +26,8 @@ export function GlobalFab() {
   }, []);
   return (
     <BottomSheet open={open} onOpenChange={setOpen} title="הוסף הוצאה מהירה">
-      <QuickExpenseForm onDone={() => setOpen(false)} />
+      {/* Remount per trip and per opening so the currency never carries over. */}
+      <QuickExpenseForm key={`${tripId}-${open}`} onDone={() => setOpen(false)} />
     </BottomSheet>
   );
 }
@@ -34,10 +36,12 @@ type Category = "food" | "attraction" | "transport" | "shopping" | "accommodatio
 
 function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: settings } = useSettings();
-  const rate = Number(settings?.manual_exchange_rate ?? 38);
+  const base = useBaseCurrency();
+  const target = useTargetCurrency();
+  const conv = useConversion();
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<"ILS" | "JPY">("JPY");
+  // Default to the target currency when it differs from the base currency.
+  const [currency, setCurrency] = useState<"BASE" | "TARGET">(conv.sameCurrency ? "BASE" : "TARGET");
   const [category, setCategory] = useState<Category>("food");
   const [description, setDescription] = useState("");
   const [locationName, setLocationName] = useState("");
