@@ -93,3 +93,12 @@
 - [x] טופסי הוצאה: כפתור שמירה ב־Footer חיצוני עם אותו submit
 - [x] TypeScript ו־build עברו
 - [ ] אימות ידני במכשיר Samsung (באחריות המשתמש)
+
+# Base currency + conversions
+
+- [ ] settings.base_currency as the money-of-record; target currency stays trips.currency_code
+- [ ] Backfill: missing settings rows / empty base_currency -> ILS (never overwrite)
+- [ ] formatMoney() everywhere instead of ils()/hardcoded ₪
+- [ ] Expense forms: base/target choice, no 38 or 1 fallbacks, block save without a valid rate
+- [ ] Clear manual rate whenever base_currency or trips.currency_code changes
+- [ ] Follow-up (not now): store the historical rate per expense
