@@ -455,7 +455,7 @@ function Recs() {
         existingRecNames={recs.map((r) => r.name)}
       />
 
-      <BottomSheet open={addOpen} onOpenChange={setAddOpen} title="הוסף המלצה">
+      <BottomSheet open={addOpen} onOpenChange={setAddOpen} title={tab === "hotels" ? "הוסף מלון" : "הוסף המלצה"}>
         <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
       </BottomSheet>
 
@@ -485,7 +485,6 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
       qc.invalidateQueries({ queryKey: ["day-entries"] });
       toast.success("נוסף ליום");
       setDayPickerOpen(false);
-      onOverlayOpenChange(false);
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
