@@ -99,12 +99,18 @@ export type Conversion = {
   sameCurrency: boolean;
 };
 
-/** Manual rate (> 0) wins over the daily market rate. No hardcoded fallback. */
-export function useConversion(): Conversion {
+/**
+ * Manual rate (> 0) wins over the daily market rate. No hardcoded fallback.
+ * `targetOverride` is used when editing an expense that was recorded in a
+ * currency other than the trip's current target currency.
+ */
+export function useConversion(targetOverride?: string | null): Conversion {
   const base = useBaseCurrency();
-  const target = useTargetCurrency();
+  const tripTarget = useTargetCurrency();
+  const target = (targetOverride || tripTarget).toUpperCase();
   const { data: settings } = useSettings();
-  const manual = Number(settings?.manual_exchange_rate ?? 0);
+  const manualRaw = Number(settings?.manual_exchange_rate ?? 0);
+  const manual = target === tripTarget ? manualRaw : 0;
   const [live, setLive] = useState<PairRate | null>(null);
 
   useEffect(() => {
