@@ -974,14 +974,24 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         google_rating: googleRating,
         google_rating_count: googleRatingCount,
         booking_deadline: bookingDeadline || null,
-        booking_time: bookingTime.trim() || null,
-        booking_url: bookingUrl.trim() || null,
-        booking_note: bookingNote.trim() || null,
-        booking_status: bookingStatus,
       };
+      // Booked → booking fields + status are written ONLY via the atomic RPC.
+      // Not booked → regular update writes status 'none' (linked document is kept).
+      const isBooked = bookingStatus === "booked";
+      const bookingDetails = { booking_time: bookingTime, booking_url: bookingUrl, booking_note: bookingNote };
+      const payload = isBooked
+        ? basePayload
+        : {
+            ...basePayload,
+            booking_time: bookingTime.trim() || null,
+            booking_url: bookingUrl.trim() || null,
+            booking_note: bookingNote.trim() || null,
+            booking_status: "none",
+          };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
         if (error) throw error;
+        if (isBooked) await markRecommendationBooked(existing.id, bookingDetails);
         // Two-way sync: propagate to any linked day_entries
         const { data: linkedEntries } = await supabase
           .from("day_entries")
