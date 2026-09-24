@@ -963,7 +963,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       if (!name.trim()) throw new Error("שם חסר");
       if (!city.trim()) throw new Error("עיר חסרה");
       const coords = selectedCoords ?? parseLatLngFromMapsUrl(url);
-      const payload = {
+      const basePayload = {
         type, name: name.trim(), city: city.trim(),
         address: address.trim() || null,
         google_maps_url: url.trim() || null,
@@ -1016,13 +1016,18 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         }
         return { syncedDays: [] as string[] };
       } else {
-        const { error } = await supabase.from("recommendations").insert({ trip_id: getActiveTripId(), ...payload });
+        const { data: inserted, error } = await supabase
+          .from("recommendations")
+          .insert({ trip_id: getActiveTripId(), ...payload })
+          .select("id")
+          .single();
         if (error) throw error;
+        if (isBooked) await markRecommendationBooked(inserted.id, bookingDetails);
         return { syncedDays: [] as string[] };
       }
     },
     onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ["recs"] });
+      invalidateBookingQueries(qc);
       for (const dayId of result.syncedDays) {
         qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
       }
