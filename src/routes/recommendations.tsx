@@ -28,6 +28,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { MarkBookedSheet } from "@/components/MarkBookedSheet";
+import { markRecommendationBooked, invalidateBookingQueries } from "@/lib/booking";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { bookingChip } from "@/lib/deadlines";
 import { DateField } from "@/components/DateField";
@@ -660,6 +662,7 @@ function PlaceCard({
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
+  const [markBookedOpen, setMarkBookedOpen] = useState(false);
 
   const setStatus = useMutation({
     mutationFn: async (status: "wishlist" | "visited" | "skipped") => {
@@ -767,11 +770,28 @@ function PlaceCard({
             : chip.tone === "orange" ? "bg-amber-500/15 text-amber-600"
             : "bg-muted text-muted-foreground";
           return (
-            <span className={`inline-block mt-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${cls} ${chip.pulse ? "animate-pulse" : ""}`}>
-              {chip.label}
-            </span>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${cls} ${chip.pulse ? "animate-pulse" : ""}`}>
+                {chip.label}
+              </span>
+              {rec.booking_status !== "booked" && !selectionMode && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMarkBookedOpen(true); onOverlayOpenChange(true); }}
+                  className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium h-auto min-h-0"
+                >
+                  ✅ סמן כהוזמן
+                </button>
+              )}
+            </div>
           );
         })()}
+        {markBookedOpen && (
+          <MarkBookedSheet
+            recId={rec.id}
+            open={markBookedOpen}
+            onOpenChange={(o) => { setMarkBookedOpen(o); onOverlayOpenChange(o); }}
+          />
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
           {googleRating != null && (
             <span className="inline-flex items-center gap-0.5" dir="ltr">
