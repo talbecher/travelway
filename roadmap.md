@@ -104,4 +104,4 @@
 - [ ] Follow-up (not now): store the historical rate per expense
 - [x] סבב תיקון ממוקד מטבע: קובץ מיגרציה מתועד, תיקון EditExpenseForm, ייצוא AI baseCurrency חובה
 
-- [ ] סימון "הוזמן" + מסמך מקושר (RPC אטומי, הגנת הערות, פיצול RecForm)
+- [x] סימון "הוזמן" + מסמך מקושר (RPC אטומי, הגנת הערות, פיצול RecForm)
