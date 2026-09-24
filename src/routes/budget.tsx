@@ -230,10 +230,11 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
   const base = useBaseCurrency();
   const tripTarget = useTargetCurrency();
   // Open with the expense's own currency, not the trip default.
-  const fxCurrency = (expense.foreign_currency || tripTarget).toUpperCase();
+  const isForeign = expense.amount_foreign != null && !!expense.foreign_currency;
+  const fxCurrency = (isForeign ? expense.foreign_currency! : tripTarget).toUpperCase();
   const conv = useConversion(fxCurrency);
-  const initialAmount = String(expense.amount_foreign ?? expense.amount_ils);
-  const initialCurrency: "ILS" | "FX" = expense.amount_foreign ? "FX" : "ILS";
+  const initialAmount = String(isForeign ? expense.amount_foreign : expense.amount_ils);
+  const initialCurrency: "ILS" | "FX" = isForeign ? "FX" : "ILS";
   const [amount, setAmount] = useState(initialAmount);
   const [currency, setCurrency] = useState<"ILS" | "FX">(initialCurrency);
   const [category, setCategory] = useState(expense.category);
@@ -247,20 +248,24 @@ function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => 
     mutationFn: async () => {
       const n = Number(amount);
       if (!n || n <= 0) throw new Error("סכום לא תקין");
-      // Non-money edits must never recalculate the stored base amount.
+      // Non-money edits must never recalculate the stored amounts.
       let amount_ils = Number(expense.amount_ils);
+      let amount_foreign = expense.amount_foreign;
+      let foreign_currency = expense.foreign_currency;
       if (moneyChanged) {
         if (currency === "ILS" || conv.sameCurrency) {
           amount_ils = n;
+          amount_foreign = null;
+          foreign_currency = null;
         } else {
           if (!conv.rate || conv.rate <= 0) throw new Error(NO_RATE_MESSAGE);
           amount_ils = n / conv.rate;
+          amount_foreign = n;
+          foreign_currency = fxCurrency;
         }
       }
-      const amount_foreign = currency === "FX" && !conv.sameCurrency ? n : null;
       const { error } = await supabase.from("expenses").update({
-        amount_ils, amount_foreign,
-        foreign_currency: amount_foreign != null ? fxCurrency : null,
+        amount_ils, amount_foreign, foreign_currency,
         category: category as "food" | "attraction" | "transport" | "shopping" | "accommodation" | "other",
         description: description || null,
         location_name: location || null, expense_date: date,
