@@ -201,6 +201,7 @@ export type Database = {
           file_url: string | null
           id: string
           is_paid: boolean
+          linked_recommendation_id: string | null
           notes: string | null
           title: string
           trip_id: string
@@ -216,6 +217,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           is_paid?: boolean
+          linked_recommendation_id?: string | null
           notes?: string | null
           title: string
           trip_id: string
@@ -231,6 +233,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           is_paid?: boolean
+          linked_recommendation_id?: string | null
           notes?: string | null
           title?: string
           trip_id?: string
@@ -238,6 +241,13 @@ export type Database = {
           valid_date?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_linked_recommendation_id_fkey"
+            columns: ["linked_recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_trip_id_fkey"
             columns: ["trip_id"]
@@ -666,8 +676,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      booking_notes_block: {
+        Args: { _note: string; _time: string; _url: string }
+        Returns: string
+      }
       can_access_trip: { Args: { _trip_id: string }; Returns: boolean }
       claim_share: { Args: { _token: string }; Returns: string }
+      mark_recommendation_booked: {
+        Args: {
+          _booking_note: string
+          _booking_time: string
+          _booking_url: string
+          _rec_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       entry_type:
