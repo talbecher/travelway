@@ -1,33 +1,45 @@
-# סבב תיקון ממוקד לפני סגירת המטבעים
+# סימון "הוזמן" וסנכרון למסמכים
 
-## 1. תיעוד המיגרציה
-קובץ חדש `supabase/migrations/20260924060000_settings_base_currency_backfill.sql` (קובץ בלבד — לא מורץ שוב על המסד):
-```sql
-UPDATE public.settings SET base_currency = 'ILS'
-WHERE base_currency IS NULL OR base_currency = '';
+## מה המשתמש יראה
+- כפתור "סמן כהוזמן" בכרטיס מקום עם דדליין שלא הוזמן (מסך ההמלצות), ובשורת הדדליין בבית.
+- לחיצה פותחת גיליון קטן (BottomSheet הקיים) עם שעה, קישור והערה — ממולאים בערכים הקיימים.
+- שמירה: המקום מסומן ✅ הוזמן, ההתראה נעלמת מכל המקומות, ונוצר/מתעדכן מסמך אחד במסך המסמכים. משוב "סומן כהוזמן".
 
-INSERT INTO public.settings (trip_id, base_currency, foreign_currency)
-SELECT t.id, 'ILS', COALESCE(NULLIF(t.currency_code, ''), 'JPY')
-FROM public.trips t
-WHERE NOT EXISTS (SELECT 1 FROM public.settings s WHERE s.trip_id = t.id)
-ON CONFLICT (trip_id) DO NOTHING;
-```
-לפני הכתיבה ייבדק שקיים אילוץ ייחודי על `settings.trip_id` (תנאי ל־ON CONFLICT). אם אין — ידווח לפני המשך.
+## מיגרציה (קובץ מתועד)
+- `documents.linked_recommendation_id uuid NULL` עם FK ל־`recommendations(id) ON DELETE SET NULL` (`ADD COLUMN IF NOT EXISTS`, FK בתוך בדיקת קיום אילוץ).
+- אינדקס ייחודי חלקי `(linked_recommendation_id) WHERE NOT NULL` (`IF NOT EXISTS`).
+- פונקציה `public.mark_recommendation_booked(_rec_id, _booking_time, _booking_url, _booking_note)` — **SECURITY INVOKER** (RLS הקיים חל), plpgsql = טרנזקציה אחת:
+  1. `SELECT trip_id, name, type FROM recommendations WHERE id=_rec_id` — אם אין שורה (RLS חוסם/לא קיים) → שגיאה.
+  2. UPDATE ההמלצה: שלושת השדות + `booking_status='booked'` (booking_deadline לא נגע).
+  3. `INSERT INTO documents (...) ON CONFLICT (linked_recommendation_id) WHERE ... DO UPDATE` שמעדכן רק `title`, `notes`, `trip_id`? — לא: מעדכן רק `title` ו־`notes` (+`file_url` רק אם ריק? לא — קישור ההזמנה נשמר ב־notes כדי לא לדרוס קובץ שהועלה). `trip_id` נלקח מההמלצה בשרת, לא מהלקוח.
+  4. כישלון בכל שלב מבטל הכל — אין המלצה booked בלי מסמך.
+- GRANT EXECUTE ל־authenticated בלבד.
 
-## 2. עריכת הוצאה קיימת (`src/routes/budget.tsx`, EditExpenseForm)
-- `isForeign = amount_foreign != null && !!foreign_currency`.
-- פתיחה: זר → סכום `amount_foreign` ומטבע `foreign_currency`; אחרת → `amount_ils` במטבע הבסיס.
-- `fxCurrency` = `foreign_currency` של ההוצאה בלבד; `tripTarget` משמש רק כאפשרות מעבר כשההוצאה נשמרה בבסיס (לא כמטבע פתיחה).
-- `moneyChanged === false` → נשלחים בדיוק `expense.amount_ils`, `expense.amount_foreign`, `expense.foreign_currency`.
-- המרה מחדש רק כש־moneyChanged; חסימה ללא שער תקין נשמרת.
+## מיפוי המסמך (לפי הסכמה הקיימת)
+- `title` = שם המקום; `type` = `attraction` (סוג קיים; לאוכל גם `attraction` כ"הזמנה"? — ל־food: `other`).
+- `trip_id` = של ההמלצה (בשרת); `linked_recommendation_id` = id ההמלצה.
+- אין עמודת שעה/קישור ייעודית: `notes` בנוי מבלוק "🎟 הזמנה: שעה · קישור · הערה". `valid_date` = `booking_deadline` רק ביצירה ראשונה.
+- בעדכון: לא נוגעים ב־`file_url`, `barcode_*`, `amount_ils`, `is_paid`, `valid_date`, `display_order`.
 
-## 3. ייצוא ל־AI (`src/lib/export-to-ai.ts`)
-- `generateAIPrompt(tripId, baseCurrency = "ILS")` ו־`generateDayAIPrompt(tripId, dayId, baseCurrency = "ILS")`.
-- שורות 267–269 → `formatMoney(x, baseCurrency)`; שאר התוכן והמבנה ללא שינוי (שורת מלון 318 נשארת — מחוץ להיקף).
-- callers: `itinerary.index.tsx` ו־`itinerary.$dayId.tsx` מעבירים `useBaseCurrency()`, ומוסיפים אותו ל־queryKey של הייצוא.
+## מקור שמירה משותף
+- `src/lib/booking.ts`: `markRecommendationBooked(recId, {time,url,note})` קורא ל־RPC, ו־`useMarkBooked()` (mutation + invalidate + toast + מניעת לחיצה כפולה דרך isPending).
+- `src/components/MarkBookedSheet.tsx`: גיליון עם 3 השדות, ולידציית URL בסיסית כמו ב־RecForm.
+- RecForm: כשהסטטוס עובר ל־booked, אחרי עדכון השדות הרגילים — קריאה ל־`markRecommendationBooked` (אותו RPC; עדכון כפול של אותם ערכים זהה). ביטול הסימון מעדכן רק את הסטטוס — המסמך והקישור נשמרים.
 
-## מחוץ להיקף
-מלונות, מסמכים, סמלי רמת מחיר באוכל, ממיר ILS, עיצוב, מודל המטבע.
+## רענון (query keys קיימים)
+`["recs"]`, `["hotels"]` לא נדרש, `["documents", tripId]`, ו־keys של הבית שמבוססים על recs (הדדליינים מחושבים מ־recs).
+
+## מניעת כפילות ואבטחה
+- אינדקס ייחודי + ON CONFLICT → מסמך אחד לכל המלצה גם בסימון מחדש.
+- RLS קיים: `recs` ו־`documents` דורשים `can_access_trip`; trip_id של המסמך נגזר מההמלצה בתוך הפונקציה, כך שאין קישור בין טיולים.
+- מחיקת המלצה → SET NULL; מחיקת מסמך רק ידנית.
+
+## קבצים
+- מיגרציה חדשה; טיפוסים מתעדכנים אוטומטית.
+- חדש: `src/lib/booking.ts`, `src/components/MarkBookedSheet.tsx`.
+- `src/routes/recommendations.tsx`: כפתור ב־PlaceCard + RecForm קורא למקור המשותף.
+- `src/routes/index.tsx`: כפתור בשורת הדדליין (רק לפריטי recommendation).
+- `src/hooks/use-documents.ts`: הוספת `linked_recommendation_id` לטיפוס.
 
 ## בדיקות
-`bunx tsgo --noEmit` ו־`bun run build`, ודיווח על כל אחד מהסעיפים.
+`bunx tsgo --noEmit`, `bun run build`.
