@@ -1,45 +1,55 @@
-# סימון "הוזמן" וסנכרון למסמכים
+# עיצוב מחדש ממוקד — טופס „הוצאה מהירה”
 
-## מה המשתמש יראה
-- כפתור "סמן כהוזמן" בכרטיס מקום עם דדליין שלא הוזמן (מסך ההמלצות), ובשורת הדדליין בבית.
-- לחיצה פותחת גיליון קטן (BottomSheet הקיים) עם שעה, קישור והערה — ממולאים בערכים הקיימים.
-- שמירה: המקום מסומן ✅ הוזמן, ההתראה נעלמת מכל המקומות, ונוצר/מתעדכן מסמך אחד במסך המסמכים. משוב "סומן כהוזמן".
+## מטרה
+לעצב מחדש רק את `QuickExpenseForm` הקיים ב־`src/components/GlobalFab.tsx` לפי ה־mockup: קבלה נקייה, ברורה ורספונסיבית בתוך ה־BottomSheet הקיים, ללא שינוי בלוגיקת המטבע, ההמרה או השמירה.
 
-## מיגרציה (קובץ מתועד)
-- `documents.linked_recommendation_id uuid NULL` עם FK ל־`recommendations(id) ON DELETE SET NULL` (`ADD COLUMN IF NOT EXISTS`, FK בתוך בדיקת קיום אילוץ).
-- אינדקס ייחודי חלקי `(linked_recommendation_id) WHERE NOT NULL` (`IF NOT EXISTS`).
-- פונקציה `public.mark_recommendation_booked(_rec_id, _booking_time, _booking_url, _booking_note)` — **SECURITY INVOKER** (RLS הקיים חל), plpgsql = טרנזקציה אחת:
-  1. `SELECT trip_id, name, type FROM recommendations WHERE id=_rec_id` — אם אין שורה (RLS חוסם/לא קיים) → שגיאה.
-  2. UPDATE ההמלצה: שלושת השדות + `booking_status='booked'` (booking_deadline לא נגע).
-  3. `INSERT INTO documents (...) ON CONFLICT (linked_recommendation_id) WHERE ... DO UPDATE` שמעדכן רק `title`, `notes`, `trip_id`? — לא: מעדכן רק `title` ו־`notes` (+`file_url` רק אם ריק? לא — קישור ההזמנה נשמר ב־notes כדי לא לדרוס קובץ שהועלה). `trip_id` נלקח מההמלצה בשרת, לא מהלקוח.
-  4. כישלון בכל שלב מבטל הכל — אין המלצה booked בלי מסמך.
-- GRANT EXECUTE ל־authenticated בלבד.
+## מה אומת
+- קיים מופע יחיד של `GlobalFab` בשורש האפליקציה, והוא מאזין לאירוע `openQuickExpense()`; אין צורך במופע, route או טופס נוסף.
+- הטופס הקיים כבר כולל את כל השדות שנראים ב־mockup: סכום, מטבע, קטגוריה, תיאור, מקום, קישור Google Maps ותאריך.
+- ברירת המחדל הדינמית, שורת ההמרה, חסימת שמירה ללא שער, השמירה, הודעות המשוב ורענון `expenses` ו־`recs` כבר נמצאים באותו רכיב ויישארו ללא שינוי.
+- ה־BottomSheet הקיים כבר מספק גוף גולל, footer מחוץ לאזור הגלילה, התאמת מקלדת ו־safe area.
+- לא ניתן היה ללכוד את הטופס בבדיקת הדפדפן המקדימה משום שלא הייתה תצוגת טיול פעילה באותה ריצת בדיקה; האימות המלא יבוצע לאחר היישום במצב משתמש פעיל.
 
-## מיפוי המסמך (לפי הסכמה הקיימת)
-- `title` = שם המקום; `type` = `attraction` (סוג קיים; לאוכל גם `attraction` כ"הזמנה"? — ל־food: `other`).
-- `trip_id` = של ההמלצה (בשרת); `linked_recommendation_id` = id ההמלצה.
-- אין עמודת שעה/קישור ייעודית: `notes` בנוי מבלוק "🎟 הזמנה: שעה · קישור · הערה". `valid_date` = `booking_deadline` רק ביצירה ראשונה.
-- בעדכון: לא נוגעים ב־`file_url`, `barcode_*`, `amount_ils`, `is_paid`, `valid_date`, `display_order`.
+## היישום
+### 1. מעטפת וכותרת
+- לשנות רק את המבנה החזותי בתוך `GlobalFab.tsx` ולהשאיר את `BottomSheet` עצמו ללא שינוי.
+- להשתמש בכותרת הקיימת „הוצאה מהירה”, להוסיף „פרטי קבלה” ולמקם כפתור X נגיש שסוגר דרך אותו `setOpen(false)`.
+- כפתור הסגירה יהיה לפחות 44×44px, עם `aria-label`, טבעת focus ואייקון Lucide.
+- להשתמש ב־`contentClassName`/`bodyClassName` הקיימים של ה־BottomSheet רק להתאמת המופע הזה, בלי לשנות את הרכיב המשותף.
 
-## מקור שמירה משותף
-- `src/lib/booking.ts`: `markRecommendationBooked(recId, {time,url,note})` קורא ל־RPC, ו־`useMarkBooked()` (mutation + invalidate + toast + מניעת לחיצה כפולה דרך isPending).
-- `src/components/MarkBookedSheet.tsx`: גיליון עם 3 השדות, ולידציית URL בסיסית כמו ב־RecForm.
-- RecForm: כשהסטטוס עובר ל־booked, אחרי עדכון השדות הרגילים — קריאה ל־`markRecommendationBooked` (אותו RPC; עדכון כפול של אותם ערכים זהה). ביטול הסימון מעדכן רק את הסטטוס — המסמך והקישור נשמרים.
+### 2. אזור הסכום והמטבע
+- להפוך את אזור הסכום למוקד הקבלה: תווית „סה״כ”, input מספרי גדול וממורכז והמטבע הנבחר לידו.
+- לחיצה בכל אזור הסכום תעביר focus ל־input באמצעות ref, בלי לשנות את ערך השדה או את התנהגות הקלט.
+- לעצב את בחירת המטבע כ־segmented control; המטבע הפעיל יקבל `accent`, והלא־פעיל משטח שקט.
+- להציג רק את קודי המטבע הדינמיים `base` ו־`target`; כשהם זהים תישאר אפשרות אחת.
+- להשאיר את `conversionLabel` ואת `NO_RATE_MESSAGE` הקיימים מתחת לבורר, ללא שינוי בחישוב או בתנאי ההצגה.
 
-## רענון (query keys קיימים)
-`["recs"]`, `["hotels"]` לא נדרש, `["documents", tripId]`, ו־keys של הבית שמבוססים על recs (הדדליינים מחושבים מ־recs).
+### 3. שורות הקבלה
+- לסדר את השדות הקיימים בלבד בסדר: קטגוריה, תיאור, מקום, קישור Google Maps, תאריך.
+- לעצב כל שדה כשורת קבלה בגובה מגע תקין, עם אייקון Lucide, תווית, ובקר הקלט הקיים.
+- לשמור `select`, `textarea`, `input` ו־`DateField` כפי שהם מבחינה התנהגותית; רק המעטפת והמחלקות ישתנו.
+- לשמר את התנאי הקיים של „שמור גם בהמלצות” ואת זיהוי קישור המפה, בלי להוסיף שדה או פעולה חדשה.
+- להוסיף `min-w-0`, שבירה/קיטוע מבוקר ו־`max-w-full` כדי למנוע חריגה אופקית ב־360px.
 
-## מניעת כפילות ואבטחה
-- אינדקס ייחודי + ON CONFLICT → מסמך אחד לכל המלצה גם בסימון מחדש.
-- RLS קיים: `recs` ו־`documents` דורשים `can_access_trip`; trip_id של המסמך נגזר מההמלצה בתוך הפונקציה, כך שאין קישור בין טיולים.
-- מחיקת המלצה → SET NULL; מחיקת מסמך רק ידנית.
+### 4. שמירה ונגישות מקלדת
+- להשאיר את כפתור השמירה באותו `BottomSheetFooter`, מחובר לאותו `form` ובאותו `type="submit"`.
+- לעצב אותו ככפתור ראשי רחב עם אייקון אישור, נוסח „שמור הוצאה”, ומצבי loading/disabled הקיימים.
+- להשאיר את ה־footer מחוץ לגוף הגולל כדי ש־safe area והתאמת המקלדת ימשיכו להגיע מ־BottomSheet; לא יתווסף scroll container נוסף או גובה קשיח.
 
-## קבצים
-- מיגרציה חדשה; טיפוסים מתעדכנים אוטומטית.
-- חדש: `src/lib/booking.ts`, `src/components/MarkBookedSheet.tsx`.
-- `src/routes/recommendations.tsx`: כפתור ב־PlaceCard + RecForm קורא למקור המשותף.
-- `src/routes/index.tsx`: כפתור בשורת הדדליין (רק לפריטי recommendation).
-- `src/hooks/use-documents.ts`: הוספת `linked_recommendation_id` לטיפוס.
+## גבולות
+- קובץ היישום המתוכנן: `src/components/GlobalFab.tsx` בלבד.
+- אין שינוי ב־`BottomSheet.tsx`, `EditExpenseForm`, `openQuickExpense()`, mutation, state, validation, conversion, database, routes או schema.
+- אין שינוי בסרגל האפליקציה שמופיע ב־mockup.
+- אין ערכי מטבע או צבע קשיחים; ייעשה שימוש ב־tokens, ב־Button הקיים ובאייקוני Lucide.
 
-## בדיקות
-`bunx tsgo --noEmit`, `bun run build`.
+## אימות
+- `bunx tsgo --noEmit`
+- `bun run build`
+- בדיקת דפדפן ב־360×852 וב־390×852 עם משתמש וטיול פעילים:
+  - פתיחה דרך אירוע `open-quick-expense` וספירת טופס/גיליון יחיד.
+  - סכום במטבע בסיס, מעבר למטבע יעד ושורת המרה.
+  - חסימת שמירה ללא שער תקין, ככל שניתן לשחזר במצב הנתונים הקיים.
+  - פתיחת קטגוריה ותאריך.
+  - focus בשדה סכום, פתיחת מקלדת, גלילה ונגישות כפתור השמירה.
+  - בדיקת overflow אופקי, חיתוך ושטחי מגע.
+- לא תישלח הוצאה אמיתית בבדיקת הדפדפן אם אין סביבת בדיקה בטוחה; במקרה כזה זרימת השמירה תאומת עד רגע ה־submit והחסימה, והדבר יצוין בדוח.
