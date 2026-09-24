@@ -102,3 +102,4 @@
 - [x] Expense forms: base/target choice, no 38 or 1 fallbacks, block save without a valid rate
 - [x] Clear manual rate whenever base_currency or trips.currency_code changes
 - [ ] Follow-up (not now): store the historical rate per expense
+- [ ] סבב תיקון ממוקד מטבע: קובץ מיגרציה מתועד, תיקון EditExpenseForm, ייצוא AI baseCurrency חובה
