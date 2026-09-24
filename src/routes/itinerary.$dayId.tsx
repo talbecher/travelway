@@ -29,6 +29,7 @@ import { ImportAISheet } from "@/components/ImportAISheet";
 import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
+import { useBaseCurrency } from "@/lib/currency";
 import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
 import { DiscoverSheet, useDiscoverAccess, type AddToDayResult } from "@/components/discover/DiscoverSheet";
 
@@ -333,6 +334,7 @@ function DayDetail() {
     initialReview?: string;
   } | null>(null);
   const tripId = useActiveTripId();
+  const baseCurrency = useBaseCurrency();
 
 
 
@@ -1280,8 +1282,8 @@ function DayDetail() {
         onOpenChange={setExportOpen}
         title="🤖 ייצא את היום ל-AI"
         subtitle="קבל ניתוח מקצועי של היום הזה"
-        queryKey={["ai-export-day", dayId]}
-        generate={() => generateDayAIPrompt(tripId, dayId)}
+        queryKey={["ai-export-day", dayId, baseCurrency]}
+        generate={() => generateDayAIPrompt(tripId, dayId, baseCurrency)}
         chips={(st) => [
           `יום ${day?.day_number ?? ""}`.trim(),
           `${st.entryCount} פעילויות`,

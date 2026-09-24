@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/currency";
 import { hebDateLong } from "@/lib/format";
 
 export type ExportStats = {
@@ -163,7 +164,7 @@ async function activeVersionId(tripId: string): Promise<string | null> {
   return (data ?? []).find((v) => v.is_active)?.id ?? data?.[0]?.id ?? null;
 }
 
-export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
+export async function generateAIPrompt(tripId: string, baseCurrency: string): Promise<ExportResult> {
   const versionId = await activeVersionId(tripId);
   const daysBase = supabase
     .from("itinerary_days")
@@ -264,9 +265,9 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
     `שלום! אני מתכנן טיול ל${trip.destination_country ?? "יעד"} ל-${trip.num_travelers} אנשים.`
   );
   lines.push(`${days.length} ימים | ${trip.start_date} עד ${trip.end_date}`);
-  lines.push(`💰 תקציב כולל: ₪${fmt(totalBudget)}`);
-  lines.push(`💸 הוצאנו עד כה: ₪${fmt(spent)}`);
-  lines.push(`📊 נשאר: ₪${fmt(remaining)}`);
+  lines.push(`💰 תקציב כולל: ${formatMoney(totalBudget, baseCurrency)}`);
+  lines.push(`💸 הוצאנו עד כה: ${formatMoney(spent, baseCurrency)}`);
+  lines.push(`📊 נשאר: ${formatMoney(remaining, baseCurrency)}`);
   lines.push("");
   lines.push("📊 מצב התכנון הנוכחי:");
   lines.push(`- ימים עם תוכנית: ${plannedDays} מתוך ${days.length}`);
@@ -407,7 +408,8 @@ export async function generateAIPrompt(tripId: string): Promise<ExportResult> {
 
 export async function generateDayAIPrompt(
   tripId: string,
-  dayId: string
+  dayId: string,
+  baseCurrency: string
 ): Promise<ExportResult> {
   const versionId = await activeVersionId(tripId);
   const daysBase = supabase
