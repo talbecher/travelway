@@ -1,53 +1,33 @@
-# מטבע בסיס והמרות — תיקון ממוקד
+# סבב תיקון ממוקד לפני סגירת המטבעים
 
-## מה קיים היום (נבדק בקוד)
-- `settings.base_currency` כבר קיים, NOT NULL עם ברירת מחדל `'ILS'`, אך **אף מקום בקוד לא קורא אותו**. הוא נכתב פעם אחת ב־`onboarding.tsx` כ־`"ILS"`.
-- `settings.foreign_currency` נכתב באונבורדינג ממטבע היעד; `trips.currency_code` הוא מטבע היעד.
-- התצוגה נעולה ל־₪ דרך `ils()` ב־`format.ts`: מסך התקציב (יתרה, תקציב, הוצאנו, שורות קטגוריה, שורות הוצאה), `BudgetSummary`, `index.tsx` (שלושה מקומות), `GlobalSearch`.
-- fallback `38` מופיע ב־3 מקומות: `GlobalFab.tsx:38`, `budget.tsx:300` (שדה שער בהגדרות), `ConverterPill.tsx:32`.
-- `EditExpenseForm` משתמש ב־fallback שער `1` — מסוכן לא פחות; גם הוא מוסר.
-- `fx.ts` מביא שער יומי מ־exchangerate-api (בסיס ILS, מטמון 6 שעות ב־sessionStorage) ומחזיר גם `date`. כרגע בשימוש רק בממיר.
+## 1. תיעוד המיגרציה
+קובץ חדש `supabase/migrations/20260924060000_settings_base_currency_backfill.sql` (קובץ בלבד — לא מורץ שוב על המסד):
+```sql
+UPDATE public.settings SET base_currency = 'ILS'
+WHERE base_currency IS NULL OR base_currency = '';
 
-## מודל המטבע שייושם
-- **מטבע בסיס** = `settings.base_currency`. כל התקציב, היתרה, הסיכומים והגרפים מוצגים בו.
-- **מטבע יעד** = `trips.currency_code`. לעולם לא מועתק למטבע הבסיס.
-- העמודות `amount_ils` ו־`total_budget_ils` נשארות בשמן ומתפרשות כסכום **במטבע הבסיס**. אין המרה של נתונים היסטוריים.
+INSERT INTO public.settings (trip_id, base_currency, foreign_currency)
+SELECT t.id, 'ILS', COALESCE(NULLIF(t.currency_code, ''), 'JPY')
+FROM public.trips t
+WHERE NOT EXISTS (SELECT 1 FROM public.settings s WHERE s.trip_id = t.id)
+ON CONFLICT (trip_id) DO NOTHING;
+```
+לפני הכתיבה ייבדק שקיים אילוץ ייחודי על `settings.trip_id` (תנאי ל־ON CONFLICT). אם אין — ידווח לפני המשך.
 
-## מיגרציה
-- `UPDATE public.settings SET base_currency = 'ILS' WHERE base_currency IS NULL OR base_currency = ''` — לא דורס ערך קיים.
-- יצירת שורת `settings` חסרה לטיולים שאין להם אחת, עם `base_currency = 'ILS'` ו־`foreign_currency` לפי `trips.currency_code`.
-- אין שינוי שמות עמודות ואין עמודות חדשות (שמירת שער היסטורי לכל הוצאה — לרשימת ההמשך בלבד).
+## 2. עריכת הוצאה קיימת (`src/routes/budget.tsx`, EditExpenseForm)
+- `isForeign = amount_foreign != null && !!foreign_currency`.
+- פתיחה: זר → סכום `amount_foreign` ומטבע `foreign_currency`; אחרת → `amount_ils` במטבע הבסיס.
+- `fxCurrency` = `foreign_currency` של ההוצאה בלבד; `tripTarget` משמש רק כאפשרות מעבר כשההוצאה נשמרה בבסיס (לא כמטבע פתיחה).
+- `moneyChanged === false` → נשלחים בדיוק `expense.amount_ils`, `expense.amount_foreign`, `expense.foreign_currency`.
+- המרה מחדש רק כש־moneyChanged; חסימה ללא שער תקין נשמרת.
 
-## קוד
-**חדש: `src/lib/currency.ts`**
-- `formatMoney(amount, currency)` — פורמט לפי מטבע (סימן, מספר ספרות; JPY ללא עשרוניות) במקום `₪` קשיח.
-- `useBaseCurrency()` / `useTargetCurrency()` — hooks דקים מעל `useSettings()` ו־`useTrip()` עם ברירת מחדל `ILS` בטעינה.
-- `useConversion()` — מחזיר `{ rate, source: "manual" | "live", updatedAt, ready }` לכיוון בסיס→יעד. **סדר עדיפות: שער ידני תקין (> 0) קודם, אחרת שער חי מ־`fx.ts`.** אין fallback קבוע.
+## 3. ייצוא ל־AI (`src/lib/export-to-ai.ts`)
+- `generateAIPrompt(tripId, baseCurrency = "ILS")` ו־`generateDayAIPrompt(tripId, dayId, baseCurrency = "ILS")`.
+- שורות 267–269 → `formatMoney(x, baseCurrency)`; שאר התוכן והמבנה ללא שינוי (שורת מלון 318 נשארת — מחוץ להיקף).
+- callers: `itinerary.index.tsx` ו־`itinerary.$dayId.tsx` מעבירים `useBaseCurrency()`, ומוסיפים אותו ל־queryKey של הייצוא.
 
-**תצוגה — החלפת `ils()` ב־`formatMoney(x, base)`:**
-- `src/routes/budget.tsx` — יתרה במרכז הגרף, "תקציב", "הוצאנו", שורות הקטגוריות, שורות ההוצאה.
-- `src/components/home/BudgetSummary.tsx` — יתרה, תקציב, הוצאנו.
-- `src/routes/index.tsx` — שלושת בלוקי התקציב (יתרה, הוצאות, ליום).
-- `src/components/GlobalSearch.tsx` — כותרת משנה של הוצאה.
-- `src/routes/budget.tsx` הגדרות: תווית "תקציב כולל" תציג את מטבע הבסיס במקום `(₪)`.
-
-**טפסי הוצאה (`GlobalFab.tsx`, `EditExpenseForm` ב־`budget.tsx`) — לוגיקה בלבד, ללא שינוי עיצוב:**
-- ברירת מחדל = מטבע הבסיס של הטיול הפעיל; שני הכפתורים הקיימים מציגים בסיס/יעד לפי הטיול, ללא ערכים קשיחים `₪`/`¥`.
-- איפוס לפי הטיול הנוכחי בכל פתיחה של הגיליון — אין שימור בחירה מטיול קודם.
-- סכום במטבע הבסיס נשמר כמו שהוא; סכום במטבע היעד מומר לפי `useConversion()`.
-- אם נדרשת המרה ואין שער תקין — השמירה נחסמת עם הודעה ברורה בעברית. `38` ו־`1` מוסרים לחלוטין.
-
-**הצגת השער:**
-- בהגדרות התקציב וב־`ConverterPill`: "שער שוק יומי", מקור (exchangerate-api) ותאריך העדכון מ־`rates.date`. לא "רשמי" ולא "בזמן אמת".
-- הדריסה הידנית נשמרת, עם כיוון מפורש: `1 {בסיס} = X {יעד}`.
-
-**מטבע בסיס ניתן לעריכה** בהגדרות התקציב רק כאשר `total_budget_ils` הוא 0/ריק ואין הוצאות; אחרת השדה נעול עם הסבר קצר ("לא ניתן לשנות — כבר קיימים תקציב או הוצאות").
-
-## גבולות
-ללא שינוי עיצוב בטפסים, ללא שינוי ב־BottomSheet, במסלולים, בסימון "הוזמן" או בלוגיקה שאינה מטבע.
+## מחוץ להיקף
+מלונות, מסמכים, סמלי רמת מחיר באוכל, ממיר ILS, עיצוב, מודל המטבע.
 
 ## בדיקות
-`bunx tsgo --noEmit` ו־`bun run build` בלבד.
-
-## סיכון
-בינוני־נמוך: הנתונים אינם נוגעים בהמרה; הסיכון העיקרי הוא חסימת שמירה כשאין שער — וזו התנהגות מכוונת במקום סכום שגוי.
+`bunx tsgo --noEmit` ו־`bun run build`, ודיווח על כל אחד מהסעיפים.
