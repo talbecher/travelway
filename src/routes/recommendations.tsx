@@ -28,6 +28,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { MarkBookedSheet } from "@/components/MarkBookedSheet";
+import { markRecommendationBooked, invalidateBookingQueries } from "@/lib/booking";
 import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { bookingChip } from "@/lib/deadlines";
 import { DateField } from "@/components/DateField";
@@ -660,6 +662,7 @@ function PlaceCard({
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
+  const [markBookedOpen, setMarkBookedOpen] = useState(false);
 
   const setStatus = useMutation({
     mutationFn: async (status: "wishlist" | "visited" | "skipped") => {
@@ -767,11 +770,28 @@ function PlaceCard({
             : chip.tone === "orange" ? "bg-amber-500/15 text-amber-600"
             : "bg-muted text-muted-foreground";
           return (
-            <span className={`inline-block mt-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${cls} ${chip.pulse ? "animate-pulse" : ""}`}>
-              {chip.label}
-            </span>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${cls} ${chip.pulse ? "animate-pulse" : ""}`}>
+                {chip.label}
+              </span>
+              {rec.booking_status !== "booked" && !selectionMode && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMarkBookedOpen(true); onOverlayOpenChange(true); }}
+                  className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium h-auto min-h-0"
+                >
+                  ✅ סמן כהוזמן
+                </button>
+              )}
+            </div>
           );
         })()}
+        {markBookedOpen && (
+          <MarkBookedSheet
+            recId={rec.id}
+            open={markBookedOpen}
+            onOpenChange={(o) => { setMarkBookedOpen(o); onOverlayOpenChange(o); }}
+          />
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
           {googleRating != null && (
             <span className="inline-flex items-center gap-0.5" dir="ltr">
@@ -943,7 +963,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       if (!name.trim()) throw new Error("שם חסר");
       if (!city.trim()) throw new Error("עיר חסרה");
       const coords = selectedCoords ?? parseLatLngFromMapsUrl(url);
-      const payload = {
+      const basePayload = {
         type, name: name.trim(), city: city.trim(),
         address: address.trim() || null,
         google_maps_url: url.trim() || null,
@@ -954,14 +974,24 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         google_rating: googleRating,
         google_rating_count: googleRatingCount,
         booking_deadline: bookingDeadline || null,
-        booking_time: bookingTime.trim() || null,
-        booking_url: bookingUrl.trim() || null,
-        booking_note: bookingNote.trim() || null,
-        booking_status: bookingStatus,
       };
+      // Booked → booking fields + status are written ONLY via the atomic RPC.
+      // Not booked → regular update writes status 'none' (linked document is kept).
+      const isBooked = bookingStatus === "booked";
+      const bookingDetails = { booking_time: bookingTime, booking_url: bookingUrl, booking_note: bookingNote };
+      const payload = isBooked
+        ? basePayload
+        : {
+            ...basePayload,
+            booking_time: bookingTime.trim() || null,
+            booking_url: bookingUrl.trim() || null,
+            booking_note: bookingNote.trim() || null,
+            booking_status: "none",
+          };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
         if (error) throw error;
+        if (isBooked) await markRecommendationBooked(existing.id, bookingDetails);
         // Two-way sync: propagate to any linked day_entries
         const { data: linkedEntries } = await supabase
           .from("day_entries")
@@ -986,13 +1016,18 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         }
         return { syncedDays: [] as string[] };
       } else {
-        const { error } = await supabase.from("recommendations").insert({ trip_id: getActiveTripId(), ...payload });
+        const { data: inserted, error } = await supabase
+          .from("recommendations")
+          .insert({ trip_id: getActiveTripId(), ...payload })
+          .select("id")
+          .single();
         if (error) throw error;
+        if (isBooked) await markRecommendationBooked(inserted.id, bookingDetails);
         return { syncedDays: [] as string[] };
       }
     },
     onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ["recs"] });
+      invalidateBookingQueries(qc);
       for (const dayId of result.syncedDays) {
         qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
       }

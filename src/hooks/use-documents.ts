@@ -27,6 +27,7 @@ export type TripDocument = {
   is_paid: boolean;
   valid_date: string | null;
   display_order: number;
+  linked_recommendation_id?: string | null;
   created_at: string;
 };
 

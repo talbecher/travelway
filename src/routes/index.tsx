@@ -16,6 +16,7 @@ import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 import { haversine } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
 import { NowNextCard } from "@/components/NowNextCard";
+import { MarkBookedSheet } from "@/components/MarkBookedSheet";
 import { ChecklistCard } from "@/components/ChecklistCard";
 import { useOnline } from "@/hooks/use-online";
 import { toast } from "sonner";
@@ -46,7 +47,10 @@ type DeadlineGroup = { key: string; title: string; subtitle: string; items: Dead
 function DeadlineRow({ item, onOpen }: { item: DeadlineItem; onOpen: (i: DeadlineItem) => void }) {
   const color = URGENCY_COLOR[item.urgency];
   const strong = item.urgency !== "normal";
+  const [markOpen, setMarkOpen] = useState(false);
+  const canMark = item.type === "recommendation" && item.status !== "booked";
   return (
+    <>
     <button
       onClick={() => onOpen(item)}
       className="w-full text-right bg-card border border-border rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2 h-auto min-h-0"
@@ -64,20 +68,39 @@ function DeadlineRow({ item, onOpen }: { item: DeadlineItem; onOpen: (i: Deadlin
           </span>
         </div>
       </div>
-      {item.booking_url && (
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open(item.booking_url!, "_blank", "noopener");
-          }}
-          className="shrink-0 text-xs px-3 h-8 inline-flex items-center rounded-lg bg-[color:var(--accent)] text-white"
-        >
-          הזמן ↗
-        </span>
-      )}
+      <div className="shrink-0 flex items-center gap-1.5">
+        {canMark && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMarkOpen(true);
+            }}
+            className="text-xs px-2.5 h-8 inline-flex items-center rounded-lg border border-border"
+          >
+            ✅ הוזמן
+          </span>
+        )}
+        {item.booking_url && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(item.booking_url!, "_blank", "noopener");
+            }}
+            className="text-xs px-3 h-8 inline-flex items-center rounded-lg bg-[color:var(--accent)] text-white"
+          >
+            הזמן ↗
+          </span>
+        )}
+      </div>
     </button>
+    {canMark && markOpen && (
+      <MarkBookedSheet recId={item.sourceId} open={markOpen} onOpenChange={setMarkOpen} />
+    )}
+    </>
   );
 }
 
