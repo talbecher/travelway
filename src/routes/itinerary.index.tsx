@@ -14,6 +14,7 @@ import { useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { BottomSheet } from "@/components/BottomSheet";
 import { generateAIPrompt } from "@/lib/export-to-ai";
+import { useBaseCurrency } from "@/lib/currency";
 import { ExportAISheet } from "@/components/ExportAISheet";
 import { ImportAISheet } from "@/components/ImportAISheet";
 
@@ -516,8 +517,8 @@ function Itinerary() {
       <ExportAISheet
         open={exportOpen}
         onOpenChange={setExportOpen}
-        queryKey={["ai-export", tripId]}
-        generate={() => generateAIPrompt(tripId)}
+        queryKey={["ai-export", tripId, baseCurrency]}
+        generate={() => generateAIPrompt(tripId, baseCurrency)}
       />
 
       <ImportAISheet

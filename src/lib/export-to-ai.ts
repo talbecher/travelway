@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/currency";
 import { hebDateLong } from "@/lib/format";
 
 export type ExportStats = {
