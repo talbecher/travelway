@@ -77,6 +77,8 @@ const TYPE_KEYWORDS: Record<string, string> = {
   hotel: "מלון לינה hotel",
 };
 
+const PAGE_SIZE = 40;
+
 function matchesQuery(fields: Array<string | null | undefined>, q: string): boolean {
   const query = q.trim().toLowerCase();
   if (!query) return true;
@@ -696,7 +698,7 @@ function PlacesList({
 }
 
 function PlaceCard({
-  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, onOverlayOpenChange,
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, onAddToDay,
 }: {
   rec: Rec;
   distance: number | null;
@@ -705,11 +707,9 @@ function PlaceCard({
   selected: boolean;
   onToggleSelect: () => void;
   isRecent?: boolean;
-  onOverlayOpenChange: (open: boolean) => void;
+  onAddToDay: () => void;
 }) {
   const qc = useQueryClient();
-  const { data: days = [] } = useDays();
-  const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const [markBookedOpen, setMarkBookedOpen] = useState(false);
 
@@ -727,17 +727,6 @@ function PlaceCard({
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["recs"] }); toast.success("נמחק"); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const addToDay = useMutation({
-    mutationFn: async (dayId: string) => addRecommendationToDay(rec, dayId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
-      qc.invalidateQueries({ queryKey: ["day-entries"] });
-      toast.success("נוסף ליום");
-      setDayPickerOpen(false);
-    },
     onError: (e: Error) => toast.error(e.message),
   });
 
