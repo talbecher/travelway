@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -493,8 +493,10 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
   const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+  const mapAddingRef = useRef(false);
   const addToDay = useMutation({
     mutationFn: async (dayId: string) => addRecommendationToDay(rec, dayId),
+    onSettled: () => { mapAddingRef.current = false; },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       qc.invalidateQueries({ queryKey: ["day-entries"] });
@@ -528,8 +530,13 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
         <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
           {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
           {days.map((d) => (
-            <button key={d.id} onClick={() => addToDay.mutate(d.id)}
-              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0">
+            <button key={d.id} disabled={addToDay.isPending}
+              onClick={() => {
+                if (mapAddingRef.current) return;
+                mapAddingRef.current = true;
+                addToDay.mutate(d.id);
+              }}
+              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0 disabled:opacity-60">
               <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
               <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
             </button>
@@ -584,8 +591,10 @@ function PlacesList({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (dayPickerRec) closeDayPicker(); }, [tripId]);
 
+  const addingRef = useRef(false);
   const addToDay = useMutation({
     mutationFn: async ({ rec, dayId }: { rec: Rec; dayId: string }) => addRecommendationToDay(rec, dayId),
+    onSettled: () => { addingRef.current = false; },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       qc.invalidateQueries({ queryKey: ["day-entries"] });
@@ -686,7 +695,11 @@ function PlacesList({
           {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
           {days.map((d) => (
             <button key={d.id} disabled={addToDay.isPending}
-              onClick={() => dayPickerRec && addToDay.mutate({ rec: dayPickerRec, dayId: d.id })}
+              onClick={() => {
+                if (!dayPickerRec || addingRef.current) return;
+                addingRef.current = true;
+                addToDay.mutate({ rec: dayPickerRec, dayId: d.id });
+              }}
               className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0 disabled:opacity-60">
               <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
               <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
@@ -1067,7 +1080,11 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       }
       onDone();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      // a partial write (row saved, booking RPC failed) must still show up
+      qc.invalidateQueries({ queryKey: ["recs"] });
+      toast.error(e.message);
+    },
   });
 
   const seg = (t: RecType, label: string, emoji: string, tint: string) => (
