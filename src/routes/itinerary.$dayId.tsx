@@ -3035,6 +3035,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [saveToRecs, setSaveToRecs] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const mut = useUpsert(dayId, existing?.id);
+  const qc = useQueryClient();
   const initialCoords = existing?.latitude != null && existing?.longitude != null
     ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
     : null;
@@ -3077,6 +3078,8 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
             type: recType, name: name.trim(), city: area || null,
             google_maps_url: mapsUrl || null, notes: notes || null,
           });
+          // the recommendation now exists even if the day entry below fails
+          qc.invalidateQueries({ queryKey: ["recs"] });
         } catch (err) { toast.error((err as Error).message); }
       }
       const description = recType === "food"
