@@ -38,6 +38,7 @@ export function daysQuery(tripId: string, versionId?: string | null) {
 export function recsQuery(tripId: string) {
   return queryOptions({
     queryKey: ["recs", tripId],
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recommendations")
