@@ -190,6 +190,7 @@ function Recs() {
   });
 
   const mapPins = useMemo(() => {
+    if (view !== "map") return [];
     return (recs as Rec[])
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
@@ -210,7 +211,7 @@ function Recs() {
         photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city, q]);
+  }, [recs, tab, city, q, view]);
 
 
 
@@ -568,6 +569,29 @@ function PlacesList({
 }) {
   const { data: recs = [], isLoading } = useRecs();
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
+  const qc = useQueryClient();
+  const tripId = useActiveTripId();
+  const { data: days = [] } = useDays();
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [dayPickerRec, setDayPickerRec] = useState<Rec | null>(null);
+
+  // Reset visible window only when the result set definition changes (not on refetch/status change).
+  useEffect(() => { setLimit(PAGE_SIZE); }, [type, cityFilter, query, recentOnly, tripId]);
+
+  const closeDayPicker = () => { setDayPickerRec(null); onOverlayOpenChange(false); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (dayPickerRec) closeDayPicker(); }, [tripId]);
+
+  const addToDay = useMutation({
+    mutationFn: async ({ rec, dayId }: { rec: Rec; dayId: string }) => addRecommendationToDay(rec, dayId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      toast.success("נוסף ליום");
+      closeDayPicker();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -627,9 +651,11 @@ function PlacesList({
     } />;
   }
 
+  const shown = list.slice(0, limit);
+
   return (
     <div className="space-y-2.5">
-      {list.map((r) => (
+      {shown.map((r) => (
         <PlaceCard
           key={r.id}
           rec={r}
@@ -639,9 +665,32 @@ function PlacesList({
           selected={selectedIds.has(r.id)}
           onToggleSelect={() => onToggleSelect(r.id)}
           isRecent={recentIds.has(r.id)}
-          onOverlayOpenChange={onOverlayOpenChange}
+          onAddToDay={() => { setDayPickerRec(r); onOverlayOpenChange(true); }}
         />
       ))}
+      <div className="flex flex-col items-center gap-2 pt-2 pb-1">
+        <div className="text-xs text-muted-foreground">מוצגות {shown.length} מתוך {list.length}</div>
+        {shown.length < list.length && (
+          <button type="button" onClick={() => setLimit((n) => n + PAGE_SIZE)}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            הצג עוד
+          </button>
+        )}
+      </div>
+
+      <BottomSheet open={!!dayPickerRec} onOpenChange={(open) => { if (!open) closeDayPicker(); }} title={dayPickerRec ? `הוסף את ${dayPickerRec.name} ליום` : ""}>
+        <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
+          {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
+          {days.map((d) => (
+            <button key={d.id} disabled={addToDay.isPending}
+              onClick={() => dayPickerRec && addToDay.mutate({ rec: dayPickerRec, dayId: d.id })}
+              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0 disabled:opacity-60">
+              <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
+              <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   );
 }
@@ -825,7 +874,7 @@ function PlaceCard({
                   <Navigation size={14} /> ניווט
                 </a>
               )}
-              <button onClick={(e) => { stop(e); setDayPickerOpen(true); onOverlayOpenChange(true); }}
+              <button onClick={(e) => { stop(e); onAddToDay(); }}
                 className={`${rec.google_maps_url ? "" : "col-span-2"} inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>
                 <Plus size={15} /> הוסף ליום
               </button>
@@ -881,18 +930,6 @@ function PlaceCard({
         cardInner
       )}
 
-      <BottomSheet open={dayPickerOpen} onOpenChange={(open) => { setDayPickerOpen(open); onOverlayOpenChange(open); }} title={`הוסף את ${rec.name} ליום`}>
-        <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
-          {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
-          {days.map((d) => (
-            <button key={d.id} onClick={() => addToDay.mutate(d.id)}
-              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0">
-              <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
-              <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
-            </button>
-          ))}
-        </div>
-      </BottomSheet>
     </>
   );
 }
