@@ -668,6 +668,7 @@ function PlacesList({
           onToggleSelect={() => onToggleSelect(r.id)}
           isRecent={recentIds.has(r.id)}
           onAddToDay={() => { setDayPickerRec(r); onOverlayOpenChange(true); }}
+          onOverlayOpenChange={onOverlayOpenChange}
         />
       ))}
       <div className="flex flex-col items-center gap-2 pt-2 pb-1">
@@ -698,7 +699,7 @@ function PlacesList({
 }
 
 function PlaceCard({
-  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, onAddToDay,
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, onAddToDay, onOverlayOpenChange,
 }: {
   rec: Rec;
   distance: number | null;
@@ -708,6 +709,7 @@ function PlaceCard({
   onToggleSelect: () => void;
   isRecent?: boolean;
   onAddToDay: () => void;
+  onOverlayOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
   const [imgFailed, setImgFailed] = useState(false);
