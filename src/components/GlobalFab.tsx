@@ -84,6 +84,8 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
           name: locationName.trim(),
           google_maps_url: mapsUrl || null,
         });
+        // the recommendation now exists even if the expense insert below fails
+        qc.invalidateQueries({ queryKey: ["recs"] });
       }
 
       const { error } = await supabase.from("expenses").insert({
