@@ -106,6 +106,10 @@ function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: numb
     if (!map) return;
     const timer = setTimeout(() => {
       try {
+        if (pins.length === 0 && user) {
+          map.setView([user.lat, user.lng], 16, { animate: true });
+          return;
+        }
         if (pins.length === 0) {
           map.setView([35.6762, 139.6503], 10, { animate: true });
           return;

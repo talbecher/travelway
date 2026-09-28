@@ -320,7 +320,7 @@ function Recs() {
                 <Compass size={17} /> Discover
               </button>
             )}
-          {tab !== "hotels" && !selectionMode && (
+          {tab !== "hotels" && !selectionMode && !nearMode && (
             <div className="flex shrink-0 gap-1 rounded-xl bg-muted p-1" aria-label="בחירת תצוגה">
               <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
                 aria-pressed={view === "list"}
