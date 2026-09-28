@@ -173,7 +173,7 @@ export function useRecSources() { return useQuery(recSourcesQuery(useActiveTripI
 
 /**
  * Located-stop summary for the active trip + version (day-suggestion in "add to day").
- * Key shares the ["day-entries-summary", tripId, ...] prefix so every existing
+ * Key shares the ["day-entries-summary", tripId, versionId] prefix (siblings: "home", "itinerary") so every existing
  * itinerary invalidation refreshes it; paged past the 1000-row API cap.
  */
 export function dayEntriesGeoQuery(tripId: string, versionId?: string | null) {

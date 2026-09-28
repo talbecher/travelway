@@ -167,7 +167,7 @@ function Itinerary() {
   });
 
   const { data: entriesByDay = {} } = useQuery<Record<string, EntryRow[]>>({
-    queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null],
+    queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null, "itinerary"],
     enabled: !!tripId && !!activeVersion?.id,
     queryFn: async () => {
       // Load in pages so trips with >1000 entries aren't truncated by the API row limit.

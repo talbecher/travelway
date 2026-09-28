@@ -508,7 +508,7 @@ function Home() {
     isError: entriesError,
     refetch: refetchEntries,
   } = useQuery<Record<string, EntrySlim[]>>({
-    queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null],
+    queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null, "home"],
     enabled: !!tripId && !!activeVersion?.id,
     queryFn: async () => {
       const { data, error } = await supabase
