@@ -117,6 +117,138 @@ export const searchPlaces = createServerFn({ method: "POST" })
     }
   });
 
+export type PlaceSuggestion = { placeId: string; main: string; secondary: string };
+
+const TOKEN_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+export const autocompletePlaces = createServerFn({ method: "POST" })
+  .inputValidator((input: { input: string; sessionToken: string }) => {
+    if (!input || typeof input.input !== "string") throw new Error("input required");
+    if (typeof input.sessionToken !== "string" || !TOKEN_RE.test(input.sessionToken))
+      throw new Error("invalid session");
+    return { input: input.input.slice(0, 200).trim(), sessionToken: input.sessionToken };
+  })
+  .handler(async ({ data }): Promise<{ suggestions: PlaceSuggestion[]; error?: string }> => {
+    if (data.input.length < 2) return { suggestions: [] };
+    const apiKey = process.env.GOOGLE_PLACES_KEY;
+    if (!apiKey) return { suggestions: [], error: "missing_api_key" };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask":
+            "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.text",
+        },
+        body: JSON.stringify({
+          input: data.input,
+          languageCode: "he",
+          sessionToken: data.sessionToken,
+        }),
+      });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        console.error("[autocompletePlaces] http", res.status);
+        return { suggestions: [], error: "upstream_error" };
+      }
+      const json = (await res.json()) as {
+        suggestions?: Array<{
+          placePrediction?: {
+            placeId?: string;
+            text?: { text?: string };
+            structuredFormat?: { mainText?: { text?: string }; secondaryText?: { text?: string } };
+          };
+        }>;
+      };
+      const suggestions: PlaceSuggestion[] = [];
+      for (const s of json.suggestions ?? []) {
+        const p = s.placePrediction;
+        if (!p?.placeId) continue;
+        const main = p.structuredFormat?.mainText?.text ?? p.text?.text ?? "";
+        if (!main) continue;
+        suggestions.push({
+          placeId: p.placeId,
+          main,
+          secondary: p.structuredFormat?.secondaryText?.text ?? "",
+        });
+      }
+      return { suggestions };
+    } catch (e) {
+      clearTimeout(timeout);
+      console.error("[autocompletePlaces] error", e instanceof Error ? e.name : "unknown");
+      return { suggestions: [], error: "network_error" };
+    }
+  });
+
+export const getPlaceDetails = createServerFn({ method: "POST" })
+  .inputValidator((input: { placeId: string; sessionToken: string }) => {
+    if (!input || typeof input.placeId !== "string" || !/^[A-Za-z0-9_-]{5,300}$/.test(input.placeId))
+      throw new Error("invalid placeId");
+    if (typeof input.sessionToken !== "string" || !TOKEN_RE.test(input.sessionToken))
+      throw new Error("invalid session");
+    return { placeId: input.placeId, sessionToken: input.sessionToken };
+  })
+  .handler(async ({ data }): Promise<{ place: PlaceResult | null; error?: string }> => {
+    const apiKey = process.env.GOOGLE_PLACES_KEY;
+    if (!apiKey) return { place: null, error: "missing_api_key" };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(data.placeId)}?languageCode=he&sessionToken=${encodeURIComponent(data.sessionToken)}`;
+      const res = await fetch(url, {
+        method: "GET",
+        signal: controller.signal,
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask":
+            "id,displayName,formattedAddress,location,primaryTypeDisplayName,photos,addressComponents,rating,userRatingCount",
+        },
+      });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        console.error("[getPlaceDetails] http", res.status);
+        return { place: null, error: "upstream_error" };
+      }
+      const p = (await res.json()) as {
+        id: string;
+        displayName?: { text?: string };
+        formattedAddress?: string;
+        location?: { latitude: number; longitude: number };
+        primaryTypeDisplayName?: { text?: string };
+        photos?: Array<{ name: string }>;
+        addressComponents?: AddressComponent[];
+        rating?: number;
+        userRatingCount?: number;
+      };
+      if (!p.location || !p.displayName?.text) return { place: null, error: "incomplete" };
+      const lat = p.location.latitude;
+      const lng = p.location.longitude;
+      return {
+        place: {
+          id: p.id,
+          name: p.displayName.text,
+          address: p.formattedAddress ?? "",
+          latitude: lat,
+          longitude: lng,
+          primaryType: p.primaryTypeDisplayName?.text ?? null,
+          photoName: p.photos?.[0]?.name ?? null,
+          google_maps_url: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+          city: extractCity(p.addressComponents),
+          rating: typeof p.rating === "number" ? p.rating : null,
+          userRatingCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+        },
+      };
+    } catch (e) {
+      clearTimeout(timeout);
+      console.error("[getPlaceDetails] error", e instanceof Error ? e.name : "unknown");
+      return { place: null, error: "network_error" };
+    }
+  });
+
 export const getPlacePhotoUrl = createServerFn({ method: "POST" })
   .inputValidator((input: { photoName: string; maxWidthPx?: number }) => {
     if (!input || typeof input.photoName !== "string") throw new Error("photoName required");
