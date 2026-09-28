@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- My Maps import writes source + recs + links via the `import_my_map` RPC (one transaction); photo enrichment runs afterwards, best-effort. Why: no orphan imported recs.
