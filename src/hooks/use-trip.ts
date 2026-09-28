@@ -129,3 +129,43 @@ export function useRecs() { return useQuery(recsQuery(useActiveTripId())); }
 export function useHotels() { return useQuery(hotelsQuery(useActiveTripId())); }
 export function useExpenses() { return useQuery(expensesQuery(useActiveTripId())); }
 export function useSettings() { return useQuery(settingsQuery(useActiveTripId())); }
+
+export type RecSourcesData = {
+  sources: { id: string; name: string }[];
+  byRec: Record<string, string[]>; // recommendation_id -> source ids
+};
+
+/** All import sources of a trip + every rec↔source link, paged past the 1000-row API cap. */
+export function recSourcesQuery(tripId: string) {
+  return queryOptions({
+    queryKey: ["rec-sources", tripId],
+    enabled: !!tripId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<RecSourcesData> => {
+      const { data: sources, error } = await supabase
+        .from("import_sources")
+        .select("id, name")
+        .eq("trip_id", tripId)
+        .order("created_at");
+      if (error) throw error;
+      const byRec: Record<string, string[]> = {};
+      const ids = (sources ?? []).map((s) => s.id);
+      if (ids.length === 0) return { sources: [], byRec };
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data, error: e2 } = await supabase
+          .from("recommendation_sources")
+          .select("recommendation_id, source_id")
+          .in("source_id", ids)
+          .order("recommendation_id")
+          .order("source_id")
+          .range(from, from + PAGE - 1);
+        if (e2) throw e2;
+        for (const l of data ?? []) (byRec[l.recommendation_id] ??= []).push(l.source_id);
+        if (!data || data.length < PAGE) break;
+      }
+      return { sources: sources ?? [], byRec };
+    },
+  });
+}
+export function useRecSources() { return useQuery(recSourcesQuery(useActiveTripId())); }
