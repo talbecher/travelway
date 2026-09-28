@@ -38,7 +38,10 @@ import { DateField } from "@/components/DateField";
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
 type Tab = "all" | "food" | "attractions" | "hotels";
-const searchSchema = z.object({ tab: z.enum(["all", "food", "attractions", "hotels"]).optional() });
+const searchSchema = z.object({
+  tab: z.enum(["all", "food", "attractions", "hotels"]).optional(),
+  near: z.coerce.number().int().min(1).max(1).optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/recommendations")({
   validateSearch: searchSchema,
@@ -97,6 +100,7 @@ function recMatchesQuery(r: Rec, q: string): boolean {
 
 function Recs() {
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "all");
   const [city, setCity] = useState<string>("all");
@@ -202,14 +206,46 @@ function Recs() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+
+  // "Near me" mode (entered from the home card with ?near=1).
+  const nearMode = !!search.near;
+  const [nearRadius, setNearRadius] = useState<500 | 1000>(500);
+  const [nearStatus, setNearStatus] = useState<"locating" | "ok" | "error">("locating");
+  useEffect(() => {
+    if (!nearMode) return;
+    setTab("all"); setCity("all"); setSource("all"); setQ(""); setRecentOnly(false);
+    setView("map"); setNearRadius(500); setNearStatus("locating"); setUserPos(null);
+    if (typeof navigator === "undefined" || !navigator.geolocation) { setNearStatus("error"); return; }
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (p) => { if (cancelled) return; setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }); setNearStatus("ok"); },
+      () => { if (!cancelled) setNearStatus("error"); },
+      { timeout: 10000, maximumAge: 60_000 },
+    );
+    return () => { cancelled = true; };
+  }, [nearMode]);
+  const exitNear = () => {
+    setNearRadius(500);
+    navigate({ to: "/recommendations", search: {}, replace: true });
+  };
+
   const mapPins = useMemo(() => {
     if (view !== "map") return [];
+    if (nearMode && (nearStatus !== "ok" || !userPos)) return [];
+    const maxKm = nearRadius / 1000;
     return (recs as Rec[])
+      .filter((r) => r.latitude != null && r.longitude != null)
+      .filter((r) => {
+        if (!nearMode || !userPos) return true;
+        const lat = Number(r.latitude), lng = Number(r.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+        return haversine({ lat: userPos.lat, lon: userPos.lng }, { lat, lon: lng }) <= maxKm;
+      })
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
       .filter((r) => recMatchesQuery(r, q))
       .filter(sourceMatch)
-      .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
         id: r.id,
         lat: Number(r.latitude),
@@ -225,19 +261,16 @@ function Recs() {
         photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city, q, view, source, recSources]);
+  }, [recs, tab, city, q, view, source, recSources, nearMode, nearStatus, userPos, nearRadius]);
 
-
-
-  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
-    if (view !== "map" || !navigator.geolocation) return;
+    if (nearMode || view !== "map" || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (p) => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
       () => {},
       { timeout: 5000, maximumAge: 60_000 },
     );
-  }, [view]);
+  }, [view, nearMode]);
 
   const defaultFormType: RecType = tab === "food" ? "food" : tab === "hotels" ? "hotel" : "attraction";
   const listType: "food" | "attraction" | "all" =
@@ -287,7 +320,7 @@ function Recs() {
                 <Compass size={17} /> Discover
               </button>
             )}
-          {tab !== "hotels" && !selectionMode && (
+          {tab !== "hotels" && !selectionMode && !nearMode && (
             <div className="flex shrink-0 gap-1 rounded-xl bg-muted p-1" aria-label="בחירת תצוגה">
               <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
                 aria-pressed={view === "list"}
@@ -397,7 +430,45 @@ function Recs() {
         ) : recsError ? (
           <EmptyState variant="recs" title="לא הצלחנו לטעון את ההמלצות" hint="כדאי לנסות שוב בעוד רגע" />
         ) : view === "map" ? (
-          <div className="-mx-4 overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
+          <div className="space-y-2">
+          {nearMode && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2" role="region" aria-label="מצב קרוב אליי">
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground">
+                <Navigation size={15} className="text-accent" /> קרוב אליי
+              </span>
+              <div className="flex gap-1 rounded-lg bg-muted p-1" aria-label="רדיוס">
+                {([500, 1000] as const).map((r) => (
+                  <button key={r} type="button" onClick={() => setNearRadius(r)} aria-pressed={nearRadius === r}
+                    className={`min-h-9 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${nearRadius === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+                    {r === 500 ? "500 מ׳" : "1 ק״מ"}
+                  </button>
+                ))}
+              </div>
+              {nearStatus === "ok" && (
+                <span className="text-xs text-muted-foreground">{mapPins.length} מקומות · מרחק אווירי</span>
+              )}
+              <button type="button" onClick={exitNear}
+                className="ms-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <X size={14} /> יציאה
+              </button>
+            </div>
+          )}
+          {nearMode && nearStatus !== "ok" ? (
+            <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3" role="status">
+              {nearStatus === "locating" ? (
+                <p className="text-sm text-muted-foreground">מאתרים את המיקום שלך…</p>
+              ) : (
+                <>
+                  <p className="text-sm text-foreground">אין גישה למיקום, או שהמיקום לא זמין כרגע.</p>
+                  <button type="button" onClick={exitNear}
+                    className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    למפת ההמלצות הרגילה
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+          <div className="relative -mx-4 overflow-hidden" style={{ height: "calc(100vh - 180px)" }}>
           <ClientOnly fallback={<MapSkeleton />}>
             <Suspense fallback={<MapSkeleton />}>
               <RecsMap
@@ -410,6 +481,26 @@ function Recs() {
               />
             </Suspense>
           </ClientOnly>
+          {nearMode && mapPins.length === 0 && (
+            <div className="absolute inset-x-4 top-16 z-[600] rounded-xl border border-border bg-card p-4 text-center shadow-lg space-y-2" role="status">
+              <p className="text-sm text-foreground">
+                אין מקומות שמורים בטווח {nearRadius === 500 ? "500 מ׳" : "1 ק״מ"}{hasActiveFilters ? " עם המסננים שנבחרו" : ""}.
+              </p>
+              {nearRadius === 500 ? (
+                <button type="button" onClick={() => setNearRadius(1000)}
+                  className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  הרחב ל־1 ק״מ
+                </button>
+              ) : (
+                <button type="button" onClick={exitNear}
+                  className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  למפת ההמלצות הרגילה
+                </button>
+              )}
+            </div>
+          )}
+          </div>
+          )}
           </div>
         ) : (
           <PlacesList

@@ -120,3 +120,5 @@
 - [x] שגיאה משאירה preview; הצלחה מרעננת recs + rec-sources
 - [x] Itinerary quick search (batched load of all entries >1000)
 - [x] הצעת יום לפי קרבה בבוררי „הוסף ליום” (רשימה + מפה)
+
+- [x] "מה שמור לידי?" — מצב קרוב אליי במפת ההמלצות מכרטיס הבית

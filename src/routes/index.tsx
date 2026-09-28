@@ -858,7 +858,7 @@ function Home() {
           </Link>
         </section>
 
-        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations" })} variant="activeHome" />
+        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations", search: { near: 1 } })} variant="activeHome" />
 
         <section className="rounded-xl bg-card px-3.5 py-3 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -1097,7 +1097,7 @@ function Home() {
   // 6b. NEARBY (from saved recs)
   sections.push({
     key: "nearby",
-    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations" })} />,
+    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations", search: { near: 1 } })} />,
   });
 
   // 7. DEADLINES
@@ -1532,7 +1532,7 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
             <h2 className="text-[14px] font-semibold">מהמקומות ששמרתם, לידכם</h2>
             <p className="text-[11px] text-muted-foreground">אין כרגע גישה למיקום.</p>
           </div>
-          <button type="button" onClick={onSeeAll} className="min-h-11 shrink-0 px-1 text-[12px] font-medium text-[color:var(--accent)]">לשמורים</button>
+          <button type="button" onClick={onSeeAll} className="min-h-11 shrink-0 px-1 text-[12px] font-medium text-[color:var(--accent)]">ראו מה קרוב על המפה</button>
         </div>
       </section>
     );
@@ -1621,7 +1621,7 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
         onClick={onSeeAll}
         className="mt-3 w-full text-center text-[12px] text-[color:var(--accent)] font-medium"
       >
-        {variant === "activeHome" ? "למקומות השמורים" : "ראה הכל ›"}
+        ראו מה קרוב על המפה
       </button>
     </section>
   );
