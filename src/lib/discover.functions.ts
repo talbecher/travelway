@@ -316,10 +316,10 @@ export const discoverPlaces = createServerFn({ method: "POST" })
       languageCode: "he",
       pageSize: 1,
     });
-    if (resolved === null) {
-      return { ok: false, message: "לא הצלחנו לזהות את היעד כרגע. נסו שוב מאוחר יותר.", results: [] };
+    if (!resolved.ok) {
+      return { ok: false, message: FAIL_MESSAGES[resolved.kind], results: [] };
     }
-    const dest = resolved[0];
+    const dest = resolved.places[0];
     if (!dest || !(dest.types ?? []).some((t) => GEO_TYPES.has(t))) {
       return { ok: false, message: "היעד לא זוהה. בדקו את שם העיר והמדינה ונסו שוב.", results: [] };
     }
@@ -346,24 +346,26 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     const failedInterests: DiscoverInterest[] = [];
     const perInterest = new Map<DiscoverInterest, ApiPlace[]>();
 
+    const failKinds: FailKind[] = [];
     for (const interest of interests) {
-      const places = await placesFetch(apiKey, SEARCH_FIELD_MASK, {
+      const r = await placesFetch(apiKey, SEARCH_FIELD_MASK, {
         textQuery: `${INTEREST_QUERY[interest]} ${city}`,
         languageCode: "he",
         locationRestriction,
         pageSize: MAX_RESULTS,
       });
-      if (places === null) {
+      if (!r.ok) {
         failedInterests.push(interest);
+        failKinds.push(r.kind);
         continue;
       }
-      perInterest.set(interest, places);
+      perInterest.set(interest, r.places);
     }
 
     if (perInterest.size === 0) {
       return {
         ok: false,
-        message: "החיפוש נכשל. נסו שוב מאוחר יותר.",
+        message: FAIL_MESSAGES[pickFailKind(failKinds)],
         failedInterests,
         results: [],
       };
