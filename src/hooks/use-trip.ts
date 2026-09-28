@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { todayLocal } from "@/lib/format";
+import type { GeoEntry } from "@/lib/day-suggest";
 
 /**
  * All trip-scoped query keys MUST include the active tripId so cached data
@@ -169,3 +170,40 @@ export function recSourcesQuery(tripId: string) {
   });
 }
 export function useRecSources() { return useQuery(recSourcesQuery(useActiveTripId())); }
+
+/**
+ * Located-stop summary for the active trip + version (day-suggestion in "add to day").
+ * Key shares the ["day-entries-summary", tripId, ...] prefix so every existing
+ * itinerary invalidation refreshes it; paged past the 1000-row API cap.
+ */
+export function dayEntriesGeoQuery(tripId: string, versionId?: string | null) {
+  return queryOptions({
+    queryKey: ["day-entries-summary", tripId, versionId ?? null, "geo"],
+    enabled: !!tripId && !!versionId,
+    queryFn: async (): Promise<Record<string, GeoEntry[]>> => {
+      const PAGE = 1000;
+      const map: Record<string, GeoEntry[]> = {};
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("day_entries")
+          .select("id, day_id, title, latitude, longitude, linked_recommendation_id, display_order, created_at, itinerary_days!inner(trip_id, version_id)")
+          .eq("itinerary_days.trip_id", tripId)
+          .eq("itinerary_days.version_id", versionId!)
+          .order("display_order")
+          .order("created_at")
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as unknown as GeoEntry[];
+        for (const e of rows) (map[e.day_id] ||= []).push(e);
+        if (rows.length < PAGE) break;
+      }
+      return map;
+    },
+  });
+}
+export function useDayEntriesGeo() {
+  const tripId = useActiveTripId();
+  const { version } = useActiveVersion(tripId);
+  return useQuery(dayEntriesGeoQuery(tripId, version?.id));
+}
