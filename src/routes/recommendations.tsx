@@ -248,6 +248,7 @@ function Recs() {
   const resetFilters = () => {
     setQ("");
     setCity("all");
+    setSource("all");
     setRecentOnly(false);
     if (tab !== "hotels") setTab("all");
   };
