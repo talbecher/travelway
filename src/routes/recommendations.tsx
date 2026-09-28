@@ -740,9 +740,9 @@ function DaySuggestionPicker({ rec, days, disabled, onPick }: {
   const geo = useDayEntriesGeo();
   const { suggestion, alreadyInDayIds } = useMemo(() => {
     // Only use complete, successfully loaded data; otherwise show the plain list.
-    if (!geo.isSuccess || geo.isFetching && geo.isError) return { suggestion: null, alreadyInDayIds: new Set<string>() };
+    if (geo.status !== "success" || !geo.data) return { suggestion: null, alreadyInDayIds: new Set<string>() };
     return suggestDayForRec(recLatLng(rec), rec.id, days, geo.data);
-  }, [geo.isSuccess, geo.isError, geo.isFetching, geo.data, rec, days]);
+  }, [geo.status, geo.data, rec, days]);
   return (
     <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
       {suggestion && (
