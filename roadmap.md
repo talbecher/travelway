@@ -125,4 +125,4 @@
 
 - [x] "+ טיול חדש" בבורר הטיולים (גם עם טיול אחד), ניווט ל-/onboarding עם search: {}
 
-- [ ] Discover: error mapping (429/403/5xx-timeout/network/unknown, 429 priority) + double-click guard; onboarding create overlay
+- [x] Discover: error mapping (429/403/5xx-timeout/network/unknown, 429 priority) + double-click guard; onboarding create overlay
