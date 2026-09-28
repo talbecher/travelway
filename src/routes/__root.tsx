@@ -263,22 +263,26 @@ function SwitchTripButton() {
   const { data: trips = [] } = useTripsList(user?.id);
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  if (trips.length < 2) return null;
+  if (trips.length < 1) return null;
   const activeId = getActiveTripId();
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label="החלפת טיול"
+        aria-label="הטיולים שלי"
         className="flex h-11 w-11 min-w-11 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowLeftRight size={20} />
       </button>
-      <BottomSheet open={open} onOpenChange={setOpen} title="החלפת טיול">
+      <BottomSheet open={open} onOpenChange={setOpen} title="הטיולים שלי">
         <TripPicker
           userId={user?.id}
           activeTripId={activeId}
           onPick={() => setOpen(false)}
+          onCreateNew={() => {
+            setOpen(false);
+            router.navigate({ to: "/onboarding", search: {} });
+          }}
           onDeleted={(nextId) => {
             setOpen(false);
             if (!nextId) router.navigate({ to: "/onboarding" });

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Trash2, Users, User as UserIcon } from "lucide-react";
+import { Check, Trash2, Users, User as UserIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { useTripsList, tripRoleLabel, tripParticipantCount, type TripListItem } from "@/hooks/use-trips-list";
@@ -22,6 +22,7 @@ export function TripPicker({
   activeTripId,
   onPick,
   onDeleted,
+  onCreateNew,
   title = "בחר טיול",
   subtitle,
 }: {
@@ -29,6 +30,7 @@ export function TripPicker({
   activeTripId?: string | null;
   onPick: (tripId: string) => void;
   onDeleted?: (nextTripId: string | null) => void;
+  onCreateNew?: () => void;
   title?: string;
   subtitle?: string;
 }) {
@@ -98,6 +100,16 @@ export function TripPicker({
           />
         ))}
       </ul>
+      {onCreateNew && (
+        <button
+          type="button"
+          onClick={onCreateNew}
+          className="w-full min-h-11 rounded-2xl border border-dashed border-border bg-card flex items-center justify-center gap-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Plus size={16} />
+          <span>טיול חדש</span>
+        </button>
+      )}
     </div>
   );
 }
