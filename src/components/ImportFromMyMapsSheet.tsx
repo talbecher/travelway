@@ -18,21 +18,6 @@ const TYPE_ICON: Record<ImportedPlace["suggested_type"], string> = {
   hotel: "🏨",
 };
 
-type InsertRow = {
-  trip_id: string;
-  type: ImportedPlace["suggested_type"];
-  city: string | null;
-  name: string;
-  notes: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  google_maps_url: string | null;
-  photo_url: string | null;
-  google_rating: number | null;
-  google_rating_count: number | null;
-  status: "wishlist";
-};
-
 export function ImportFromMyMapsSheet({
   open,
   onOpenChange,
@@ -49,6 +34,7 @@ export function ImportFromMyMapsSheet({
   const [places, setPlaces] = useState<ImportedPlace[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [city, setCity] = useState("");
+  const [sourceName, setSourceName] = useState("");
   const [enriching, setEnriching] = useState<{ done: number; total: number } | null>(null);
 
   const reset = () => {
@@ -57,6 +43,7 @@ export function ImportFromMyMapsSheet({
     setPlaces([]);
     setSelected(new Set());
     setCity("");
+    setSourceName("");
     setLoading(false);
     setEnriching(null);
   };
@@ -74,8 +61,9 @@ export function ImportFromMyMapsSheet({
     setLoading(true);
     try {
       const result = await fetchKml({ data: { url: url.trim() } });
-      setPlaces(result);
-      setSelected(new Set(result.map((_, i) => i)));
+      setPlaces(result.places);
+      setSelected(new Set(result.places.map((_, i) => i)));
+      setSourceName(result.mapName ?? "");
       setStep("preview");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "שגיאה");
@@ -97,64 +85,68 @@ export function ImportFromMyMapsSheet({
     mutationFn: async () => {
       const chosen = places.filter((_, i) => selected.has(i));
       if (chosen.length === 0) throw new Error("לא נבחרו מקומות");
+      const name = sourceName.trim();
+      if (!name) throw new Error("תן שם למקור הייבוא");
+      const tripId = getActiveTripId();
       const enteredCity = city.trim() || null;
-      const payloads: InsertRow[] = chosen.map((p) => ({
-        trip_id: getActiveTripId(),
-        type: p.suggested_type,
-        city: enteredCity,
-        name: p.name,
-        notes: p.description,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        google_maps_url: p.google_maps_url,
-        photo_url: null,
-        google_rating: null,
-        google_rating_count: null,
-        status: "wishlist",
-      }));
-
-      setEnriching({ done: 0, total: payloads.length });
-      const BATCH = 5;
-      for (let i = 0; i < payloads.length; i += BATCH) {
-        const sliceIdx = payloads.slice(i, i + BATCH);
-        const results = await Promise.all(
-          sliceIdx.map((p) =>
-            p.latitude != null && p.longitude != null
-              ? enrichFn({
-                  data: {
-                    name: p.name,
-                    city: p.city,
-                    lat: p.latitude,
-                    lng: p.longitude,
-                  },
-                }).catch(() => null)
-              : Promise.resolve(null),
-          ),
-        );
-        results.forEach((r, k) => {
-          if (r?.updated) {
-            const idx = i + k;
-            payloads[idx].photo_url = r.photo_url;
-            payloads[idx].google_rating = r.google_rating;
-            payloads[idx].google_rating_count = r.google_rating_count;
-          }
-        });
-        setEnriching({ done: Math.min(i + BATCH, payloads.length), total: payloads.length });
-      }
-
-      const { error } = await supabase.from("recommendations").insert(payloads);
+      // Atomic: source + new recs + all links in one DB transaction.
+      const { data, error } = await supabase.rpc("import_my_map", {
+        _trip_id: tripId,
+        _name: name,
+        _url: url.trim(),
+        _city: enteredCity ?? "",
+        _places: chosen.map((p) => ({
+          name: p.name,
+          notes: p.description,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          google_maps_url: p.google_maps_url,
+          type: p.suggested_type,
+        })),
+      });
       if (error) throw error;
-      return payloads.length;
+      const rows = (data ?? []) as { recommendation_id: string; is_new: boolean; place_index: number }[];
+      const newCount = rows.filter((r) => r.is_new).length;
+      const linkedCount = rows.length - newCount;
+
+      // Photo enrichment is best-effort and separate — failures don't undo the import.
+      const toEnrich = rows
+        .filter((r) => r.is_new)
+        .map((r) => ({ id: r.recommendation_id, p: chosen[r.place_index] }))
+        .filter((x) => x.p && x.p.latitude != null && x.p.longitude != null);
+      setEnriching({ done: 0, total: toEnrich.length });
+      const BATCH = 5;
+      for (let i = 0; i < toEnrich.length; i += BATCH) {
+        await Promise.all(
+          toEnrich.slice(i, i + BATCH).map(async ({ id, p }) => {
+            try {
+              const r = await enrichFn({ data: { name: p.name, city: enteredCity, lat: p.latitude!, lng: p.longitude! } });
+              if (r?.updated) {
+                await supabase.from("recommendations").update({
+                  photo_url: r.photo_url, google_rating: r.google_rating, google_rating_count: r.google_rating_count,
+                }).eq("id", id);
+              }
+            } catch { /* ignore */ }
+          }),
+        );
+        setEnriching({ done: Math.min(i + BATCH, toEnrich.length), total: toEnrich.length });
+      }
+      return { newCount, linkedCount };
     },
-    onSuccess: (n) => {
-      qc.invalidateQueries({ queryKey: ["recs", getActiveTripId()] });
+    onSuccess: ({ newCount, linkedCount }) => {
       qc.invalidateQueries({ queryKey: ["recs"] });
-      toast.success(`✅ יובאו ${n} המלצות בהצלחה`);
+      qc.invalidateQueries({ queryKey: ["rec-sources"] });
+      toast.success(
+        linkedCount > 0
+          ? `✅ יובאו ${newCount} חדשות · ${linkedCount} קיימות קושרו למקור`
+          : `✅ יובאו ${newCount} המלצות בהצלחה`,
+      );
       handleClose(false);
     },
     onError: (e: Error) => {
+      // Keep preview + selection so the user can retry.
       setEnriching(null);
-      toast.error(e.message);
+      toast.error(e.message || "הייבוא נכשל — אפשר לנסות שוב");
     },
   });
 
@@ -185,6 +177,18 @@ export function ImportFromMyMapsSheet({
 
       {step === "preview" && (
         <div className="pt-2 space-y-3">
+          <div>
+            <label htmlFor="import-source-name" className="text-xs text-muted-foreground mb-1 block">שם המקור</label>
+            <input
+              id="import-source-name"
+              value={sourceName}
+              onChange={(e) => setSourceName(e.target.value)}
+              placeholder="לדוגמה: המפה של עומר"
+              maxLength={120}
+              className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">מקום קיים בטיול יקושר למקור רק אם יש לו אותו שם ומיקום (עד 50 מ׳) ואין התאמה נוספת; אחרת ייווצר חדש.</p>
+          </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">עיר (אופציונלי)</label>
             <input
@@ -241,7 +245,7 @@ export function ImportFromMyMapsSheet({
           </div>
           <button
             onClick={() => { if (!assertOnline()) return; importMut.mutate(); }}
-            disabled={importMut.isPending || selectedCount === 0}
+            disabled={importMut.isPending || selectedCount === 0 || !sourceName.trim()}
             className="w-full h-11 rounded-lg bg-[color:var(--accent)] text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {importMut.isPending && <Loader2 size={16} className="animate-spin" />}
