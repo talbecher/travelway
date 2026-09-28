@@ -2,34 +2,36 @@
 
 ## מה ישתנה למשתמש
 - בזמן הקלדה בשדה חיפוש מקום יופיעו הצעות (שם + כתובת קצרה), גם כשהחיפוש הישן חסום במגבלת השימוש.
-- רק אחרי לחיצה על הצעה נטענים פרטי המקום (שם, כתובת, מיקום, עיר, סוג, תמונה, דירוג), ואז הטופס מתמלא כמו היום.
-- Enter בשדה החיפוש לא שולח את הטופס. אם הצעה מסומנת בחצים — Enter בוחר אותה; אחרת לא קורה כלום.
-- אם טעינת הפרטים נכשלת: הודעה קצרה, ההצעות נשארות לניסיון חוזר, והטופס לא מקבל מקום חלקי.
+- רק אחרי לחיצה על הצעה נטענים פרטי המקום, ואז הטופס מתמלא כמו היום (שם, כתובת, מיקום, עיר, סוג, תמונה, דירוג Google).
+- Enter בשדה החיפוש לא שולח את הטופס. חצים מסמנים הצעה, Enter בוחר רק הצעה מסומנת; בלי סימון — לא קורה כלום.
+- כישלון בטעינת הפרטים: הודעה קצרה, ההצעות נשארות לניסיון חוזר, הטופס לא מקבל מקום חלקי. כישלון תמונה לא חוסם את הבחירה.
+- בהצעות לא יוצג עוד דירוג (Autocomplete לא מחזיר אותו); הדירוג יגיע אחרי הבחירה.
 
 ## מסלולים שעוברים לשיטה החדשה (כל מופעי שדה החיפוש)
-- הוספת/עריכת המלצה (עמוד ההמלצות)
-- מסך היום — 4 מופעים (הוספת תחנה, שינוי מיקום, כתובת, המלצה מתוך יום)
-- טופס מלון
-- „היינו כאן”
+- הוספת/עריכת המלצה, מסך היום (4 מופעים), טופס מלון, „היינו כאן”.
 
-## מסלול שנשאר תלוי בחיפוש הישן (ידווח בנפרד)
-- ייבוא AI (`ImportAISheet`) — מאמת מקומות אוטומטית בלי בחירת משתמש. לא יועבר להצעה הראשונה ולא ייחשב מתוקן; ימשיך להיכשל כל עוד המכסה חסומה.
+## נשאר תלוי בחיפוש הישן (ידווח בנפרד)
+- ייבוא AI — אימות אוטומטי בלי בחירת משתמש. לא יועבר להצעה הראשונה ולא ייחשב מתוקן.
 
 ## Technical details
-- `src/lib/places.functions.ts`: שתי פונקציות שרת חדשות, המפתח נשאר בשרת:
-  - `autocompletePlaces({ input, sessionToken })` → POST `places:autocomplete` (`languageCode: he`), מחזיר `{ suggestions: {placeId, main, secondary}[], error? }`, שגיאות מסווגות (quota/denied/upstream/network) בלוג בלבד.
-  - `getPlaceDetails({ placeId, sessionToken })` → GET `places/{id}` עם `sessionToken`, FieldMask: `id,displayName,formattedAddress,location,primaryTypeDisplayName,photos,addressComponents,rating,userRatingCount` (בדיוק השדות ש־`PlaceResult`/`SelectedPlace` צורכים היום). מחזיר `PlaceResult` באותו מבנה, כולל `extractCity` ו־`google_maps_url` הקיימים.
-  - `searchPlaces` נשאר כמו שהוא (מבנה תשובה ללא שינוי) עבור ייבוא AI.
+- `src/lib/places.functions.ts` — שתי פונקציות שרת חדשות, המפתח נשאר בשרת; `searchPlaces` לא משתנה:
+  - `autocompletePlaces({ input, sessionToken })` → POST `places:autocomplete`, `languageCode: he`, FieldMask `suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat`. מחזיר `{ suggestions: {placeId, main, secondary}[], error? }`; סטטוס Google בלוג בלבד.
+  - `getPlaceDetails({ placeId, sessionToken })` → GET `places/{id}?sessionToken=…`, FieldMask: `id,displayName,formattedAddress,location,primaryTypeDisplayName,photos,addressComponents,rating,userRatingCount`. מחזיר `PlaceResult` באותו מבנה (`extractCity`, `google_maps_url` קיימים).
+  - rating/userRatingCount נשארים: RecForm שומר אותם בפועל (`setGoogleRating`/`setGoogleRatingCount`).
+- הקשר גיאוגרפי: החיפוש הקיים לא שולח עיר, מדינה או הטיית מיקום — רק טקסט + `he`. לכן לא תתווסף הטיה או הגבלה חדשה.
 - `src/components/PlacesSearch.tsx`:
-  - session token (`crypto.randomUUID()`) נוצר בהקלדה הראשונה, משמש להצעות ולפרטים, ומתחדש אחרי בחירה מוצלחת או ניקוי.
-  - debounce 400ms נשמר; טקסט מתחת ל־2 תווים לא שולח בקשה; `seqRef` מתעלם מתשובות ישנות.
-  - בחירה: `pickingRef` חוסם בחירה כפולה, מצב טעינה על השורה; תשובת פרטים מתקבלת רק אם ה־seq לא השתנה והרכיב עדיין מותקן (unmount/סגירת טופס/מעבר טיול מבטלים). אחרי הפרטים — טעינת תמונה 400px כמו היום (כישלון תמונה → `photo_url: null`, לא חוסם).
-  - מקלדת: חצים למעלה/למטה מסמנים הצעה (`aria-activedescendant`, role=listbox/option); Enter תמיד `preventDefault`, בוחר רק הצעה מסומנת.
-  - `onSelect` מקבל `SelectedPlace` זהה למבנה הקיים — אין שינוי בצרכנים.
-  - הודעות: כשל הצעות → „שגיאה בחיפוש — נסה שוב”; כשל פרטים → „לא הצלחנו לטעון את פרטי המקום — נסה שוב”.
-- ללא שינוי: Discover, מכסות/חיוב, העשרת My Maps, סכמה, הזנה ידנית קיימת.
+  - seq מתעדכן מיד בכל שינוי קלט (כולל ניקוי וירידה מתחת ל־2 תווים) לפני ה־debounce של 400ms; מתחת ל־2 תווים — אין בקשה.
+  - session token (`crypto.randomUUID()`) נוצר בהקלדה הראשונה ומשותף להצעות ולפרטים; אחרי תשובת Details (הצלחה או כישלון) ה־token נזרק, ניסיון חוזר ייצור סשן חדש; ניקוי/נטישה מבטלים את הסשן. החידוש אינו תלוי בתמונה.
+  - בחירה: `pickingRef` ננעל מיד; בדיקת רלוונטיות (seq + דגל mounted) אחרי Details וגם אחרי התמונה, לפני `onSelect`. סגירת טופס/מעבר טיול מנתקים את הרכיב או מאפסים את seq, כך שתשובה מאוחרת נזרקת.
+  - תמונה: `getPlacePhotoUrl` 400px פעם אחת; כישלון → `photo_url: null`, בלי Details נוסף.
+  - נגישות: `role=combobox`, `aria-expanded`, `aria-controls`, `aria-activedescendant`, `role=listbox/option`; Enter תמיד `preventDefault`.
+  - `onSelect` מקבל `SelectedPlace` זהה — אין שינוי בצרכנים.
+- ללא שינוי: Discover, העשרת My Maps, מכסות, חיוב, סכמה, לוגיקת שמירה, הזנה ידנית.
+
+## קריאות לבחירה אחת
+- N קריאות Autocomplete (אחת לכל הפסקת הקלדה) + 1 Details + 1 תמונה. מכסות רלוונטיות: `AutocompletePlacesRequest` (Autocomplete) ו־`GetPlaceRequest` (Details), ו־`GetPhotoMediaRequest` לתמונה — בנפרד מ־`SearchTextRequest`. הגבולות בפרויקט לא ידועים ולא ינוחשו.
 
 ## אימות
 - `bunx tsgo --noEmit`, `bun run build`.
-- קריאות שרת חיות ל־autocomplete ול־details (ללא הדפסת המפתח) כדי לוודא שהן עובדות כשה־searchText מחזיר 429.
-- בדיקת דפדפן תלויה בקיום טיול בחשבון הבדיקה; אם אין — הדוח יפריד בין מה שנבדק בפועל לבין מה שאומת בקריאת קוד בלבד (Enter, בחירה כפולה, תשובה מאוחרת, תאימות בכל המסכים).
+- קריאות שרת חיות ל־autocomplete ול־details בזמן ש־searchText מחזיר 429 (ללא הדפסת המפתח).
+- בדיקת דפדפן רק אם יש טיול בחשבון הבדיקה; אחרת הדוח יפריד בין מה שנבדק בפועל למה שאומת בקריאת קוד בלבד.
