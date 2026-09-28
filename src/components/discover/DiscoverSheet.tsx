@@ -325,6 +325,7 @@ export function DiscoverSheet({
       setSelected(new Set(res.failed));
       if (res.ok.length > 0) toast.success(`נשמרו ${res.ok.length} מקומות להמלצות שלי`);
       if (res.failed.length > 0) toast.error(`${res.failed.length} מקומות לא נשמרו. אפשר לנסות שוב.`);
+      else onOpenChange(false);
     },
     onError: () => toast.error("השמירה נכשלה. נסו שוב."),
   });
@@ -343,6 +344,7 @@ export function DiscoverSheet({
       if (failed.length === 0) {
         if (added > 0) toast.success(`נוספו ${added} מקומות ליום הזה`);
         else if (skipped > 0) toast.success("כל המקומות שנבחרו כבר נמצאים ביום הזה");
+        onOpenChange(false);
       } else {
         toast.error(`${failed.length} מקומות לא נוספו ליום. אפשר לנסות שוב.`);
       }
@@ -386,6 +388,7 @@ export function DiscoverSheet({
       }
       if (saveRes.failed.length === 0 && addRes.failed.length === 0) {
         toast.success(`נשמרו ונוספו ${addRes.added} מקומות ליום הזה`);
+        onOpenChange(false);
       }
     },
     onError: () => toast.error("הפעולה נכשלה. נסו שוב."),
