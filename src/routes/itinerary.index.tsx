@@ -417,7 +417,7 @@ function Itinerary() {
         </div>
       )}
 
-      {grouped.map((g, gi) => {
+      {!term && grouped.map((g, gi) => {
         const key = `${g.city || "—"}-${gi}`;
         return (
           <section
