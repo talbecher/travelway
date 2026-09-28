@@ -118,3 +118,4 @@
 - [x] טעינת קשרים בעמודים (>1000)
 - [x] מסנן „מקור” ברשימה/מפה + תווית בכרטיס
 - [x] שגיאה משאירה preview; הצלחה מרעננת recs + rec-sources
+- [x] Itinerary quick search (batched load of all entries >1000)

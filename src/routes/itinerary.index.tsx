@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Trash2, Check, X, MoreHorizontal, Sparkles, Download } from "lucide-react";
+import { Pencil, Trash2, Check, X, MoreHorizontal, Sparkles, Download, Search } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, hebWeekday } from "@/lib/format";
@@ -47,6 +47,7 @@ type EntryRow = {
   photo_url: string | null;
   latitude: number | string | null;
   longitude: number | string | null;
+  recommendations?: { name: string | null; address: string | null } | null;
 };
 
 
@@ -169,24 +170,55 @@ function Itinerary() {
     queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null],
     enabled: !!tripId && !!activeVersion?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("day_entries")
-        .select(
-          "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, itinerary_days!inner(trip_id, version_id)"
-        )
-
-        .eq("itinerary_days.trip_id", tripId)
-        .eq("itinerary_days.version_id", activeVersion!.id)
-        .order("display_order")
-        .order("created_at");
-      if (error) throw error;
+      // Load in pages so trips with >1000 entries aren't truncated by the API row limit.
+      const PAGE = 1000;
+      const all: EntryRow[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("day_entries")
+          .select(
+            "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations!day_entries_linked_recommendation_id_fkey(name, address), itinerary_days!inner(trip_id, version_id)"
+          )
+          .eq("itinerary_days.trip_id", tripId)
+          .eq("itinerary_days.version_id", activeVersion!.id)
+          .order("display_order")
+          .order("created_at")
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as unknown as EntryRow[];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+      }
       const map: Record<string, EntryRow[]> = {};
-      for (const e of (data ?? []) as unknown as EntryRow[]) {
+      for (const e of all) {
         (map[e.day_id] ||= []).push(e);
       }
       return map;
     },
   });
+
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    setQuery("");
+  }, [tripId, activeVersion?.id]);
+  const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  const term = norm(query);
+  const searchResults = useMemo(() => {
+    if (!term) return [];
+    const dayById = new Map(days.map((d) => [d.id, d]));
+    const out: { entry: EntryRow; day: (typeof days)[number] }[] = [];
+    for (const d of days) {
+      for (const e of entriesByDay[d.id] ?? []) {
+        const r = e.recommendations;
+        if ([e.title, e.location_name, r?.name, r?.address].some((v) => norm(v).includes(term))) {
+          const day = dayById.get(e.day_id);
+          if (day) out.push({ entry: e, day });
+        }
+      }
+    }
+    return out;
+  }, [term, days, entriesByDay]);
 
 
   const grouped = useMemo(() => {
@@ -306,10 +338,56 @@ function Itinerary() {
 
       <VersionSelector tripId={tripId} />
 
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="חפש מקום במסלול"
+          aria-label="חפש מקום במסלול"
+          className="h-11 w-full rounded-xl border border-border bg-surface pr-9 pl-11 text-[14px] outline-none focus:border-accent [&::-webkit-search-cancel-button]:hidden"
+        />
+        {query && (
+          <button
+            type="button"
+            aria-label="נקה חיפוש"
+            onClick={() => setQuery("")}
+            className="absolute left-0 top-0 flex h-11 w-11 items-center justify-center text-muted-foreground"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
 
+      {term && (
+        searchResults.length === 0 ? (
+          <p className="py-8 text-center text-[13px] text-muted-foreground">לא נמצא מקום במסלול</p>
+        ) : (
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-muted-foreground">{searchResults.length} תוצאות</p>
+            {searchResults.map(({ entry, day }) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => navigate({ to: "/itinerary/$dayId", params: { dayId: day.id } })}
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 text-right"
+              >
+                <span className="shrink-0 text-base">{entry.icon_emoji || iconFor(entry.entry_type)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-medium text-foreground">{entry.title}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {[`יום ${day.day_number}`, hebDate(day.date), day.city_label].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )
+      )}
 
       {/* City navigation strip */}
-      {grouped.length > 1 && (
+      {!term && grouped.length > 1 && (
         <div className="sticky top-0 z-10 -mx-4 overflow-x-auto border-b border-border bg-surface px-4 no-scrollbar">
           <div className="flex w-max gap-1.5" dir="rtl">
             {grouped.map((g, i) => {
@@ -339,7 +417,7 @@ function Itinerary() {
         </div>
       )}
 
-      {grouped.map((g, gi) => {
+      {!term && grouped.map((g, gi) => {
         const key = `${g.city || "—"}-${gi}`;
         return (
           <section
