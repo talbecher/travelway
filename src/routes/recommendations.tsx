@@ -555,21 +555,12 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
         </button>
       </div>
       <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${rec.name} ליום`}>
-        <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
-          {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
-          {days.map((d) => (
-            <button key={d.id} disabled={addToDay.isPending}
-              onClick={() => {
-                if (mapAddingRef.current) return;
-                mapAddingRef.current = true;
-                addToDay.mutate(d.id);
-              }}
-              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0 disabled:opacity-60">
-              <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
-              <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
-            </button>
-          ))}
-        </div>
+        <DaySuggestionPicker rec={rec} days={days} disabled={addToDay.isPending}
+          onPick={(dayId) => {
+            if (mapAddingRef.current) return;
+            mapAddingRef.current = true;
+            addToDay.mutate(dayId);
+          }} />
       </BottomSheet>
     </div>
   );
@@ -727,22 +718,56 @@ function PlacesList({
       </div>
 
       <BottomSheet open={!!dayPickerRec} onOpenChange={(open) => { if (!open) closeDayPicker(); }} title={dayPickerRec ? `הוסף את ${dayPickerRec.name} ליום` : ""}>
-        <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
-          {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
-          {days.map((d) => (
-            <button key={d.id} disabled={addToDay.isPending}
-              onClick={() => {
-                if (!dayPickerRec || addingRef.current) return;
-                addingRef.current = true;
-                addToDay.mutate({ rec: dayPickerRec, dayId: d.id });
-              }}
-              className="w-full text-right flex justify-between items-center bg-background border border-border rounded-lg px-3 py-2 min-h-0 disabled:opacity-60">
-              <span className="text-sm">יום {d.day_number} · {hebDate(d.date)}</span>
-              <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
-            </button>
-          ))}
-        </div>
+        {dayPickerRec && (
+          <DaySuggestionPicker rec={dayPickerRec} days={days} disabled={addToDay.isPending}
+            onPick={(dayId) => {
+              if (!dayPickerRec || addingRef.current) return;
+              addingRef.current = true;
+              addToDay.mutate({ rec: dayPickerRec, dayId });
+            }} />
+        )}
       </BottomSheet>
+    </div>
+  );
+}
+
+type PickerDay = { id: string; day_number: number; date: string; city_label: string | null };
+
+/** Day list for "add to day" + optional proximity hint. Both the hint and the day rows call the same onPick. */
+function DaySuggestionPicker({ rec, days, disabled, onPick }: {
+  rec: Rec; days: PickerDay[]; disabled: boolean; onPick: (dayId: string) => void;
+}) {
+  const geo = useDayEntriesGeo();
+  const { suggestion, alreadyInDayIds } = useMemo(() => {
+    // Only use complete, successfully loaded data; otherwise show the plain list.
+    if (!geo.isSuccess || geo.isFetching && geo.isError) return { suggestion: null, alreadyInDayIds: new Set<string>() };
+    return suggestDayForRec(recLatLng(rec), rec.id, days, geo.data);
+  }, [geo.isSuccess, geo.isError, geo.isFetching, geo.data, rec, days]);
+  return (
+    <div className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
+      {suggestion && (
+        <button type="button" disabled={disabled} onClick={() => onPick(suggestion.dayId)}
+          className="w-full text-right flex items-center gap-2 rounded-lg border border-[color:var(--accent)] bg-[color:color-mix(in_oklab,var(--accent)_10%,transparent)] px-3 py-2 mb-2 min-h-11 disabled:opacity-60">
+          <MapPin size={16} className="shrink-0 text-[color:var(--accent)]" />
+          <span className="text-sm">קרוב לתחנה ביום {suggestion.dayNumber} · {fmtApproxDistance(suggestion.km)}{suggestion.stopTitle ? ` מ${suggestion.stopTitle}` : ""}</span>
+        </button>
+      )}
+      {days.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">אין ימים במסלול</div>}
+      {days.map((d) => {
+        const hl = suggestion?.dayId === d.id;
+        const already = alreadyInDayIds.has(d.id);
+        return (
+          <button key={d.id} disabled={disabled} onClick={() => onPick(d.id)}
+            className={`w-full text-right flex justify-between items-center bg-background border rounded-lg px-3 py-2 min-h-0 disabled:opacity-60 ${hl ? "border-[color:var(--accent)] border-2" : "border-border"}`}>
+            <span className="text-sm flex items-center gap-1.5">
+              יום {d.day_number} · {hebDate(d.date)}
+              {hl && <span className="text-[10px] px-1.5 rounded-full bg-[color:var(--accent)] text-primary-foreground">קרוב</span>}
+              {already && <span className="text-[10px] px-1.5 rounded-full bg-muted text-muted-foreground">כבר ביום זה</span>}
+            </span>
+            <span className="text-xs text-muted-foreground" dir="ltr">{d.city_label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
