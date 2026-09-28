@@ -207,6 +207,7 @@ export function DiscoverSheet({
   };
 
   const run = useServerFn(discoverPlaces);
+  const searchingRef = useRef(false);
   const search = useMutation({
     mutationFn: (vars: { city: string; country: string; interests: string[] }) =>
       run({ data: vars }),
@@ -223,7 +224,12 @@ export function DiscoverSheet({
     },
     onError: () => {
       setData(null);
-      setErrorMsg("החיפוש נכשל. נסו שוב מאוחר יותר.");
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+      setErrorMsg(
+        offline
+          ? "אין חיבור לאינטרנט. בדקו את החיבור ונסו שוב."
+          : "לא הצלחנו להגיע לשרת. בדקו את החיבור ונסו שוב.",
+      );
     },
   });
 
@@ -401,9 +407,13 @@ export function DiscoverSheet({
     !search.isPending;
 
   const submit = () => {
-    if (!canSubmit) return;
+    if (!canSubmit || searchingRef.current) return;
+    searchingRef.current = true;
     setErrorMsg(null);
-    search.mutate({ city: city.trim(), country: country.trim(), interests });
+    search.mutate(
+      { city: city.trim(), country: country.trim(), interests },
+      { onSettled: () => { searchingRef.current = false; } },
+    );
   };
 
   const results = data?.ok ? data.results : [];
