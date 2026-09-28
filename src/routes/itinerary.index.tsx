@@ -338,10 +338,56 @@ function Itinerary() {
 
       <VersionSelector tripId={tripId} />
 
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="חפש מקום במסלול"
+          aria-label="חפש מקום במסלול"
+          className="h-11 w-full rounded-xl border border-border bg-surface pr-9 pl-11 text-[14px] outline-none focus:border-accent [&::-webkit-search-cancel-button]:hidden"
+        />
+        {query && (
+          <button
+            type="button"
+            aria-label="נקה חיפוש"
+            onClick={() => setQuery("")}
+            className="absolute left-0 top-0 flex h-11 w-11 items-center justify-center text-muted-foreground"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
 
+      {term && (
+        searchResults.length === 0 ? (
+          <p className="py-8 text-center text-[13px] text-muted-foreground">לא נמצא מקום במסלול</p>
+        ) : (
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-muted-foreground">{searchResults.length} תוצאות</p>
+            {searchResults.map(({ entry, day }) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => navigate({ to: "/itinerary/$dayId", params: { dayId: day.id } })}
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 text-right"
+              >
+                <span className="shrink-0 text-base">{entry.icon_emoji || iconFor(entry.entry_type)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-medium text-foreground">{entry.title}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {[`יום ${day.day_number}`, hebDate(day.date), day.city_label].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )
+      )}
 
       {/* City navigation strip */}
-      {grouped.length > 1 && (
+      {!term && grouped.length > 1 && (
         <div className="sticky top-0 z-10 -mx-4 overflow-x-auto border-b border-border bg-surface px-4 no-scrollbar">
           <div className="flex w-max gap-1.5" dir="rtl">
             {grouped.map((g, i) => {
