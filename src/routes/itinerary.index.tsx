@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Trash2, Check, X, MoreHorizontal, Sparkles, Download } from "lucide-react";
+import { Pencil, Trash2, Check, X, MoreHorizontal, Sparkles, Download, Search } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDays, useTrip } from "@/hooks/use-trip";
 import { hebDate, hebWeekday } from "@/lib/format";
@@ -47,6 +47,7 @@ type EntryRow = {
   photo_url: string | null;
   latitude: number | string | null;
   longitude: number | string | null;
+  recommendations?: { name: string | null; address: string | null } | null;
 };
 
 
@@ -169,24 +170,55 @@ function Itinerary() {
     queryKey: ["day-entries-summary", tripId, activeVersion?.id ?? null],
     enabled: !!tripId && !!activeVersion?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("day_entries")
-        .select(
-          "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, itinerary_days!inner(trip_id, version_id)"
-        )
-
-        .eq("itinerary_days.trip_id", tripId)
-        .eq("itinerary_days.version_id", activeVersion!.id)
-        .order("display_order")
-        .order("created_at");
-      if (error) throw error;
+      // Load in pages so trips with >1000 entries aren't truncated by the API row limit.
+      const PAGE = 1000;
+      const all: EntryRow[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("day_entries")
+          .select(
+            "id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations!day_entries_linked_recommendation_id_fkey(name, address), itinerary_days!inner(trip_id, version_id)"
+          )
+          .eq("itinerary_days.trip_id", tripId)
+          .eq("itinerary_days.version_id", activeVersion!.id)
+          .order("display_order")
+          .order("created_at")
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as unknown as EntryRow[];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+      }
       const map: Record<string, EntryRow[]> = {};
-      for (const e of (data ?? []) as unknown as EntryRow[]) {
+      for (const e of all) {
         (map[e.day_id] ||= []).push(e);
       }
       return map;
     },
   });
+
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    setQuery("");
+  }, [tripId, activeVersion?.id]);
+  const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  const term = norm(query);
+  const searchResults = useMemo(() => {
+    if (!term) return [];
+    const dayById = new Map(days.map((d) => [d.id, d]));
+    const out: { entry: EntryRow; day: (typeof days)[number] }[] = [];
+    for (const d of days) {
+      for (const e of entriesByDay[d.id] ?? []) {
+        const r = e.recommendations;
+        if ([e.title, e.location_name, r?.name, r?.address].some((v) => norm(v).includes(term))) {
+          const day = dayById.get(e.day_id);
+          if (day) out.push({ entry: e, day });
+        }
+      }
+    }
+    return out;
+  }, [term, days, entriesByDay]);
 
 
   const grouped = useMemo(() => {
