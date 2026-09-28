@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Search, X } from "lucide-react";
-import { searchPlaces, getPlacePhotoUrl, type PlaceResult } from "@/lib/places.functions";
+import {
+  autocompletePlaces,
+  getPlaceDetails,
+  getPlacePhotoUrl,
+  type PlaceSuggestion,
+} from "@/lib/places.functions";
 
 export type SelectedPlace = {
   name: string;
@@ -16,6 +21,10 @@ export type SelectedPlace = {
   primaryType?: string | null;
 };
 
+function newToken(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
 export function PlacesSearch({
   onSelect,
   placeholder = "חפש מקום...",
@@ -25,21 +34,36 @@ export function PlacesSearch({
   placeholder?: string;
   autoFocus?: boolean;
 }) {
-  const search = useServerFn(searchPlaces);
+  const autocomplete = useServerFn(autocompletePlaces);
+  const details = useServerFn(getPlaceDetails);
   const getPhoto = useServerFn(getPlacePhotoUrl);
 
+  const listId = useId();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PlaceResult[]>([]);
-  const [photos, setPhotos] = useState<Record<string, string | null>>({});
+  const [results, setResults] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [detailsError, setDetailsError] = useState(false);
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const [pickingId, setPickingId] = useState<string | null>(null);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const seqRef = useRef(0);
+  const tokenRef = useRef<string | null>(null);
+  const pickingRef = useRef(false);
+  const mountedRef = useRef(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Close on outside click
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      seqRef.current++;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (!wrapRef.current) return;
@@ -49,87 +73,115 @@ export function PlacesSearch({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  const run = useCallback(
-    async (q: string) => {
-      const my = ++seqRef.current;
-      setLoading(true);
-      setError(false);
-      try {
-        const r = await search({ data: { query: q } });
-        if (my !== seqRef.current) return;
-        if (r.error) {
-          setError(true);
-          setResults([]);
-          return;
-        }
-        setResults(r.results);
-        setPhotos({});
-        // Lazy-load photos for top 3
-        r.results.slice(0, 3).forEach(async (p) => {
-          if (!p.photoName) return;
-          const photo = await getPhoto({ data: { photoName: p.photoName, maxWidthPx: 120 } });
-          if (my !== seqRef.current) return;
-          setPhotos((prev) => ({ ...prev, [p.id]: photo.url }));
-        });
-      } catch {
-        if (my === seqRef.current) {
-          setError(true);
-          setResults([]);
-        }
-      } finally {
-        if (my === seqRef.current) setLoading(false);
+  async function run(q: string, my: number) {
+    if (!tokenRef.current) tokenRef.current = newToken();
+    const token = tokenRef.current;
+    setLoading(true);
+    setError(false);
+    try {
+      const r = await autocomplete({ data: { input: q, sessionToken: token } });
+      if (!mountedRef.current || my !== seqRef.current) return;
+      if (r.error) {
+        setError(true);
+        setResults([]);
+        return;
       }
-    },
-    [search, getPhoto],
-  );
+      setResults(r.suggestions);
+      setActive(-1);
+    } catch {
+      if (mountedRef.current && my === seqRef.current) {
+        setError(true);
+        setResults([]);
+      }
+    } finally {
+      if (mountedRef.current && my === seqRef.current) setLoading(false);
+    }
+  }
 
   function onChange(v: string) {
+    const my = ++seqRef.current; // invalidate any in-flight response immediately
     setQuery(v);
     setOpen(true);
+    setDetailsError(false);
+    setActive(-1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (v.trim().length < 2) {
       setResults([]);
       setLoading(false);
       setError(false);
+      if (!v.trim()) tokenRef.current = null; // abandoned session
       return;
     }
-    debounceRef.current = setTimeout(() => void run(v.trim()), 400);
+    debounceRef.current = setTimeout(() => void run(v.trim(), my), 400);
   }
 
-  async function pick(p: PlaceResult) {
-    let photo_url = photos[p.id] ?? null;
-    if (photo_url === undefined || (photo_url == null && p.photoName)) {
-      try {
-        const r = await getPhoto({ data: { photoName: p.photoName!, maxWidthPx: 400 } });
-        photo_url = r.url;
-      } catch {
-        photo_url = null;
-      }
-    } else if (photo_url && p.photoName) {
-      // We only cached a small (120px) preview; re-fetch a larger one for storage
-      try {
-        const r = await getPhoto({ data: { photoName: p.photoName, maxWidthPx: 400 } });
-        photo_url = r.url ?? photo_url;
-      } catch {
-        /* keep small one */
-      }
-    }
-    onSelect({
-      name: p.name,
-      address: p.address,
-      latitude: p.latitude,
-      longitude: p.longitude,
-      google_maps_url: p.google_maps_url,
-      photo_url,
-      city: p.city,
-      rating: p.rating,
-      userRatingCount: p.userRatingCount,
-      primaryType: p.primaryType,
-    });
-    setOpen(false);
+  function clear() {
+    seqRef.current++;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    tokenRef.current = null;
+    pickingRef.current = false;
+    setPickingId(null);
     setQuery("");
     setResults([]);
+    setOpen(false);
+    setError(false);
+    setDetailsError(false);
+    setActive(-1);
   }
+
+  async function pick(s: PlaceSuggestion) {
+    if (pickingRef.current) return;
+    pickingRef.current = true;
+    const my = seqRef.current;
+    const token = tokenRef.current ?? newToken();
+    tokenRef.current = null; // Details ends the session; never reuse
+    setPickingId(s.placeId);
+    setDetailsError(false);
+    const stale = () => !mountedRef.current || my !== seqRef.current;
+    try {
+      const r = await details({ data: { placeId: s.placeId, sessionToken: token } });
+      if (stale()) return;
+      if (!r.place) {
+        setDetailsError(true);
+        return;
+      }
+      const p = r.place;
+      let photo_url: string | null = null;
+      if (p.photoName) {
+        try {
+          const ph = await getPhoto({ data: { photoName: p.photoName, maxWidthPx: 400 } });
+          photo_url = ph.url;
+        } catch {
+          photo_url = null;
+        }
+      }
+      if (stale()) return;
+      onSelect({
+        name: p.name,
+        address: p.address,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        google_maps_url: p.google_maps_url,
+        photo_url,
+        city: p.city,
+        rating: p.rating,
+        userRatingCount: p.userRatingCount,
+        primaryType: p.primaryType,
+      });
+      seqRef.current++;
+      setOpen(false);
+      setQuery("");
+      setResults([]);
+    } catch {
+      if (!stale()) setDetailsError(true);
+    } finally {
+      pickingRef.current = false;
+      if (mountedRef.current) setPickingId(null);
+    }
+  }
+
+  const showList = open && query.trim().length >= 2;
+  const activeId = active >= 0 && results[active] ? `${listId}-opt-${active}` : undefined;
 
   return (
     <div ref={wrapRef} className="relative">
@@ -140,11 +192,34 @@ export function PlacesSearch({
         />
         <input
           type="text"
+          role="combobox"
+          aria-expanded={showList}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeId}
           value={query}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => query && setOpen(true)}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setOpen(false);
+            if (e.key === "Escape") {
+              setOpen(false);
+              return;
+            }
+            if (e.key === "ArrowDown" && results.length) {
+              e.preventDefault();
+              setOpen(true);
+              setActive((a) => (a + 1) % results.length);
+              return;
+            }
+            if (e.key === "ArrowUp" && results.length) {
+              e.preventDefault();
+              setActive((a) => (a <= 0 ? results.length - 1 : a - 1));
+              return;
+            }
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (showList && active >= 0 && results[active]) void pick(results[active]);
+            }
           }}
           autoFocus={autoFocus}
           placeholder={placeholder}
@@ -155,11 +230,7 @@ export function PlacesSearch({
           <button
             type="button"
             aria-label="נקה"
-            onClick={() => {
-              setQuery("");
-              setResults([]);
-              setOpen(false);
-            }}
+            onClick={clear}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground min-h-0"
           >
             <X size={14} />
@@ -167,8 +238,13 @@ export function PlacesSearch({
         )}
       </div>
 
-      {open && query.trim().length >= 2 && (
+      {showList && (
         <div className="absolute z-30 left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-[320px] overflow-y-auto">
+          {detailsError && (
+            <div className="p-3 text-xs text-[color:var(--accent-2)]" role="alert">
+              לא הצלחנו לטעון את פרטי המקום — נסה שוב
+            </div>
+          )}
           {loading && (
             <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground animate-pulse" />
@@ -176,55 +252,49 @@ export function PlacesSearch({
             </div>
           )}
           {!loading && error && (
-            <div className="p-3 text-xs text-[color:var(--accent-2)]">
-              שגיאה בחיפוש — נסה שוב
-            </div>
+            <div className="p-3 text-xs text-[color:var(--accent-2)]">שגיאה בחיפוש — נסה שוב</div>
           )}
           {!loading && !error && results.length === 0 && (
             <div className="p-3 text-xs text-muted-foreground">לא נמצאו תוצאות</div>
           )}
-          {!loading &&
-            !error &&
-            results.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => void pick(r)}
-                className="w-full text-right flex items-center gap-2 p-2 hover:bg-muted/50 border-b border-border last:border-b-0 min-h-0"
-              >
-                {photos[r.id] ? (
-                  <img
-                    src={photos[r.id]!}
-                    alt=""
-                    loading="lazy"
-                    className="w-11 h-11 rounded-md object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-11 h-11 rounded-md bg-muted shrink-0 flex items-center justify-center text-lg">
-                    📍
+          {!loading && !error && results.length > 0 && (
+            <ul id={listId} role="listbox" aria-label="הצעות מקומות">
+              {results.map((r, i) => (
+                <li
+                  key={r.placeId}
+                  id={`${listId}-opt-${i}`}
+                  role="option"
+                  aria-selected={i === active}
+                  aria-disabled={pickingId !== null}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void pick(r)}
+                  className={
+                    "w-full text-right flex items-center gap-2 p-2 border-b border-border last:border-b-0 cursor-pointer " +
+                    (i === active ? "bg-muted" : "hover:bg-muted/50") +
+                    (pickingId && pickingId !== r.placeId ? " opacity-50" : "")
+                  }
+                >
+                  <div className="w-9 h-9 rounded-md bg-muted shrink-0 flex items-center justify-center text-base">
+                    {pickingId === r.placeId ? (
+                      <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground animate-pulse" />
+                    ) : (
+                      "📍"
+                    )}
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate" dir="ltr">
-                    {r.name}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate" dir="ltr">
-                    {r.address}
-                  </div>
-                  {r.rating != null && (
-                    <div className="text-[12px] text-muted-foreground" dir="ltr">
-                      ★ {r.rating.toFixed(1)}
-                      {r.userRatingCount != null && (
-                        <span> ({r.userRatingCount.toLocaleString("he-IL")} ביקורות)</span>
-                      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate" dir="auto">
+                      {r.main}
                     </div>
-                  )}
-                  {r.primaryType && (
-                    <div className="text-[10px] text-muted-foreground/80">{r.primaryType}</div>
-                  )}
-                </div>
-              </button>
-            ))}
+                    {r.secondary && (
+                      <div className="text-[11px] text-muted-foreground truncate" dir="auto">
+                        {r.secondary}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
