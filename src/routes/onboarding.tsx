@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DateField } from "@/components/DateField";
-import { Share2, Trash2 } from "lucide-react";
+import { Plane, Share2, Trash2 } from "lucide-react";
 
 const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
 
@@ -329,7 +329,7 @@ function Onboarding() {
       )}
 
       <form
-        onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; submit.mutate(); }}
+        onSubmit={(e) => { e.preventDefault(); if (submit.isPending || submit.isSuccess) return; if (!assertOnline()) return; submit.mutate(); }}
         className="space-y-4"
       >
         <Field label="יעד">
@@ -496,6 +496,32 @@ function Onboarding() {
           ביטול
         </button>
       </form>
+      {!isEditing && (submit.isPending || submit.isSuccess) && (
+        <CreatingOverlay destination={destination.trim() || title.trim()} />
+      )}
+    </div>
+  );
+}
+
+function CreatingOverlay({ destination }: { destination: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-[1100] flex items-center justify-center bg-background/90 backdrop-blur-sm px-6"
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8 text-center shadow-lg">
+        <div className="relative mx-auto mb-5 h-20 w-20">
+          <div className="absolute inset-0 rounded-full bg-[color:var(--accent)]/15 motion-safe:animate-ping" />
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[color:var(--accent)]/20 text-[color:var(--accent)]">
+            <Plane size={34} className="motion-safe:animate-bounce" />
+          </div>
+        </div>
+        <h2 className="text-lg font-medium">
+          {destination ? `מכינים את הטיול שלך ל־${destination}…` : "מכינים את הטיול שלך…"}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">רק רגע, זה לא ייקח הרבה זמן</p>
+      </div>
     </div>
   );
 }
