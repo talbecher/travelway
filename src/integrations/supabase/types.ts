@@ -404,6 +404,41 @@ export type Database = {
           },
         ]
       }
+      import_sources: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          source_url: string | null
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          source_url?: string | null
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          source_url?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_sources_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itinerary_days: {
         Row: {
           city_label: string | null
@@ -486,6 +521,39 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recommendation_sources: {
+        Row: {
+          created_at: string
+          recommendation_id: string
+          source_id: string
+        }
+        Insert: {
+          created_at?: string
+          recommendation_id: string
+          source_id: string
+        }
+        Update: {
+          created_at?: string
+          recommendation_id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_sources_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_sources_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "import_sources"
             referencedColumns: ["id"]
           },
         ]
@@ -682,6 +750,20 @@ export type Database = {
       }
       can_access_trip: { Args: { _trip_id: string }; Returns: boolean }
       claim_share: { Args: { _token: string }; Returns: string }
+      import_my_map: {
+        Args: {
+          _city: string
+          _name: string
+          _places: Json
+          _trip_id: string
+          _url: string
+        }
+        Returns: {
+          is_new: boolean
+          place_index: number
+          recommendation_id: string
+        }[]
+      }
       mark_recommendation_booked: {
         Args: {
           _booking_note: string

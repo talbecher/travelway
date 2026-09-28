@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useRecs, useHotels, useDays, useTrip } from "@/hooks/use-trip";
+import { useRecs, useHotels, useDays, useTrip, useRecSources } from "@/hooks/use-trip";
 import { DiscoverSheet, useDiscoverAccess } from "@/components/discover/DiscoverSheet";
 import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
@@ -99,6 +99,8 @@ function Recs() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>((search.tab as Tab | undefined) ?? "all");
   const [city, setCity] = useState<string>("all");
+  const [source, setSource] = useState<string>("all");
+  const { data: recSources } = useRecSources();
   const [view, setView] = useState<"list" | "map">("list");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -146,6 +148,12 @@ function Recs() {
   }, [recs, tab]);
 
   useEffect(() => { setCity("all"); }, [tab]);
+  useEffect(() => { setSource("all"); }, [activeTripId]);
+  useEffect(() => {
+    if (source !== "all" && recSources && !recSources.sources.some((s) => s.id === source)) setSource("all");
+  }, [recSources, source]);
+  const sourceMatch = (r: Rec): boolean =>
+    source === "all" || (recSources?.byRec[r.id]?.includes(source) ?? false);
   useEffect(() => { if (tab === "hotels") setView("list"); }, [tab]);
   useEffect(() => { if (view === "map" || tab === "hotels") exitSelection(); /* eslint-disable-next-line */ }, [view, tab]);
 
@@ -169,9 +177,10 @@ function Recs() {
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
       .filter((r) => recMatchesQuery(r, q))
+      .filter(sourceMatch)
       .map((r) => r.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city, q]);
+  }, [recs, tab, city, q, source, recSources]);
 
   const selectAllVisible = () => setSelectedIds(new Set(visibleIds));
 
@@ -185,6 +194,7 @@ function Recs() {
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["recs"] });
+      qc.invalidateQueries({ queryKey: ["rec-sources"] });
       toast.success(`נמחקו ${n} המלצות`);
       exitSelection();
     },
@@ -197,6 +207,7 @@ function Recs() {
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
       .filter((r) => recMatchesQuery(r, q))
+      .filter(sourceMatch)
       .filter((r) => r.latitude != null && r.longitude != null)
       .map((r) => ({
         id: r.id,
@@ -213,7 +224,7 @@ function Recs() {
         photo_url: r.photo_url ?? null,
       }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city, q, view]);
+  }, [recs, tab, city, q, view, source, recSources]);
 
 
 
@@ -232,11 +243,12 @@ function Recs() {
     tab === "food" ? "food" : tab === "attractions" ? "attraction" : "all";
 
   const selectableInList = tab !== "hotels" && view === "list";
-  const hasActiveFilters = q.trim().length > 0 || city !== "all" || recentOnly || (tab !== "all" && tab !== "hotels");
+  const hasActiveFilters = q.trim().length > 0 || city !== "all" || source !== "all" || recentOnly || (tab !== "all" && tab !== "hotels");
 
   const resetFilters = () => {
     setQ("");
     setCity("all");
+    setSource("all");
     setRecentOnly(false);
     if (tab !== "hotels") setTab("all");
   };
@@ -321,7 +333,7 @@ function Recs() {
             <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")}>מלונות</TabBtn>
           </div>
 
-          {(tab !== "hotels" && (cities.length > 0 || recentIds.size > 0 || hasActiveFilters)) && (
+          {(tab !== "hotels" && (cities.length > 0 || recentIds.size > 0 || (recSources?.sources.length ?? 0) > 0 || hasActiveFilters)) && (
             <div className="flex flex-wrap items-center gap-2">
               {cities.length > 0 && (
                 <label className="relative min-w-0 flex-1">
@@ -334,6 +346,20 @@ function Recs() {
                   >
                     <option value="all">כל הערים</option>
                     {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+              )}
+              {(recSources?.sources.length ?? 0) > 0 && (
+                <label className="relative min-w-0 flex-1">
+                  <span className="sr-only">סינון לפי מקור</span>
+                  <select
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    aria-label="סינון לפי מקור"
+                    className="min-h-11 w-full appearance-none rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
+                  >
+                    <option value="all">כל המקורות</option>
+                    {recSources!.sources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </label>
               )}
@@ -395,6 +421,7 @@ function Recs() {
             onToggleSelect={toggleSelect}
             recentIds={recentIds}
             recentOnly={recentOnly}
+            sourceFilter={source}
             onResetFilters={resetFilters}
             onAdd={() => setAddOpen(true)}
             discoverEnabled={discoverEnabled}
@@ -559,7 +586,7 @@ function TabBtn({ active, children, onClick }: { active: boolean; children: Reac
 
 function PlacesList({
   type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
-  recentIds, recentOnly, onResetFilters, onAdd, discoverEnabled, onDiscover, onOverlayOpenChange,
+  recentIds, recentOnly, sourceFilter, onResetFilters, onAdd, discoverEnabled, onDiscover, onOverlayOpenChange,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
@@ -570,6 +597,7 @@ function PlacesList({
   onToggleSelect: (id: string) => void;
   recentIds: Set<string>;
   recentOnly: boolean;
+  sourceFilter: string;
   onResetFilters: () => void;
   onAdd: () => void;
   discoverEnabled: boolean;
@@ -577,6 +605,11 @@ function PlacesList({
   onOverlayOpenChange: (open: boolean) => void;
 }) {
   const { data: recs = [], isLoading } = useRecs();
+  const { data: recSources } = useRecSources();
+  const sourceNames = useMemo(
+    () => new Map((recSources?.sources ?? []).map((s) => [s.id, s.name] as const)),
+    [recSources],
+  );
   const [pos, setPos] = useState<{ lat: number; lon: number } | null>(null);
   const qc = useQueryClient();
   const tripId = useActiveTripId();
@@ -585,7 +618,7 @@ function PlacesList({
   const [dayPickerRec, setDayPickerRec] = useState<Rec | null>(null);
 
   // Reset visible window only when the result set definition changes (not on refetch/status change).
-  useEffect(() => { setLimit(PAGE_SIZE); }, [type, cityFilter, query, recentOnly, tripId]);
+  useEffect(() => { setLimit(PAGE_SIZE); }, [type, cityFilter, query, recentOnly, sourceFilter, tripId]);
 
   const closeDayPicker = () => { setDayPickerRec(null); onOverlayOpenChange(false); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -620,6 +653,7 @@ function PlacesList({
     if (cityFilter !== "all") items = items.filter((r) => r.city === cityFilter);
     items = items.filter((r) => recMatchesQuery(r, query));
     if (recentOnly) items = items.filter((r) => recentIds.has(r.id));
+    if (sourceFilter !== "all") items = items.filter((r) => recSources?.byRec[r.id]?.includes(sourceFilter) ?? false);
     if (type === "all") {
       items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     } else if (pos) {
@@ -633,12 +667,12 @@ function PlacesList({
       items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     }
     return items;
-  }, [recs, type, cityFilter, pos, query, recentOnly, recentIds]);
+  }, [recs, type, cityFilter, pos, query, recentOnly, recentIds, sourceFilter, recSources]);
 
 
   if (isLoading) return <ListSkeleton />;
   if (list.length === 0) {
-    if (query.trim() || cityFilter !== "all" || recentOnly || type !== "all") {
+    if (query.trim() || cityFilter !== "all" || sourceFilter !== "all" || recentOnly || type !== "all") {
       return <EmptyState variant="recs" title={query.trim() ? `לא נמצאו תוצאות עבור "${query}"` : "לא נמצאו תוצאות במסננים האלה"} hint="אפשר לאפס את המסננים ולנסות שוב" cta={
         <button type="button" onClick={onResetFilters}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -676,6 +710,7 @@ function PlacesList({
           selected={selectedIds.has(r.id)}
           onToggleSelect={() => onToggleSelect(r.id)}
           isRecent={recentIds.has(r.id)}
+          sourceNames={(recSources?.byRec[r.id] ?? []).map((id) => sourceNames.get(id)).filter((n): n is string => !!n)}
           onAddToDay={() => { setDayPickerRec(r); onOverlayOpenChange(true); }}
           onOverlayOpenChange={onOverlayOpenChange}
         />
@@ -712,7 +747,7 @@ function PlacesList({
 }
 
 function PlaceCard({
-  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, onAddToDay, onOverlayOpenChange,
+  rec, distance, onEdit, selectionMode, selected, onToggleSelect, isRecent = false, sourceNames = [], onAddToDay, onOverlayOpenChange,
 }: {
   rec: Rec;
   distance: number | null;
@@ -721,6 +756,7 @@ function PlaceCard({
   selected: boolean;
   onToggleSelect: () => void;
   isRecent?: boolean;
+  sourceNames?: string[];
   onAddToDay: () => void;
   onOverlayOpenChange: (open: boolean) => void;
 }) {
@@ -741,7 +777,7 @@ function PlaceCard({
       const { error } = await supabase.from("recommendations").delete().eq("id", rec.id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["recs"] }); toast.success("נמחק"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["recs"] }); qc.invalidateQueries({ queryKey: ["rec-sources"] }); toast.success("נמחק"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -769,6 +805,16 @@ function PlaceCard({
           >{statusBadge.label}</motion.span>
           {isRecent && (
             <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">חדש מ־Discover</span>
+          )}
+          {sourceNames.length > 0 && (
+            <span
+              title={sourceNames.join(" · ")}
+              aria-label={`מקורות: ${sourceNames.join(", ")}`}
+              className="inline-flex max-w-[12rem] items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground"
+            >
+              <span className="truncate">מ־{sourceNames[0]}</span>
+              {sourceNames.length > 1 && <span className="shrink-0 font-medium">+{sourceNames.length - 1}</span>}
+            </span>
           )}
         </div>
         {selectionMode ? (

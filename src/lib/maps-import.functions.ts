@@ -54,7 +54,7 @@ export const fetchMyMapKml = createServerFn({ method: "POST" })
     if (!input || typeof input.url !== "string") throw new Error("url required");
     return { url: input.url.slice(0, 2048) };
   })
-  .handler(async ({ data }): Promise<ImportedPlace[]> => {
+  .handler(async ({ data }): Promise<{ places: ImportedPlace[]; mapName: string | null }> => {
     let mid: string | null = null;
     try {
       const u = new URL(data.url.trim());
@@ -181,5 +181,7 @@ export const fetchMyMapKml = createServerFn({ method: "POST" })
     if (places.length === 0) {
       throw new Error("לא נמצאו מקומות במפה זו");
     }
-    return places;
+    const doc = (parsed.kml as Record<string, unknown> | undefined)?.Document as Record<string, unknown> | undefined;
+    const mapName = typeof doc?.name === "string" ? doc.name.trim().slice(0, 120) || null : null;
+    return { places, mapName };
   });
