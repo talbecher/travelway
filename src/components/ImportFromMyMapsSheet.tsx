@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Loader2, MapPin, AlertTriangle } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { fetchMyMapKml, type ImportedPlace } from "@/lib/maps-import.functions";
-import { enrichRecommendationPhoto } from "@/lib/places.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
 import { assertOnline } from "@/hooks/use-online";
@@ -27,7 +26,6 @@ export function ImportFromMyMapsSheet({
 }) {
   const qc = useQueryClient();
   const fetchKml = useServerFn(fetchMyMapKml);
-  const enrichFn = useServerFn(enrichRecommendationPhoto);
   const [step, setStep] = useState<Step>("url");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,7 +33,6 @@ export function ImportFromMyMapsSheet({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [city, setCity] = useState("");
   const [sourceName, setSourceName] = useState("");
-  const [enriching, setEnriching] = useState<{ done: number; total: number } | null>(null);
 
   const reset = () => {
     setStep("url");
@@ -45,7 +42,6 @@ export function ImportFromMyMapsSheet({
     setCity("");
     setSourceName("");
     setLoading(false);
-    setEnriching(null);
   };
 
   const handleClose = (o: boolean) => {
@@ -108,29 +104,6 @@ export function ImportFromMyMapsSheet({
       const rows = (data ?? []) as { recommendation_id: string; is_new: boolean; place_index: number }[];
       const newCount = rows.filter((r) => r.is_new).length;
       const linkedCount = rows.length - newCount;
-
-      // Photo enrichment is best-effort and separate — failures don't undo the import.
-      const toEnrich = rows
-        .filter((r) => r.is_new)
-        .map((r) => ({ id: r.recommendation_id, p: chosen[r.place_index] }))
-        .filter((x) => x.p && x.p.latitude != null && x.p.longitude != null);
-      setEnriching({ done: 0, total: toEnrich.length });
-      const BATCH = 5;
-      for (let i = 0; i < toEnrich.length; i += BATCH) {
-        await Promise.all(
-          toEnrich.slice(i, i + BATCH).map(async ({ id, p }) => {
-            try {
-              const r = await enrichFn({ data: { name: p.name, city: enteredCity, lat: p.latitude!, lng: p.longitude! } });
-              if (r?.updated) {
-                await supabase.from("recommendations").update({
-                  photo_url: r.photo_url, google_rating: r.google_rating, google_rating_count: r.google_rating_count,
-                }).eq("id", id);
-              }
-            } catch { /* ignore */ }
-          }),
-        );
-        setEnriching({ done: Math.min(i + BATCH, toEnrich.length), total: toEnrich.length });
-      }
       return { newCount, linkedCount };
     },
     onSuccess: ({ newCount, linkedCount }) => {
@@ -145,7 +118,6 @@ export function ImportFromMyMapsSheet({
     },
     onError: (e: Error) => {
       // Keep preview + selection so the user can retry.
-      setEnriching(null);
       toast.error(e.message || "הייבוא נכשל — אפשר לנסות שוב");
     },
   });
@@ -251,11 +223,6 @@ export function ImportFromMyMapsSheet({
             {importMut.isPending && <Loader2 size={16} className="animate-spin" />}
             ייבא {selectedCount} מקומות
           </button>
-          {importMut.isPending && enriching && (
-            <div className="text-xs text-muted-foreground text-center">
-              🔍 מעשיר נתונים... {enriching.done}/{enriching.total}
-            </div>
-          )}
         </div>
       )}
     </BottomSheet>
