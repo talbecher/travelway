@@ -181,11 +181,27 @@ function areaOf(place: ApiPlace): string | null {
   return first ?? null;
 }
 
+type FailKind = "quota" | "denied" | "upstream" | "network" | "unknown";
+type FetchResult = { ok: true; places: ApiPlace[] } | { ok: false; kind: FailKind };
+
+const FAIL_MESSAGES: Record<FailKind, string> = {
+  quota: "שירות גילוי המקומות אינו זמין כרגע בגלל מגבלת שימוש. נסו שוב מאוחר יותר.",
+  denied: "שירות גילוי המקומות אינו זמין כרגע. נסו שוב מאוחר יותר.",
+  upstream: "שירות המקומות לא הגיב כרגע. נסו שוב בעוד כמה דקות.",
+  network: "השרת לא הצליח להתחבר לשירות המקומות. נסו שוב מאוחר יותר.",
+  unknown: "החיפוש נכשל. נסו שוב מאוחר יותר.",
+};
+
+function pickFailKind(kinds: FailKind[]): FailKind {
+  const order: FailKind[] = ["quota", "denied", "upstream", "network", "unknown"];
+  return order.find((k) => kinds.includes(k)) ?? "unknown";
+}
+
 async function placesFetch(
   apiKey: string,
   fieldMask: string,
   body: Record<string, unknown>,
-): Promise<ApiPlace[] | null> {
+): Promise<FetchResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 9000);
   try {
@@ -202,14 +218,20 @@ async function placesFetch(
     clearTimeout(timeout);
     if (!res.ok) {
       console.error("[discover] places http", res.status);
-      return null;
+      const kind: FailKind =
+        res.status === 429 ? "quota"
+        : res.status === 403 ? "denied"
+        : res.status >= 500 ? "upstream"
+        : "unknown";
+      return { ok: false, kind };
     }
     const json = (await res.json()) as { places?: ApiPlace[] };
-    return json.places ?? [];
+    return { ok: true, places: json.places ?? [] };
   } catch (e) {
     clearTimeout(timeout);
-    console.error("[discover] places error", e instanceof Error ? e.message : "unknown");
-    return null;
+    const aborted = e instanceof Error && e.name === "AbortError";
+    console.error("[discover] places error", aborted ? "timeout" : e instanceof Error ? e.message : "unknown");
+    return { ok: false, kind: aborted ? "upstream" : "network" };
   }
 }
 
