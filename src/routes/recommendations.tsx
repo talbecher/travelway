@@ -210,12 +210,12 @@ function Recs() {
 
   // "Near me" mode (entered from the home card with ?near=1).
   const nearMode = !!search.near;
-  const [nearRadius, setNearRadius] = useState<500 | 1000>(500);
+  const [nearRadius, setNearRadius] = useState<500 | 1000 | 3000 | 5000>(1000);
   const [nearStatus, setNearStatus] = useState<"locating" | "ok" | "error">("locating");
   useEffect(() => {
     if (!nearMode) return;
     setTab("all"); setCity("all"); setSource("all"); setQ(""); setRecentOnly(false);
-    setView("map"); setNearRadius(500); setNearStatus("locating"); setUserPos(null);
+    setView("map"); setNearRadius(1000); setNearStatus("locating"); setUserPos(null);
     if (typeof navigator === "undefined" || !navigator.geolocation) { setNearStatus("error"); return; }
     let cancelled = false;
     navigator.geolocation.getCurrentPosition(
@@ -226,7 +226,7 @@ function Recs() {
     return () => { cancelled = true; };
   }, [nearMode]);
   const exitNear = () => {
-    setNearRadius(500);
+    setNearRadius(1000);
     navigate({ to: "/recommendations", search: {}, replace: true });
   };
 
@@ -436,11 +436,11 @@ function Recs() {
               <span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground">
                 <Navigation size={15} className="text-accent" /> קרוב אליי
               </span>
-              <div className="flex gap-1 rounded-lg bg-muted p-1" aria-label="רדיוס">
-                {([500, 1000] as const).map((r) => (
+              <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-1" aria-label="רדיוס">
+                {([500, 1000, 3000, 5000] as const).map((r) => (
                   <button key={r} type="button" onClick={() => setNearRadius(r)} aria-pressed={nearRadius === r}
-                    className={`min-h-9 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${nearRadius === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
-                    {r === 500 ? "500 מ׳" : "1 ק״מ"}
+                    className={`min-h-9 flex-1 justify-center whitespace-nowrap rounded-md px-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${nearRadius === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+                    {r === 500 ? "500 מ׳" : `${r / 1000} ק״מ`}
                   </button>
                 ))}
               </div>
@@ -484,12 +484,12 @@ function Recs() {
           {nearMode && mapPins.length === 0 && (
             <div className="absolute inset-x-4 top-16 z-[600] rounded-xl border border-border bg-card p-4 text-center shadow-lg space-y-2" role="status">
               <p className="text-sm text-foreground">
-                אין מקומות שמורים בטווח {nearRadius === 500 ? "500 מ׳" : "1 ק״מ"}{hasActiveFilters ? " עם המסננים שנבחרו" : ""}.
+                אין מקומות שמורים בטווח {nearRadius === 500 ? "500 מ׳" : `${nearRadius / 1000} ק״מ`}{hasActiveFilters ? " עם המסננים שנבחרו" : ""}.
               </p>
-              {nearRadius === 500 ? (
-                <button type="button" onClick={() => setNearRadius(1000)}
+              {nearRadius < 5000 ? (
+                <button type="button" onClick={() => setNearRadius(nearRadius === 500 ? 1000 : nearRadius === 1000 ? 3000 : 5000)}
                   className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  הרחב ל־1 ק״מ
+                  הרחב ל־{nearRadius === 500 ? "1 ק״מ" : nearRadius === 1000 ? "3 ק״מ" : "5 ק״מ"}
                 </button>
               ) : (
                 <button type="button" onClick={exitNear}
