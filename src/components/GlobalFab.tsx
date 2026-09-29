@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Check, FileText, Link as LinkIcon, MapPin, Utensils, X } from "lucide-react";
+import { CalendarDays, Check, FileText, Link as LinkIcon, MapPin, Utensils, X, Zap } from "lucide-react";
+import { Drawer } from "vaul";
 
 export const OPEN_QUICK_EXPENSE_EVENT = "open-quick-expense";
 export function openQuickExpense() {
@@ -37,8 +38,7 @@ export function GlobalFab() {
     <BottomSheet
       open={open}
       onOpenChange={setOpen}
-      title="הוצאה מהירה"
-      description="פרטי קבלה"
+      description="פרטי ההוצאה"
       contentClassName="sm:mx-auto sm:max-w-lg"
       bodyClassName="px-3 sm:px-4"
     >
@@ -110,33 +110,64 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const shownCurrency = currency === "BASE" ? base : target;
+  const categoryLabel = (CATEGORY_LABELS as Record<string, string>)[category] ?? category;
+  const rowLabel = "block text-xs text-muted-foreground";
+  const rowInput =
+    "h-9 min-w-0 w-full border-0 bg-transparent px-0 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
+
   return (
     <form
       id="quick-expense-form"
       onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }}
-      className="min-w-0 max-w-full pb-1 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base"
+      className="min-w-0 max-w-full space-y-3 pb-1 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base"
     >
-      <div className="relative min-w-0 overflow-hidden rounded-xl border border-border bg-surface shadow-[var(--shadow-sm)]">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border px-4 pb-4 pt-2">
-          <p className="min-w-0 text-sm text-muted-foreground">פרטי קבלה</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onDone}
-            aria-label="סגור הוצאה מהירה"
-            className="-ml-2 -mt-2 shrink-0 rounded-full focus-visible:ring-2"
-          >
-            <X aria-hidden="true" />
-          </Button>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
+          <Drawer.Title className="text-2xl font-bold leading-tight text-foreground">הוצאה מהירה</Drawer.Title>
+          <p className="mt-1 text-sm text-muted-foreground">שמירה מהירה בזמן הטיול</p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={onDone}
+          aria-label="סגור הוצאה מהירה"
+          className="size-11 shrink-0 rounded-xl"
+        >
+          <X aria-hidden="true" />
+        </Button>
+      </div>
 
+      <div>
         <div
-          className="cursor-text border-b border-border px-4 py-5 text-center"
+          className="cursor-text rounded-2xl bg-primary p-4 text-primary-foreground shadow-[var(--shadow-sm)]"
           onClick={() => amountInputRef.current?.focus()}
         >
-          <label htmlFor="quick-expense-amount" className="block text-sm text-muted-foreground">סה״כ</label>
-          <div dir="ltr" className="mt-2 flex min-w-0 items-center justify-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <label htmlFor="quick-expense-amount" className="text-sm font-medium">סכום ההוצאה</label>
+            <div
+              className="flex shrink-0 gap-1 rounded-xl bg-foreground/15 p-1"
+              role="group"
+              aria-label="בחירת מטבע"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {[{ k: "BASE" as const, v: base }, ...(!conv.sameCurrency ? [{ k: "TARGET" as const, v: target }] : [])].map((o) => (
+                <button
+                  key={o.k}
+                  type="button"
+                  onClick={() => setCurrency(o.k)}
+                  aria-pressed={currency === o.k}
+                  className={`min-h-11 min-w-14 rounded-lg px-3 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground ${
+                    currency === o.k ? "bg-surface text-primary" : "text-primary-foreground"
+                  }`}
+                >
+                  {o.v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div dir="ltr" className="mt-3 flex min-w-0 items-center justify-center gap-2">
             <input
               ref={amountInputRef}
               id="quick-expense-amount"
@@ -146,124 +177,109 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="h-16 min-w-0 max-w-[12rem] flex-1 border-0 bg-transparent px-0 text-center text-4xl font-semibold text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0"
+              placeholder="0"
+              className="h-16 min-w-0 max-w-[14rem] flex-1 rounded-md border-0 bg-transparent px-0 text-center text-5xl font-bold text-primary-foreground outline-none placeholder:text-primary-foreground/60 focus-visible:ring-2 focus-visible:ring-primary-foreground"
             />
-            <span className="shrink-0 text-xl font-semibold text-primary" aria-hidden="true">
-              {currency === "BASE" ? base : target}
-            </span>
+            <span className="shrink-0 text-xl font-medium" aria-hidden="true">{shownCurrency}</span>
           </div>
         </div>
-
-        <div className="border-b border-border px-4 py-4">
-          <div className="grid min-h-12 grid-cols-2 overflow-hidden rounded-lg bg-secondary p-1" role="group" aria-label="בחירת מטבע">
-            <Button
-              type="button"
-              variant={currency === "BASE" ? "default" : "ghost"}
-              onClick={() => setCurrency("BASE")}
-              aria-pressed={currency === "BASE"}
-              className="h-11 min-w-0 rounded-md px-3 text-base"
-            >
-              <span className="truncate">{base}</span>
-            </Button>
-            {!conv.sameCurrency && (
-              <Button
-                type="button"
-                variant={currency === "TARGET" ? "default" : "ghost"}
-                onClick={() => setCurrency("TARGET")}
-                aria-pressed={currency === "TARGET"}
-                className="h-11 min-w-0 rounded-md px-3 text-base"
-              >
-                <span className="truncate">{target}</span>
-              </Button>
-            )}
-          </div>
-          {currency === "TARGET" && !conv.sameCurrency && (
-            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
-              {conv.rate ? `יומר לפי ${conversionLabel(conv)}` : NO_RATE_MESSAGE}
-            </p>
-          )}
-        </div>
-
-        <div className="divide-y divide-border px-4">
-          <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 py-2">
-            <Utensils className="size-5 shrink-0 text-primary" aria-hidden="true" />
-            <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-              <span className="shrink-0 text-sm text-muted-foreground">קטגוריה</span>
-              <select value={category} onChange={(e) => setCategory(e.target.value as Category)}
-                className="h-11 min-w-0 w-full truncate border-0 bg-transparent px-0 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 py-2">
-            <FileText className="mt-3 size-5 shrink-0 text-primary" aria-hidden="true" />
-            <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
-              <span className="pt-3 text-sm text-muted-foreground">תיאור</span>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-                placeholder="לא חובה"
-                className="min-h-14 min-w-0 w-full resize-none border-0 bg-transparent px-0 py-2.5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
-            </label>
-          </div>
-
-          <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 py-2">
-            <MapPin className="size-5 shrink-0 text-primary" aria-hidden="true" />
-            <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-              <span className="shrink-0 text-sm text-muted-foreground">מקום</span>
-              <input value={locationName} onChange={(e) => setLocationName(e.target.value)}
-                placeholder="לא חובה"
-                className="h-11 min-w-0 w-full border-0 bg-transparent px-0 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
-            </label>
-          </div>
-
-          <div className="min-w-0 py-2">
-            <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-              <LinkIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
-              <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-                <span className="shrink-0 text-sm text-muted-foreground">Google Maps</span>
-                <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr"
-                  placeholder="https://maps.app.goo.gl/..."
-                  className="h-11 min-w-0 w-full truncate border-0 bg-transparent px-0 text-left text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
-              </label>
-            </div>
-            {mapsUrl.trim() && (
-              parseLatLngFromMapsUrl(mapsUrl)
-                ? <div className="mr-8 break-words text-xs text-success">מיקום זוהה</div>
-                : <div className="mr-8 break-words text-xs text-primary">לא זוהה מיקום — לא יופיע במפה</div>
-            )}
-          </div>
-
-          <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 py-2">
-            <CalendarDays className="size-5 shrink-0 text-primary" aria-hidden="true" />
-            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-              <span className="shrink-0 text-sm text-muted-foreground">תאריך</span>
-              <div className="min-w-0 max-w-full"><DateField value={date} onChange={setDate} /></div>
-            </div>
-          </div>
-        </div>
-
-        {recType && locationName.trim() && (
-          <label className="mx-4 flex min-h-12 min-w-0 items-center gap-3 border-t border-border py-2 text-sm">
-            <input type="checkbox" checked={saveToRecs} onChange={(e) => setSaveToRecs(e.target.checked)}
-              className="size-5 shrink-0 accent-primary" />
-            <span className="min-w-0 break-words">שמור גם בהמלצות</span>
-          </label>
+        {currency === "TARGET" && !conv.sameCurrency && (
+          <p className="mt-2 break-words px-1 text-xs leading-5 text-muted-foreground">
+            {conv.rate ? `יומר לפי ${conversionLabel(conv)}` : NO_RATE_MESSAGE}
+          </p>
         )}
       </div>
 
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+        <label className="block min-w-0 rounded-2xl border border-border bg-surface px-3 py-2.5">
+          <span className={rowLabel}>קטגוריה</span>
+          <span className="mt-1 flex min-w-0 items-center gap-2">
+            <Utensils className="size-5 shrink-0 text-primary" aria-hidden="true" />
+            <select value={category} onChange={(e) => setCategory(e.target.value as Category)}
+              className="h-11 min-w-0 w-full border-0 bg-transparent px-0 font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
+              {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </span>
+        </label>
+        <div className="min-w-0 rounded-2xl border border-border bg-surface px-3 py-2.5">
+          <span className={rowLabel}>תאריך</span>
+          <div className="mt-1 flex min-w-0 items-center gap-2">
+            <CalendarDays className="size-5 shrink-0 text-primary" aria-hidden="true" />
+            <div className="min-w-0 flex-1"><DateField value={date} onChange={setDate} /></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
+        <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3">
+          <FileText className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className={rowLabel}>תיאור</span>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+              placeholder="לא חובה"
+              className="mt-1 min-h-12 min-w-0 w-full resize-none break-words rounded-sm border-0 bg-transparent px-0 py-1 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
+          </span>
+        </label>
+        <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3">
+          <MapPin className="size-5 shrink-0 text-primary" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className={rowLabel}>מקום</span>
+            <input value={locationName} onChange={(e) => setLocationName(e.target.value)}
+              placeholder="לא חובה" className={`mt-1 ${rowInput} min-h-11`} />
+          </span>
+        </label>
+        <div className="px-4 py-3">
+          <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+            <LinkIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className={rowLabel}>Google Maps</span>
+              <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr"
+                placeholder="https://maps.app.goo.gl/..."
+                className={`mt-1 ${rowInput} min-h-11 text-left`} />
+            </span>
+          </label>
+          {mapsUrl.trim() && (
+            parseLatLngFromMapsUrl(mapsUrl)
+              ? <div className="mr-8 mt-1 break-words text-xs text-success">מיקום זוהה</div>
+              : <div className="mr-8 mt-1 break-words text-xs text-primary">לא זוהה מיקום — לא יופיע במפה</div>
+          )}
+        </div>
+      </div>
+
+      <p className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm text-muted-foreground">
+        <Zap className="size-4 shrink-0 text-primary" aria-hidden="true" />
+        <span className="min-w-0">תיאור, מקום וקישור אינם חובה — אפשר להשלים אחר כך</span>
+      </p>
+
+      {recType && locationName.trim() && (
+        <label className="flex min-h-12 min-w-0 items-center gap-3 px-1 text-sm">
+          <input type="checkbox" checked={saveToRecs} onChange={(e) => setSaveToRecs(e.target.checked)}
+            className="size-5 shrink-0 accent-primary" />
+          <span className="min-w-0 break-words">שמור גם בהמלצות</span>
+        </label>
+      )}
+
       <BottomSheetFooter>
-        <Button
-          type="submit"
-          form="quick-expense-form"
-          size="lg"
-          disabled={mut.isPending}
-          className="h-12 w-full rounded-xl text-base"
-        >
-          <Check aria-hidden="true" />
-          {mut.isPending ? "שומר..." : "שמור הוצאה"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="submit"
+            form="quick-expense-form"
+            size="lg"
+            disabled={mut.isPending}
+            className="h-12 min-w-[12rem] flex-1 rounded-xl text-base"
+          >
+            <Check aria-hidden="true" />
+            {mut.isPending ? "שומר..." : "שמור הוצאה"}
+          </Button>
+          <div className="min-w-0 shrink-0 text-left" aria-live="polite">
+            <div dir="ltr" className="break-all text-lg font-bold text-foreground">
+              {amount ? `${amount} ${shownCurrency}` : `— ${shownCurrency}`}
+            </div>
+            <div className="text-xs text-muted-foreground">{categoryLabel}</div>
+          </div>
+        </div>
       </BottomSheetFooter>
     </form>
   );
