@@ -129,6 +129,6 @@
 
 # Discover lazy photos
 
-- [ ] Results without waiting for photos; on-demand photo fn (pilot-gated), 3 concurrent, dedupe, cancel stale
-- [ ] Reactive card updates, visibility check before start, all attributions, searchId measurement
-- [ ] tsgo + build
+- [x] Results without waiting for photos; on-demand photo fn (pilot-gated), 3 concurrent, dedupe, cancel stale
+- [x] Reactive card updates, visibility check before start, all attributions, searchId measurement
+- [x] tsgo + build (browser flow not verified — no test trip)
