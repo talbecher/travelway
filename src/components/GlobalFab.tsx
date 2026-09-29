@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Check, FileText, Link as LinkIcon, MapPin, Utensils, X, Zap } from "lucide-react";
+import { Check, FileText, Link as LinkIcon, MapPin, Utensils, X } from "lucide-react";
 import { Drawer } from "vaul";
 
 export const OPEN_QUICK_EXPENSE_EVENT = "open-quick-expense";
@@ -120,34 +120,36 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
     <form
       id="quick-expense-form"
       onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }}
-      className="min-w-0 max-w-full space-y-3 pb-1 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base"
+      className="min-w-0 max-w-full space-y-2.5 pb-3 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base"
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
-          <Drawer.Title className="text-2xl font-bold leading-tight text-foreground">הוצאה מהירה</Drawer.Title>
+          <Drawer.Title className="text-xl font-bold leading-tight text-foreground">הוצאה מהירה</Drawer.Title>
           <p className="mt-1 text-sm text-muted-foreground">שמירה מהירה בזמן הטיול</p>
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={onDone}
           aria-label="סגור הוצאה מהירה"
-          className="size-11 shrink-0 rounded-xl"
+          className="size-11 shrink-0 rounded-full p-0"
         >
-          <X aria-hidden="true" />
+          <span className="flex size-8 items-center justify-center rounded-full border border-border bg-surface">
+            <X className="size-4" aria-hidden="true" />
+          </span>
         </Button>
       </div>
 
       <div>
         <div
-          className="cursor-text rounded-2xl bg-primary p-4 text-primary-foreground shadow-[var(--shadow-sm)]"
+          className="cursor-text rounded-2xl bg-primary p-3 text-primary-foreground shadow-[var(--shadow-sm)]"
           onClick={() => amountInputRef.current?.focus()}
         >
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
             <label htmlFor="quick-expense-amount" className="text-sm font-medium">סכום ההוצאה</label>
             <div
-              className="flex shrink-0 gap-1 rounded-xl bg-foreground/15 p-1"
+              className="flex shrink-0 gap-1 rounded-xl bg-foreground/15 p-0.5"
               role="group"
               aria-label="בחירת מטבע"
               onClick={(e) => e.stopPropagation()}
@@ -158,7 +160,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
                   type="button"
                   onClick={() => setCurrency(o.k)}
                   aria-pressed={currency === o.k}
-                  className={`min-h-11 min-w-14 rounded-lg px-3 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground ${
+                  className={`min-h-11 min-w-14 rounded-lg px-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground ${
                     currency === o.k ? "bg-surface text-primary" : "text-primary-foreground"
                   }`}
                 >
@@ -167,7 +169,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
               ))}
             </div>
           </div>
-          <div dir="ltr" className="mt-3 flex min-w-0 items-center justify-center gap-2">
+          <div dir="ltr" className="mt-1 flex min-w-0 items-baseline justify-center gap-1.5 overflow-hidden">
             <input
               ref={amountInputRef}
               id="quick-expense-amount"
@@ -178,9 +180,9 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
-              className="h-16 min-w-0 max-w-[14rem] flex-1 rounded-md border-0 bg-transparent px-0 text-center text-5xl font-bold text-primary-foreground outline-none placeholder:text-primary-foreground/60 focus-visible:ring-2 focus-visible:ring-primary-foreground"
+              className={`[field-sizing:content] w-auto min-w-[2ch] max-w-[calc(100%-4rem)] rounded-md border-0 bg-transparent px-0 text-center font-bold leading-none text-primary-foreground outline-none placeholder:text-primary-foreground/60 focus-visible:ring-2 focus-visible:ring-primary-foreground ${amount.length > 13 ? "text-2xl" : amount.length > 9 ? "text-3xl" : amount.length > 6 ? "text-4xl" : "text-6xl"}`}
             />
-            <span className="shrink-0 text-xl font-medium" aria-hidden="true">{shownCurrency}</span>
+            <span className="shrink-0 text-lg font-medium" aria-hidden="true">{shownCurrency}</span>
           </div>
         </div>
         {currency === "TARGET" && !conv.sameCurrency && (
@@ -190,7 +192,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-2">
         <label className="block min-w-0 rounded-2xl border border-border bg-surface px-3 py-2.5">
           <span className={rowLabel}>קטגוריה</span>
           <span className="mt-1 flex min-w-0 items-center gap-2">
@@ -205,24 +207,23 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         </label>
         <div className="min-w-0 rounded-2xl border border-border bg-surface px-3 py-2.5">
           <span className={rowLabel}>תאריך</span>
-          <div className="mt-1 flex min-w-0 items-center gap-2">
-            <CalendarDays className="size-5 shrink-0 text-primary" aria-hidden="true" />
-            <div className="min-w-0 flex-1"><DateField value={date} onChange={setDate} /></div>
+          <div className="mt-1 min-w-0">
+            <DateField value={date} onChange={setDate} labelFormat="dd.MM.yyyy" className="!px-1.5 !text-sm [&>span]:!gap-1 [&>span>span]:!text-clip [&>span>span]:!overflow-visible" />
           </div>
         </div>
       </div>
 
       <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
-        <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3">
+        <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 px-3 py-2">
           <FileText className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
           <span className="min-w-0">
             <span className={rowLabel}>תיאור</span>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={1}
               placeholder="לא חובה"
-              className="mt-1 min-h-12 min-w-0 w-full resize-none break-words rounded-sm border-0 bg-transparent px-0 py-1 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
+              className="mt-1 min-h-8 max-h-28 min-w-0 w-full resize-none overflow-y-auto break-words rounded-sm border-0 bg-transparent px-0 py-1 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
           </span>
         </label>
-        <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3">
+        <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 px-3 py-2">
           <MapPin className="size-5 shrink-0 text-primary" aria-hidden="true" />
           <span className="min-w-0">
             <span className={rowLabel}>מקום</span>
@@ -230,8 +231,8 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
               placeholder="לא חובה" className={`mt-1 ${rowInput} min-h-11`} />
           </span>
         </label>
-        <div className="px-4 py-3">
-          <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+        <div className="px-3 py-2">
+          <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5">
             <LinkIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
             <span className="min-w-0">
               <span className={rowLabel}>Google Maps</span>
@@ -248,9 +249,8 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      <p className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm text-muted-foreground">
-        <Zap className="size-4 shrink-0 text-primary" aria-hidden="true" />
-        <span className="min-w-0">תיאור, מקום וקישור אינם חובה — אפשר להשלים אחר כך</span>
+      <p className="mt-3 break-words px-1 text-xs leading-5 text-muted-foreground">
+        אפשר לשמור עכשיו ולהשלים פרטים אחר כך
       </p>
 
       {recType && locationName.trim() && (

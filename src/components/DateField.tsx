@@ -29,6 +29,7 @@ export function DateField({
   className,
   allowClear = true,
   size = "md",
+  labelFormat = "d בMMM yyyy",
 }: {
   value: string | null | undefined;
   onChange: (v: string) => void;
@@ -38,12 +39,13 @@ export function DateField({
   className?: string;
   allowClear?: boolean;
   size?: "sm" | "md";
+  labelFormat?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const date = isoToDate(value);
   const minDate = isoToDate(min);
   const maxDate = isoToDate(max);
-  const label = date ? format(date, "d בMMM yyyy", { locale: he }) : placeholder;
+  const label = date ? format(date, labelFormat, { locale: he }) : placeholder;
   const h = size === "sm" ? "h-10" : "h-11";
   return (
     <Popover open={open} onOpenChange={setOpen}>
