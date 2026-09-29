@@ -37,7 +37,7 @@ import { DateField } from "@/components/DateField";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
-export const NEAR_FROM_HOME_KEY = "near-from-home";
+const NEAR_FROM_HOME_KEY = "near-from-home";
 
 /** Fixed map-screen shell for near mode: fills the space between app header and bottom nav, locks page scroll. */
 function NearShell({ children }: { children: React.ReactNode }) {

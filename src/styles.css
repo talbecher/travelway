@@ -261,3 +261,10 @@ nav[data-bottom-nav] {
 
 .entry-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
 .entry-subtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Near-me map screen: page scroll lock via class so sheet scroll-locks (inline styles) never release it. */
+html.near-lock,
+html.near-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
