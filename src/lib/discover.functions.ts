@@ -486,18 +486,21 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     };
   });
 
-const PHOTO_NAME_RE = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
+const PHOTO_NAME_RE = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_\-.~=]+$/;
 
 /** One Photo Media call for one visible card. Pilot-gated; key stays server-side. */
 export const getDiscoverPhoto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { photoName: string; searchId?: string }) => {
-    const photoName = String(input?.photoName ?? "");
-    if (!PHOTO_NAME_RE.test(photoName) || photoName.length > 400) throw new Error("invalid photo");
+    const photoName = String(input?.photoName ?? "").slice(0, 4000);
     const searchId = String(input?.searchId ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 16);
     return { photoName, searchId };
   })
   .handler(async ({ data, context }): Promise<{ url: string | null }> => {
+    if (!PHOTO_NAME_RE.test(data.photoName) || data.photoName.length > 2000) {
+      console.warn(`[discover] photoMedia searchId=${data.searchId || "-"} rejected len=${data.photoName.length}`);
+      return { url: null };
+    }
     if (!isPilotUser(context.userId)) return { url: null };
     const apiKey = process.env.GOOGLE_PLACES_KEY;
     if (!apiKey) return { url: null };
