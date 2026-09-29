@@ -135,4 +135,4 @@
 
 - [x] „מה שמור לידי?” כמסך מפה במובייל: פריסה קבועה, נעילת גלילה, עיגול רדיוס, מסננים בגיליון, חזרה לבית
 
-- [ ] Quick expense redesign per reference (accessible title via Drawer.Title, no truncate on editable fields, footer wraps)
+- [x] Quick expense redesign per reference (accessible title via Drawer.Title, no truncate on editable fields, footer wraps)
