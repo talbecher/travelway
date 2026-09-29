@@ -180,9 +180,8 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
-              className={`no-number-spin [field-sizing:content] w-auto min-w-[2ch] max-w-[calc(100%-4rem)] rounded-md border-0 bg-transparent px-0 text-center font-bold leading-none text-primary-foreground outline-none placeholder:text-primary-foreground/60 focus-visible:ring-2 focus-visible:ring-primary-foreground ${amount.length > 13 ? "text-2xl" : amount.length > 9 ? "text-3xl" : amount.length > 6 ? "text-4xl" : "text-6xl"}`}
+              className={`no-number-spin [field-sizing:content] w-auto min-w-[2ch] max-w-full rounded-md border-0 bg-transparent px-0 text-center font-bold leading-none text-primary-foreground outline-none placeholder:text-primary-foreground/60 focus-visible:ring-2 focus-visible:ring-primary-foreground ${amount.length > 13 ? "text-2xl" : amount.length > 9 ? "text-3xl" : amount.length > 6 ? "text-4xl" : "text-6xl"}`}
             />
-            <span className="shrink-0 text-lg font-medium" aria-hidden="true">{shownCurrency}</span>
           </div>
         </div>
         {currency === "TARGET" && !conv.sameCurrency && (
