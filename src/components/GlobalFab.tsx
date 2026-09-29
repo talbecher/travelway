@@ -120,7 +120,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
     <form
       id="quick-expense-form"
       onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; mut.mutate(); }}
-      className="min-w-0 max-w-full space-y-2.5 pb-3 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base"
+      className="min-w-0 max-w-full space-y-2.5 pb-3 [&_select]:text-base [&_textarea]:text-base"
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
