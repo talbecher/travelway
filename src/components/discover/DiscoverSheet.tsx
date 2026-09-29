@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { addRecentDiscoverIds } from "@/lib/discover-recent";
 import {
   discoverPlaces,
+  getDiscoverPhoto,
   checkPilotAccess,
   DISCOVER_INTERESTS,
   INTEREST_LABELS,
@@ -19,6 +20,7 @@ import {
   type DiscoverResponse,
 } from "@/lib/discover.functions";
 import { DiscoverCard } from "@/components/discover/DiscoverCard";
+import { DiscoverPhotoLoader } from "@/lib/discover-photo-loader";
 
 const PROVIDER = "google";
 const DUP_INDEX = "recommendations_trip_provider_place_uidx";
@@ -111,8 +113,22 @@ export function DiscoverSheet({
   const { user } = useAuth();
   const fromDay = !!dayId && !!onAddToDay;
 
+  const fetchPhoto = useServerFn(getDiscoverPhoto);
+  const fetchPhotoRef = useRef(fetchPhoto);
+  fetchPhotoRef.current = fetchPhoto;
+  const [photoLoader] = useState(
+    () =>
+      new DiscoverPhotoLoader(async (photoName, searchId) => {
+        const r = await fetchPhotoRef.current({ data: { photoName, searchId } });
+        return r.url;
+      }),
+  );
+  useEffect(() => () => photoLoader.reset(null), [photoLoader]);
+  const searchStartRef = useRef<number | null>(null);
+
   // reset everything — sheet closed, or a different user / trip / day
   useEffect(() => {
+    photoLoader.reset(null);
     setSelected(new Set());
     setSavedIds(new Set());
     setFailedIds(new Set());
@@ -212,6 +228,7 @@ export function DiscoverSheet({
     mutationFn: (vars: { city: string; country: string; interests: string[] }) =>
       run({ data: vars }),
     onSuccess: (res) => {
+      photoLoader.reset(res.ok ? (res.searchId ?? "local") : null);
       setData(res);
       // results change, but the saved list stays — it accumulates per sheet session
       setSelected(new Set());
@@ -223,6 +240,8 @@ export function DiscoverSheet({
       setHideInDay(false);
     },
     onError: () => {
+      searchStartRef.current = null;
+      photoLoader.reset(null);
       setData(null);
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       setErrorMsg(
@@ -412,6 +431,7 @@ export function DiscoverSheet({
   const submit = () => {
     if (!canSubmit || searchingRef.current) return;
     searchingRef.current = true;
+    searchStartRef.current = performance.now();
     setErrorMsg(null);
     search.mutate(
       { city: city.trim(), country: country.trim(), interests },
@@ -420,6 +440,20 @@ export function DiscoverSheet({
   };
 
   const results = data?.ok ? data.results : [];
+
+  // time-to-results: measured after the results have been committed and painted
+  useEffect(() => {
+    const t0 = searchStartRef.current;
+    if (t0 == null || !data) return;
+    searchStartRef.current = null;
+    const sid = data.searchId ?? "-";
+    const n = data.ok ? data.results.length : 0;
+    requestAnimationFrame(() => {
+      console.info(
+        `[discover] results rendered searchId=${sid} ms=${Math.round(performance.now() - t0)} count=${n}`,
+      );
+    });
+  }, [data]);
   const isSaved = (p: DiscoverPlace) => savedIds.has(p.id) || alreadySavedPlaceIds.has(p.id);
   const isInDay = (p: DiscoverPlace) => inDayPlaceIds.has(p.id);
   // selectable: fresh places; saved places only to add them to the day
@@ -629,6 +663,7 @@ export function DiscoverSheet({
                 dayId={fromDay ? dayId : null}
                 maybeDuplicate={isSoftDuplicate(p)}
                 failed={failedIds.has(p.id)}
+                photoLoader={photoLoader}
                 onToggle={() =>
                   setSelected((prev) => {
                     const next = new Set(prev);

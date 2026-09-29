@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Star, ExternalLink, Check, MapPin } from "lucide-react";
 import type { DiscoverPlace } from "@/lib/discover.functions";
+import { findScrollParent, type DiscoverPhotoLoader } from "@/lib/discover-photo-loader";
 
 function explanation(p: DiscoverPlace): string {
   const parts: string[] = [];
@@ -23,7 +24,9 @@ export function DiscoverCard({
   dayId = null,
   maybeDuplicate = false,
   failed = false,
+  photoLoader,
 }: {
+  photoLoader?: DiscoverPhotoLoader;
   place: DiscoverPlace;
   selected: boolean;
   onToggle: () => void;
@@ -37,7 +40,41 @@ export function DiscoverCard({
   failed?: boolean;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const showImg = !!place.photoUrl && !imgFailed;
+  const frameRef = useRef<HTMLButtonElement>(null);
+  const nearRef = useRef(false);
+  const photoName = place.photoName;
+  const noopSub = (_: () => void) => () => {};
+  useSyncExternalStore(
+    photoLoader?.subscribe ?? noopSub,
+    photoLoader?.getVersion ?? (() => 0),
+    () => 0,
+  );
+  const photo = photoLoader && photoName ? photoLoader.get(photoName) : null;
+  const photoUrl = photo?.url ?? null;
+  const showImg = !!photoUrl && !imgFailed;
+
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el || !photoLoader || !photoName) return;
+    const root = findScrollParent(el);
+    // no scroll container found — never fall back to loading every card
+    if (!root) return;
+    let mounted = true;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const e = entries[entries.length - 1];
+        nearRef.current = !!e?.isIntersecting;
+        if (nearRef.current) photoLoader.request(photoName, () => mounted && nearRef.current);
+      },
+      { root, rootMargin: "200px 0px" },
+    );
+    io.observe(el);
+    return () => {
+      mounted = false;
+      nearRef.current = false;
+      io.disconnect();
+    };
+  }, [photoLoader, photoName]);
   // selectable: fresh places always; saved places only to add them to the day
   const selectable = !inDay && (!saved || !!dayId);
   const toggle = () => {
@@ -52,6 +89,7 @@ export function DiscoverCard({
       } ${!selectable ? "opacity-70" : ""}`}
     >
       <button
+        ref={frameRef}
         type="button"
         disabled={!selectable}
         onClick={toggle}
@@ -63,7 +101,7 @@ export function DiscoverCard({
       >
         {showImg ? (
           <img
-            src={place.photoUrl!}
+            src={photoUrl!}
             alt=""
             loading="lazy"
             onError={() => setImgFailed(true)}
@@ -132,6 +170,23 @@ export function DiscoverCard({
         )}
         {!saved && !inDay && maybeDuplicate && (
           <p className="text-[11px] text-muted-foreground mt-0.5">ייתכן שכבר קיים ברשימת ההמלצות</p>
+        )}
+        {showImg && place.photoAttributions.length > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+            צילום:{" "}
+            {place.photoAttributions.map((a, i) => (
+              <span key={i}>
+                {i > 0 && ", "}
+                {a.uri ? (
+                  <a href={a.uri} target="_blank" rel="noreferrer" className="underline">
+                    {a.displayName}
+                  </a>
+                ) : (
+                  a.displayName
+                )}
+              </span>
+            ))}
+          </p>
         )}
         {failed && <p className="text-[11px] text-[color:var(--accent-2)] mt-0.5">השמירה נכשלה</p>}
 
