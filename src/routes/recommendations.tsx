@@ -210,12 +210,12 @@ function Recs() {
 
   // "Near me" mode (entered from the home card with ?near=1).
   const nearMode = !!search.near;
-  const [nearRadius, setNearRadius] = useState<500 | 1000>(500);
+  const [nearRadius, setNearRadius] = useState<500 | 1000 | 3000 | 5000>(1000);
   const [nearStatus, setNearStatus] = useState<"locating" | "ok" | "error">("locating");
   useEffect(() => {
     if (!nearMode) return;
     setTab("all"); setCity("all"); setSource("all"); setQ(""); setRecentOnly(false);
-    setView("map"); setNearRadius(500); setNearStatus("locating"); setUserPos(null);
+    setView("map"); setNearRadius(1000); setNearStatus("locating"); setUserPos(null);
     if (typeof navigator === "undefined" || !navigator.geolocation) { setNearStatus("error"); return; }
     let cancelled = false;
     navigator.geolocation.getCurrentPosition(
@@ -226,7 +226,7 @@ function Recs() {
     return () => { cancelled = true; };
   }, [nearMode]);
   const exitNear = () => {
-    setNearRadius(500);
+    setNearRadius(1000);
     navigate({ to: "/recommendations", search: {}, replace: true });
   };
 
