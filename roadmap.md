@@ -126,3 +126,9 @@
 - [x] "+ טיול חדש" בבורר הטיולים (גם עם טיול אחד), ניווט ל-/onboarding עם search: {}
 
 - [x] Discover: error mapping (429/403/5xx-timeout/network/unknown, 429 priority) + double-click guard; onboarding create overlay
+
+# Discover lazy photos
+
+- [ ] Results without waiting for photos; on-demand photo fn (pilot-gated), 3 concurrent, dedupe, cancel stale
+- [ ] Reactive card updates, visibility check before start, all attributions, searchId measurement
+- [ ] tsgo + build

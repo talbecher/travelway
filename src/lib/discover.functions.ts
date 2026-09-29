@@ -51,7 +51,9 @@ export type DiscoverPlace = {
   city: string;
   latitude: number | null;
   longitude: number | null;
-  photoUrl: string | null;
+  /** Google photo resource name — fetched on demand via getDiscoverPhoto */
+  photoName: string | null;
+  photoAttributions: Array<{ displayName: string; uri: string | null }>;
   rating: number | null;
   ratingCount: number | null;
   googleMapsUrl: string;
@@ -65,6 +67,8 @@ export type DiscoverResponse = {
   message?: string;
   /** interests whose search failed while others succeeded */
   failedInterests?: DiscoverInterest[];
+  /** shared with photo requests for per-search measurement */
+  searchId?: string;
   results: DiscoverPlace[];
 };
 
@@ -143,7 +147,7 @@ type ApiPlace = {
   businessStatus?: string;
   types?: string[];
   primaryTypeDisplayName?: { text?: string };
-  photos?: Array<{ name: string }>;
+  photos?: Array<{ name: string; authorAttributions?: Array<{ displayName?: string; uri?: string }> }>;
   viewport?: { low?: LatLng; high?: LatLng };
 };
 
@@ -310,6 +314,9 @@ export const discoverPlaces = createServerFn({ method: "POST" })
       return { ok: false, message: "שירות המקומות אינו מוגדר.", results: [] };
     }
 
+    const searchId = crypto.randomUUID().slice(0, 8);
+    const t0 = Date.now();
+    let searchTextCalls = 1;
     /* 1. destination resolution — single request */
     const resolved = await placesFetch(apiKey, RESOLVE_FIELD_MASK, {
       textQuery: `${city}, ${country}`,
@@ -341,6 +348,7 @@ export const discoverPlaces = createServerFn({ method: "POST" })
       return { ok: false, message: "לא התקבלה תחימה אמינה ליעד. דייקו את שם העיר ונסו שוב.", results: [] };
     }
     const locationRestriction = { rectangle: { low, high } };
+    const tResolve = Date.now();
 
     /* 2. one search per interest */
     const failedInterests: DiscoverInterest[] = [];
@@ -348,6 +356,7 @@ export const discoverPlaces = createServerFn({ method: "POST" })
 
     const failKinds: FailKind[] = [];
     for (const interest of interests) {
+      searchTextCalls++;
       const r = await placesFetch(apiKey, SEARCH_FIELD_MASK, {
         textQuery: `${INTEREST_QUERY[interest]} ${city}`,
         languageCode: "he",
@@ -399,7 +408,10 @@ export const discoverPlaces = createServerFn({ method: "POST" })
           city,
           latitude: typeof p.location?.latitude === "number" ? p.location.latitude : null,
           longitude: typeof p.location?.longitude === "number" ? p.location.longitude : null,
-          photoUrl: null,
+          photoName: p.photos?.[0]?.name ?? null,
+          photoAttributions: (p.photos?.[0]?.authorAttributions ?? [])
+            .filter((a) => !!a.displayName)
+            .map((a) => ({ displayName: a.displayName!, uri: a.uri ?? null })),
           rating: typeof p.rating === "number" ? p.rating : null,
           ratingCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
           googleMapsUrl: p.location
@@ -456,27 +468,41 @@ export const discoverPlaces = createServerFn({ method: "POST" })
       }
     }
 
-    /* 5. photos — one request per returned result */
-    const photoNames = new Map<string, string>();
-    for (const bucketRaw of perInterest.values()) {
-      for (const p of bucketRaw) {
-        const n = p.photos?.[0]?.name;
-        if (p.id && n && !photoNames.has(p.id)) photoNames.set(p.id, n);
-      }
-    }
-
-    const results: DiscoverPlace[] = [];
-    for (const item of selected.slice(0, MAX_RESULTS)) {
-      const photoName = photoNames.get(item.id);
-      const photoUrl = photoName ? await resolvePhoto(apiKey, photoName) : null;
+    const results: DiscoverPlace[] = selected.slice(0, MAX_RESULTS).map((item) => {
       const { _order, ...rest } = item;
       void _order;
-      results.push({ ...rest, photoUrl });
-    }
+      return rest;
+    });
+
+    console.info(
+      `[discover] search searchId=${searchId} resolveMs=${tResolve - t0} placesMs=${Date.now() - tResolve} searchTextCalls=${searchTextCalls} results=${results.length}`,
+    );
 
     return {
       ok: true,
+      searchId,
       results,
       ...(failedInterests.length > 0 ? { failedInterests } : {}),
     };
+  });
+
+const PHOTO_NAME_RE = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
+
+/** One Photo Media call for one visible card. Pilot-gated; key stays server-side. */
+export const getDiscoverPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { photoName: string; searchId?: string }) => {
+    const photoName = String(input?.photoName ?? "");
+    if (!PHOTO_NAME_RE.test(photoName) || photoName.length > 400) throw new Error("invalid photo");
+    const searchId = String(input?.searchId ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 16);
+    return { photoName, searchId };
+  })
+  .handler(async ({ data, context }): Promise<{ url: string | null }> => {
+    if (!isPilotUser(context.userId)) return { url: null };
+    const apiKey = process.env.GOOGLE_PLACES_KEY;
+    if (!apiKey) return { url: null };
+    const t = Date.now();
+    const url = await resolvePhoto(apiKey, data.photoName);
+    console.info(`[discover] photoMedia searchId=${data.searchId || "-"} ok=${!!url} ms=${Date.now() - t}`);
+    return { url };
   });
