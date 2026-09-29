@@ -431,6 +431,7 @@ export function DiscoverSheet({
   const submit = () => {
     if (!canSubmit || searchingRef.current) return;
     searchingRef.current = true;
+    searchStartRef.current = performance.now();
     setErrorMsg(null);
     search.mutate(
       { city: city.trim(), country: country.trim(), interests },
@@ -439,6 +440,20 @@ export function DiscoverSheet({
   };
 
   const results = data?.ok ? data.results : [];
+
+  // time-to-results: measured after the results have been committed and painted
+  useEffect(() => {
+    const t0 = searchStartRef.current;
+    if (t0 == null || !data) return;
+    searchStartRef.current = null;
+    const sid = data.searchId ?? "-";
+    const n = data.ok ? data.results.length : 0;
+    requestAnimationFrame(() => {
+      console.info(
+        `[discover] results rendered searchId=${sid} ms=${Math.round(performance.now() - t0)} count=${n}`,
+      );
+    });
+  }, [data]);
   const isSaved = (p: DiscoverPlace) => savedIds.has(p.id) || alreadySavedPlaceIds.has(p.id);
   const isInDay = (p: DiscoverPlace) => inDayPlaceIds.has(p.id);
   // selectable: fresh places; saved places only to add them to the day
@@ -648,6 +663,7 @@ export function DiscoverSheet({
                 dayId={fromDay ? dayId : null}
                 maybeDuplicate={isSoftDuplicate(p)}
                 failed={failedIds.has(p.id)}
+                photoLoader={photoLoader}
                 onToggle={() =>
                   setSelected((prev) => {
                     const next = new Set(prev);
