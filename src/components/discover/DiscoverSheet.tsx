@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { addRecentDiscoverIds } from "@/lib/discover-recent";
 import {
   discoverPlaces,
+  getDiscoverPhoto,
   checkPilotAccess,
   DISCOVER_INTERESTS,
   INTEREST_LABELS,
@@ -19,6 +20,7 @@ import {
   type DiscoverResponse,
 } from "@/lib/discover.functions";
 import { DiscoverCard } from "@/components/discover/DiscoverCard";
+import { DiscoverPhotoLoader } from "@/lib/discover-photo-loader";
 
 const PROVIDER = "google";
 const DUP_INDEX = "recommendations_trip_provider_place_uidx";
@@ -111,8 +113,22 @@ export function DiscoverSheet({
   const { user } = useAuth();
   const fromDay = !!dayId && !!onAddToDay;
 
+  const fetchPhoto = useServerFn(getDiscoverPhoto);
+  const fetchPhotoRef = useRef(fetchPhoto);
+  fetchPhotoRef.current = fetchPhoto;
+  const [photoLoader] = useState(
+    () =>
+      new DiscoverPhotoLoader(async (photoName, searchId) => {
+        const r = await fetchPhotoRef.current({ data: { photoName, searchId } });
+        return r.url;
+      }),
+  );
+  useEffect(() => () => photoLoader.reset(null), [photoLoader]);
+  const searchStartRef = useRef<number | null>(null);
+
   // reset everything — sheet closed, or a different user / trip / day
   useEffect(() => {
+    photoLoader.reset(null);
     setSelected(new Set());
     setSavedIds(new Set());
     setFailedIds(new Set());
@@ -212,6 +228,7 @@ export function DiscoverSheet({
     mutationFn: (vars: { city: string; country: string; interests: string[] }) =>
       run({ data: vars }),
     onSuccess: (res) => {
+      photoLoader.reset(res.ok ? (res.searchId ?? "local") : null);
       setData(res);
       // results change, but the saved list stays — it accumulates per sheet session
       setSelected(new Set());
@@ -223,6 +240,8 @@ export function DiscoverSheet({
       setHideInDay(false);
     },
     onError: () => {
+      searchStartRef.current = null;
+      photoLoader.reset(null);
       setData(null);
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       setErrorMsg(
