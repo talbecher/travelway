@@ -220,6 +220,15 @@ nav[data-bottom-nav] {
   -ms-overflow-style: none;
   &::-webkit-scrollbar { display: none; }
 }
+/* Hide number-input spinner arrows. Opt-in class so other numeric fields are untouched. */
+@utility no-number-spin {
+  -moz-appearance: textfield;
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
 
 @utility btn-primary {
   background: var(--accent);
