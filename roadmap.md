@@ -138,3 +138,10 @@
 - [x] „מה שמור לידי?” כמסך מפה במובייל: פריסה קבועה, נעילת גלילה, עיגול רדיוס, מסננים בגיליון, חזרה לבית
 
 - [x] Quick expense redesign per reference (accessible title via Drawer.Title, no truncate on editable fields, footer wraps)
+
+# הוצאה מהירה — הסרת כפל המטבע
+
+- [x] להסיר את קוד המטבע ליד המספר; המטבע נשאר בבורר שמעל בלבד
+- [x] לוודא שבסיס=יעד המטבע מוצג פעם אחת בבורר (אפשרות יחידה)
+- [x] bunx tsgo --noEmit + bun run build; נבדק בדפדפן בטיול מקומי ובטיול חוץ ללא שמירה
+
