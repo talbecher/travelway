@@ -132,3 +132,5 @@
 - [x] Results without waiting for photos; on-demand photo fn (pilot-gated), 3 concurrent, dedupe, cancel stale
 - [x] Reactive card updates, visibility check before start, all attributions, searchId measurement
 - [x] tsgo + build (browser flow not verified — no test trip)
+
+- [x] „מה שמור לידי?” כמסך מפה במובייל: פריסה קבועה, נעילת גלילה, עיגול רדיוס, מסננים בגיליון, חזרה לבית

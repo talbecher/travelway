@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -134,7 +134,35 @@ function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: numb
   return null;
 }
 
-function LocateButton({ userPos, onNoGeo }: { userPos: { lat: number; lng: number } | null; onNoGeo: () => void }) {
+function radiusBounds(user: { lat: number; lng: number }, radiusM: number) {
+  return L.latLng(user.lat, user.lng).toBounds(radiusM * 2);
+}
+
+/** Near mode: fit to the radius circle only on first position or radius change. */
+function FitRadius({ user, radiusM }: { user: { lat: number; lng: number }; radiusM: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try { map.fitBounds(radiusBounds(user, radiusM), { padding: [24, 24], animate: true }); } catch { /* ignore */ }
+    }, 100);
+    return () => clearTimeout(t);
+  }, [map, user.lat, user.lng, radiusM]);
+  return null;
+}
+
+/** Keep Leaflet sized to its container (keyboard, layout changes) without resetting center/zoom. */
+function SizeWatcher() {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    const ro = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [map]);
+  return null;
+}
+
+function LocateButton({ userPos, onNoGeo, radiusM }: { userPos: { lat: number; lng: number } | null; onNoGeo: () => void; radiusM?: number }) {
   const map = useMap();
   return (
     <button
@@ -143,9 +171,10 @@ function LocateButton({ userPos, onNoGeo }: { userPos: { lat: number; lng: numbe
         e.preventDefault();
         e.stopPropagation();
         if (!userPos) { onNoGeo(); return; }
-        map.setView([userPos.lat, userPos.lng], 15, { animate: true });
+        if (radiusM) map.fitBounds(radiusBounds(userPos, radiusM), { padding: [24, 24], animate: true });
+        else map.setView([userPos.lat, userPos.lng], 15, { animate: true });
       }}
-      aria-label="התמקד עלי"
+      aria-label={radiusM ? "למיקום שלי" : "התמקד עלי"}
       style={{
         position: "absolute", bottom: 16, right: 12, zIndex: 500,
         width: 40, height: 40, borderRadius: 999,
@@ -236,13 +265,22 @@ export default function RecsMap({
   pins,
   userPos,
   onAddToDay,
+  radiusM,
+  focusMode = "fit",
 }: {
   pins: RecPin[];
   userPos: { lat: number; lng: number } | null;
   onAddToDay: (id: string) => void;
+  radiusM?: number;
+  focusMode?: "fit" | "radius";
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+  const radiusMode = focusMode === "radius" && !!radiusM;
+  const circleColor = useMemo(() => {
+    if (typeof window === "undefined") return "#3b82f6";
+    return getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#3b82f6";
+  }, [mounted]);
 
   const validPins = useMemo(() => pins.filter(
     (p) =>
@@ -311,14 +349,25 @@ export default function RecsMap({
           ))}
         </MarkerClusterGroup>
 
+        {radiusMode && userPos && (
+          <Circle
+            center={[userPos.lat, userPos.lng]}
+            radius={radiusM!}
+            interactive={false}
+            pathOptions={{ color: circleColor, weight: 1.5, opacity: 0.7, fillColor: circleColor, fillOpacity: 0.08 }}
+          />
+        )}
         {userPos && (
           <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
         )}
-        <FitAll pins={validPins} user={userPos} />
-        <LocateButton userPos={userPos} onNoGeo={() => setGeoError(true)} />
+        {radiusMode
+          ? userPos && <FitRadius user={userPos} radiusM={radiusM!} />
+          : <FitAll pins={validPins} user={userPos} />}
+        <SizeWatcher />
+        <LocateButton userPos={userPos} onNoGeo={() => setGeoError(true)} radiusM={radiusMode ? radiusM : undefined} />
       </MapContainer>
       <Legend />
-      {validPins.length === 0 && (
+      {validPins.length === 0 && !radiusMode && (
         <div style={{
           position: "absolute", inset: 0, display: "flex",
           alignItems: "center", justifyContent: "center",

@@ -858,7 +858,7 @@ function Home() {
           </Link>
         </section>
 
-        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations", search: { near: 1 } })} variant="activeHome" />
+        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} variant="activeHome" />
 
         <section className="rounded-xl bg-card px-3.5 py-3 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -1097,7 +1097,7 @@ function Home() {
   // 6b. NEARBY (from saved recs)
   sections.push({
     key: "nearby",
-    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => navigate({ to: "/recommendations", search: { near: 1 } })} />,
+    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} />,
   });
 
   // 7. DEADLINES

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw, ArrowRight, SlidersHorizontal } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays, useTrip, useRecSources, useDayEntriesGeo } from "@/hooks/use-trip";
@@ -36,6 +36,53 @@ import { bookingChip } from "@/lib/deadlines";
 import { DateField } from "@/components/DateField";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
+
+const NEAR_FROM_HOME_KEY = "near-from-home";
+
+/** Fixed map-screen shell for near mode: fills the space between app header and bottom nav, locks page scroll. */
+function NearShell({ children }: { children: React.ReactNode }) {
+  const [box, setBox] = useState<{ top: number; bottom: number }>({ top: 52, bottom: 64 });
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("near-lock");
+    window.scrollTo(0, 0);
+    const hdr = document.querySelector("header") as HTMLElement | null;
+    const nav = document.querySelector("[data-bottom-nav]") as HTMLElement | null;
+    const vv = window.visualViewport;
+    const update = () => {
+      const top = hdr ? hdr.offsetHeight : 52;
+      const navH = nav ? nav.offsetHeight : 64;
+      // Keyboard overlap from the visual viewport; take the max with the nav (never the sum).
+      const kb = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
+      setBox((b) => {
+        const next = { top, bottom: Math.max(navH, kb) };
+        return b.top === next.top && b.bottom === next.bottom ? b : next;
+      });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    if (hdr) ro.observe(hdr);
+    if (nav) ro.observe(nav);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    return () => {
+      root.classList.remove("near-lock");
+      ro.disconnect();
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      try { sessionStorage.removeItem(NEAR_FROM_HOME_KEY); } catch { /* ignore */ }
+    };
+  }, []);
+  return (
+    <div dir="rtl" role="region" aria-label="מה שמור לידי"
+      className="fixed inset-x-0 z-20 mx-auto flex max-w-md flex-col bg-background"
+      style={{ top: box.top, bottom: box.bottom }}>
+      {children}
+    </div>
+  );
+}
 
 type Tab = "all" | "food" | "attractions" | "hotels";
 const searchSchema = z.object({
@@ -289,9 +336,157 @@ function Recs() {
 
   const mainOverlayOpen = discoverOpen || addOpen || importOpen || aiImportOpen || !!editRec || !!mapPickRec || nestedOverlayOpen;
 
+  const [nearFiltersOpen, setNearFiltersOpen] = useState(false);
+  const nearExtraActive = city !== "all" || source !== "all";
+  useEffect(() => { if (!nearMode) setNearFiltersOpen(false); }, [nearMode]);
+  // Close the place card if its pin leaves the near results (radius/filter change).
+  useEffect(() => {
+    if (nearMode && nearStatus === "ok" && mapPickRec && !mapPins.some((p) => p.id === mapPickRec.id)) setMapPickRec(null);
+  }, [nearMode, nearStatus, mapPins, mapPickRec]);
+  const goBackNear = () => {
+    let fromHome = false;
+    try { fromHome = sessionStorage.getItem(NEAR_FROM_HOME_KEY) === "1"; sessionStorage.removeItem(NEAR_FROM_HOME_KEY); } catch { /* ignore */ }
+    if (fromHome && window.history.length > 1) window.history.back();
+    else navigate({ to: "/" });
+  };
+
   return (
     <div className="-mx-4 -mt-2 min-h-full bg-background px-4 pb-4 pt-5" dir="rtl">
       <div className="space-y-4">
+        {nearMode && (
+          <NearShell>
+            <div className="shrink-0 space-y-2 px-3 pb-2 pt-2">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={goBackNear} aria-label="חזרה"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <ArrowRight size={18} />
+                </button>
+                <h1 className="min-w-0 flex-1 truncate text-lg font-bold text-foreground">מה שמור לידי?</h1>
+                <button type="button" onClick={() => setNearFiltersOpen(true)}
+                  aria-label={nearExtraActive ? "מסננים נוספים (פעילים)" : "מסננים נוספים"}
+                  className="relative inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <SlidersHorizontal size={16} /> מסננים
+                  {nearExtraActive && <span aria-hidden className="absolute -top-1 -left-1 h-3 w-3 rounded-full border-2 border-background bg-primary" />}
+                </button>
+              </div>
+              <div className="relative">
+                <Search size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="חפש בשם או בתיאור" dir="rtl" aria-label="חיפוש"
+                  className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-11 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/20" />
+                {q && (
+                  <button type="button" aria-label="נקה חיפוש" onClick={() => setQ("")}
+                    className="absolute left-0.5 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1" aria-label="קטגוריה">
+                <TabBtn active={tab === "all"} onClick={() => setTab("all")}>הכל</TabBtn>
+                <TabBtn active={tab === "food"} onClick={() => setTab("food")}>אוכל</TabBtn>
+                <TabBtn active={tab === "attractions"} onClick={() => setTab("attractions")}>אטרקציות</TabBtn>
+              </div>
+              <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-1" role="group" aria-label="רדיוס">
+                {([500, 1000, 3000, 5000] as const).map((r) => (
+                  <button key={r} type="button" onClick={() => setNearRadius(r)} aria-pressed={nearRadius === r}
+                    className={`min-h-11 min-w-0 whitespace-nowrap rounded-lg px-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${nearRadius === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+                    {r === 500 ? "500 מ׳" : `${r / 1000} ק״מ`}
+                  </button>
+                ))}
+              </div>
+              {nearStatus === "ok" && (
+                <p className="text-xs text-muted-foreground" aria-live="polite">{mapPins.length} מקומות · מרחק אווירי</p>
+              )}
+            </div>
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              {nearStatus !== "ok" ? (
+                <div className="m-3 space-y-3 rounded-xl border border-border bg-card p-6 text-center" role="status">
+                  {nearStatus === "locating" ? (
+                    <p className="text-sm text-muted-foreground">מאתרים את המיקום שלך…</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-foreground">אין גישה למיקום, או שהמיקום לא זמין כרגע.</p>
+                      <button type="button" onClick={exitNear}
+                        className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        למפת ההמלצות הרגילה
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <ClientOnly fallback={<MapSkeleton />}>
+                    <Suspense fallback={<MapSkeleton />}>
+                      <RecsMap
+                        pins={mapPins}
+                        userPos={userPos}
+                        radiusM={nearRadius}
+                        focusMode="radius"
+                        onAddToDay={(id: string) => {
+                          const found = (recs as Rec[]).find((r) => r.id === id);
+                          if (found) setMapPickRec(found);
+                        }}
+                      />
+                    </Suspense>
+                  </ClientOnly>
+                  {mapPins.length === 0 && (
+                    <div className="absolute inset-x-3 top-3 z-[600] space-y-2 rounded-xl border border-border bg-card p-4 text-center shadow-lg" role="status">
+                      <p className="text-sm text-foreground">
+                        אין מקומות שמורים בטווח {nearRadius === 500 ? "500 מ׳" : `${nearRadius / 1000} ק״מ`}{hasActiveFilters ? " עם המסננים שנבחרו" : ""}.
+                      </p>
+                      {nearRadius < 5000 ? (
+                        <button type="button" onClick={() => setNearRadius(nearRadius === 500 ? 1000 : nearRadius === 1000 ? 3000 : 5000)}
+                          className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          הרחב ל־{nearRadius === 500 ? "1 ק״מ" : nearRadius === 1000 ? "3 ק״מ" : "5 ק״מ"}
+                        </button>
+                      ) : (
+                        <button type="button" onClick={exitNear}
+                          className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          למפת ההמלצות הרגילה
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </NearShell>
+        )}
+        {nearMode && (
+          <BottomSheet open={nearFiltersOpen} onOpenChange={setNearFiltersOpen} title="מסננים נוספים">
+            <div className="space-y-3 pb-2">
+              {cities.length > 0 && (
+                <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="סינון לפי עיר"
+                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/20">
+                  <option value="all">כל הערים</option>
+                  {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+              {(recSources?.sources.length ?? 0) > 0 && (
+                <select value={source} onChange={(e) => setSource(e.target.value)} aria-label="סינון לפי מקור"
+                  className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/20">
+                  <option value="all">כל המקורות</option>
+                  {recSources!.sources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              )}
+              {cities.length === 0 && (recSources?.sources.length ?? 0) === 0 && (
+                <p className="text-sm text-muted-foreground">אין מסננים נוספים לטיול הזה.</p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {nearExtraActive && (
+                  <button type="button" onClick={() => { setCity("all"); setSource("all"); }}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <RotateCcw size={14} /> נקה מסננים נוספים
+                  </button>
+                )}
+                <button type="button" onClick={() => { setNearFiltersOpen(false); exitNear(); }}
+                  className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  למפת ההמלצות הרגילה
+                </button>
+              </div>
+            </div>
+          </BottomSheet>
+        )}
+        {!nearMode && (<>
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0 pt-0.5">
             <h1 className="text-2xl font-bold leading-tight text-foreground">המלצות</h1>
@@ -547,8 +742,9 @@ function Recs() {
             <Plus size={24} />
           </button>
         )}
+        </>)}
 
-      {selectionMode && (
+      {!nearMode && selectionMode && (
         <div className="fixed inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 px-4">
           <div className="mx-auto flex max-w-[720px] items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg">
             <span className="text-sm font-medium">נבחרו {selectedIds.size}</span>
