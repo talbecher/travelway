@@ -14,7 +14,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { DateField } from "@/components/DateField";
 import { Plane, Share2, Trash2 } from "lucide-react";
 
-const searchSchema = z.object({ edit: z.coerce.boolean().optional() });
+// Only literal true / "true" means edit mode; edit=false is create mode.
+const searchSchema = z.object({
+  edit: z.preprocess((v) => v === true || v === "true", z.boolean()).optional(),
+});
 
 export const Route = createFileRoute("/onboarding")({
   validateSearch: searchSchema,
@@ -42,7 +45,7 @@ function Onboarding() {
   const { user } = useAuth();
   const { data: allTrips = [] } = useTripsList(user?.id);
   const qc = useQueryClient();
-  const isEditing = !!edit && !!existingTrip;
+  const isEditing = edit === true && !!existingTrip;
   const isOwner = !!existingTrip && !!user && existingTrip.owner_id === user.id;
 
   const deleteTrip = useMutation({
@@ -77,56 +80,72 @@ function Onboarding() {
 
   const [title, setTitle] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
+  // Text in the country box; typing is NOT a selection.
   const [destination, setDestination] = useState("");
+  const [pickedCountry, setPickedCountry] = useState<Country | null>(null);
+  const [countryListOpen, setCountryListOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [travelers, setTravelers] = useState(2);
   const [budget, setBudget] = useState(15000);
+  // PIN is no longer shown; keep stored value on edit, existing default on create.
   const [pin, setPin] = useState("1717");
-  const [currency, setCurrency] = useState("JPY");
+  const [currency, setCurrency] = useState("");
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const initializedFor = useRef<string | null>(null);
 
   // 👤 פרופיל המטיילים
   const [travelPace, setTravelPace] = useState<"relaxed" | "balanced" | "intensive">("balanced");
   const [travelInterests, setTravelInterests] = useState<string[]>([]);
   const [foodBudget, setFoodBudget] = useState<"budget" | "medium" | "splurge">("medium");
   const [travelNotes, setTravelNotes] = useState("");
-  const [profileOpen, setProfileOpen] = useState(true);
-
-  function profileIsEmpty(pace: string, interests: string[], food: string, notes: string) {
-    return pace === "balanced" && interests.length === 0 && food === "medium" && !notes.trim();
-  }
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
-    if (isEditing && existingTrip) {
+    // Initialize once per trip after it loads; refetches never overwrite the form.
+    if (isEditing && existingTrip && initializedFor.current !== existingTrip.id) {
+      initializedFor.current = existingTrip.id;
       setTitle(existingTrip.title);
       setTitleTouched(true);
       setDestination(existingTrip.destination_country ?? "");
+      setPickedCountry(null);
       setStartDate(existingTrip.start_date);
       setEndDate(existingTrip.end_date);
       setTravelers(existingTrip.num_travelers);
       setBudget(Number(existingTrip.total_budget_ils));
       setPin(existingTrip.entry_pin);
       setCurrency(existingTrip.currency_code);
-      const pace = (existingTrip.travel_pace as "relaxed" | "balanced" | "intensive") ?? "balanced";
-      const interests = existingTrip.travel_interests ?? [];
-      const food = (existingTrip.food_budget as "budget" | "medium" | "splurge") ?? "medium";
-      const notes = existingTrip.travel_notes ?? "";
-      setTravelPace(pace);
-      setTravelInterests(interests);
-      setFoodBudget(food);
-      setTravelNotes(notes);
-      setProfileOpen(profileIsEmpty(pace, interests, food, notes));
+      setCurrencyTouched(true); // saved currency is a protected choice
+      setTravelPace((existingTrip.travel_pace as "relaxed" | "balanced" | "intensive") ?? "balanced");
+      setTravelInterests(existingTrip.travel_interests ?? []);
+      setFoodBudget((existingTrip.food_budget as "budget" | "medium" | "splurge") ?? "medium");
+      setTravelNotes(existingTrip.travel_notes ?? "");
     }
   }, [isEditing, existingTrip]);
 
   useEffect(() => {
-    if (!titleTouched) setTitle(autoTitle(destination, startDate));
-  }, [destination, startDate, titleTouched]);
+    if (!titleTouched) setTitle(autoTitle(pickedCountry?.he ?? "", startDate));
+  }, [pickedCountry, startDate, titleTouched]);
+
+  function pickCountry(c: Country) {
+    setPickedCountry(c);
+    setDestination(c.he);
+    setCountryListOpen(false);
+    if (!currencyTouched) setCurrency(c.currency);
+  }
+
+  const countryResults = searchCountries(pickedCountry && destination === pickedCountry.he ? "" : destination).slice(0, 8);
+  const suggestCurrency = pickedCountry && currencyTouched && currency !== pickedCountry.currency ? pickedCountry.currency : null;
+
+  // Destination actually saved: picked country, else (edit only) the original stored text unchanged.
+  const savedDestination = pickedCountry ? pickedCountry.he : (isEditing ? existingTrip?.destination_country ?? "" : "");
 
   const submit = useMutation({
     mutationFn: async () => {
       if (!title.trim()) throw new Error("חסר שם טיול");
-      if (!destination.trim()) throw new Error("חסר יעד");
+      if (!isEditing && !pickedCountry) throw new Error("בחרו מדינה מהרשימה");
+      if (!savedDestination.trim()) throw new Error("חסר יעד");
+      if (!isValidCurrency(currency)) throw new Error("בחרו מטבע יעד");
       if (!startDate || !endDate) throw new Error("חסרים תאריכים");
       const numDays = daysBetween(startDate, endDate) + 1;
       if (numDays <= 0) throw new Error("תאריכים לא תקינים");
