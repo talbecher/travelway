@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { assertOnline } from "@/hooks/use-online";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DateField } from "@/components/DateField";
 import { Plane, Share2, Trash2 } from "lucide-react";
+import { CURRENCIES, isValidCurrency, searchCountries, type Country } from "@/lib/countries";
 
 // Only literal true / "true" means edit mode; edit=false is create mode.
 const searchSchema = z.object({
@@ -145,7 +146,7 @@ function Onboarding() {
       if (!title.trim()) throw new Error("חסר שם טיול");
       if (!isEditing && !pickedCountry) throw new Error("בחרו מדינה מהרשימה");
       if (!savedDestination.trim()) throw new Error("חסר יעד");
-      if (!isValidCurrency(currency)) throw new Error("בחרו מטבע יעד");
+      if (!(isEditing && currency === existingTrip?.currency_code) && !isValidCurrency(currency)) throw new Error("בחרו מטבע יעד");
       if (!startDate || !endDate) throw new Error("חסרים תאריכים");
       const numDays = daysBetween(startDate, endDate) + 1;
       if (numDays <= 0) throw new Error("תאריכים לא תקינים");
@@ -154,7 +155,7 @@ function Onboarding() {
         // Update trip
         const { error: upErr } = await supabase.from("trips").update({
           title: title.trim(),
-          destination_country: destination.trim(),
+          destination_country: savedDestination.trim(),
           start_date: startDate,
           end_date: endDate,
           num_travelers: travelers,
@@ -250,7 +251,7 @@ function Onboarding() {
         .insert({
           owner_id: uid,
           title: title.trim(),
-          destination_country: destination.trim(),
+          destination_country: savedDestination.trim(),
           start_date: startDate,
           end_date: endDate,
           num_travelers: travelers,
