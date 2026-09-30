@@ -142,7 +142,9 @@ function RootComponent() {
 
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const editFlag = useRouterState({ select: (s) => (s.location.search as { edit?: unknown }).edit });
+  const editFlag: unknown = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>).edit ?? null,
+  });
   const isOnboarding = pathname === "/onboarding";
   // Create mode only (edit !== true): hide bottom nav. Edit mode shell unchanged.
   const isCreating = isOnboarding && editFlag !== true;
