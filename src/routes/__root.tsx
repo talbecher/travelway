@@ -142,7 +142,10 @@ function RootComponent() {
 
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const editFlag = useRouterState({ select: (s) => (s.location.search as { edit?: unknown }).edit });
   const isOnboarding = pathname === "/onboarding";
+  // Create mode only (edit !== true): hide bottom nav. Edit mode shell unchanged.
+  const isCreating = isOnboarding && editFlag !== true;
   const [searchOpen, setSearchOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -173,7 +176,7 @@ function AppShell() {
         <Outlet />
       </main>
       {!isOnboarding && <GlobalFab />}
-      <BottomNav />
+      {!isCreating && <BottomNav />}
     </div>
   );
 }
