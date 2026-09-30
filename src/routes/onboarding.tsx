@@ -132,11 +132,11 @@ function Onboarding() {
     setPickedCountry(c);
     setDestination(c.he);
     setCountryListOpen(false);
-    if (!currencyTouched) setCurrency(c.currency);
+    if (!currencyTouched) setCurrency(c.currency ?? "");
   }
 
   const countryResults = searchCountries(pickedCountry && destination === pickedCountry.he ? "" : destination).slice(0, 8);
-  const suggestCurrency = pickedCountry && currencyTouched && currency !== pickedCountry.currency ? pickedCountry.currency : null;
+  const suggestCurrency = pickedCountry?.currency && currencyTouched && currency !== pickedCountry.currency ? pickedCountry.currency : null;
 
   // Destination actually saved: picked country, else (edit only) the original stored text unchanged.
   const savedDestination = pickedCountry ? pickedCountry.he : (isEditing ? existingTrip?.destination_country ?? "" : "");
@@ -379,7 +379,7 @@ function Onboarding() {
                     <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCountry(c)}
                       className="w-full flex items-center justify-between px-3 h-11 text-sm text-start hover:bg-muted">
                       <span>{c.he}</span>
-                      <span className="text-xs text-muted-foreground" dir="ltr">{c.en} · {c.currency}</span>
+                      <span className="text-xs text-muted-foreground" dir="ltr">{c.en}{c.currency ? ` · ${c.currency}` : ""}</span>
                     </button>
                   </li>
                 ))}
