@@ -353,10 +353,45 @@ function Onboarding() {
         className="space-y-4"
       >
         <Field label="יעד">
-          <input value={destination} onChange={(e) => setDestination(e.target.value)} required
-            placeholder="Italy"
-            dir="ltr"
-            className="w-full rounded-lg bg-background border border-input px-3 h-11" />
+          <div className="relative">
+            <input
+              value={destination}
+              onChange={(e) => {
+                setDestination(e.target.value);
+                // Typing is not a selection; any change clears the previous pick.
+                setPickedCountry(null);
+                setCountryListOpen(true);
+              }}
+              onFocus={() => setCountryListOpen(true)}
+              onBlur={() => setTimeout(() => setCountryListOpen(false), 150)}
+              role="combobox"
+              aria-expanded={countryListOpen}
+              aria-controls="country-list"
+              aria-autocomplete="list"
+              placeholder="חפשו מדינה — יפן / Japan"
+              className="w-full rounded-lg bg-background border border-input px-3 h-11"
+            />
+            {countryListOpen && countryResults.length > 0 && (
+              <ul id="country-list" role="listbox"
+                className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-border bg-popover shadow-md">
+                {countryResults.map((c) => (
+                  <li key={c.code} role="option" aria-selected={pickedCountry?.code === c.code}>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCountry(c)}
+                      className="w-full flex items-center justify-between px-3 h-11 text-sm text-start hover:bg-muted">
+                      <span>{c.he}</span>
+                      <span className="text-xs text-muted-foreground" dir="ltr">{c.en} · {c.currency}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {!isEditing && destination.trim() && !pickedCountry && (
+            <p className="mt-1 text-xs text-muted-foreground">בחרו מדינה מהרשימה</p>
+          )}
+          {isEditing && !pickedCountry && destination !== (existingTrip?.destination_country ?? "") && (
+            <p className="mt-1 text-xs text-muted-foreground">היעד השמור יישאר ללא שינוי עד שתבחרו מדינה מהרשימה</p>
+          )}
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="מתאריך">
@@ -387,30 +422,38 @@ function Onboarding() {
             placeholder="למשל: איטליה 2027"
             className="w-full rounded-lg bg-background border border-input px-3 h-11" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="מטבע יעד">
-            <input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-              dir="ltr" placeholder="EUR"
-              className="w-full rounded-lg bg-background border border-input px-3 h-11" />
-          </Field>
-          <Field label="קוד כניסה (4 ספרות)">
-            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              inputMode="numeric" dir="ltr"
-              className="w-full rounded-lg bg-background border border-input px-3 h-11" />
-          </Field>
-        </div>
+        <Field label="מטבע יעד">
+          <select
+            value={currency}
+            onChange={(e) => { setCurrency(e.target.value); setCurrencyTouched(true); }}
+            dir="ltr"
+            className="w-full rounded-lg bg-background border border-input px-3 h-11"
+          >
+            <option value="" disabled>בחרו מטבע</option>
+            {currency && !CURRENCIES.includes(currency) && <option value={currency}>{currency}</option>}
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {suggestCurrency && (
+            <button type="button" onClick={() => setCurrency(suggestCurrency)}
+              className="mt-1 text-xs text-[color:var(--accent)] underline">
+              המטבע של {pickedCountry?.he} הוא {suggestCurrency} — לעבור אליו?
+            </button>
+          )}
+        </Field>
 
         <section className="bg-card border border-border rounded-2xl overflow-hidden">
           <button
             type="button"
             onClick={() => setProfileOpen((o) => !o)}
+            aria-expanded={profileOpen}
             className="w-full flex items-center justify-between px-4 h-12 text-sm font-medium"
           >
-            <span>👤 פרופיל המטיילים</span>
+            <span>העדפות לתכנון עם AI (אופציונלי)</span>
             <span className="text-muted-foreground text-xs">{profileOpen ? "▲" : "▼"}</span>
           </button>
           {profileOpen && (
             <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">ההעדפות נכללות בייצוא ל-AI כדי לעזור בתכנון המסלול</p>
               <Field label="קצב הטיול">
                 <div className="grid grid-cols-3 gap-2">
                   {([
