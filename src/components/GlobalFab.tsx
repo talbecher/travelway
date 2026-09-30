@@ -356,7 +356,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         אפשר לשמור עכשיו ולהשלים פרטים אחר כך
       </p>
 
-      {googlePick && !linkedRecId && !saveToRecs && (
+      {googlePick && recType && !linkedRecId && !saveToRecs && (
         <p className="break-words px-1 text-xs leading-5 text-muted-foreground">
           לשמירת המקום והמיקום גם בהמלצות, סמנו שמור גם בהמלצות
         </p>
