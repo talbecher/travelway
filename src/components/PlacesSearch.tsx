@@ -19,6 +19,8 @@ export type SelectedPlace = {
   rating: number | null;
   userRatingCount: number | null;
   primaryType?: string | null;
+  /** Google place id (provider_place_id). */
+  placeId?: string;
 };
 
 function newToken(): string {
@@ -29,10 +31,13 @@ export function PlacesSearch({
   onSelect,
   placeholder = "חפש מקום...",
   autoFocus = false,
+  fieldProfile = "default",
 }: {
   onSelect: (place: SelectedPlace) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  /** "expense": skip photo/rating fields and the Photo Media call. Default keeps existing behavior. */
+  fieldProfile?: "default" | "expense";
 }) {
   const autocomplete = useServerFn(autocompletePlaces);
   const details = useServerFn(getPlaceDetails);
@@ -139,7 +144,7 @@ export function PlacesSearch({
     setDetailsError(false);
     const stale = () => !mountedRef.current || my !== seqRef.current;
     try {
-      const r = await details({ data: { placeId: s.placeId, sessionToken: token } });
+      const r = await details({ data: { placeId: s.placeId, sessionToken: token, profile: fieldProfile } });
       if (stale()) return;
       if (!r.place) {
         setDetailsError(true);
@@ -147,7 +152,7 @@ export function PlacesSearch({
       }
       const p = r.place;
       let photo_url: string | null = null;
-      if (p.photoName) {
+      if (fieldProfile !== "expense" && p.photoName) {
         try {
           const ph = await getPhoto({ data: { photoName: p.photoName, maxWidthPx: 400 } });
           photo_url = ph.url;
@@ -167,6 +172,7 @@ export function PlacesSearch({
         rating: p.rating,
         userRatingCount: p.userRatingCount,
         primaryType: p.primaryType,
+        placeId: p.id,
       });
       seqRef.current++;
       setOpen(false);

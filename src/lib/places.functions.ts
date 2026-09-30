@@ -185,12 +185,13 @@ export const autocompletePlaces = createServerFn({ method: "POST" })
   });
 
 export const getPlaceDetails = createServerFn({ method: "POST" })
-  .inputValidator((input: { placeId: string; sessionToken: string }) => {
+  .inputValidator((input: { placeId: string; sessionToken: string; profile?: "default" | "expense" }) => {
     if (!input || typeof input.placeId !== "string" || !/^[A-Za-z0-9_-]{5,300}$/.test(input.placeId))
       throw new Error("invalid placeId");
     if (typeof input.sessionToken !== "string" || !TOKEN_RE.test(input.sessionToken))
       throw new Error("invalid session");
-    return { placeId: input.placeId, sessionToken: input.sessionToken };
+    const profile: "default" | "expense" = input.profile === "expense" ? "expense" : "default";
+    return { placeId: input.placeId, sessionToken: input.sessionToken, profile };
   })
   .handler(async ({ data }): Promise<{ place: PlaceResult | null; error?: string }> => {
     const apiKey = process.env.GOOGLE_PLACES_KEY;
@@ -204,8 +205,11 @@ export const getPlaceDetails = createServerFn({ method: "POST" })
         signal: controller.signal,
         headers: {
           "X-Goog-Api-Key": apiKey,
+          // "expense" profile: no photos/rating fields (cheaper SKU, no Photo Media follow-up).
           "X-Goog-FieldMask":
-            "id,displayName,formattedAddress,location,primaryTypeDisplayName,photos,addressComponents,rating,userRatingCount",
+            data.profile === "expense"
+              ? "id,displayName,formattedAddress,location,primaryTypeDisplayName,addressComponents"
+              : "id,displayName,formattedAddress,location,primaryTypeDisplayName,photos,addressComponents,rating,userRatingCount",
         },
       });
       clearTimeout(timeout);
