@@ -128,26 +128,15 @@ export function useRestoreDaySnapshot() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ snapshot }: { snapshot: DaySnapshot }) => {
-      // Keep an undo point of the current state before overwriting it.
-      await createDaySnapshot({
-        dayId: snapshot.day_id,
-        tripId: snapshot.trip_id,
-        reason: "pre_restore",
+      // One transaction: validate, lock day + current entries, save pre_restore, replace entries.
+      const { data, error } = await supabase.rpc("restore_day_snapshot", {
+        _snapshot_id: snapshot.id,
+        _pre_restore_name: defaultSnapshotName("pre_restore"),
       });
-
-      const { error: delErr } = await supabase
-        .from("day_entries")
-        .delete()
-        .eq("day_id", snapshot.day_id);
-      if (delErr) throw delErr;
-
-      const rows = Array.isArray(snapshot.entries) ? (snapshot.entries as Record<string, unknown>[]) : [];
-      if (rows.length) {
-        const payload = rows.map((r, i) => ({ ...r, day_id: snapshot.day_id, display_order: i }));
-        const { error } = await supabase.from("day_entries").insert(payload as never);
-        if (error) throw error;
-      }
-      return rows.length;
+      if (error) throw error;
+      // Existing retention policy (unchanged): keep the latest MAX_SNAPSHOTS per day.
+      await pruneSnapshots(snapshot.day_id);
+      return (data as number) ?? 0;
     },
     onSuccess: (_n, v) => {
       qc.invalidateQueries({ queryKey: ["day-entries", v.snapshot.day_id] });
