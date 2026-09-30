@@ -599,8 +599,8 @@ function Home() {
     return (
       <div className="pt-16 text-center space-y-4">
         <div className="text-5xl">🧭</div>
-        <h1 className="text-2xl font-medium">אין טיול פעיל</h1>
-        <p className="text-sm text-muted-foreground">בואו ניצור טיול חדש</p>
+        <h1 className="text-2xl font-medium">לאן טסים הפעם?</h1>
+        <p className="text-sm text-muted-foreground">צרו את הטיול הראשון שלכם — יעד, תאריכים ותקציב, ואנחנו נעזור בכל השאר</p>
         <Link to="/onboarding"
           className="inline-block px-6 h-12 leading-[3rem] rounded-lg bg-[color:var(--terracotta)] text-white font-medium">
           צור טיול חדש
