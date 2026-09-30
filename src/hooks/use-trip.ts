@@ -4,6 +4,7 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { todayLocal } from "@/lib/format";
 import type { GeoEntry } from "@/lib/day-suggest";
+import type { Tables } from "@/integrations/supabase/types";
 
 /**
  * All trip-scoped query keys MUST include the active tripId so cached data
@@ -36,18 +37,28 @@ export function daysQuery(tripId: string, versionId?: string | null) {
 }
 
 
+/** All recs of a trip, paged past the 1000-row API cap. Any page failure fails the whole load. */
 export function recsQuery(tripId: string) {
   return queryOptions({
     queryKey: ["recs", tripId],
     staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recommendations")
-        .select("*")
-        .eq("trip_id", tripId)
-        .order("created_at");
-      if (error) throw error;
-      return data ?? [];
+    queryFn: async ({ signal }) => {
+      const PAGE = 1000;
+      const all: Tables<"recommendations">[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("recommendations")
+          .select("*")
+          .eq("trip_id", tripId)
+          .order("created_at")
+          .order("id")
+          .range(from, from + PAGE - 1)
+          .abortSignal(signal);
+        if (error) throw error;
+        all.push(...(data ?? []));
+        if (!data || data.length < PAGE) break;
+      }
+      return all;
     },
   });
 }

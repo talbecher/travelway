@@ -773,6 +773,10 @@ export type Database = {
         }
         Returns: string
       }
+      restore_day_snapshot: {
+        Args: { _pre_restore_name: string; _snapshot_id: string }
+        Returns: number
+      }
     }
     Enums: {
       entry_type:

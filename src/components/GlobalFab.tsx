@@ -25,6 +25,51 @@ import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
 import { Button } from "@/components/ui/button";
+import { PlacesSearch, type SelectedPlace } from "./PlacesSearch";
+import { useRecs } from "@/hooks/use-trip";
+
+const GOOGLE_PROVIDER = "google";
+
+/** Link to an existing trip rec by Google place id; create only if none exists (also on unique-index race). */
+async function findOrCreateGoogleRec(input: {
+  type: "food" | "attraction" | "hotel";
+  name: string;
+  place: SelectedPlace & { placeId: string };
+}): Promise<string> {
+  const tripId = getActiveTripId();
+  const find = async () => {
+    const { data, error } = await supabase
+      .from("recommendations")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("provider", GOOGLE_PROVIDER)
+      .eq("provider_place_id", input.place.placeId)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.id ?? null;
+  };
+  const existing = await find();
+  if (existing) return existing;
+  try {
+    return await saveRecommendation({
+      type: input.type,
+      name: input.name,
+      city: input.place.city,
+      address: input.place.address,
+      google_maps_url: input.place.google_maps_url,
+      latitude: input.place.latitude,
+      longitude: input.place.longitude,
+      provider: GOOGLE_PROVIDER,
+      provider_place_id: input.place.placeId,
+    });
+  } catch (e) {
+    if ((e as { code?: string })?.code === "23505") {
+      const again = await find();
+      if (again) return again;
+    }
+    throw e;
+  }
+}
 
 export function GlobalFab() {
   const [open, setOpen] = useState(false);
@@ -64,6 +109,17 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
   const [locationName, setLocationName] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
   const [saveToRecs, setSaveToRecs] = useState(false);
+  // Selection-derived link/location. Cleared whenever the user edits name or link.
+  const [linkedRecId, setLinkedRecId] = useState<string | null>(null);
+  const [googlePick, setGooglePick] = useState<(SelectedPlace & { placeId: string }) | null>(null);
+  const [showGoogle, setShowGoogle] = useState(false);
+  const { data: recs = [] } = useRecs();
+  const q = locationName.trim().toLowerCase();
+  const recMatches =
+    !linkedRecId && !googlePick && q.length >= 2
+      ? recs.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 5)
+      : [];
+  const clearSelection = () => { setLinkedRecId(null); setGooglePick(null); };
   const [date, setDate] = useState(todayISO());
 
   const recType = categoryToRecType(category);
@@ -77,8 +133,11 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
       const amount_ils = useTarget ? n / conv.rate! : n;
       const amount_foreign = useTarget ? n : null;
 
-      let linkedId: string | null = null;
-      if (saveToRecs && recType && locationName.trim()) {
+      let linkedId: string | null = linkedRecId;
+      if (!linkedId && saveToRecs && recType && locationName.trim() && googlePick) {
+        linkedId = await findOrCreateGoogleRec({ type: recType, name: locationName.trim(), place: googlePick });
+        qc.invalidateQueries({ queryKey: ["recs"] });
+      } else if (!linkedId && saveToRecs && recType && locationName.trim()) {
         linkedId = await saveRecommendation({
           type: recType,
           name: locationName.trim(),
@@ -226,16 +285,61 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
           <MapPin className="size-5 shrink-0 text-primary" aria-hidden="true" />
           <span className="min-w-0">
             <span className={rowLabel}>מקום</span>
-            <input value={locationName} onChange={(e) => setLocationName(e.target.value)}
+            <input value={locationName} onChange={(e) => { setLocationName(e.target.value); clearSelection(); }}
               placeholder="לא חובה" className={`mt-1 ${rowInput} min-h-11`} />
           </span>
         </label>
+        {(recMatches.length > 0 || linkedRecId || !googlePick) && (
+          <div className="space-y-1.5 px-3 py-2">
+            {linkedRecId ? (
+              <div className="mr-8 text-xs text-success">מקושר להמלצה שמורה</div>
+            ) : (
+              <>
+                {recMatches.length > 0 && (
+                  <div className="mr-8 flex flex-wrap gap-1.5" aria-label="המלצות שמורות">
+                    {recMatches.map((r) => (
+                      <button key={r.id} type="button"
+                        onClick={() => {
+                          setLocationName(r.name);
+                          setMapsUrl(r.google_maps_url ?? "");
+                          setGooglePick(null);
+                          setLinkedRecId(r.id);
+                          setShowGoogle(false);
+                        }}
+                        className="min-h-9 max-w-full truncate rounded-full border border-border bg-background px-3 text-xs">
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showGoogle ? (
+                  <div className="mr-8">
+                    <PlacesSearch fieldProfile="expense" placeholder="חיפוש ב-Google…" autoFocus
+                      onSelect={(p) => {
+                        if (!p.placeId) return;
+                        setLocationName(p.name);
+                        setMapsUrl(p.google_maps_url);
+                        setLinkedRecId(null);
+                        setGooglePick({ ...p, placeId: p.placeId });
+                        setShowGoogle(false);
+                      }} />
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowGoogle(true)}
+                    className="mr-8 min-h-9 text-xs text-primary underline-offset-2 hover:underline">
+                    חפש ב-Google
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
         <div className="px-3 py-2">
           <label className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5">
             <LinkIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
             <span className="min-w-0">
               <span className={rowLabel}>Google Maps</span>
-              <input type="url" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} dir="ltr"
+              <input type="url" value={mapsUrl} onChange={(e) => { setMapsUrl(e.target.value); clearSelection(); }} dir="ltr"
                 placeholder="https://maps.app.goo.gl/..."
                 className={`mt-1 ${rowInput} min-h-11 text-left`} />
             </span>
@@ -252,7 +356,13 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
         אפשר לשמור עכשיו ולהשלים פרטים אחר כך
       </p>
 
-      {recType && locationName.trim() && (
+      {googlePick && recType && !linkedRecId && !saveToRecs && (
+        <p className="break-words px-1 text-xs leading-5 text-muted-foreground">
+          לשמירת המקום והמיקום גם בהמלצות, סמנו שמור גם בהמלצות
+        </p>
+      )}
+
+      {recType && locationName.trim() && !linkedRecId && (
         <label className="flex min-h-12 min-w-0 items-center gap-3 px-1 text-sm">
           <input type="checkbox" checked={saveToRecs} onChange={(e) => setSaveToRecs(e.target.checked)}
             className="size-5 shrink-0 accent-primary" />
