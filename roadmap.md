@@ -161,7 +161,7 @@
 
 # גישת קריאה בלבד ל-AI (trip-context API)
 
-- [ ] טבלת api_tokens + פונקציית guard + עימוד תחנות (שרת בלבד)
-- [ ] יצירה/רשימה/ביטול טוקנים + מסך "גישת AI"
-- [ ] GET /api/public/trip-context + openapi.json; items_included/use_section למסלול ולמלונות; טעינה מלאה לנתונים "complete"
-- [ ] בדיקות: A↔B פרטיים בשני הכיוונים, שיתוף/ביטול שיתוף, scope, ביטול/תפוגה, cursor משונה ו-cursor תקין לטיול אחר, 405, אין כתיבה
+- [x] טבלת api_tokens + פונקציית guard + עימוד תחנות (שרת בלבד)
+- [x] יצירה/רשימה/ביטול טוקנים + מסך "גישת AI"
+- [x] GET /api/public/trip-context + openapi.json; items_included/use_section למסלול ולמלונות; טעינה מלאה לנתונים "complete"
+- [x] בדיקות: A↔B פרטיים בשני הכיוונים, שיתוף/ביטול שיתוף, scope, ביטול/תפוגה, cursor משונה ו-cursor תקין לטיול אחר, 405, אין כתיבה
