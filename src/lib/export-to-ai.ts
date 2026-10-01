@@ -610,9 +610,9 @@ export async function generateRecsPrompt(tripId: string): Promise<string> {
     .eq("id", tripId)
     .maybeSingle();
   if (error) throw error;
-  const dest = trip?.destination_country?.trim() || "היעד שלי";
+  const dest = trip?.destination_country?.trim();
   const lines: string[] = [];
-  lines.push(`שלום! אני מתכנן טיול ל${dest} ומחפש המלצות למקומות.`);
+  lines.push(`שלום! אני מתכנן טיול${dest ? ` ל${dest}` : ""} ומחפש המלצות למקומות.`);
   lines.push("");
   if (trip) lines.push(...travelerProfileLines(trip));
   lines.push("בבקשה המלץ על 10–15 מקומות בלבד (אוכל, אטרקציות, ואם רלוונטי — לינה) שמתאימים לפרופיל שלנו.");
