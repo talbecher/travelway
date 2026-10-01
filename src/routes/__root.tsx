@@ -296,6 +296,13 @@ function SwitchTripButton() {
             else router.navigate({ to: "/" });
           }}
         />
+        <Link
+          to="/ai-access"
+          onClick={() => setOpen(false)}
+          className="mt-3 flex h-11 items-center justify-center rounded-lg border border-border text-sm text-muted-foreground"
+        >
+          גישת AI לקריאת הטיול
+        </Link>
       </BottomSheet>
     </>
   );
