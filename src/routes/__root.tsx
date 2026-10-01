@@ -51,7 +51,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponentBase({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponentBase({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   useEffect(() => { reportLovableError(error, { boundary: "root" }); }, [error]);
   return (
@@ -104,8 +104,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponentLazy,
 });
-
-const ErrorComponentLazy = lazy(async () => ({ default: ErrorComponentBase }));
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
