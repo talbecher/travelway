@@ -629,7 +629,7 @@ const OB_CSS = `
 .dark .ob-root{--ob-paper:#1B1E1C;--ob-card:#242826;--ob-tile:#2C302D;--ob-line:#3D433F;--ob-ink:#F3EEE6;--ob-muted:#B7AFA4;--ob-green:#7CC3B3;--ob-green-soft:color-mix(in oklab,#7CC3B3 18%,transparent);--ob-on-green:#132320;--ob-chip:#333834;--ob-coral:#E7614C;--ob-coral-text:#F0907F;}
 .ob-card{background:var(--ob-card);border:1px solid var(--ob-line);border-radius:22px;}
 .ob-card-selected{border-color:var(--ob-green);border-width:1.5px;}
-.ob-tile{background:var(--ob-tile);border:1px solid var(--ob-line);border-radius:14px;padding:8px 6px;}
+.ob-tile{background:var(--ob-tile);border:1px solid var(--ob-line);border-radius:14px;padding:8px 4px;}
 .ob-input{width:100%;height:44px;border-radius:12px;background:var(--ob-card);border:1px solid var(--ob-line);padding-inline:12px;color:var(--ob-ink);min-width:0;}
 .ob-input:focus-visible{outline:2px solid var(--ob-green);outline-offset:1px;}
 .ob-cta{background:var(--ob-coral);color:#fff;box-shadow:0 6px 18px -6px color-mix(in oklab,var(--ob-coral) 60%,transparent);}
