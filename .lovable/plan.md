@@ -1,72 +1,87 @@
-# Read-only AI access to Travel Way trips (planning only)
+# Read-only AI access to Travel Way trips (final, ready to build)
 
-Planning only. Nothing is built in this round. The plan is grounded in the current tables and access rules, which were read before writing it.
+This plan is purely additive. It changes no existing screens, routing, itinerary logic or trip permissions.
 
-## 1. What exists today (verified)
+## 1. Verified facts
+- **Data:** trips, itinerary_versions (`is_active` stored on the server), itinerary_days, day_entries, recommendations (booking fields), hotels, expenses (`amount_ils` + optional foreign amount), settings (base_currency), checklist_items, documents.
+- **Not in the data:** flights, transport, a reservations table, timezone, updated_at, a traveler list. None of these will be invented.
+- **Access today:** a user can open a trip they own or one listed in `shared_user_ids`.
+- **Privileged server connection:** the server-only admin client and its project secret already exist in this runtime. No new credentials are needed.
 
-| Internal source | External field | Notes |
+## 2. Authorization model
+- **Token format:** `Authorization: Bearer twpat_<43 chars>` (32 random bytes). The server stores only its SHA-256 hash and compares hashes. Tokens sent in a query, cookie or body are refused.
+- **Single guard:** a new database function, callable by the server role only, takes the token hash and an optional requested trip id. It returns the resolved trip id, or a reason (`invalid`, `revoked`, `expired`, `missing_trip`, `scope_mismatch`, `no_access`). On every request it checks:
+  - the token exists, is not revoked and is not expired
+  - the token's trip scope matches the requested trip
+  - the token owner currently owns the trip or is in `shared_user_ids`, checked live every time
+- **Effects of the live check:** removing sharing cuts off access immediately. A trip-scoped token is never a lasting grant.
+- **Usage tracking:** the same function bumps `last_used_at` only if it is more than 5 minutes old.
+- **After the guard:** every read uses the admin client, filtered by the verified trip id. Day entries are read only through days of that trip's verified active version. The caller never supplies a user id.
+- **HTTP responses:** 401 for invalid, revoked or expired tokens. 400 when trip_id is missing on a token without trip scope. 403 for a scope mismatch. 404 when there is no access, so the response doesn't reveal whether the trip exists.
+- **Active version:** exactly one `is_active` version is required. Zero or several active versions returns `itinerary_version: null`, no days and `notice: "no_active_version"`.
+
+## 3. Token table and management
+- **New table `api_tokens`:** id, user_id, token_hash (unique), label, trip_id (nullable), created_at, expires_at, revoked_at, last_used_at.
+- **Database protection:** row security is on, there are no policies, and `authenticated` and `anon` get no grants. Only the server role can reach the table, so the hash is never exposed to any client.
+- **Three signed-in server functions:**
+  - **Create:** label, trip (default; must currently be accessible, checked with the user's own session), expiry (30, 90 or 365 days). Returns the raw token once. It is never logged.
+  - **List:** returns safe metadata only.
+  - **Revoke:** works only on the caller's own rows.
+- **Screen:** a small "AI access" screen opens from the existing user menu. It has the create form, a one-time copy, the list, revoke buttons, and the read-only explanation text.
+
+## 4. Response contract (`schema_version` "1.0")
+`GET /api/public/trip-context`
+- **Parameters:** `trip_id`, `section`, `date`, `city`, `limit` (1–200, default 100), `cursor`. Unknown parameters return 400.
+- **Every response includes:** `schema_version`, `generated_at` and `trip` (id, name, dates, destination text, number of travelers).
+
+| Data | Full-trip mode | Paged section |
 |---|---|---|
-| trips (title, start/end_date, destination_country, num_travelers, currency_code, travel_* prefs) | `trip` | `destination_country` is free text (country or city). Never expose entry_pin, share_token or shared_user_ids |
-| itinerary_versions (is_active) | `itinerary_version {id,name}` | Stored on the server. The app picks `is_active`, otherwise the first version. The API uses only `is_active = true` and never falls back (see Decisions) |
-| itinerary_days (date, day_number, city_label, notes, version_id) | `itinerary_days[]` | Active version only |
-| day_entries (title, time_of_day, entry_type, location_name, lat/lng, google_maps_url, description, linked rec/hotel) | `itinerary_days[].items[]` | No photo_url |
-| recommendations (name, type, city, status, address, lat/lng, rating, google_rating, notes, booking_status/time/deadline/url) | `saved_places[]` | |
-| recommendations with a booking_status | `reservations[]` | Derived view. There is no reservations table |
-| hotels | `hotels[]` | No confirmation_url, photo_url or review text |
-| expenses + settings.base_currency | `expenses_summary` | Totals by category and by date. No line items in v1 |
-| checklist_items | `checklist_summary` | Done/total, open items with due dates |
-| documents | `documents[]` (metadata) | id, title, type, valid_date, linked rec only. Never file_url or barcode_value |
+| trip, itinerary_version, days (date, number, city, item count) | complete | — |
+| itinerary items | included only if the total is 300 or fewer; otherwise counts only plus `truncated:false, use_section:"itinerary"` | `section=itinerary` (+`date`) |
+| hotels | complete if 50 or fewer, otherwise count | `section=hotels` |
+| saved_places | count by type and status | `section=saved_places` (+`city`) |
+| reservations (recs with a booking status other than none) | count | `section=reservations` |
+| expenses | summary only | `section=expenses` (summary, no line items) |
+| checklist | done/total + count of open items | `section=checklist` |
+| documents | count | `section=documents` (metadata: id, title, type, valid_date, linked place; never files, barcodes or URLs) |
 
-Not present in the data, so not in the API: flights, transport, timezone, updated_at, a traveler list. Days have no `updated_at` either.
+- **Pagination:** each section is ordered by fixed keys. Itinerary items use a server-only database function that orders by (date, display_order, created_at, id) and filters by trip and version. Each request fetches `limit+1` rows to know whether more exist, and never loads everything.
+- **Metadata:** `pagination: {limit, next_cursor|null}`.
+- **Cursors:** a cursor is the last row's keys, signed with a new generated server secret. It is bound to user, trip, section and filters, and a mismatch returns 400.
+- **Expenses:** the total in base currency uses `amount_ils` only when base_currency is ILS. Foreign amounts are totalled separately per currency. Rows without a usable value are counted as `unconverted_count`, never as zero. No exchange rates are invented.
+- **Headers and errors:** `Cache-Control: no-store`. Errors look like `{"error":"…"}`, with no internal details.
+- **Endpoints:** the read API allows GET only. Other methods return 405. `GET /api/public/openapi.json` serves an OpenAPI 3.1 document.
 
-**Access model today:** every table checks `can_access_trip(trip_id)`, which means the owner or anyone in `shared_user_ids`. A token holder therefore gets the same trips they can see in the app, including trips shared with them.
+## 5. Rate limiting and logging
+- **Rate limiting:** there is no suitable built-in limiter, and a database write per read was ruled out. v1 has no reliable global rate limit, and the final report will say so. Only the throttled `last_used_at` write happens.
+- **Logging:**
+  - The handler never logs headers.
+  - Errors are reduced to a code before logging.
+  - The token is removed from any error message under the app's control.
+  - Hosting-level header logging can't be verified from here, and the report will state that.
 
-## 2. Decisions to confirm before building
-1. **Shared trips:** should a token read trips shared with its owner, or only trips they own? Recommended: the same as the app (owner or shared).
-2. **Active version:** nothing stops a trip from having zero or several `is_active` rows. Rule: exactly one active version is required. Zero or several returns `itinerary_version: null` and empty days, with a `"no_active_version"` notice. No guessing.
-3. **Token scope:** each token is either tied to one trip or covers all of its owner's accessible trips. Recommended default for ChatGPT: tied to one trip.
+## 6. Verification
+- **Test users:** two dedicated test users, A and B, with test trips: one owned by A, one owned by B and shared with A. All test data is deleted afterwards.
+- **Test cases:**
+  - missing, invalid, revoked and expired tokens
+  - token A asking for B's private trip
+  - a scope mismatch, and a missing trip_id
+  - a shared trip readable, then denied right after unsharing
+  - itinerary and saved-places paging with more than 300 items, plus a tampered cursor
+  - POST returning 405
+  - no trip-table changes after the reads (row checksums)
+  - no hash readable through the browser client
+- **Build checks:** TypeScript and the production build must pass.
+- **Final report:** separates runtime-tested results from code-read claims.
 
-## 3. How a token is checked (Lovable Cloud)
-- **A.** The endpoint reads only `Authorization: Bearer twpat_<random>`. It rejects tokens passed as query, cookie or body.
-- **B.** The token is 32 random bytes. The server computes SHA-256 of it and matches the stored hash with a timing-safe comparison. The raw token is never stored.
-- **C.** A match resolves to `user_id` and an optional `trip_id`. The token must also not be revoked or expired.
-- **D/E.** The token is not a normal sign-in, so `auth.uid()` is empty and ordinary access rules don't apply to it. Queries therefore run with the server's privileged connection, loaded inside the handler only. This connection is never exposed.
-- **F.** Every read starts from one guard. It loads the trip by id and requires `owner_id = user_id OR user_id = ANY(shared_user_ids)`, plus the token's trip scope. All later queries filter on that verified `trip_id`. Day entries are joined through days of that trip and active version.
-- **G.** The app's existing access rules are bypassed by this connection, so the guard replaces them. It mirrors `can_access_trip` exactly. Keeping all reads in one module with a single entry function keeps that guard in one place.
-- **H.** User B's data can't leak to User A because the caller never supplies a user. The user comes only from the token hash. A trip outside the user's access returns 404, the same response as for a trip that doesn't exist.
-- Safer alternative, considered for later: a database function that takes the user id and enforces access inside SQL. v1 keeps the guard in one server module.
+## 7. Out of scope (later)
+Custom GPT setup (import the OpenAPI document, set Bearer auth, paste the token) and an MCP wrapper. Neither is part of this phase.
 
-## 4. Trip selection
-- Trip-scoped token: `trip_id` may be omitted. If it is supplied and differs from the token's trip, the API returns 403.
-- Token without a trip scope: `trip_id` is required (400 if missing). There is no "active trip" guess. The app's active trip lives only in browser storage and is never used.
-
-## 5. Contract (schema_version "1.0")
-- `GET /api/public/trip-context` returns `schema_version`, `generated_at` and `trip`, followed by sections.
-- Filters: `trip_id`, `date=YYYY-MM-DD` (itinerary only), and `section=itinerary|saved_places|reservations|hotels|expenses|checklist|documents`. `city` filters saved_places and hotels with an exact case-insensitive match. Unknown parameters return 400.
-- **Pagination (Option B):** a full response includes only bounded summaries plus the itinerary, which is naturally small. `saved_places` appears in full-trip mode as a count only. Lists are paged only with `section=…`: `limit` up to 200 and an opaque `cursor` encoding (created_at, id). The cursor is signed with a server secret and bound to user, trip, section and filters, so a cursor replayed under different filters or for another trip returns 400. Server reads walk pages of 1,000 internally, so nothing is cut off.
-- Headers: `Cache-Control: no-store`. Errors: `{"error":"unauthorized"|"forbidden"|"not_found"|"bad_request"|"rate_limited"|"server_error"}` with no internal details.
-- `GET /api/public/openapi.json` publishes an OpenAPI 3.1 document with the bearer scheme, a single GET operation and all of the above.
-
-## 6. Token management (needs a normal sign-in)
-- New table `api_tokens`: id, user_id, token_hash (unique), label, trip_id (nullable), created_at, last_used_at, expires_at, revoked_at.
-- Access rules: the owner can select and update rows only for their own user_id. Inserts happen only through a signed-in server function that creates the token and returns it once. Token rows never include the hash on the client side.
-- A small "AI access" screen opens from the user menu: create (label, optional trip, expiry), copy once, list, revoke. It shows the text: "This token gives read-only access to your Travel Way trip data. It cannot modify your trips."
-- The only write on API reads is `last_used_at`, throttled to once per minute.
-- Simple rate limit: about 60 requests per minute per token, counted on the token row. Over the limit returns 429.
-
-## 7. Logging and privacy
-- The handler never logs headers or tokens. Errors are logged as a code only.
-- The project's error capture and app logs (`error-capture`, `server.ts`) were checked: they log errors, not request headers. The hosting layer may record request metadata. Tokens go only in the header, never in URLs, so they don't appear in access logs.
-
-## 8. Separate later phases
-- **B. Custom GPT:** import the OpenAPI document, set API-key auth (Bearer), paste the token, and test. Done in ChatGPT, outside the app.
-- **C. ChatGPT/Codex through MCP:** the REST endpoint alone isn't an MCP server. A small MCP route (`/api/public/mcp`) would wrap the same read module as tools such as `get_trip_context` and `get_day`. It would run in this app with the same bearer token and be registered in the client's MCP settings. This is optional and planned after v1.
-
-## 9. Testing plan
-- Use two dedicated test users, each with a test trip. User A also gets a trip shared with them. Delete everything afterwards.
-- Cases: no token or a bad token (401), a revoked token (401), an expired token (401). Token A on trip B returns 404. A trip-scoped token with another trip_id returns 403. A token without scope and without trip_id returns 400. POST, PUT and DELETE return 405. A cursor reused on another trip returns 400. A trip with more than 1,000 saved places pages completely. The response is checked for absence of file_url, entry_pin and share_token. Each test also confirms that no trip data changed.
-- TypeScript and the build must keep passing. Existing screens stay unchanged.
-
-## Notes
-- The uploaded brief ends at "Suggested setup" in the testing section, so the testing plan above fills in the rest.
-- New pieces: one table with a migration, one server-only read module, two public routes, token server functions, and one small screen. No new packages.
+## Technical files
+- Migration: `api_tokens` table, the guard function and the items page function, both executable by the server role only.
+- New secret: `API_CURSOR_SECRET` (generated).
+- `src/lib/trip-context.server.ts` for the guard call, reads and DTO mapping.
+- `src/lib/api-tokens.functions.ts` for create, list and revoke.
+- `src/routes/api/public/trip-context.ts` and `src/routes/api/public/openapi[.]json.ts`.
+- `src/routes/ai-access.tsx` plus one menu link.
+- One rule added to `AGENTS.md`.
