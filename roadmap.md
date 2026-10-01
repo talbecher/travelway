@@ -151,3 +151,4 @@
 - [x] recsQuery: דפדוף במנות של 1,000, סדר created_at ואז id, ביטול באמצעות signal, כשל במנה = כשל מלא
 - [x] RPC restore_day_snapshot (INVOKER): ולידציה, נעילות, גיבוי pre_restore, מניעת קישור בין טיולים, מדיניות הגיזום לא השתנתה
 - [x] הוצאה מהירה: חיפוש בהמלצות שמורות דרך useRecs, חיפוש Google בפרופיל expense, התאמה לפי place id כולל race
+- [ ] Onboarding passport redesign (approved; button type=button, safe destination display)
