@@ -233,7 +233,7 @@ export function ImportAISheet({
               onChange={(e) => setText(e.target.value)}
               placeholder={mode === "recs" ? "הדביקו כאן את כל התשובה" : '{"version":1,"itinerary":[...],"recommendations":[...]}'}
               aria-label={mode === "recs" ? "התשובה שקיבלתם" : undefined}
-              className={(mode === "recs" ? "mt-2" : "mt-3") + " w-full h-44 rounded-xl bg-[color:var(--surface-2)] border border-border p-3 font-mono text-[12px] outline-none"}
+              className={(mode === "recs" ? "mt-2" : "mt-3") + " w-full h-44 rounded-xl bg-[color:var(--surface-2)] border border-border p-3 text-[12px] outline-none" + (mode === "recs" ? "" : " font-mono")}
             />
             {error && (
               <div className="mt-2 text-[13px] text-[color:var(--accent-2)]">{error}</div>
