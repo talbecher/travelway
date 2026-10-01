@@ -443,7 +443,7 @@ function Onboarding() {
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <Tile label="תאריך התחלה" icon={<CalendarDays size={14} />}>
-              <DateField value={startDate} onChange={setStartDate} placeholder="בחר תאריך" labelFormat="dd.MM.yyyy" />
+              <DateField value={startDate} onChange={setStartDate} placeholder="בחר תאריך" labelFormat="dd.MM.yyyy" className="px-1.5" />
             </Tile>
             <Tile label="תאריך סיום" icon={<CalendarDays size={14} />}>
               <DateField value={endDate} onChange={setEndDate} placeholder="בחר תאריך" min={startDate || undefined} labelFormat="dd.MM.yyyy" />
