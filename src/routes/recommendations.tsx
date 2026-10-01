@@ -165,7 +165,8 @@ function Recs() {
   const [q, setQ] = useState("");
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [nestedOverlayOpen, setNestedOverlayOpen] = useState(false);
-  const { data: recs = [], isError: recsError } = useRecs();
+  const { data: recs = [], isError: recsError, isLoading: recsLoading } = useRecs();
+  const recsEmpty = tab !== "hotels" && !recsLoading && !recsError && recs.length === 0;
   const { data: trip } = useTrip();
   const { user } = useAuth();
   const activeTripId = useActiveTripId();
@@ -509,7 +510,7 @@ function Recs() {
 
         {!selectionMode && (
           <div className="flex items-stretch gap-2">
-            {discoverEnabled && (
+            {discoverEnabled && !recsEmpty && (
               <button onClick={() => setDiscoverOpen(true)} aria-label="Discover — גילוי מקומות"
                 className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-accent/25 bg-accent/10 px-3 text-sm font-medium text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Compass size={17} /> Discover
@@ -713,11 +714,13 @@ function Recs() {
             onAdd={() => setAddOpen(true)}
             discoverEnabled={discoverEnabled}
             onDiscover={() => setDiscoverOpen(true)}
+            onImportMap={() => setImportOpen(true)}
+            onImportAI={() => setAiImportOpen(true)}
             onOverlayOpenChange={setNestedOverlayOpen}
           />
         )}
 
-        {!selectionMode && view === "list" && (
+        {!selectionMode && view === "list" && !recsEmpty && (
           <section className="space-y-2 border-t border-border pt-4" aria-label="הוספה וייבוא">
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setImportOpen(true)} aria-label="ייבוא ממפה"
@@ -865,7 +868,7 @@ function TabBtn({ active, children, onClick }: { active: boolean; children: Reac
 
 function PlacesList({
   type, cityFilter, query, onEdit, selectionMode, selectedIds, onToggleSelect,
-  recentIds, recentOnly, sourceFilter, onResetFilters, onAdd, discoverEnabled, onDiscover, onOverlayOpenChange,
+  recentIds, recentOnly, sourceFilter, onResetFilters, onAdd, discoverEnabled, onDiscover, onImportMap, onImportAI, onOverlayOpenChange,
 }: {
   type: "food" | "attraction" | "all";
   cityFilter: string;
@@ -881,6 +884,8 @@ function PlacesList({
   onAdd: () => void;
   discoverEnabled: boolean;
   onDiscover: () => void;
+  onImportMap: () => void;
+  onImportAI: () => void;
   onOverlayOpenChange: (open: boolean) => void;
 }) {
   const { data: recs = [], isLoading } = useRecs();
@@ -959,20 +964,29 @@ function PlacesList({
         </button>
       } />;
     }
-    return <EmptyState variant="recs" title="אין המלצות עדיין" hint="אפשר להתחיל מהמלצה משלך או לגלות מקומות חדשים" cta={
-      <div className="flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={onAdd}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <Plus size={18} /> הוספת המלצה ראשונה
-        </button>
-        {discoverEnabled && (
-          <button type="button" onClick={onDiscover}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Compass size={17} /> Discover
+    return (
+      <section aria-labelledby="recs-start-title" className="rounded-2xl border border-border bg-card/60 p-4">
+        <h2 id="recs-start-title" className="text-base font-semibold text-foreground">מאיפה מתחילים?</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">המקומות נשמרים קודם בהמלצות; הוספה למסלול היא שלב נפרד.</p>
+        <div className="mt-3 space-y-2">
+          {discoverEnabled && (
+            <button type="button" onClick={onDiscover} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-start text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Compass size={18} className="shrink-0 text-accent" /> גלו מקומות ביעד
+            </button>
+          )}
+          <button type="button" onClick={onImportAI} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-start text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Sparkles size={18} className="shrink-0" /> המלצות בעזרת ChatGPT / Claude
           </button>
-        )}
-      </div>
-    } />;
+          <button type="button" onClick={onImportMap} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-start text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Download size={18} className="shrink-0" /> ייבוא מפת המלצות
+          </button>
+        </div>
+        <button type="button" onClick={onAdd}
+          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Plus size={16} /> או הוספה ידנית
+        </button>
+      </section>
+    );
   }
 
   const shown = list.slice(0, limit);
