@@ -73,6 +73,24 @@ function travelerProfileLines(trip: {
   return lines;
 }
 
+/** Shared "recommendations" example block of the import contract (parsed by parseAIResponse). */
+function recommendationsExampleLines(): string[] {
+  return [
+    '  "recommendations": [',
+    "    {",
+    '      "name": "Ichiran Ramen Shibuya",',
+    '      "type": "food",',
+    '      "city": "Tokyo",',
+    '      "notes": "למה מומלץ, מחיר משוער, כמה זמן",',
+    '      "booking_deadline": "2026-10-01",',
+    '      "booking_time": "10:00",',
+    '      "booking_url": "https://...",',
+    '      "booking_note": "כרטיסים נפתחים חודש מראש"',
+    "    }",
+    "  ]",
+  ];
+}
+
 /** Machine-readable contract so the app can import the AI answer back automatically. */
 function formatSection(
   days: Array<{ day_number: number; date: string; city_label: string | null }>
@@ -104,18 +122,7 @@ function formatSection(
   lines.push("      ]");
   lines.push("    }");
   lines.push("  ],");
-  lines.push('  "recommendations": [');
-  lines.push("    {");
-  lines.push('      "name": "Ichiran Ramen Shibuya",');
-  lines.push('      "type": "food",');
-  lines.push('      "city": "Tokyo",');
-  lines.push('      "notes": "למה מומלץ, מחיר משוער, כמה זמן",');
-  lines.push('      "booking_deadline": "2026-10-01",');
-  lines.push('      "booking_time": "10:00",');
-  lines.push('      "booking_url": "https://...",');
-  lines.push('      "booking_note": "כרטיסים נפתחים חודש מראש"');
-  lines.push("    }");
-  lines.push("  ]");
+  lines.push(...recommendationsExampleLines());
   lines.push("}");
   lines.push("```");
   lines.push("");
@@ -589,4 +596,47 @@ export async function generateDayAIPrompt(
       charCount: prompt.length,
     },
   };
+}
+
+
+/**
+ * Prompt for the recommendations-only AI import (ImportAISheet mode="recs").
+ * Reuses the traveler profile and the shared recommendations contract block.
+ */
+export async function generateRecsPrompt(tripId: string): Promise<string> {
+  const { data: trip, error } = await supabase
+    .from("trips")
+    .select("destination_country, travel_pace, travel_interests, food_budget, travel_notes")
+    .eq("id", tripId)
+    .maybeSingle();
+  if (error) throw error;
+  const dest = trip?.destination_country?.trim() || "היעד שלי";
+  const lines: string[] = [];
+  lines.push(`שלום! אני מתכנן טיול ל${dest} ומחפש המלצות למקומות.`);
+  lines.push("");
+  if (trip) lines.push(...travelerProfileLines(trip));
+  lines.push("בבקשה המלץ על 10–15 מקומות בלבד (אוכל, אטרקציות, ואם רלוונטי — לינה) שמתאימים לפרופיל שלנו.");
+  lines.push("");
+  lines.push(SEP);
+  lines.push("🔁 חשוב! פורמט תשובה לייבוא אוטומטי:");
+  lines.push(SEP);
+  lines.push("");
+  lines.push("בסוף התשובה (אחרי הסבר קצר בעברית), הוסף בלוק JSON אחד בלבד, עטוף ב-```json, בפורמט המדויק הבא:");
+  lines.push("");
+  lines.push("```json");
+  lines.push("{");
+  lines.push('  "version": 1,');
+  lines.push(...recommendationsExampleLines());
+  lines.push("}");
+  lines.push("```");
+  lines.push("");
+  lines.push("כללים מחייבים:");
+  lines.push('- "type" חייב להיות אחד מ: food | attraction | hotel');
+  lines.push('- "name" — שם המקום כפי שמופיע במפות (באנגלית או בשפה המקומית), "city" — שם העיר');
+  lines.push("- בין 10 ל-15 פריטים ב-\"recommendations\" בלבד; אל תחזיר \"itinerary\".");
+  lines.push("- אל תמציא קואורדינטות, דירוגים או קישורים. אל תוסיף שדות כאלה.");
+  lines.push('- "booking_url" רק אם אתה בטוח שזה האתר הרשמי; אחרת השמט. גם "booking_deadline" רק אם ידוע בוודאות (YYYY-MM-DD).');
+  lines.push("- שדות לא רלוונטיים אפשר להשמיט (או null). אין להמציא שדות חדשים.");
+  lines.push("- החזר בלוק JSON אחד בלבד בסוף התשובה, בלי טקסט בתוך הבלוק.");
+  return lines.join("\n");
 }
