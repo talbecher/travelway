@@ -69,6 +69,8 @@ function ErrorComponentBase({ error, reset }: { error: unknown; reset: () => voi
   );
 }
 
+const ErrorComponentLazy = lazy(async () => ({ default: ErrorComponentBase }));
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
