@@ -127,8 +127,10 @@ function Onboarding() {
   }, [isEditing, existingTrip]);
 
   useEffect(() => {
-    if (!titleTouched) setTitle(autoTitle(pickedCountry?.he ?? "", startDate));
-  }, [pickedCountry, startDate, titleTouched]);
+    // Auto-title is for new trips only; in edit the saved/typed title is never overwritten.
+    if (isEditing || titleTouched) return;
+    setTitle(autoTitle(pickedCountry?.he ?? "", startDate));
+  }, [isEditing, pickedCountry, startDate, titleTouched]);
 
   function pickCountry(c: Country) {
     setPickedCountry(c);
