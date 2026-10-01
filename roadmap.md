@@ -152,3 +152,9 @@
 - [x] RPC restore_day_snapshot (INVOKER): ולידציה, נעילות, גיבוי pre_restore, מניעת קישור בין טיולים, מדיניות הגיזום לא השתנתה
 - [x] הוצאה מהירה: חיפוש בהמלצות שמורות דרך useRecs, חיפוש Google בפרופיל expense, התאמה לפי place id כולל race
 - [x] Onboarding passport redesign (approved; button type=button, safe destination display)
+
+# אונבורדינג — תאריכים dd.MM.yyyy (סבב אושר)
+
+- [x] labelFormat="dd.MM.yyyy" לשני שדות DateField באונבורדינג בלבד
+- [x] הידוק ריפוד במסך בלבד (px-1 + ob-tile) כדי שהתאריך לא יחתך ב-360px
+- [x] TypeScript ו-build; בדיקות דפדפן 360/393: תצוגה מלאה, בורר נפתח, בחירה משנה רק את השדה הנבחר, שם שמור ושימור הקלדה; בלי שמירת טיול
