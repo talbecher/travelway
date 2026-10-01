@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          trip_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          label: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          trip_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          trip_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_tokens_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
           category: string
@@ -744,6 +788,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      api_itinerary_items: {
+        Args: {
+          _after_created: string
+          _after_date: string
+          _after_id: string
+          _after_order: number
+          _date: string
+          _limit: number
+          _trip_id: string
+          _version_id: string
+        }
+        Returns: {
+          created_at: string
+          day_date: string
+          day_number: number
+          description: string
+          display_order: number
+          entry_type: string
+          google_maps_url: string
+          id: string
+          latitude: number
+          linked_hotel_id: string
+          linked_recommendation_id: string
+          location_name: string
+          longitude: number
+          time_of_day: string
+          title: string
+        }[]
+      }
+      api_resolve_token: {
+        Args: { _hash: string; _trip_id: string }
+        Returns: {
+          resolved_trip_id: string
+          status: string
+          token_user_id: string
+        }[]
+      }
       booking_notes_block: {
         Args: { _note: string; _time: string; _url: string }
         Returns: string

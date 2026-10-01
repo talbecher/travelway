@@ -9,46 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RecommendationsRouteImport } from './routes/recommendations'
-import { Route as PhrasebookRouteImport } from './routes/phrasebook'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as ItineraryRouteImport } from './routes/itinerary'
-import { Route as DocumentsRouteImport } from './routes/documents'
-import { Route as ChecklistRouteImport } from './routes/checklist'
-import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AiAccessRouteImport } from './routes/ai-access'
+import { Route as BudgetRouteImport } from './routes/budget'
+import { Route as ChecklistRouteImport } from './routes/checklist'
+import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as ItineraryRouteImport } from './routes/itinerary'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PhrasebookRouteImport } from './routes/phrasebook'
+import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
-import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
+import { Route as JoinTokenRouteImport } from './routes/join.$token'
+import { Route as ApiPublicOpenapiDotjsonRouteImport } from './routes/api/public/openapi[.]json'
+import { Route as ApiPublicTripContextRouteImport } from './routes/api/public/trip-context'
 
-const RecommendationsRoute = RecommendationsRouteImport.update({
-  id: '/recommendations',
-  path: '/recommendations',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PhrasebookRoute = PhrasebookRouteImport.update({
-  id: '/phrasebook',
-  path: '/phrasebook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ItineraryRoute = ItineraryRouteImport.update({
-  id: '/itinerary',
-  path: '/itinerary',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentsRoute = DocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChecklistRoute = ChecklistRouteImport.update({
-  id: '/checklist',
-  path: '/checklist',
+const AiAccessRoute = AiAccessRouteImport.update({
+  id: '/ai-access',
+  path: '/ai-access',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BudgetRoute = BudgetRouteImport.update({
@@ -56,9 +39,34 @@ const BudgetRoute = BudgetRouteImport.update({
   path: '/budget',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ChecklistRoute = ChecklistRouteImport.update({
+  id: '/checklist',
+  path: '/checklist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ItineraryRoute = ItineraryRouteImport.update({
+  id: '/itinerary',
+  path: '/itinerary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PhrasebookRoute = PhrasebookRouteImport.update({
+  id: '/phrasebook',
+  path: '/phrasebook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecommendationsRoute = RecommendationsRouteImport.update({
+  id: '/recommendations',
+  path: '/recommendations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
@@ -66,19 +74,30 @@ const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ItineraryRoute,
 } as any)
-const JoinTokenRoute = JoinTokenRouteImport.update({
-  id: '/join/$token',
-  path: '/join/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ItineraryDayIdRoute = ItineraryDayIdRouteImport.update({
   id: '/$dayId',
   path: '/$dayId',
   getParentRoute: () => ItineraryRoute,
 } as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicOpenapiDotjsonRoute = ApiPublicOpenapiDotjsonRouteImport.update({
+  id: '/api/public/openapi.json',
+  path: '/api/public/openapi.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTripContextRoute = ApiPublicTripContextRouteImport.update({
+  id: '/api/public/trip-context',
+  path: '/api/public/trip-context',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ai-access': typeof AiAccessRoute
   '/budget': typeof BudgetRoute
   '/checklist': typeof ChecklistRoute
   '/documents': typeof DocumentsRoute
@@ -89,9 +108,12 @@ export interface FileRoutesByFullPath {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
+  '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ai-access': typeof AiAccessRoute
   '/budget': typeof BudgetRoute
   '/checklist': typeof ChecklistRoute
   '/documents': typeof DocumentsRoute
@@ -101,10 +123,13 @@ export interface FileRoutesByTo {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
+  '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
+  '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ai-access': typeof AiAccessRoute
   '/budget': typeof BudgetRoute
   '/checklist': typeof ChecklistRoute
   '/documents': typeof DocumentsRoute
@@ -115,11 +140,14 @@ export interface FileRoutesById {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
+  '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ai-access'
     | '/budget'
     | '/checklist'
     | '/documents'
@@ -130,9 +158,12 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/openapi.json'
+    | '/api/public/trip-context'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ai-access'
     | '/budget'
     | '/checklist'
     | '/documents'
@@ -142,9 +173,12 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
+    | '/api/public/openapi.json'
+    | '/api/public/trip-context'
   id:
     | '__root__'
     | '/'
+    | '/ai-access'
     | '/budget'
     | '/checklist'
     | '/documents'
@@ -155,10 +189,13 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/openapi.json'
+    | '/api/public/trip-context'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiAccessRoute: typeof AiAccessRoute
   BudgetRoute: typeof BudgetRoute
   ChecklistRoute: typeof ChecklistRoute
   DocumentsRoute: typeof DocumentsRoute
@@ -167,50 +204,24 @@ export interface RootRouteChildren {
   PhrasebookRoute: typeof PhrasebookRoute
   RecommendationsRoute: typeof RecommendationsRoute
   JoinTokenRoute: typeof JoinTokenRoute
+  ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
+  ApiPublicTripContextRoute: typeof ApiPublicTripContextRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/recommendations': {
-      id: '/recommendations'
-      path: '/recommendations'
-      fullPath: '/recommendations'
-      preLoaderRoute: typeof RecommendationsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/phrasebook': {
-      id: '/phrasebook'
-      path: '/phrasebook'
-      fullPath: '/phrasebook'
-      preLoaderRoute: typeof PhrasebookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/itinerary': {
-      id: '/itinerary'
-      path: '/itinerary'
-      fullPath: '/itinerary'
-      preLoaderRoute: typeof ItineraryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documents': {
-      id: '/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof DocumentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/checklist': {
-      id: '/checklist'
-      path: '/checklist'
-      fullPath: '/checklist'
-      preLoaderRoute: typeof ChecklistRouteImport
+    '/ai-access': {
+      id: '/ai-access'
+      path: '/ai-access'
+      fullPath: '/ai-access'
+      preLoaderRoute: typeof AiAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/budget': {
@@ -220,11 +231,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BudgetRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/checklist': {
+      id: '/checklist'
+      path: '/checklist'
+      fullPath: '/checklist'
+      preLoaderRoute: typeof ChecklistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/itinerary': {
+      id: '/itinerary'
+      path: '/itinerary'
+      fullPath: '/itinerary'
+      preLoaderRoute: typeof ItineraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/phrasebook': {
+      id: '/phrasebook'
+      path: '/phrasebook'
+      fullPath: '/phrasebook'
+      preLoaderRoute: typeof PhrasebookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendations': {
+      id: '/recommendations'
+      path: '/recommendations'
+      fullPath: '/recommendations'
+      preLoaderRoute: typeof RecommendationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/itinerary/': {
@@ -234,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ItineraryIndexRouteImport
       parentRoute: typeof ItineraryRoute
     }
+    '/itinerary/$dayId': {
+      id: '/itinerary/$dayId'
+      path: '/$dayId'
+      fullPath: '/itinerary/$dayId'
+      preLoaderRoute: typeof ItineraryDayIdRouteImport
+      parentRoute: typeof ItineraryRoute
+    }
     '/join/$token': {
       id: '/join/$token'
       path: '/join/$token'
@@ -241,12 +294,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/itinerary/$dayId': {
-      id: '/itinerary/$dayId'
-      path: '/$dayId'
-      fullPath: '/itinerary/$dayId'
-      preLoaderRoute: typeof ItineraryDayIdRouteImport
-      parentRoute: typeof ItineraryRoute
+    '/api/public/openapi.json': {
+      id: '/api/public/openapi.json'
+      path: '/api/public/openapi.json'
+      fullPath: '/api/public/openapi.json'
+      preLoaderRoute: typeof ApiPublicOpenapiDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/trip-context': {
+      id: '/api/public/trip-context'
+      path: '/api/public/trip-context'
+      fullPath: '/api/public/trip-context'
+      preLoaderRoute: typeof ApiPublicTripContextRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -267,6 +327,7 @@ const ItineraryRouteWithChildren = ItineraryRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiAccessRoute: AiAccessRoute,
   BudgetRoute: BudgetRoute,
   ChecklistRoute: ChecklistRoute,
   DocumentsRoute: DocumentsRoute,
@@ -275,6 +336,8 @@ const rootRouteChildren: RootRouteChildren = {
   PhrasebookRoute: PhrasebookRoute,
   RecommendationsRoute: RecommendationsRoute,
   JoinTokenRoute: JoinTokenRoute,
+  ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
+  ApiPublicTripContextRoute: ApiPublicTripContextRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
