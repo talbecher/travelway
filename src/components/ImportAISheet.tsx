@@ -15,6 +15,7 @@ import {
   type PlaceLookup,
 } from "@/lib/ai-import";
 import { createDaySnapshot } from "@/hooks/use-day-snapshots";
+import { generateRecsPrompt } from "@/lib/export-to-ai";
 
 
 type DayLite = { id: string; day_number: number; date: string; city_label?: string | null };
@@ -49,6 +50,8 @@ export function ImportAISheet({
   const [skipped, setSkipped] = useState(0);
   const [enrich, setEnrich] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [copyingPrompt, setCopyingPrompt] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
   const [tab, setTab] = useState<"itinerary" | "recs">(mode === "recs" ? "recs" : "itinerary");
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export function ImportAISheet({
       setError(null);
       setSkipped(0);
       setBusy(false);
+      setPromptCopied(false);
       setTab(mode === "recs" ? "recs" : "itinerary");
     }
   }, [open, mode]);
@@ -170,24 +174,66 @@ export function ImportAISheet({
     }
   }
 
+  async function handleCopyPrompt() {
+    if (copyingPrompt) return;
+    setCopyingPrompt(true);
+    try {
+      const prompt = await generateRecsPrompt(tripId);
+      await navigator.clipboard.writeText(prompt);
+      setPromptCopied(true);
+      toast.success("הבקשה הועתקה");
+    } catch (e) {
+      console.error("[ImportAISheet] copy prompt failed", e);
+      toast.error("ההעתקה נכשלה");
+    } finally {
+      setCopyingPrompt(false);
+    }
+  }
+
   const hasResults = entries.length > 0 || recs.length > 0;
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange}>
       <div className="pb-2 text-right">
-        <div className="text-lg font-semibold">📥 ייבא תשובה מ-AI</div>
-        <div className="text-[13px] text-muted-foreground mt-0.5">
-          הדבק את כל התשובה של ChatGPT / Claude — נזהה את בלוק ה-JSON אוטומטית
-        </div>
+        {mode === "recs" ? (
+          <>
+            <div className="text-lg font-semibold">המלצות בעזרת ChatGPT / Claude</div>
+            <div className="text-[13px] text-muted-foreground mt-0.5">
+              העתיקו את הבקשה לשירות ה־AI שלכם וחזרו לכאן עם התשובה. המקומות יישמרו בהמלצות; תוכלו להוסיף אותם למסלול בהמשך
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-lg font-semibold">📥 ייבא תשובה מ-AI</div>
+            <div className="text-[13px] text-muted-foreground mt-0.5">
+              הדבק את כל התשובה של ChatGPT / Claude — נזהה את בלוק ה-JSON אוטומטית
+            </div>
+          </>
+        )}
 
         {!hasResults && (
           <>
+            {mode === "recs" && (
+              <>
+                <div className="mt-4 text-[14px] font-medium">1. העתיקו בקשה ל־ChatGPT / Claude</div>
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  disabled={copyingPrompt}
+                  className="mt-2 w-full h-12 rounded-xl border border-border bg-card font-medium text-[14px] disabled:opacity-50"
+                >
+                  {copyingPrompt ? "מכין בקשה…" : promptCopied ? "✅ הועתק — אפשר להעתיק שוב" : "📋 העתק בקשה מוכנה"}
+                </button>
+                <div className="mt-4 text-[14px] font-medium">2. הדביקו את התשובה שקיבלתם</div>
+              </>
+            )}
             <textarea
               dir="ltr"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder='{"version":1,"itinerary":[...],"recommendations":[...]}'
-              className="mt-3 w-full h-44 rounded-xl bg-[color:var(--surface-2)] border border-border p-3 font-mono text-[12px] outline-none"
+              placeholder={mode === "recs" ? "הדביקו כאן את כל התשובה" : '{"version":1,"itinerary":[...],"recommendations":[...]}'}
+              aria-label={mode === "recs" ? "התשובה שקיבלתם" : undefined}
+              className={(mode === "recs" ? "mt-2" : "mt-3") + " w-full h-44 rounded-xl bg-[color:var(--surface-2)] border border-border p-3 text-[12px] outline-none" + (mode === "recs" ? "" : " font-mono")}
             />
             {error && (
               <div className="mt-2 text-[13px] text-[color:var(--accent-2)]">{error}</div>
