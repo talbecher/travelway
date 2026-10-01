@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DateField } from "@/components/DateField";
-import { Plane, Share2, Trash2 } from "lucide-react";
+import { Plane, Share2, Trash2, Pencil, Compass, CalendarDays, Users, Wallet, Tag, Coins, Sparkles, ChevronDown, ArrowLeft } from "lucide-react";
 import { CURRENCIES, isValidCurrency, searchCountries, type Country } from "@/lib/countries";
 
 // Only literal true / "true" means edit mode; edit=false is create mode.
@@ -101,6 +101,8 @@ function Onboarding() {
   const [foodBudget, setFoodBudget] = useState<"budget" | "medium" | "splurge">("medium");
   const [travelNotes, setTravelNotes] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [destEditing, setDestEditing] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
 
   useEffect(() => {
     // Initialize once per trip after it loads; refetches never overwrite the form.
