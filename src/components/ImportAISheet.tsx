@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -7,15 +7,27 @@ import { searchPlaces, getPlacePhotoUrl } from "@/lib/places.functions";
 import {
   applyEntries,
   applyRecs,
+  classifyDayDuplicates,
   defaultIcon,
   normalizeName,
   parseAIResponse,
+  type DupInfo,
   type ParsedEntry,
   type ParsedRec,
   type PlaceLookup,
 } from "@/lib/ai-import";
 import { createDaySnapshot } from "@/hooks/use-day-snapshots";
 import { generateRecsPrompt } from "@/lib/export-to-ai";
+import { supabase } from "@/integrations/supabase/client";
+
+async function fetchDayEntries(dayId: string) {
+  const { data, error } = await supabase
+    .from("day_entries")
+    .select("title, time_of_day")
+    .eq("day_id", dayId);
+  if (error) throw error;
+  return data ?? [];
+}
 
 
 type DayLite = { id: string; day_number: number; date: string; city_label?: string | null };
@@ -53,6 +65,23 @@ export function ImportAISheet({
   const [copyingPrompt, setCopyingPrompt] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
   const [tab, setTab] = useState<"itinerary" | "recs">(mode === "recs" ? "recs" : "itinerary");
+  const [dupInfo, setDupInfo] = useState<DupInfo[]>([]);
+  const [loadingDay, setLoadingDay] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [applyNotice, setApplyNotice] = useState<string | null>(null);
+  // Bumped on every reset; late async results compare against it and bail.
+  const reqRef = useRef(0);
+
+  const isDayMode = mode === "day";
+  const targetDayId = isDayMode ? days[0]?.id ?? null : null;
+
+  function resetDupState() {
+    reqRef.current++;
+    setDupInfo([]);
+    setLoadingDay(false);
+    setLoadError(null);
+    setApplyNotice(null);
+  }
 
   useEffect(() => {
     if (!open) {
@@ -64,8 +93,17 @@ export function ImportAISheet({
       setBusy(false);
       setPromptCopied(false);
       setTab(mode === "recs" ? "recs" : "itinerary");
+      resetDupState();
     }
   }, [open, mode]);
+
+  // Switching day/trip discards any preview built for the previous one.
+  useEffect(() => {
+    setEntries([]);
+    setRecs([]);
+    setError(null);
+    resetDupState();
+  }, [targetDayId, tripId]);
 
   const existing = useMemo(
     () => new Set(existingRecNames.map((n) => normalizeName(n))),
@@ -83,7 +121,11 @@ export function ImportAISheet({
     return d ? `יום ${n}${d.city_label ? ` · ${d.city_label}` : ""}` : `יום ${n}`;
   };
 
-  function handleParse() {
+  async function handleParse() {
+    const req = ++reqRef.current;
+    setDupInfo([]);
+    setApplyNotice(null);
+    setLoadError(null);
     const allowed =
       mode === "day" && fixedDayNumber != null ? [fixedDayNumber] : days.map((d) => d.day_number);
     const res = parseAIResponse(text, allowed);
@@ -96,9 +138,27 @@ export function ImportAISheet({
     }
     setError(null);
     const parsedEntries = mode === "recs" ? [] : res.entries;
+
+    let dups: DupInfo[] = parsedEntries.map(() => ({ exact: null, otherTime: false }));
+    if (isDayMode && targetDayId && parsedEntries.length) {
+      setLoadingDay(true);
+      try {
+        const rows = await fetchDayEntries(targetDayId);
+        if (req !== reqRef.current) return;
+        dups = classifyDayDuplicates(parsedEntries, rows);
+      } catch (err) {
+        console.error("[ImportAISheet] day load failed", err);
+        if (req === reqRef.current) setLoadError("לא הצלחנו לטעון את תחנות היום לבדיקת כפילויות.");
+        return;
+      } finally {
+        if (req === reqRef.current) setLoadingDay(false);
+      }
+    }
+
+    setDupInfo(dups);
     setEntries(parsedEntries);
     setRecs(res.recs);
-    setEntrySel(parsedEntries.map(() => true));
+    setEntrySel(dups.map((d) => d.exact === null));
     setRecSel(res.recs.map((r) => !existing.has(normalizeName(r.name))));
     setTab(parsedEntries.length ? "itinerary" : "recs");
   }
@@ -136,6 +196,29 @@ export function ImportAISheet({
     if (!totalSelected || busy) return;
     setBusy(true);
     try {
+      // Day mode: re-read the target day right before writing (UI guard only).
+      if (isDayMode && targetDayId) {
+        const req = reqRef.current;
+        let rows: Array<{ title: string | null; time_of_day: string | null }>;
+        try {
+          rows = await fetchDayEntries(targetDayId);
+        } catch (err) {
+          console.error("[ImportAISheet] recheck failed", err);
+          if (req === reqRef.current) setApplyNotice("לא הצלחנו לבדוק את תחנות היום. הבחירה נשמרה — נסו שוב.");
+          return;
+        }
+        if (req !== reqRef.current) return;
+        const fresh = classifyDayDuplicates(entries, rows);
+        const newDup = fresh.map((f, i) => f.exact !== null && f.exact !== dupInfo[i]?.exact);
+        if (newDup.some(Boolean)) {
+          setDupInfo(fresh);
+          setEntrySel((s) => s.map((v, i) => (newDup[i] ? false : v)));
+          setApplyNotice("נמצאו כפילויות חדשות ביום מאז התצוגה המקדימה. הן בוטלו מהבחירה — בדקו ואשרו שוב.");
+          return;
+        }
+        setDupInfo(fresh);
+      }
+      setApplyNotice(null);
       const l = enrich ? lookup : undefined;
 
       // Restore point per affected day, before anything is written.
@@ -230,7 +313,10 @@ export function ImportAISheet({
             <textarea
               dir="ltr"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                resetDupState();
+              }}
               placeholder={mode === "recs" ? "הדביקו כאן את כל התשובה" : '{"version":1,"itinerary":[...],"recommendations":[...]}'}
               aria-label={mode === "recs" ? "התשובה שקיבלתם" : undefined}
               className={(mode === "recs" ? "mt-2" : "mt-3") + " w-full h-44 rounded-xl bg-[color:var(--surface-2)] border border-border p-3 text-[12px] outline-none" + (mode === "recs" ? "" : " font-mono")}
@@ -238,13 +324,16 @@ export function ImportAISheet({
             {error && (
               <div className="mt-2 text-[13px] text-[color:var(--accent-2)]">{error}</div>
             )}
+            {loadError && (
+              <div role="alert" className="mt-2 text-[13px] text-[color:var(--accent-2)]">{loadError}</div>
+            )}
             <button
               type="button"
               onClick={handleParse}
-              disabled={!text.trim()}
+              disabled={!text.trim() || loadingDay}
               className="mt-3 w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px] disabled:opacity-50"
             >
-              בדוק ותצוגה מקדימה
+              {loadingDay ? "בודק את תחנות היום…" : loadError ? "נסה שוב" : "בדוק ותצוגה מקדימה"}
             </button>
           </>
         )}
@@ -318,6 +407,16 @@ export function ImportAISheet({
                           {dayLabel(e.day_number)}
                           {e.location_name ? ` · ${e.location_name}` : ""}
                         </span>
+                        {dupInfo[i]?.exact && (
+                          <span className="block text-[12px] font-medium text-[color:var(--accent-2)] mt-0.5">
+                            {dupInfo[i]!.exact === "existing" ? "כבר קיים ביום" : "מופיע פעמיים בייבוא"}
+                          </span>
+                        )}
+                        {dupInfo[i]?.otherTime && (
+                          <span className="block text-[12px] text-muted-foreground mt-0.5">
+                            ⚠️ שם זהה קיים בשעה אחרת
+                          </span>
+                        )}
                         {e.description && (
                           <span className="block text-[12px] text-muted-foreground mt-0.5 line-clamp-2">
                             💬 {e.description}
@@ -398,6 +497,9 @@ export function ImportAISheet({
             </label>
 
             <div className="mt-3 flex flex-col gap-2">
+              {applyNotice && (
+                <div role="alert" className="text-[13px] text-[color:var(--accent-2)]">{applyNotice}</div>
+              )}
               <button
                 type="button"
                 onClick={handleApply}
@@ -412,6 +514,7 @@ export function ImportAISheet({
                   setEntries([]);
                   setRecs([]);
                   setError(null);
+                  resetDupState();
                 }}
                 disabled={busy}
                 className="h-11 rounded-xl bg-surface border border-border text-[14px]"
