@@ -313,7 +313,10 @@ export function ImportAISheet({
             <textarea
               dir="ltr"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                resetDupState();
+              }}
               placeholder={mode === "recs" ? "הדביקו כאן את כל התשובה" : '{"version":1,"itinerary":[...],"recommendations":[...]}'}
               aria-label={mode === "recs" ? "התשובה שקיבלתם" : undefined}
               className={(mode === "recs" ? "mt-2" : "mt-3") + " w-full h-44 rounded-xl bg-[color:var(--surface-2)] border border-border p-3 text-[12px] outline-none" + (mode === "recs" ? "" : " font-mono")}
@@ -321,13 +324,16 @@ export function ImportAISheet({
             {error && (
               <div className="mt-2 text-[13px] text-[color:var(--accent-2)]">{error}</div>
             )}
+            {loadError && (
+              <div role="alert" className="mt-2 text-[13px] text-[color:var(--accent-2)]">{loadError}</div>
+            )}
             <button
               type="button"
               onClick={handleParse}
-              disabled={!text.trim()}
+              disabled={!text.trim() || loadingDay}
               className="mt-3 w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px] disabled:opacity-50"
             >
-              בדוק ותצוגה מקדימה
+              {loadingDay ? "בודק את תחנות היום…" : loadError ? "נסה שוב" : "בדוק ותצוגה מקדימה"}
             </button>
           </>
         )}
@@ -401,6 +407,16 @@ export function ImportAISheet({
                           {dayLabel(e.day_number)}
                           {e.location_name ? ` · ${e.location_name}` : ""}
                         </span>
+                        {dupInfo[i]?.exact && (
+                          <span className="block text-[12px] font-medium text-[color:var(--accent-2)] mt-0.5">
+                            {dupInfo[i]!.exact === "existing" ? "כבר קיים ביום" : "מופיע פעמיים בייבוא"}
+                          </span>
+                        )}
+                        {dupInfo[i]?.otherTime && (
+                          <span className="block text-[12px] text-muted-foreground mt-0.5">
+                            ⚠️ שם זהה קיים בשעה אחרת
+                          </span>
+                        )}
                         {e.description && (
                           <span className="block text-[12px] text-muted-foreground mt-0.5 line-clamp-2">
                             💬 {e.description}
@@ -481,6 +497,9 @@ export function ImportAISheet({
             </label>
 
             <div className="mt-3 flex flex-col gap-2">
+              {applyNotice && (
+                <div role="alert" className="text-[13px] text-[color:var(--accent-2)]">{applyNotice}</div>
+              )}
               <button
                 type="button"
                 onClick={handleApply}
@@ -495,6 +514,7 @@ export function ImportAISheet({
                   setEntries([]);
                   setRecs([]);
                   setError(null);
+                  resetDupState();
                 }}
                 disabled={busy}
                 className="h-11 rounded-xl bg-surface border border-border text-[14px]"
