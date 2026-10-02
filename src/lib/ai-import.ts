@@ -394,3 +394,55 @@ export async function applyRecs(
   if (error) throw error;
   return rows.length;
 }
+
+/* ---------- day-import duplicate detection (UI-level guard only) ---------- */
+
+export type DupExact = "existing" | "in_import" | null;
+export type DupInfo = { exact: DupExact; otherTime: boolean };
+type NameTime = { title: string | null; time_of_day: string | null };
+
+/** trim + collapse whitespace + lowercase. Nothing else. */
+export function normalizeEntryName(s: string | null | undefined): string {
+  return (s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function timeKey(t: string | null | undefined): string {
+  return normTime(t ?? null) ?? "";
+}
+
+/**
+ * Classifies each imported entry against the day's existing entries and the
+ * earlier entries of the same import. Same name + same time (both missing
+ * counts as same) is an exact duplicate; same name at another time is a warning.
+ */
+export function classifyDayDuplicates(entries: NameTime[], existing: NameTime[]): DupInfo[] {
+  const existExact = new Set<string>();
+  const existTimesByName = new Map<string, Set<string>>();
+  for (const x of existing) {
+    const n = normalizeEntryName(x.title);
+    if (!n) continue;
+    const t = timeKey(x.time_of_day);
+    existExact.add(`${n}|${t}`);
+    if (!existTimesByName.has(n)) existTimesByName.set(n, new Set());
+    existTimesByName.get(n)!.add(t);
+  }
+  const importTimesByName = new Map<string, Set<string>>();
+  for (const e of entries) {
+    const n = normalizeEntryName(e.title);
+    if (!importTimesByName.has(n)) importTimesByName.set(n, new Set());
+    importTimesByName.get(n)!.add(timeKey(e.time_of_day));
+  }
+  const seen = new Set<string>();
+  return entries.map((e) => {
+    const n = normalizeEntryName(e.title);
+    const t = timeKey(e.time_of_day);
+    const key = `${n}|${t}`;
+    let exact: DupExact = null;
+    if (existExact.has(key)) exact = "existing";
+    else if (seen.has(key)) exact = "in_import";
+    seen.add(key);
+    const times = new Set([...(existTimesByName.get(n) ?? []), ...(importTimesByName.get(n) ?? [])]);
+    times.delete(t);
+    return { exact, otherTime: times.size > 0 };
+  });
+}
