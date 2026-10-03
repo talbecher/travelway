@@ -242,6 +242,7 @@ export type Database = {
           barcode_value: string | null
           created_at: string
           display_order: number
+          external_url: string | null
           file_url: string | null
           id: string
           is_paid: boolean
@@ -258,6 +259,7 @@ export type Database = {
           barcode_value?: string | null
           created_at?: string
           display_order?: number
+          external_url?: string | null
           file_url?: string | null
           id?: string
           is_paid?: boolean
@@ -274,6 +276,7 @@ export type Database = {
           barcode_value?: string | null
           created_at?: string
           display_order?: number
+          external_url?: string | null
           file_url?: string | null
           id?: string
           is_paid?: boolean
