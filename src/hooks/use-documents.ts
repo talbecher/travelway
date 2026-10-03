@@ -20,6 +20,7 @@ export type TripDocument = {
   title: string;
   type: DocumentType;
   file_url: string | null;
+  external_url: string | null;
   barcode_value: string | null;
   barcode_type: BarcodeType | null;
   notes: string | null;
@@ -35,6 +36,7 @@ export type DocumentInput = {
   title: string;
   type: DocumentType;
   file_url?: string | null;
+  external_url?: string | null;
   barcode_value?: string | null;
   barcode_type?: BarcodeType | null;
   notes?: string | null;
