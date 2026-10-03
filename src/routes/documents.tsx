@@ -356,6 +356,18 @@ const BUCKET = "rec-photos";
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
 const MAX_BYTES = 10 * 1024 * 1024;
 
+function safeExternalUrl(raw: string | null | undefined): string | null {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 function DocumentFormSheet({
   open,
   onOpenChange,
@@ -379,6 +391,8 @@ function DocumentFormSheet({
   const [barcodeValue, setBarcodeValue] = useState(editing?.barcode_value ?? "");
   const [barcodeType, setBarcodeType] = useState<BarcodeType>(editing?.barcode_type ?? "qr");
   const [fileUrl, setFileUrl] = useState<string | null>(editing?.file_url ?? null);
+  const [externalUrl, setExternalUrl] = useState<string>(editing?.external_url ?? "");
+  const [externalUrlError, setExternalUrlError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [amount, setAmount] = useState<string>(editing?.amount_ils != null ? String(editing.amount_ils) : "");
   const [isPaid, setIsPaid] = useState(editing?.is_paid ?? false);
@@ -393,6 +407,8 @@ function DocumentFormSheet({
     setBarcodeValue(editing?.barcode_value ?? "");
     setBarcodeType(editing?.barcode_type ?? "qr");
     setFileUrl(editing?.file_url ?? null);
+    setExternalUrl(editing?.external_url ?? "");
+    setExternalUrlError(null);
     setFileName(null);
     setAmount(editing?.amount_ils != null ? String(editing.amount_ils) : "");
     setIsPaid(editing?.is_paid ?? false);
