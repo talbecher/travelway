@@ -197,6 +197,16 @@ function DocumentCard({
           <Paperclip size={15} /> קובץ
         </a>
       )}
+      {safeExternalUrl(doc.external_url) && (
+        <a
+          href={safeExternalUrl(doc.external_url)!}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-11 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
+        >
+          <ExternalLink size={15} /> פתח קישור
+        </a>
+      )}
       <button
         onClick={onEdit}
         className="h-9 px-4 ms-auto rounded-full border border-border text-sm font-medium inline-flex items-center"
@@ -603,6 +613,23 @@ function DocumentFormSheet({
               {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
               העלה קובץ
             </button>
+          )}
+        </Field>
+
+        <Field label="קישור שימושי (אופציונלי)">
+          <input
+            type="url"
+            dir="ltr"
+            value={externalUrl}
+            onChange={(e) => {
+              setExternalUrl(e.target.value);
+              if (externalUrlError) setExternalUrlError(null);
+            }}
+            placeholder="https://..."
+            className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm"
+          />
+          {externalUrlError && (
+            <p className="mt-1.5 text-xs text-[color:var(--accent-2)]">{externalUrlError}</p>
           )}
         </Field>
 
