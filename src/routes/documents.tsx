@@ -450,6 +450,11 @@ function DocumentFormSheet({
       toast.error("יש להזין כותרת");
       return;
     }
+    const trimmedUrl = externalUrl.trim();
+    if (trimmedUrl && !safeExternalUrl(trimmedUrl)) {
+      setExternalUrlError("יש להזין קישור תקין שמתחיל ב-http או https");
+      return;
+    }
     const payload: DocumentInput = {
       title: title.trim(),
       type,
@@ -458,6 +463,7 @@ function DocumentFormSheet({
       barcode_value: barcodeValue.trim() || null,
       barcode_type: barcodeValue.trim() ? barcodeType : null,
       file_url: fileUrl,
+      external_url: trimmedUrl ? safeExternalUrl(trimmedUrl) : null,
       amount_ils: amount ? Number(amount) : null,
       is_paid: isPaid,
     };
