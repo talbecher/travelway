@@ -197,6 +197,16 @@ function DocumentCard({
           <Paperclip size={15} /> קובץ
         </a>
       )}
+      {safeExternalUrl(doc.external_url) && (
+        <a
+          href={safeExternalUrl(doc.external_url)!}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-11 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
+        >
+          <ExternalLink size={15} /> פתח קישור
+        </a>
+      )}
       <button
         onClick={onEdit}
         className="h-9 px-4 ms-auto rounded-full border border-border text-sm font-medium inline-flex items-center"
@@ -356,6 +366,18 @@ const BUCKET = "rec-photos";
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
 const MAX_BYTES = 10 * 1024 * 1024;
 
+function safeExternalUrl(raw: string | null | undefined): string | null {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 function DocumentFormSheet({
   open,
   onOpenChange,
@@ -379,6 +401,8 @@ function DocumentFormSheet({
   const [barcodeValue, setBarcodeValue] = useState(editing?.barcode_value ?? "");
   const [barcodeType, setBarcodeType] = useState<BarcodeType>(editing?.barcode_type ?? "qr");
   const [fileUrl, setFileUrl] = useState<string | null>(editing?.file_url ?? null);
+  const [externalUrl, setExternalUrl] = useState<string>(editing?.external_url ?? "");
+  const [externalUrlError, setExternalUrlError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [amount, setAmount] = useState<string>(editing?.amount_ils != null ? String(editing.amount_ils) : "");
   const [isPaid, setIsPaid] = useState(editing?.is_paid ?? false);
@@ -393,6 +417,8 @@ function DocumentFormSheet({
     setBarcodeValue(editing?.barcode_value ?? "");
     setBarcodeType(editing?.barcode_type ?? "qr");
     setFileUrl(editing?.file_url ?? null);
+    setExternalUrl(editing?.external_url ?? "");
+    setExternalUrlError(null);
     setFileName(null);
     setAmount(editing?.amount_ils != null ? String(editing.amount_ils) : "");
     setIsPaid(editing?.is_paid ?? false);
@@ -434,6 +460,11 @@ function DocumentFormSheet({
       toast.error("יש להזין כותרת");
       return;
     }
+    const trimmedUrl = externalUrl.trim();
+    if (trimmedUrl && !safeExternalUrl(trimmedUrl)) {
+      setExternalUrlError("יש להזין קישור תקין שמתחיל ב-http או https");
+      return;
+    }
     const payload: DocumentInput = {
       title: title.trim(),
       type,
@@ -442,6 +473,7 @@ function DocumentFormSheet({
       barcode_value: barcodeValue.trim() || null,
       barcode_type: barcodeValue.trim() ? barcodeType : null,
       file_url: fileUrl,
+      external_url: trimmedUrl ? safeExternalUrl(trimmedUrl) : null,
       amount_ils: amount ? Number(amount) : null,
       is_paid: isPaid,
     };
@@ -581,6 +613,23 @@ function DocumentFormSheet({
               {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
               העלה קובץ
             </button>
+          )}
+        </Field>
+
+        <Field label="קישור שימושי (אופציונלי)">
+          <input
+            type="url"
+            dir="ltr"
+            value={externalUrl}
+            onChange={(e) => {
+              setExternalUrl(e.target.value);
+              if (externalUrlError) setExternalUrlError(null);
+            }}
+            placeholder="https://..."
+            className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm"
+          />
+          {externalUrlError && (
+            <p className="mt-1.5 text-xs text-[color:var(--accent-2)]">{externalUrlError}</p>
           )}
         </Field>
 
