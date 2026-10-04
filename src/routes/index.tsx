@@ -169,7 +169,7 @@ function DeadlineSection({
     <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-11"
+        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-0"
       >
       <div className="min-w-0">
           <div className="text-sm font-semibold break-words">
