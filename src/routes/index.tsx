@@ -719,16 +719,8 @@ function Home() {
         ].filter((url): url is string => Boolean(url)),
       ),
     );
-    const savedPlaces = recs.map((rec) => ({
-      id: rec.id,
-      name: rec.name,
-      type: rec.type,
-      photoUrl: rec.photo_url,
-      mapsUrl: rec.google_maps_url,
-    }));
-
     return (
-      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4 pb-28 pt-3">
+      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
         <PreTripHero
           title={trip.title}
           flag={flagFor(trip.destination_country)}
@@ -768,6 +760,7 @@ function Home() {
           <PlanStartCard onOpenItinerary={() => navigate({ to: "/itinerary" })} />
         ) : (
           <PlanNextCard
+            variant="preTripHome"
             days={days}
             selectedDayId={selectedPlanDayId}
             entries={selectedPlanEntries}
@@ -782,17 +775,15 @@ function Home() {
           />
         )}
 
-        <SavedPlacesRow places={savedPlaces} />
-
         {deadlines.length > 0 && (
           <>
-            <h2 className="mt-1 text-[17px] font-semibold">לקראת היציאה</h2>
-            <DeadlinesCard items={deadlines} onOpen={openDeadline} />
+            <h2 className="mt-1 text-[18px] font-semibold">לקראת היציאה</h2>
+            <DeadlinesCard items={deadlines} onOpen={openDeadline} compact />
           </>
         )}
         <ChecklistCard variant="preTripHome" />
 
-        <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} />
+        <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} rounded />
         <ToolsRow actions={toolActions} />
 
         <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
