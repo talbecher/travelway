@@ -42,13 +42,6 @@ function cityFromLabel(label: string | null | undefined): string {
   return first.length >= 2 ? first : "";
 }
 
-/** Only prefill a destination that reads as one country. */
-function singleCountry(value: string | null | undefined): string {
-  const v = (value ?? "").trim();
-  if (!v || v.length > 40) return "";
-  if (/[·,\/+&]|\sו[א-ת]/.test(v)) return "";
-  return v;
-}
 
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
