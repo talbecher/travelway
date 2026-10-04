@@ -52,8 +52,8 @@ function DeadlineRow({ item, onOpen, compact = false }: { item: DeadlineItem; on
     return (
       <>
         <div
-          className="rounded-xl border border-border bg-card px-3 py-2"
-          style={{ borderRightWidth: 4, borderRightColor: color }}
+          className="py-1.5 pr-2.5 pl-1"
+          style={{ boxShadow: `inset -3px 0 0 ${color}` }}
         >
           <button type="button" onClick={() => onOpen(item)} className="block w-full min-h-11 text-right">
             <span className="block text-sm font-semibold leading-snug break-words">{item.name}</span>
@@ -165,10 +165,14 @@ function DeadlineSection({
   const [showAll, setShowAll] = useState(false);
   const items = showAll ? group.items : group.items.slice(0, 4);
   return (
-    <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
+    <div className={compact ? "border-b border-border/60 last:border-b-0" : "rounded-xl border border-border bg-card/40 overflow-hidden"}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-0"
+        className={
+          compact
+            ? "w-full flex min-h-11 items-center justify-between gap-2 px-1 py-1.5 text-right h-auto"
+            : "w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-0"
+        }
       >
       <div className="min-w-0">
           <div className="text-sm font-semibold break-words">
@@ -183,7 +187,7 @@ function DeadlineSection({
         />
       </button>
       {open && (
-        <div className="px-2 pb-2 space-y-2">
+        <div className={compact ? "pb-1.5 divide-y divide-border/50" : "px-2 pb-2 space-y-2"}>
           {items.map((i) => (
             <DeadlineRow key={i.id} item={i} onOpen={onOpen} compact={compact} />
           ))}
@@ -697,12 +701,13 @@ function Home() {
         to: "/recommendations",
         search: item.type === "hotel" ? { tab: "hotels" } : { tab: "all" },
       });
+    // Manual pick wins while the day still exists; otherwise default to the first
+    // empty day, then the next planned day, then the first day — never "no day"
+    // when valid days exist (a fully-planned trip used to end up with null).
     const selectedPlanDayId =
       planSelection.tripId === tripId && planSelection.dayId && days.some((day) => day.id === planSelection.dayId)
         ? planSelection.dayId
-        : planSelection.tripId === tripId && planSelection.manual
-          ? null
-          : firstEmptyDay?.id ?? null;
+        : firstEmptyDay?.id ?? nextDay?.id ?? days[0]?.id ?? null;
     const selectedPlanEntries = selectedPlanDayId ? entriesByDay[selectedPlanDayId] ?? [] : [];
     const destinationTheme = getDestinationTheme(trip.destination_country ?? "");
     // Destination-flavoured candidates only (sights/attractions), never food or documents.
