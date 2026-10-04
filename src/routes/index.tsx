@@ -27,7 +27,6 @@ import {
   PlanNextCard,
   PlanStartCard,
 } from "@/components/home/PlanNextCard";
-import { SavedPlacesRow } from "@/components/home/PrepStatsRow";
 import { BudgetSummary } from "@/components/home/BudgetSummary";
 import { formatMoney, useBaseCurrency } from "@/lib/currency";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";

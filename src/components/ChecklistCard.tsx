@@ -34,17 +34,25 @@ export function ChecklistCard({ variant = "default" }: { variant?: "default" | "
 
   const done = resolvedItems.filter((i) => i.is_done).length;
   const pct = Math.round((done / resolvedItems.length) * 100);
-  const open = resolvedItems
-    .filter((i) => !i.is_done)
-    .sort((a, b) => {
-      const rank = { high: 0, normal: 1, low: 2 } as const;
-      if (rank[a.priority] !== rank[b.priority]) return rank[a.priority] - rank[b.priority];
-      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
-      if (a.due_date) return -1;
-      if (b.due_date) return 1;
-      return 0;
-    })
-    .slice(0, 3);
+  const openItems = resolvedItems.filter((i) => !i.is_done);
+  const open = (
+    variant === "preTripHome"
+      ? // Dated tasks first by due_date (overdue naturally sorts earliest); undated keep existing order.
+        [...openItems].sort((a, b) => {
+          if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+          if (a.due_date) return -1;
+          if (b.due_date) return 1;
+          return 0;
+        })
+      : [...openItems].sort((a, b) => {
+          const rank = { high: 0, normal: 1, low: 2 } as const;
+          if (rank[a.priority] !== rank[b.priority]) return rank[a.priority] - rank[b.priority];
+          if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+          if (a.due_date) return -1;
+          if (b.due_date) return 1;
+          return 0;
+        })
+  ).slice(0, 3);
 
   return (
     <section className={variant === "preTripHome" ? "rounded-[20px] bg-card px-3.5 py-3 shadow-sm space-y-2.5" : "rounded-2xl border border-border bg-card p-4 space-y-3"}>
