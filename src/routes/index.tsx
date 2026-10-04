@@ -248,7 +248,7 @@ function DeadlinesCard({
   const effectiveOpen = openKey ?? mostUrgentKey;
 
   return (
-    <section className={compact ? "space-y-2 rounded-[20px] bg-card px-2.5 py-2.5 shadow-sm" : "space-y-2"}>
+    <section className={compact ? "rounded-[20px] bg-card px-3 py-1.5 shadow-sm" : "space-y-2"}>
       {!compact && (
         <div className="flex items-center gap-2 text-sm font-medium">
           <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
