@@ -255,7 +255,7 @@ function DeadlinesCard({
           <span>דדליינים קרובים</span>
         </div>
       )}
-      <div className="space-y-2">
+      <div className={compact ? undefined : "space-y-2"}>
         {groups.map((g) => (
           <DeadlineSection
             key={g.key}
