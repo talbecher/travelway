@@ -88,13 +88,8 @@ const SEARCH_FIELD_MASK = [
   "places.primaryTypeDisplayName",
 ].join(",");
 
-const RESOLVE_FIELD_MASK = [
-  "places.id",
-  "places.displayName",
-  "places.types",
-  "places.addressComponents",
-  "places.viewport",
-].join(",");
+// Place Details Essentials only — no displayName/photos/rating (those are Pro/Enterprise SKUs).
+const DETAILS_FIELD_MASK = "id,types,location,viewport,addressComponents";
 
 const MAX_RESULTS = 20;
 const PRIOR_WEIGHT = 150; // m — tunable
@@ -121,15 +116,31 @@ const INTEREST_TYPES: Record<DiscoverInterest, string[]> = {
   nightlife: ["night_club", "bar", "pub", "casino", "karaoke"],
 };
 
+// Accepted destination types: city, town, neighborhood, district, region, natural feature (e.g. a lake).
+// Rejected: country, administrative_area_level_1 (too broad to bound), businesses and POIs.
 const GEO_TYPES = new Set([
   "locality",
   "postal_town",
-  "administrative_area_level_1",
   "administrative_area_level_2",
   "administrative_area_level_3",
   "sublocality",
+  "sublocality_level_1",
   "neighborhood",
+  "colloquial_area",
+  "natural_feature",
 ]);
+
+// Preferred components for the search-term label, in priority order.
+const LABEL_TYPES = [
+  "locality",
+  "postal_town",
+  "sublocality",
+  "sublocality_level_1",
+  "neighborhood",
+  "natural_feature",
+  "administrative_area_level_3",
+  "administrative_area_level_2",
+];
 
 /* ---------- helpers ---------- */
 
