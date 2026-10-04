@@ -120,6 +120,7 @@ export function PlacesSearch({
     setOpen(true);
     setDetailsError(false);
     setActive(-1);
+    if (suggestionOnly) onPick?.(null); // any text change cancels the previous pick
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (v.trim().length < 2) {
       setResults([]);
@@ -136,6 +137,7 @@ export function PlacesSearch({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     tokenRef.current = null;
     pickingRef.current = false;
+    if (suggestionOnly) onPick?.(null);
     setPickingId(null);
     setQuery("");
     setResults([]);
@@ -151,6 +153,17 @@ export function PlacesSearch({
     const my = seqRef.current;
     const token = tokenRef.current ?? newToken();
     tokenRef.current = null; // Details ends the session; never reuse
+    if (suggestionOnly) {
+      // report the pick only — validation happens server-side on search
+      const label = s.secondary ? `${s.main}, ${s.secondary}` : s.main;
+      seqRef.current++;
+      setQuery(label);
+      setOpen(false);
+      setResults([]);
+      onPick?.({ placeId: s.placeId, label, sessionToken: token });
+      pickingRef.current = false;
+      return;
+    }
     setPickingId(s.placeId);
     setDetailsError(false);
     const stale = () => !mountedRef.current || my !== seqRef.current;
