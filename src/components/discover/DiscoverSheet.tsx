@@ -20,6 +20,7 @@ import {
   type DiscoverResponse,
 } from "@/lib/discover.functions";
 import { DiscoverCard } from "@/components/discover/DiscoverCard";
+import { PlacesSearch, type PickedSuggestion } from "@/components/PlacesSearch";
 import { DiscoverPhotoLoader } from "@/lib/discover-photo-loader";
 
 const PROVIDER = "google";
@@ -76,7 +77,6 @@ export function DiscoverSheet({
   open,
   onOpenChange,
   defaultCity,
-  defaultCountry,
   dayId,
   dayNumber = null,
   onAddToDay,
@@ -84,7 +84,6 @@ export function DiscoverSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultCity?: string | null;
-  defaultCountry?: string | null;
   /** When the sheet is opened from a specific itinerary day. */
   dayId?: string | null;
   /** 1-based day number for the combined action label. */
@@ -92,8 +91,7 @@ export function DiscoverSheet({
   /** Adds the given recommendation ids to that day. Required for the add block. */
   onAddToDay?: (recIds: string[]) => Promise<AddToDayResult>;
 }) {
-  const [city, setCity] = useState(defaultCity ?? "");
-  const [country, setCountry] = useState(defaultCountry ?? "");
+  const [dest, setDest] = useState<PickedSuggestion | null>(null);
   const [interests, setInterests] = useState<DiscoverInterest[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -137,17 +135,12 @@ export function DiscoverSheet({
     setAddFailedRecIds([]);
     setData(null);
     setErrorMsg(null);
+    setDest(null);
+    searchSeqRef.current++;
     setActiveInterests(new Set());
     setHideSaved(false);
     setHideInDay(false);
   }, [open, dayId, tripId, user?.id]);
-
-  // keep prefilled destination in sync when opened from different days
-  useEffect(() => {
-    if (!open) return;
-    setCity(defaultCity ?? "");
-    setCountry(defaultCountry ?? "");
-  }, [open, defaultCity, defaultCountry]);
 
   // existing recommendations of the trip (dupe detection + "saved" state)
   const { data: existing } = useQuery({
@@ -224,10 +217,13 @@ export function DiscoverSheet({
 
   const run = useServerFn(discoverPlaces);
   const searchingRef = useRef(false);
+  const searchSeqRef = useRef(0);
   const search = useMutation({
-    mutationFn: (vars: { city: string; country: string; interests: string[] }) =>
+    mutationFn: (vars: { placeId: string; sessionToken?: string | null; interests: string[] }) =>
       run({ data: vars }),
-    onSuccess: (res) => {
+    onSuccess: (res, vars) => {
+      const my = (vars as { _seq?: number })._seq;
+      if (my != null && my !== searchSeqRef.current) return; // stale response after reset/close
       photoLoader.reset(res.ok ? (res.searchId ?? "local") : null);
       setData(res);
       // results change, but the saved list stays — it accumulates per sheet session
@@ -422,19 +418,26 @@ export function DiscoverSheet({
   };
 
   const canSubmit =
-    city.trim().length > 0 &&
-    country.trim().length > 0 &&
+    dest !== null &&
     interests.length >= 1 &&
     interests.length <= 3 &&
     !search.isPending;
 
   const submit = () => {
-    if (!canSubmit || searchingRef.current) return;
+    if (!canSubmit || searchingRef.current || !dest) return;
     searchingRef.current = true;
     searchStartRef.current = performance.now();
     setErrorMsg(null);
+    const my = ++searchSeqRef.current;
+    const token = dest.sessionToken;
+    // the token is single-use: clear it so a retry never reuses a consumed session
+    setDest({ ...dest, sessionToken: "" });
     search.mutate(
-      { city: city.trim(), country: country.trim(), interests },
+      { placeId: dest.placeId, sessionToken: token || null, interests, _seq: my } as {
+        placeId: string;
+        sessionToken?: string | null;
+        interests: string[];
+      },
       { onSettled: () => { searchingRef.current = false; } },
     );
   };
@@ -510,27 +513,19 @@ export function DiscoverSheet({
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Discover — גילוי מקומות">
       <div className="space-y-4 pb-2" dir="rtl">
-        <div className="grid grid-cols-2 gap-2">
-          <label className="space-y-1">
-            <span className="text-xs text-muted-foreground">עיר</span>
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              maxLength={100}
-              dir="rtl"
-              className="w-full h-10 rounded-lg bg-background border border-input px-3 text-sm outline-none focus:border-[color:var(--accent)]"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-muted-foreground">מדינה</span>
-            <input
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              maxLength={100}
-              dir="rtl"
-              className="w-full h-10 rounded-lg bg-background border border-input px-3 text-sm outline-none focus:border-[color:var(--accent)]"
-            />
-          </label>
+        <div className="space-y-1">
+          <span className="text-xs text-muted-foreground">איפה לחפש?</span>
+          <PlacesSearch
+            key={`${open}-${defaultCity ?? ""}`}
+            suggestionOnly
+            onPick={setDest}
+            onSelect={() => {}}
+            initialQuery={defaultCity ?? ""}
+            placeholder="עיר, שכונה או אזור…"
+          />
+          {dest && (
+            <p className="text-[11px] text-muted-foreground">נבחר: {dest.label}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
