@@ -27,24 +27,35 @@ function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
+export type PickedSuggestion = { placeId: string; label: string; sessionToken: string };
+
 export function PlacesSearch({
   onSelect,
   placeholder = "חפש מקום...",
   autoFocus = false,
   fieldProfile = "default",
+  suggestionOnly = false,
+  onPick,
+  initialQuery,
 }: {
   onSelect: (place: SelectedPlace) => void;
   placeholder?: string;
   autoFocus?: boolean;
   /** "expense": skip photo/rating fields and the Photo Media call. Default keeps existing behavior. */
   fieldProfile?: "default" | "expense";
+  /** When true, picking a suggestion only reports it via onPick — no Details/photo calls. */
+  suggestionOnly?: boolean;
+  /** suggestionOnly mode: called with the picked suggestion, or null when the pick is invalidated. */
+  onPick?: (pick: PickedSuggestion | null) => void;
+  /** Initial input text (not a selection). */
+  initialQuery?: string;
 }) {
   const autocomplete = useServerFn(autocompletePlaces);
   const details = useServerFn(getPlaceDetails);
   const getPhoto = useServerFn(getPlacePhotoUrl);
 
   const listId = useId();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
