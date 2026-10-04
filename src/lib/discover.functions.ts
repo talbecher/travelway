@@ -162,15 +162,6 @@ type ApiPlace = {
   viewport?: { low?: LatLng; high?: LatLng };
 };
 
-function norm(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
 function componentValues(place: ApiPlace, types: string[]): string[] {
   const out: string[] = [];
   for (const c of place.addressComponents ?? []) {
@@ -181,13 +172,21 @@ function componentValues(place: ApiPlace, types: string[]): string[] {
   return out;
 }
 
-function matchesTerm(values: string[], term: string): boolean {
-  const t = norm(term);
-  if (!t) return false;
-  return values.some((v) => {
-    const n = norm(v);
-    return n === t || n.includes(t) || t.includes(n);
-  });
+/** ISO country code (shortText of the "country" component), or null. */
+function countryCodeOf(place: ApiPlace): string | null {
+  for (const c of place.addressComponents ?? []) {
+    if ((c.types ?? []).includes("country") && c.shortText) return c.shortText;
+  }
+  return null;
+}
+
+/** Search-term label derived server-side from address components — never from the client. */
+function destLabel(place: ApiPlace): string | null {
+  for (const t of LABEL_TYPES) {
+    const v = componentValues(place, [t]).find((s) => s.trim().length > 0);
+    if (v) return v;
+  }
+  return null;
 }
 
 function areaOf(place: ApiPlace): string | null {
