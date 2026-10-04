@@ -44,12 +44,15 @@ function DayPicker({
   days,
   selectedDayId,
   onSelectDay,
+  soft = false,
 }: {
   days: PlanningDay[];
   selectedDayId: string | null;
   onSelectDay: (id: string) => void;
+  /** Soft selected style + per-day city (pre-trip home). */
+  soft?: boolean;
 }) {
-  const showCity = days.length > 0 && days.every((day) => Boolean(day.city_label));
+  const allHaveCity = days.length > 0 && days.every((day) => Boolean(day.city_label));
   const scrollerRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
   const lastRevealedId = useRef<string | null>(null);
@@ -69,6 +72,10 @@ function DayPicker({
       <div className="flex w-max min-w-full gap-2 pb-1">
         {days.map((day) => {
           const selected = day.id === selectedDayId;
+          const showCity = soft ? Boolean(day.city_label) : allHaveCity;
+          const selectedClass = soft
+            ? "border-[color:var(--accent)] bg-[color:var(--accent)]/10 text-foreground"
+            : "border-transparent bg-[color:var(--accent)] text-[color:var(--accent-foreground)]";
           return (
             <button
               key={day.id}
@@ -78,13 +85,11 @@ function DayPicker({
               onClick={() => onSelectDay(day.id)}
               className={
                 "min-h-[56px] w-[86px] shrink-0 rounded-lg border px-2 py-1.5 text-center transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                (selected
-                  ? "border-transparent bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                  : "border-border bg-surface-2 text-foreground")
+                (selected ? selectedClass : "border-border bg-surface-2 text-foreground")
               }
             >
-              <span className="block text-[11px] font-semibold">יום {day.day_number}</span>
-              <span className={"block text-[10px] " + (selected ? "text-[color:var(--accent-foreground)]/85" : "text-muted-foreground")}>{hebDate(day.date)}</span>
+              <span className={"block text-[11px] font-semibold " + (soft && selected ? "text-[color:var(--accent)]" : "")}>יום {day.day_number}</span>
+              <span className={"block text-[10px] " + (selected && !soft ? "text-[color:var(--accent-foreground)]/85" : "text-muted-foreground")}>{hebDate(day.date)}</span>
               {showCity && <span className="mt-0.5 block truncate text-[10px]">{day.city_label}</span>}
             </button>
           );
@@ -133,6 +138,7 @@ function PrimaryAction({ onClick, children }: { onClick: () => void; children: R
 }
 
 export function PlanNextCard({
+  variant = "default",
   days,
   selectedDayId,
   entries,
@@ -142,6 +148,8 @@ export function PlanNextCard({
   onOpenDay,
   onOpenItinerary,
 }: {
+  /** "preTripHome" = compact pre-trip layout; default keeps the existing card. */
+  variant?: "default" | "preTripHome";
   days: PlanningDay[];
   selectedDayId: string | null;
   entries: PlanningEntry[];
@@ -153,6 +161,32 @@ export function PlanNextCard({
 }) {
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? null;
   const isEmpty = Boolean(selectedDay) && entries.length === 0;
+
+  if (variant === "preTripHome") {
+    return (
+      <Shell onOpenItinerary={onOpenItinerary}>
+        <DayPicker days={days} selectedDayId={selectedDayId} onSelectDay={onSelectDay} soft />
+        {selectedDay ? (
+          <div className="space-y-2.5">
+            <p className="break-words text-[14px] font-medium leading-snug">
+              {isEmpty
+                ? `יום ${selectedDay.day_number} עדיין פנוי לתכנון`
+                : [
+                    `יום ${selectedDay.day_number}`,
+                    selectedDay.city_label || null,
+                    entries.length === 1 ? "תחנה אחת" : `${entries.length} תחנות`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+            </p>
+            <PrimaryAction onClick={onOpenDay}>המשך לתכנן את יום {selectedDay.day_number}</PrimaryAction>
+          </div>
+        ) : (
+          <PrimaryAction onClick={onOpenItinerary}>לעריכת המסלול</PrimaryAction>
+        )}
+      </Shell>
+    );
+  }
 
   return (
     <Shell onOpenItinerary={onOpenItinerary}>

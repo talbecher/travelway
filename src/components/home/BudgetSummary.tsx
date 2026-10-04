@@ -7,15 +7,59 @@ export function BudgetSummary({
   budget,
   spent,
   remaining,
+  rounded = false,
 }: {
   budget: number;
   spent: number;
   remaining: number;
+  /** Display-only rounding to whole units (pre-trip home). Values are untouched. */
+  rounded?: boolean;
 }) {
   const base = useBaseCurrency();
-  const ils = (n: number) => formatMoney(n, base);
+  const ils = (n: number) => formatMoney(rounded ? Math.round(n) : n, base);
   const hasBudget = Number.isFinite(budget) && budget > 0;
   const over = hasBudget && remaining < 0;
+
+  if (rounded) {
+    return (
+      <section className="rounded-[20px] bg-card px-3.5 py-2.5 shadow-sm">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <h2 className="min-w-0 truncate text-[18px] font-semibold">תקציב</h2>
+          <Link
+            to="/budget"
+            className="inline-flex min-h-11 shrink-0 items-center gap-0.5 px-1 text-[12px] text-[color:var(--accent)]"
+          >
+            למסך התקציב
+            <ChevronLeft size={14} />
+          </Link>
+        </div>
+        {hasBudget ? (
+          <div className="space-y-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[13px] text-muted-foreground">{over ? "חריגה מהתקציב" : "נותרו"}</span>
+              <span
+                className="text-[24px] font-bold tabular-nums leading-tight"
+                style={over ? { color: "var(--destructive)" } : undefined}
+                dir="rtl"
+              >
+                {over ? `-${ils(Math.abs(remaining))}` : ils(remaining)}
+              </span>
+            </div>
+            <p className="text-[12px] text-muted-foreground break-words" dir="rtl">
+              תקציב {ils(budget)} · הוצאות {ils(spent)}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-[13px] text-muted-foreground">לא הוגדר תקציב לטיול</span>
+            <span className="text-[12px] text-muted-foreground" dir="rtl">
+              הוצאות {ils(spent)}
+            </span>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-[20px] bg-card px-3.5 py-2.5 shadow-sm">

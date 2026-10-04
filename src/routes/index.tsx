@@ -27,7 +27,6 @@ import {
   PlanNextCard,
   PlanStartCard,
 } from "@/components/home/PlanNextCard";
-import { SavedPlacesRow } from "@/components/home/PrepStatsRow";
 import { BudgetSummary } from "@/components/home/BudgetSummary";
 import { formatMoney, useBaseCurrency } from "@/lib/currency";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
@@ -44,11 +43,57 @@ import {
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
 
-function DeadlineRow({ item, onOpen }: { item: DeadlineItem; onOpen: (i: DeadlineItem) => void }) {
+function DeadlineRow({ item, onOpen, compact = false }: { item: DeadlineItem; onOpen: (i: DeadlineItem) => void; compact?: boolean }) {
   const color = URGENCY_COLOR[item.urgency];
   const strong = item.urgency !== "normal";
   const [markOpen, setMarkOpen] = useState(false);
   const canMark = item.type === "recommendation" && item.status !== "booked";
+  if (compact) {
+    return (
+      <>
+        <div
+          className="rounded-xl border border-border bg-card px-3 py-2"
+          style={{ borderRightWidth: 4, borderRightColor: color }}
+        >
+          <button type="button" onClick={() => onOpen(item)} className="block w-full min-h-11 text-right">
+            <span className="block text-sm font-semibold leading-snug break-words">{item.name}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground leading-snug break-words">
+              {deadlineLabel(item)} ·{" "}
+              <span className={strong ? "font-semibold" : undefined} style={strong ? { color } : undefined}>
+                {daysLeftLabel(item.daysLeft)}
+              </span>
+            </span>
+          </button>
+          {(canMark || item.booking_url) && (
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {canMark && (
+                <button
+                  type="button"
+                  onClick={() => setMarkOpen(true)}
+                  className="min-h-11 rounded-lg border border-border bg-card px-2 text-[13px] font-medium"
+                >
+                  סמן כהוזמן
+                </button>
+              )}
+              {item.booking_url && (
+                <button
+                  type="button"
+                  onClick={() => window.open(item.booking_url!, "_blank", "noopener")}
+                  className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-[color:var(--accent)] px-2 text-[13px] font-medium text-[color:var(--accent-foreground)]"
+                >
+                  לאתר ההזמנה
+                  <ExternalLink size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {canMark && markOpen && (
+          <MarkBookedSheet recId={item.sourceId} open={markOpen} onOpenChange={setMarkOpen} />
+        )}
+      </>
+    );
+  }
   return (
     <>
     <button
@@ -109,11 +154,13 @@ function DeadlineSection({
   open,
   onToggle,
   onOpen,
+  compact = false,
 }: {
   group: DeadlineGroup;
   open: boolean;
   onToggle: () => void;
   onOpen: (i: DeadlineItem) => void;
+  compact?: boolean;
 }) {
   const [showAll, setShowAll] = useState(false);
   const items = showAll ? group.items : group.items.slice(0, 4);
@@ -138,7 +185,7 @@ function DeadlineSection({
       {open && (
         <div className="px-2 pb-2 space-y-2">
           {items.map((i) => (
-            <DeadlineRow key={i.id} item={i} onOpen={onOpen} />
+            <DeadlineRow key={i.id} item={i} onOpen={onOpen} compact={compact} />
           ))}
           {!showAll && group.items.length > 4 && (
             <button
@@ -157,9 +204,11 @@ function DeadlineSection({
 function DeadlinesCard({
   items,
   onOpen,
+  compact = false,
 }: {
   items: DeadlineItem[];
   onOpen: (i: DeadlineItem) => void;
+  compact?: boolean;
 }) {
   const groups = useMemo<DeadlineGroup[]>(() => {
     const defs: DeadlineGroup[] = [
@@ -175,8 +224,12 @@ function DeadlinesCard({
       else if (i.recType === "attraction") by.attraction.items.push(i);
       else by.other.items.push(i);
     }
+    if (compact) {
+      // Stable sort: nearest deadline first, ties keep the existing order.
+      for (const g of defs) g.items.sort((a, b) => a.daysLeft - b.daysLeft);
+    }
     return defs.filter((g) => g.items.length > 0);
-  }, [items]);
+  }, [items, compact]);
 
   const mostUrgentKey = useMemo(() => {
     let best: DeadlineGroup | null = null;
@@ -191,11 +244,13 @@ function DeadlinesCard({
   const effectiveOpen = openKey ?? mostUrgentKey;
 
   return (
-    <section className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
-        <span>דדליינים קרובים</span>
-      </div>
+    <section className={compact ? "space-y-2 rounded-[20px] bg-card px-2.5 py-2.5 shadow-sm" : "space-y-2"}>
+      {!compact && (
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
+          <span>דדליינים קרובים</span>
+        </div>
+      )}
       <div className="space-y-2">
         {groups.map((g) => (
           <DeadlineSection
@@ -204,6 +259,7 @@ function DeadlinesCard({
             open={effectiveOpen === g.key}
             onToggle={() => setOpenKey(effectiveOpen === g.key ? "" : g.key)}
             onOpen={onOpen}
+            compact={compact}
           />
         ))}
       </div>
@@ -662,16 +718,8 @@ function Home() {
         ].filter((url): url is string => Boolean(url)),
       ),
     );
-    const savedPlaces = recs.map((rec) => ({
-      id: rec.id,
-      name: rec.name,
-      type: rec.type,
-      photoUrl: rec.photo_url,
-      mapsUrl: rec.google_maps_url,
-    }));
-
     return (
-      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4 pb-28 pt-3">
+      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
         <PreTripHero
           title={trip.title}
           flag={flagFor(trip.destination_country)}
@@ -711,6 +759,7 @@ function Home() {
           <PlanStartCard onOpenItinerary={() => navigate({ to: "/itinerary" })} />
         ) : (
           <PlanNextCard
+            variant="preTripHome"
             days={days}
             selectedDayId={selectedPlanDayId}
             entries={selectedPlanEntries}
@@ -725,17 +774,15 @@ function Home() {
           />
         )}
 
-        <SavedPlacesRow places={savedPlaces} />
-
         {deadlines.length > 0 && (
           <>
-            <h2 className="mt-1 text-[17px] font-semibold">לקראת היציאה</h2>
-            <DeadlinesCard items={deadlines} onOpen={openDeadline} />
+            <h2 className="mt-1 text-[18px] font-semibold">לקראת היציאה</h2>
+            <DeadlinesCard items={deadlines} onOpen={openDeadline} compact />
           </>
         )}
         <ChecklistCard variant="preTripHome" />
 
-        <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} />
+        <BudgetSummary budget={stats.budget} spent={stats.spent} remaining={stats.remaining} rounded />
         <ToolsRow actions={toolActions} />
 
         <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />

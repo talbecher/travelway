@@ -52,7 +52,7 @@ export function PreTripHero({
 
   return (
     <section
-      className="relative isolate flex min-h-[164px] overflow-hidden rounded-2xl px-4 py-3.5 text-white shadow-sm sm:min-h-[186px] sm:px-5"
+      className="relative isolate flex min-h-[134px] overflow-hidden rounded-2xl px-4 py-3 text-white shadow-sm sm:min-h-[152px] sm:px-5"
       style={showImage ? undefined : { background: fallbackBackground }}
     >
       {showImage && (
