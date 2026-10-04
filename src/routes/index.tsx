@@ -44,11 +44,57 @@ import {
 
 type DeadlineGroup = { key: string; title: string; subtitle: string; items: DeadlineItem[] };
 
-function DeadlineRow({ item, onOpen }: { item: DeadlineItem; onOpen: (i: DeadlineItem) => void }) {
+function DeadlineRow({ item, onOpen, compact = false }: { item: DeadlineItem; onOpen: (i: DeadlineItem) => void; compact?: boolean }) {
   const color = URGENCY_COLOR[item.urgency];
   const strong = item.urgency !== "normal";
   const [markOpen, setMarkOpen] = useState(false);
   const canMark = item.type === "recommendation" && item.status !== "booked";
+  if (compact) {
+    return (
+      <>
+        <div
+          className="rounded-xl border border-border bg-card px-3 py-2"
+          style={{ borderRightWidth: 4, borderRightColor: color }}
+        >
+          <button type="button" onClick={() => onOpen(item)} className="block w-full min-h-11 text-right">
+            <span className="block text-sm font-semibold leading-snug break-words">{item.name}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground leading-snug break-words">
+              {deadlineLabel(item)} ·{" "}
+              <span className={strong ? "font-semibold" : undefined} style={strong ? { color } : undefined}>
+                {daysLeftLabel(item.daysLeft)}
+              </span>
+            </span>
+          </button>
+          {(canMark || item.booking_url) && (
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {canMark && (
+                <button
+                  type="button"
+                  onClick={() => setMarkOpen(true)}
+                  className="min-h-11 rounded-lg border border-border bg-card px-2 text-[13px] font-medium"
+                >
+                  סמן כהוזמן
+                </button>
+              )}
+              {item.booking_url && (
+                <button
+                  type="button"
+                  onClick={() => window.open(item.booking_url!, "_blank", "noopener")}
+                  className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-[color:var(--accent)] px-2 text-[13px] font-medium text-[color:var(--accent-foreground)]"
+                >
+                  לאתר ההזמנה
+                  <ExternalLink size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {canMark && markOpen && (
+          <MarkBookedSheet recId={item.sourceId} open={markOpen} onOpenChange={setMarkOpen} />
+        )}
+      </>
+    );
+  }
   return (
     <>
     <button
