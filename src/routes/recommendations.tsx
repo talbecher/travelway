@@ -775,7 +775,6 @@ function Recs() {
           open={discoverOpen}
           onOpenChange={setDiscoverOpen}
           defaultCity={city !== "all" ? city : null}
-          defaultCountry={trip?.destination_country ?? null}
         />
       )}
 
