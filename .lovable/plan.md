@@ -1,56 +1,75 @@
-# ליטוש הבית לפני הטיול לפי המוקאפ
+# Discover — בחירת יעד מדויקת מתוך הצעות
 
-השינוי חל רק על תצוגת הבית לפני תחילת הטיול (הענף שמרנדר את `PreTripHero` ב-`src/routes/index.tsx`). הבית בזמן הטיול, אחרי הטיול וללא טיול לא משתנה. אין שינוי בסכמה, בהרשאות, בשאילתות או בחישובים, ואין חבילות חדשות.
+## מה ישתנה למשתמש
+- במקום שדות „עיר” ו„מדינה” בטופס Discover: שדה אחד „איפה לחפש?” עם הצעות תוך כדי הקלדה (עיר, עיירה, שכונה, אזור, אגם).
+- רק בחירה מפורשת מהרשימה הופכת את „חפש” לפעיל. שינוי הטקסט אחרי בחירה מבטל אותה. Enter לא שולח את הטופס.
+- כשליעד אין תחימה תקינה: „לא התקבלה תחימה אמינה ליעד — בחרו יעד מצומצם יותר”. אין הרחבה אוטומטית.
+- מילוי מראש מהטיול/היום (`defaultCity`) הופך לטקסט התחלתי בשדה בלבד — לא נחשב בחירה עד שבוחרים הצעה.
 
-## סדר העמוד
-פתיחת הטיול, אחריה „ממשיכים לתכנן”, אחריה „לקראת היציאה” (דדליינים ואז צ׳קליסט), אחריה תקציב, ובסוף הכלים (מסמכים והוצאה מהירה).
-`SavedPlacesRow` יוסר מהענף שלפני הטיול בלבד. הרכיב עצמו, הנתונים ו-„מה שמור לידי?” בזמן הטיול נשארים.
+## סוגי יעד
+- מתקבלים (בשרת, לפי `types` מ-Details): `locality`, `postal_town`, `sublocality`, `sublocality_level_1`, `neighborhood`, `colloquial_area`, `administrative_area_level_2`, `administrative_area_level_3`, `natural_feature`.
+- נדחים: `country`, `administrative_area_level_1` (גדול מדי לתחימה), וכל מקום שאין לו אף אחד מהסוגים המותרים — כולל עסקים, אטרקציות ונקודות עניין.
+- בהצעות: `includedPrimaryTypes` (עד 5) = `locality`, `sublocality`, `neighborhood`, `administrative_area_level_2`, `natural_feature`. השרת הוא הבדיקה הקובעת; הסינון בהצעות רק מצמצם רעש.
 
-## 1. פתיחת הטיול — `PreTripHero`
-- הגובה המינימלי יונמך בכ-18%: 164 ל-134px במובייל, 186 ל-152px ב-sm.
-- נשמרים תמונת היעד, הגיבוי, הייחוס, הכותרת ששוברת שורות, התאריכים, הספירה לאחור וה-scrim.
+## זרימת הקריאות
 
-## 2. „ממשיכים לתכנן” — `PlanNextCard`
-- prop אופציונלי `variant="preTripHome"`. ברירת המחדל שומרת על ההתנהגות הקיימת.
-- כל צ׳יפ מציג „יום N”, תאריך קצר ועיר רק כשהיא קיימת בנתונים.
-- הצ׳יפ הנבחר מקבל רקע primary עדין, מסגרת primary ו-aria-pressed. גלילה אופקית מתבצעת בתוך הבורר בלבד.
-- שורת מידע מחליפה את משפט העזרה: „יום N · עיר · X תחנות” או „יום N עדיין פנוי לתכנון”. בזמן טעינה מוצגת שורת שלד ולא מצב ריק.
-- הכפתור הראשי: „המשך לתכנן את יום N”, דרך הנתיב הקיים. „לכל המסלול” נשאר קישור משני.
-- כשאין יום תקין, נשארים `PlanStartCard` ו-`PlanLoadingCard` הקיימים.
+```text
+הקלדה (debounce 400ms, מינ' 2 תווים, session token)
+  -> autocompletePlaces({ input, sessionToken, includedPrimaryTypes })   [N פעמים]
+בחירת הצעה (בלקוח בלבד, ללא קריאת רשת)
+  -> state: { placeId, label, sessionToken }
+"חפש"
+  -> discoverPlaces({ placeId, sessionToken, interests })
+       1. Place Details (placeId, sessionToken)  — אימות + types/location/viewport/country
+       2. SearchText לכל תחום עניין עם locationRestriction = viewport  [ללא שינוי]
+       3. סינון: קוד מדינה של כל תוצאה == קוד המדינה של היעד
+```
 
-## 3. „לקראת היציאה”
-**דדליינים (`DeadlinesCard` בענף שלפני הטיול, דרך prop אופציונלי):**
-- בתוך כל קבוצה, מיון לפי המועד הקרוב ביותר על בסיס נתוני התאריך הקיימים.
-- לכל פריט: שם, תאריך, שעה אם קיימת, ו-„בעוד N ימים”, „היום” או „המועד עבר” לפי הלוגיקה הקיימת.
-- „הזמן ✅” יוחלף ב-„סמן כהוזמן”. הפעולה עצמה לא משתנה.
-- „לאתר ההזמנה” עם `ExternalLink` יוצג רק כשקיים קישור.
-- במובייל הפעולות עוברות לשורה מתחת לטקסט, בגובה 44px לפחות. לא יתווספו תמונות.
+אימות בלי Details כפול: הלקוח לא קורא ל-Details בזמן הבחירה. ה-Details היחיד רץ בשרת בתוך `discoverPlaces`, עם אותו session token, וסוגר את הסשן. חיפוש חוזר לאותו יעד (למשל שינוי תחומי עניין) שולח את ה-`placeId` בלי token, ומבצע Details Essentials נוסף. אין מטמון.
 
-**צ׳קליסט (`ChecklistCard variant="preTripHome"`):**
-- יוצגו עד 3 משימות פתוחות: משימות באיחור, אחריהן תאריך קרוב, ומשימות בלי תאריך בסדר הקיים.
-- המיון מסתמך רק על שדות תאריך מובנים קיימים. הספירה, פס ההתקדמות, הקישור ומצב „הכול הושלם” נשמרים.
+## FieldMask ו-SKU (לפי תיעוד Places API New)
+- Autocomplete: `suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat` (ללא שינוי). SKU: Autocomplete Requests. סשן שמסתיים ב-Details מחויב לפי Details, ובקשות ההצעות בו לא מחויבות בנפרד. סשן נטוש (ניקוי, סגירה, בחירה בלי חיפוש) — כל בקשת הצעות מחויבת כ-Autocomplete Request. לכן לא מניחים שההצעות חינמיות.
+- Details של היעד: `id,types,location,viewport,addressComponents`. כולם בשכבת Place Details Essentials (`id` הוא IDs Only). בלי `displayName`, `photos`, `rating` (Pro/Enterprise). את שם התצוגה לוקחים מההצעה שנבחרה.
+- SearchText לכל תחום עניין: ללא שינוי (Text Search Enterprise בגלל rating/photos).
+- תמונות: ללא שינוי (לפי דרישה, Place Photos).
+- יש לאמת את שיוך השדות ל-SKU מול טבלת SKU העדכנית לפני המיזוג; לא מבצעים קריאות בתשלום בשלב התכנון.
 
-## 4. תקציב — `BudgetSummary`
-- prop אופציונלי `rounded`, שמופעל רק לפני הטיול: עיגול תצוגה ליחידה שלמה, מפרידי אלפים ומטבע קיים.
-- „נותר” מוצג בולט, ומתחתיו שורה משנית של תקציב והוצאות.
-- מצב החריגה הקיים נשמר, וכך גם הקישור למסך התקציב.
+## קריאות לחיפוש אחד (I = מספר תחומי העניין)
 
-## 5. עיצוב
-- כרטיסי surface מעוגלים, כותרות כהות והדגשות קורל מהטוקנים הקיימים.
-- ריווח מצומצם בין האזורים, בלי להקטין טקסט או שטחי מגע.
-- RTL, מצב כהה ו-safe area נשמרים. `ToolsRow` נשאר כמו שהוא.
+| | לפני | אחרי |
+|---|---|---|
+| הצעות | 0 | N (debounce) |
+| Details | 0 | 1 (Essentials) |
+| SearchText לזיהוי היעד | 1 (Text Search Pro — `types`, `addressComponents`, `viewport`) | 0 |
+| SearchText לתוצאות | I | I |
+| תמונות | לפי דרישה | לפי דרישה |
+
+כלומר: Text Search Pro אחד מוחלף ב-Details Essentials אחד וב-N בקשות הצעות. אם החיפוש מתבצע, הבקשות האלה כלולות בסשן.
 
 ## קבצים
-- `src/routes/index.tsx`: הענף שלפני הטיול ו-prop ל-`DeadlinesCard`.
-- `src/components/home/PreTripHero.tsx`
-- `src/components/home/PlanNextCard.tsx`
-- `src/components/ChecklistCard.tsx`: רק בענף `preTripHome`.
-- `src/components/home/BudgetSummary.tsx`
+- `src/lib/places.functions.ts` — ל-`autocompletePlaces` נוסף פרמטר אופציונלי `includedPrimaryTypes` (רשימה מותרת קבועה, עד 5). בלעדיו ההתנהגות זהה לחלוטין. `getPlaceDetails` לא משתנה.
+- `src/components/PlacesSearch.tsx` — שני props אופציונליים:
+  - `includedPrimaryTypes`.
+  - `mode="suggestionOnly"`: בבחירה קוראים ל-`onPick({ placeId, label, sessionToken })` בלי Details ובלי תמונה, והטקסט נשאר בשדה. כל שינוי טקסט קורא ל-`onPick(null)`.
+  - ברירת המחדל לא משתנה לצרכנים הקיימים.
+- `src/lib/discover.functions.ts` — הקלט משתנה ל-`{ placeId, sessionToken?, interests }` (ולידציה: placeId בתבנית בטוחה, אורך מוגבל). שלב הזיהוי ב-SearchText והשוואות השמות (`matchesTerm` לעיר ולמדינה) מוחלפים ב:
+  - Details.
+  - בדיקת סוג מותר.
+  - חובת viewport, עם הודעה קיימת.
+  - קוד מדינה מ-`addressComponents` (`country.shortText`).
+  
+  `textQuery` לכל תחום עניין: `${INTEREST_QUERY} ${label}`, כאשר ה-label מגיע מ-Details. ה-label נגזר מרכיב הכתובת הראשי (`locality`/`sublocality`/`natural_feature`) בלי `displayName`. אם אין label, החיפוש נעשה רק לפי מונח העניין, ו-locationRestriction עושה את התחימה. סינון המדינה בתוצאות עובר להשוואה של `shortText`. פיילוט, קטגוריות, דירוג, מספר תוצאות ותמונות לא משתנים.
+- `src/components/discover/DiscoverSheet.tsx` — שני השדות מוחלפים ב-`PlacesSearch` במצב `suggestionOnly`. state הבחירה מתאפס בניקוי, בסגירה ובמעבר טיול. כל תשובת mutation מסומנת ב-seq, כדי שתשובה מאוחרת תיזרק. ההיסטוריה האחרונה (`discover-recent`) נשמרת עם placeId + label.
+- `src/routes/recommendations.tsx`, `src/routes/itinerary.$dayId.tsx` — רק העברת טקסט התחלתי במקום `defaultCity`/`defaultCountry`, אם נדרש.
 
-## אימות
-- `bunx tsgo --noEmit` ו-`bun run build`.
-- Playwright ב-360px וב-393px: יום ריק ויום מלא, החלפת יום וניווט ליום הנכון, שם ארוך, דדליינים, מצב כהה, ובדיקה שאין גלילה אופקית.
-- צילומי מסך של ראש העמוד ושל המשך הגלילה.
-- וידוא שהבית בזמן הטיול לא השתנה.
-- בלי סימון, הזמנה או שינוי נתונים אמיתיים.
-- דוח קצר שמפריד בין מה שנבדק בפועל לבין מה שאומת בקוד.
+ללא שינוי: סכמה, ספריות, הרשאות פיילוט, שמירה, מנגנון התמונות.
+
+## סיכונים ומגבלות
+- לחלק מהאגמים או האזורים אין viewport, או שה-viewport שלהם גדול מאוד. במקרה כזה מוצגת הודעה, ואין הרחבה.
+- `includedPrimaryTypes` מוגבל ל-5 סוגים. יעדים מסוג `postal_town` או `colloquial_area` עלולים לא להופיע בהצעות, אף שהשרת יקבל אותם.
+- מונח חיפוש בעברית יחד עם label בשפה אחרת עלול לשנות את איכות התוצאות. התחימה ב-locationRestriction נשארת הקובעת.
+- רשומות „אחרונים” ישנות שמבוססות על עיר+מדינה לא יתאימו לפורמט החדש. הן יוצגו כטקסט התחלתי בלבד ולא כבחירה.
+- token שפג או נוצל, כשמבצעים חיפוש שני, נשלח בלי token. החיוב לפי Details רגיל.
+
+## אימות אחרי היישום
+`bunx tsgo --noEmit` ו-`bun run build`. את הממשק בודקים ידנית. אין בדיקות דפדפן ואין קריאות Google בתשלום מצדי.
