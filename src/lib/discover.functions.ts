@@ -390,6 +390,7 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     const tResolve = Date.now();
 
     /* 2. one search per interest */
+    let searchTextCalls = 0;
     const failedInterests: DiscoverInterest[] = [];
     const perInterest = new Map<DiscoverInterest, ApiPlace[]>();
 
@@ -515,7 +516,7 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     });
 
     console.info(
-      `[discover] search searchId=${searchId} resolveMs=${tResolve - t0} placesMs=${Date.now() - tResolve} searchTextCalls=${searchTextCalls} results=${results.length}`,
+      `[discover] search searchId=${searchId} resolveMs=${tResolve - t0} placesMs=${Date.now() - tResolve} searchTextCalls=${searchTextCalls} detailsCalls=1 results=${results.length}`,
     );
 
     return {
