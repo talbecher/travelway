@@ -27,24 +27,35 @@ function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
+export type PickedSuggestion = { placeId: string; label: string; sessionToken: string };
+
 export function PlacesSearch({
   onSelect,
   placeholder = "חפש מקום...",
   autoFocus = false,
   fieldProfile = "default",
+  suggestionOnly = false,
+  onPick,
+  initialQuery,
 }: {
   onSelect: (place: SelectedPlace) => void;
   placeholder?: string;
   autoFocus?: boolean;
   /** "expense": skip photo/rating fields and the Photo Media call. Default keeps existing behavior. */
   fieldProfile?: "default" | "expense";
+  /** When true, picking a suggestion only reports it via onPick — no Details/photo calls. */
+  suggestionOnly?: boolean;
+  /** suggestionOnly mode: called with the picked suggestion, or null when the pick is invalidated. */
+  onPick?: (pick: PickedSuggestion | null) => void;
+  /** Initial input text (not a selection). */
+  initialQuery?: string;
 }) {
   const autocomplete = useServerFn(autocompletePlaces);
   const details = useServerFn(getPlaceDetails);
   const getPhoto = useServerFn(getPlacePhotoUrl);
 
   const listId = useId();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -109,6 +120,7 @@ export function PlacesSearch({
     setOpen(true);
     setDetailsError(false);
     setActive(-1);
+    if (suggestionOnly) onPick?.(null); // any text change cancels the previous pick
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (v.trim().length < 2) {
       setResults([]);
@@ -125,6 +137,7 @@ export function PlacesSearch({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     tokenRef.current = null;
     pickingRef.current = false;
+    if (suggestionOnly) onPick?.(null);
     setPickingId(null);
     setQuery("");
     setResults([]);
@@ -140,6 +153,17 @@ export function PlacesSearch({
     const my = seqRef.current;
     const token = tokenRef.current ?? newToken();
     tokenRef.current = null; // Details ends the session; never reuse
+    if (suggestionOnly) {
+      // report the pick only — validation happens server-side on search
+      const label = s.secondary ? `${s.main}, ${s.secondary}` : s.main;
+      seqRef.current++;
+      setQuery(label);
+      setOpen(false);
+      setResults([]);
+      onPick?.({ placeId: s.placeId, label, sessionToken: token });
+      pickingRef.current = false;
+      return;
+    }
     setPickingId(s.placeId);
     setDetailsError(false);
     const stale = () => !mountedRef.current || my !== seqRef.current;

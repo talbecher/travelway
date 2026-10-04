@@ -42,13 +42,6 @@ function cityFromLabel(label: string | null | undefined): string {
   return first.length >= 2 ? first : "";
 }
 
-/** Only prefill a destination that reads as one country. */
-function singleCountry(value: string | null | undefined): string {
-  const v = (value ?? "").trim();
-  if (!v || v.length > 40) return "";
-  if (/[·,\/+&]|\sו[א-ת]/.test(v)) return "";
-  return v;
-}
 
 
 function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
@@ -1269,7 +1262,6 @@ function DayDetail() {
           open={discoverOpen}
           onOpenChange={setDiscoverOpen}
           defaultCity={cityFromLabel(day.city_label)}
-          defaultCountry={singleCountry(trip?.destination_country)}
           dayId={dayId}
           dayNumber={days.findIndex((d) => d.id === dayId) + 1 || null}
           onAddToDay={addSavedRecsToDay}

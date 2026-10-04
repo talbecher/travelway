@@ -88,13 +88,8 @@ const SEARCH_FIELD_MASK = [
   "places.primaryTypeDisplayName",
 ].join(",");
 
-const RESOLVE_FIELD_MASK = [
-  "places.id",
-  "places.displayName",
-  "places.types",
-  "places.addressComponents",
-  "places.viewport",
-].join(",");
+// Place Details Essentials only — no displayName/photos/rating (those are Pro/Enterprise SKUs).
+const DETAILS_FIELD_MASK = "id,types,location,viewport,addressComponents";
 
 const MAX_RESULTS = 20;
 const PRIOR_WEIGHT = 150; // m — tunable
@@ -121,15 +116,31 @@ const INTEREST_TYPES: Record<DiscoverInterest, string[]> = {
   nightlife: ["night_club", "bar", "pub", "casino", "karaoke"],
 };
 
+// Accepted destination types: city, town, neighborhood, district, region, natural feature (e.g. a lake).
+// Rejected: country, administrative_area_level_1 (too broad to bound), businesses and POIs.
 const GEO_TYPES = new Set([
   "locality",
   "postal_town",
-  "administrative_area_level_1",
   "administrative_area_level_2",
   "administrative_area_level_3",
   "sublocality",
+  "sublocality_level_1",
   "neighborhood",
+  "colloquial_area",
+  "natural_feature",
 ]);
+
+// Preferred components for the search-term label, in priority order.
+const LABEL_TYPES = [
+  "locality",
+  "postal_town",
+  "sublocality",
+  "sublocality_level_1",
+  "neighborhood",
+  "natural_feature",
+  "administrative_area_level_3",
+  "administrative_area_level_2",
+];
 
 /* ---------- helpers ---------- */
 
@@ -151,15 +162,6 @@ type ApiPlace = {
   viewport?: { low?: LatLng; high?: LatLng };
 };
 
-function norm(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
 function componentValues(place: ApiPlace, types: string[]): string[] {
   const out: string[] = [];
   for (const c of place.addressComponents ?? []) {
@@ -170,13 +172,21 @@ function componentValues(place: ApiPlace, types: string[]): string[] {
   return out;
 }
 
-function matchesTerm(values: string[], term: string): boolean {
-  const t = norm(term);
-  if (!t) return false;
-  return values.some((v) => {
-    const n = norm(v);
-    return n === t || n.includes(t) || t.includes(n);
-  });
+/** ISO country code (shortText of the "country" component), or null. */
+function countryCodeOf(place: ApiPlace): string | null {
+  for (const c of place.addressComponents ?? []) {
+    if ((c.types ?? []).includes("country") && c.shortText) return c.shortText;
+  }
+  return null;
+}
+
+/** Search-term label derived server-side from address components — never from the client. */
+function destLabel(place: ApiPlace): string | null {
+  for (const t of LABEL_TYPES) {
+    const v = componentValues(place, [t]).find((s) => s.trim().length > 0);
+    if (v) return v;
+  }
+  return null;
 }
 
 function areaOf(place: ApiPlace): string | null {
@@ -239,6 +249,44 @@ async function placesFetch(
   }
 }
 
+type DetailsResult = { ok: true; place: ApiPlace } | { ok: false; kind: FailKind };
+
+/** Place Details for destination validation. Essentials fields only; ends the autocomplete session. */
+async function detailsFetch(
+  apiKey: string,
+  placeId: string,
+  sessionToken: string | null,
+): Promise<DetailsResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
+  try {
+    let url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=he`;
+    if (sessionToken) url += `&sessionToken=${encodeURIComponent(sessionToken)}`;
+    const res = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": DETAILS_FIELD_MASK },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error("[discover] details http", res.status);
+      const kind: FailKind =
+        res.status === 429 ? "quota"
+        : res.status === 403 ? "denied"
+        : res.status >= 500 ? "upstream"
+        : "unknown";
+      return { ok: false, kind };
+    }
+    const place = (await res.json()) as ApiPlace;
+    return { ok: true, place };
+  } catch (e) {
+    clearTimeout(timeout);
+    const aborted = e instanceof Error && e.name === "AbortError";
+    console.error("[discover] details error", aborted ? "timeout" : e instanceof Error ? e.message : "unknown");
+    return { ok: false, kind: aborted ? "upstream" : "network" };
+  }
+}
+
 async function resolvePhoto(apiKey: string, photoName: string): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -279,24 +327,23 @@ export const checkPilotAccess = createServerFn({ method: "GET" })
 
 export const discoverPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { city: string; country: string; interests: string[] }) => {
-    if (!input || typeof input.city !== "string" || typeof input.country !== "string") {
-      throw new Error("city and country are required");
+  .inputValidator((input: { placeId: string; sessionToken?: string | null; interests: string[] }) => {
+    if (!input || typeof input.placeId !== "string" || !/^[A-Za-z0-9_-]{5,300}$/.test(input.placeId)) {
+      throw new Error("a picked destination placeId is required");
     }
-    const city = input.city.slice(0, 100).trim();
-    const country = input.country.slice(0, 100).trim();
+    const sessionToken =
+      typeof input.sessionToken === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(input.sessionToken)
+        ? input.sessionToken
+        : null;
     const interests = Array.isArray(input.interests) ? input.interests : [];
-    return { city, country, interests: interests.slice(0, 10).map((i) => String(i)) };
+    return { placeId: input.placeId, sessionToken, interests: interests.slice(0, 10).map((i) => String(i)) };
   })
   .handler(async ({ data, context }): Promise<DiscoverResponse> => {
     if (!isPilotUser(context.userId)) {
       return { ok: false, message: "התכונה בפיילוט סגור. אין הרשאה לחשבון הזה.", results: [] };
     }
 
-    const { city, country } = data;
-    if (!city || !country) {
-      return { ok: false, message: "יש להזין עיר ומדינה.", results: [] };
-    }
+    const { placeId, sessionToken } = data;
 
     const interests = Array.from(new Set(data.interests)).filter((i): i is DiscoverInterest =>
       (DISCOVER_INTERESTS as readonly string[]).includes(i),
@@ -316,41 +363,34 @@ export const discoverPlaces = createServerFn({ method: "POST" })
 
     const searchId = crypto.randomUUID().slice(0, 8);
     const t0 = Date.now();
-    let searchTextCalls = 1;
-    /* 1. destination resolution — single request */
-    const resolved = await placesFetch(apiKey, RESOLVE_FIELD_MASK, {
-      textQuery: `${city}, ${country}`,
-      languageCode: "he",
-      pageSize: 1,
-    });
+    /* 1. destination validation — one Place Details call (Essentials), ends the autocomplete session.
+       The token is single-use and is never retried: a repeated search sends no token. */
+    const resolved = await detailsFetch(apiKey, placeId, sessionToken);
     if (!resolved.ok) {
       return { ok: false, message: FAIL_MESSAGES[resolved.kind], results: [] };
     }
-    const dest = resolved.places[0];
-    if (!dest || !(dest.types ?? []).some((t) => GEO_TYPES.has(t))) {
-      return { ok: false, message: "היעד לא זוהה. בדקו את שם העיר והמדינה ונסו שוב.", results: [] };
-    }
-
-    const cityValues = componentValues(dest, [
-      "locality",
-      "postal_town",
-      "administrative_area_level_1",
-      "administrative_area_level_2",
-    ]);
-    const countryValues = componentValues(dest, ["country"]);
-    if (!matchesTerm(cityValues, city) || !matchesTerm(countryValues, country)) {
-      return { ok: false, message: "היעד עמום. דייקו את שם העיר והמדינה.", results: [] };
+    const dest = resolved.place;
+    if (!(dest.types ?? []).some((t) => GEO_TYPES.has(t))) {
+      return {
+        ok: false,
+        message: "היעד שנבחר אינו יעד גיאוגרפי נתמך. בחרו עיר, שכונה או אזור מההצעות.",
+        results: [],
+      };
     }
 
     const low = dest.viewport?.low;
     const high = dest.viewport?.high;
     if (!low || !high) {
-      return { ok: false, message: "לא התקבלה תחימה אמינה ליעד. דייקו את שם העיר ונסו שוב.", results: [] };
+      return { ok: false, message: "לא התקבלה תחימה אמינה ליעד. בחרו יעד מצומצם יותר.", results: [] };
     }
     const locationRestriction = { rectangle: { low, high } };
+    const destCountry = countryCodeOf(dest);
+    const label = destLabel(dest);
+    const city = label ?? "";
     const tResolve = Date.now();
 
     /* 2. one search per interest */
+    let searchTextCalls = 0;
     const failedInterests: DiscoverInterest[] = [];
     const perInterest = new Map<DiscoverInterest, ApiPlace[]>();
 
@@ -358,7 +398,7 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     for (const interest of interests) {
       searchTextCalls++;
       const r = await placesFetch(apiKey, SEARCH_FIELD_MASK, {
-        textQuery: `${INTEREST_QUERY[interest]} ${city}`,
+        textQuery: label ? `${INTEREST_QUERY[interest]} ${label}` : INTEREST_QUERY[interest],
         languageCode: "he",
         locationRestriction,
         pageSize: MAX_RESULTS,
@@ -394,7 +434,8 @@ export const discoverPlaces = createServerFn({ method: "POST" })
         if (!p.id || !p.displayName?.text) return;
         if (p.businessStatus === "CLOSED_PERMANENTLY") return;
         if (seen.has(p.id)) return;
-        if (!matchesTerm(componentValues(p, ["country"]), country)) return;
+        const pCountry = countryCodeOf(p);
+        if (destCountry && pCountry && pCountry !== destCountry) return;
         if (!(p.types ?? []).some((t) => allowed.includes(t))) return;
         seen.add(p.id);
         kept.push({
@@ -475,7 +516,7 @@ export const discoverPlaces = createServerFn({ method: "POST" })
     });
 
     console.info(
-      `[discover] search searchId=${searchId} resolveMs=${tResolve - t0} placesMs=${Date.now() - tResolve} searchTextCalls=${searchTextCalls} results=${results.length}`,
+      `[discover] search searchId=${searchId} resolveMs=${tResolve - t0} placesMs=${Date.now() - tResolve} searchTextCalls=${searchTextCalls} detailsCalls=1 results=${results.length}`,
     );
 
     return {
