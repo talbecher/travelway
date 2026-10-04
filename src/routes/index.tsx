@@ -155,11 +155,13 @@ function DeadlineSection({
   open,
   onToggle,
   onOpen,
+  compact = false,
 }: {
   group: DeadlineGroup;
   open: boolean;
   onToggle: () => void;
   onOpen: (i: DeadlineItem) => void;
+  compact?: boolean;
 }) {
   const [showAll, setShowAll] = useState(false);
   const items = showAll ? group.items : group.items.slice(0, 4);
@@ -167,7 +169,7 @@ function DeadlineSection({
     <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-0"
+        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-right h-auto min-h-11"
       >
       <div className="min-w-0">
           <div className="text-sm font-semibold break-words">
@@ -184,7 +186,7 @@ function DeadlineSection({
       {open && (
         <div className="px-2 pb-2 space-y-2">
           {items.map((i) => (
-            <DeadlineRow key={i.id} item={i} onOpen={onOpen} />
+            <DeadlineRow key={i.id} item={i} onOpen={onOpen} compact={compact} />
           ))}
           {!showAll && group.items.length > 4 && (
             <button
@@ -203,9 +205,11 @@ function DeadlineSection({
 function DeadlinesCard({
   items,
   onOpen,
+  compact = false,
 }: {
   items: DeadlineItem[];
   onOpen: (i: DeadlineItem) => void;
+  compact?: boolean;
 }) {
   const groups = useMemo<DeadlineGroup[]>(() => {
     const defs: DeadlineGroup[] = [
@@ -221,8 +225,12 @@ function DeadlinesCard({
       else if (i.recType === "attraction") by.attraction.items.push(i);
       else by.other.items.push(i);
     }
+    if (compact) {
+      // Stable sort: nearest deadline first, ties keep the existing order.
+      for (const g of defs) g.items.sort((a, b) => a.daysLeft - b.daysLeft);
+    }
     return defs.filter((g) => g.items.length > 0);
-  }, [items]);
+  }, [items, compact]);
 
   const mostUrgentKey = useMemo(() => {
     let best: DeadlineGroup | null = null;
@@ -237,11 +245,13 @@ function DeadlinesCard({
   const effectiveOpen = openKey ?? mostUrgentKey;
 
   return (
-    <section className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
-        <span>דדליינים קרובים</span>
-      </div>
+    <section className={compact ? "space-y-2 rounded-[20px] bg-card px-2.5 py-2.5 shadow-sm" : "space-y-2"}>
+      {!compact && (
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
+          <span>דדליינים קרובים</span>
+        </div>
+      )}
       <div className="space-y-2">
         {groups.map((g) => (
           <DeadlineSection
@@ -250,6 +260,7 @@ function DeadlinesCard({
             open={effectiveOpen === g.key}
             onToggle={() => setOpenKey(effectiveOpen === g.key ? "" : g.key)}
             onOpen={onOpen}
+            compact={compact}
           />
         ))}
       </div>
