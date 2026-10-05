@@ -187,6 +187,54 @@ export type Database = {
           },
         ]
       }
+      day_replace_runs: {
+        Row: {
+          created_at: string
+          day_id: string
+          id: string
+          payload_hash: string
+          request_id: string
+          result: Json | null
+          status: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_id: string
+          id?: string
+          payload_hash: string
+          request_id: string
+          result?: Json | null
+          status?: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          day_id?: string
+          id?: string
+          payload_hash?: string
+          request_id?: string
+          result?: Json | null
+          status?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_replace_runs_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_replace_runs_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       day_snapshots: {
         Row: {
           created_at: string
@@ -794,6 +842,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _day_replace_fingerprint: { Args: { _day_id: string }; Returns: string }
+      _day_replace_rows: {
+        Args: { _day_id: string }
+        Returns: {
+          booking_status: string
+          created_at: string
+          display_order: number
+          entry_type: string
+          id: string
+          is_protected: boolean
+          linked_hotel_id: string
+          linked_recommendation_id: string
+          protect_reason: string
+          row_sig: string
+          time_of_day: string
+          title: string
+        }[]
+      }
       api_itinerary_items: {
         Args: {
           _after_created: string
@@ -859,6 +925,17 @@ export type Database = {
           _rec_id: string
         }
         Returns: string
+      }
+      prepare_day_replace: { Args: { _day_id: string }; Returns: Json }
+      replace_day_entries: {
+        Args: {
+          _day_id: string
+          _entries: Json
+          _expected_fingerprint: string
+          _request_id: string
+          _snapshot_name: string
+        }
+        Returns: Json
       }
       restore_day_snapshot: {
         Args: { _pre_restore_name: string; _snapshot_id: string }
