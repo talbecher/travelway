@@ -13,6 +13,7 @@ import {
 function reasonLabel(reason: string) {
   if (reason === "ai_import") return "🤖 ייבוא AI";
   if (reason === "pre_restore") return "↩️ לפני שחזור";
+  if (reason === "ai_replace") return "🔁 לפני החלפת יום";
   return "📌 ידני";
 }
 

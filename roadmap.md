@@ -175,3 +175,7 @@
 
 - [x] קישור שימושי במסמכים: מיגרציית external_url + שדה בטופס + כפתור בכרטיס + בדיקות
 - [x] ליטוש הבית שלפני הטיול לפי המוקאפ (נבדקו טיפוסים ובנייה; הממשק נבדק ידנית ע״י המשתמש)
+
+# AI day import — replace mode
+
+- [ ] Replace day plan (single-day import): atomic server replace, protected hotel/booked stops, run log with guarded transitions, confirm step, lost-response status check
