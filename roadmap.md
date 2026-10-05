@@ -180,3 +180,10 @@
 
 - [x] Replace day plan (single-day import): atomic server replace, protected hotel/booked stops, run log with guarded transitions, confirm step, lost-response status check
 - [x] Block direct forging of day_replace_runs (flag set only inside replace_day_entries; REST tests as partner)
+
+# AI day import — preview UX polish
+
+- [x] Mode choice as titled cards (add / replace) with helper line, check + border + soft background
+- [x] Main button wording per state (add / check replace / confirm replace); counts, locks, loading unchanged
+- [x] Confirm step mentions the automatic backup; Google completion shown as a secondary option (day mode only)
+- [x] tsgo + build; no browser checks

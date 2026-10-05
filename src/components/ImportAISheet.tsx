@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { Check } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { searchPlaces, getPlacePhotoUrl } from "@/lib/places.functions";
 import {
@@ -557,25 +558,60 @@ export function ImportAISheet({
             )}
 
             {isDayMode && entries.length > 0 && (
-              <div className="mt-3 flex gap-2" role="radiogroup" aria-label="אופן הייבוא">
-                {([false, true] as const).map((v) => (
-                  <button
-                    key={String(v)}
-                    type="button"
-                    role="radio"
-                    aria-checked={replaceMode === v}
-                    disabled={busy || modeLoading || uncertain}
-                    onClick={() => void switchMode(v)}
-                    className={
-                      "flex-1 min-h-11 rounded-xl text-[13px] border px-2 disabled:opacity-60 " +
-                      (replaceMode === v
-                        ? "bg-[color:var(--accent)] text-white border-transparent"
-                        : "bg-surface border-border")
-                    }
-                  >
-                    {v ? "החלף את תכנון היום" : "הוסף לתכנון הקיים"}
-                  </button>
-                ))}
+              <div className="mt-4">
+                <div className="text-[14px] font-medium">איך לשלב את התכנון החדש ביום הזה?</div>
+                <div
+                  className="mt-2 flex flex-col gap-2 sm:flex-row"
+                  role="radiogroup"
+                  aria-label="אופן הייבוא"
+                >
+                  {([false, true] as const).map((v) => {
+                    const selected = replaceMode === v;
+                    return (
+                      <button
+                        key={String(v)}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        disabled={busy || modeLoading || uncertain}
+                        onClick={() => void switchMode(v)}
+                        className={
+                          "flex min-h-11 flex-1 items-start gap-2.5 rounded-xl border p-3 text-right disabled:opacity-60 " +
+                          (selected
+                            ? "border-[color:var(--accent)] bg-[color:var(--surface-2)]"
+                            : "border-border bg-surface")
+                        }
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={
+                            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border " +
+                            (selected
+                              ? "border-[color:var(--accent)] bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                              : "border-border-strong")
+                          }
+                        >
+                          {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium text-[14px]">
+                            {v ? "החלפת התכנון" : "הוספת תחנות"}
+                          </span>
+                          <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-foreground">
+                            {v
+                              ? "התחנות שתבחרו יחליפו את התכנון הקיים. תחנות מלון ותחנות המקושרות להמלצות שסומנו כמוזמנות יישמרו."
+                              : "התכנון הקיים נשאר. נוסיף אליו את התחנות שתבחרו."}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {replaceMode && (
+                  <div className="mt-2 text-[12px] text-muted-foreground">
+                    בחרו את כל התחנות שתרצו בתכנון המעודכן, לא רק את השינויים.
+                  </div>
+                )}
               </div>
             )}
 
@@ -698,15 +734,32 @@ export function ImportAISheet({
               </div>
             )}
 
-            <label className="mt-3 flex items-center gap-2 text-[13px]">
-              <input
-                type="checkbox"
-                checked={enrich}
-                onChange={(e) => setEnrich(e.target.checked)}
-                className="w-4 h-4"
-              />
-              השלם מיקום, תמונה ודירוג מ-Google (איטי יותר)
-            </label>
+            {isDayMode ? (
+              <label className="mt-3 flex items-start gap-2.5 rounded-xl border border-border bg-surface p-3 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={enrich}
+                  onChange={(e) => setEnrich(e.target.checked)}
+                  className="mt-1 w-4 h-4 shrink-0"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-[14px]">השלמת פרטי מקומות מ־Google</span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                    הוספת מיקום, תמונה ודירוג כשניתן — עשוי להאריך את הייבוא.
+                  </span>
+                </span>
+              </label>
+            ) : (
+              <label className="mt-3 flex items-center gap-2 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={enrich}
+                  onChange={(e) => setEnrich(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                השלם מיקום, תמונה ודירוג מ-Google (איטי יותר)
+              </label>
+            )}
 
             <div className="mt-3 flex flex-col gap-2">
               {applyNotice && (
@@ -722,6 +775,9 @@ export function ImportAISheet({
                   </div>
                   <div>
                     יוסרו {confirm.prep.remove_count} · יישמרו {confirm.prep.keep_count} · יתווספו {confirm.added}
+                  </div>
+                  <div className="text-[12px] text-muted-foreground">
+                    לפני ההחלפה יישמר גיבוי שאפשר לשחזר דרך ׳גרסאות היום׳.
                   </div>
                   {confirm.prep.protected.length > 0 && (
                     <ul className="text-[12px] text-muted-foreground">
@@ -752,7 +808,7 @@ export function ImportAISheet({
                     disabled={busy || !selectedEntries.length}
                     className="h-12 rounded-xl bg-[color:var(--accent-2)] text-white font-medium text-[14px] disabled:opacity-50"
                   >
-                    {busy ? "מחליף…" : "אישור — החלף את תכנון היום"}
+                    {busy ? "מחליף…" : "אשר והחלף את התכנון"}
                   </button>
                 ) : (
                   <button
@@ -761,7 +817,7 @@ export function ImportAISheet({
                     disabled={busy || !selectedEntries.length}
                     className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px] disabled:opacity-50"
                   >
-                    {busy ? "בודק…" : `החלף ב-${selectedEntries.length} תחנות`}
+                    {busy ? "בודק…" : "בדיקת החלפת היום"}
                   </button>
                 )
               ) : (
@@ -771,7 +827,11 @@ export function ImportAISheet({
                 disabled={!totalSelected || busy}
                 className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px] disabled:opacity-50"
               >
-                {busy ? "מוסיף…" : `הוסף ${totalSelected} פריטים`}
+                {busy
+                  ? "מוסיף…"
+                  : isDayMode
+                    ? `הוסף ${totalSelected} תחנות ליום הקיים`
+                    : `הוסף ${totalSelected} פריטים`}
               </button>
               )}
               <button
