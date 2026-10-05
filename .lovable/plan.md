@@ -1,75 +1,49 @@
-# Discover — בחירת יעד מדויקת מתוך הצעות
+# החלפת תכנון יום באמצעות ייבוא AI (יום בודד בלבד)
 
-## מה ישתנה למשתמש
-- במקום שדות „עיר” ו„מדינה” בטופס Discover: שדה אחד „איפה לחפש?” עם הצעות תוך כדי הקלדה (עיר, עיירה, שכונה, אזור, אגם).
-- רק בחירה מפורשת מהרשימה הופכת את „חפש” לפעיל. שינוי הטקסט אחרי בחירה מבטל אותה. Enter לא שולח את הטופס.
-- כשליעד אין תחימה תקינה: „לא התקבלה תחימה אמינה ליעד — בחרו יעד מצומצם יותר”. אין הרחבה אוטומטית.
-- מילוי מראש מהטיול/היום (`defaultCity`) הופך לטקסט התחלתי בשדה בלבד — לא נחשב בחירה עד שבוחרים הצעה.
+## מה קיים היום (נבדק בקוד)
+- `ImportAISheet` במצב day: בדיקת כפילויות מחדש לפני כתיבה, `createDaySnapshot` מהלקוח (reason `ai_import`), ואז `applyEntries` (insert + `resortDaysByTime`). כמה קריאות נפרדות — לא אטומי. `busy` חוסם לחיצה כפולה.
+- נקודות שחזור: טבלת `day_snapshots` + RPC `restore_day_snapshot` (SECURITY INVOKER, נעילת היום, גיבוי `pre_restore`, delete+insert בטרנזקציה אחת).
+- תחנות מלון אוטומטיות נוצרות ב-`syncHotelToItinerary` עם `entry_type='hotel_checkin'` ו-`linked_hotel_id`. קיימות גם שורות ישנות `hotel_checkin` בלי `linked_hotel_id` (מזוהות שם רק לפי כותרת).
+- הזמנות: מצב ההזמנה נשמר ב-`recommendations.booking_status='booked'`; התחנה מקושרת דרך `day_entries.linked_recommendation_id`. מסמכים מקושרים להמלצה, לא לתחנה.
 
-## סוגי יעד
-- מתקבלים (בשרת, לפי `types` מ-Details): `locality`, `postal_town`, `sublocality`, `sublocality_level_1`, `neighborhood`, `colloquial_area`, `administrative_area_level_2`, `administrative_area_level_3`, `natural_feature`.
-- נדחים: `country`, `administrative_area_level_1` (גדול מדי לתחימה), וכל מקום שאין לו אף אחד מהסוגים המותרים — כולל עסקים, אטרקציות ונקודות עניין.
-- בהצעות: `includedPrimaryTypes` (עד 5) = `locality`, `sublocality`, `neighborhood`, `administrative_area_level_2`, `natural_feature`. השרת הוא הבדיקה הקובעת; הסינון בהצעות רק מצמצם רעש.
+## חוויית משתמש
+- בתצוגה המקדימה של יום בודד: בורר "הוסף לתכנון הקיים" (ברירת מחדל, ללא שינוי) / "החלף את תכנון היום".
+- במצב החלפה: כפילות מול תחנה קיימת שתוסר לא מבטלת סימון; כפילות מול תחנה מוגנת שנשמרת ממשיכה לפעול כמו היום; כפילות בתוך הקלט נשארת.
+- כפתור "החלף…" נעול כשאין תחנות מסומנות. לחיצה פותחת שלב אישור בתוך הגיליון: יום N · תאריך, "יוסרו X · יישמרו Y · יתווספו Z", ורשימת התחנות שנשמרות עם הסיבה ("מלון: …" / "מוזמן: …"). אישור מפורש נדרש.
 
-## זרימת הקריאות
+## כלל שימור (מפורש, לא לפי שם)
+תחנה נשמרת אם:
+1. `entry_type = 'hotel_checkin'` (כל תחנות המלון, כולל ישנות ללא קישור — נשמרות לפי סוג, לא לפי כותרת), או
+2. `linked_recommendation_id` מצביע על המלצה באותו טיול עם `booking_status = 'booked'`.
 
-```text
-הקלדה (debounce 400ms, מינ' 2 תווים, session token)
-  -> autocompletePlaces({ input, sessionToken, includedPrimaryTypes })   [N פעמים]
-בחירת הצעה (בלקוח בלבד, ללא קריאת רשת)
-  -> state: { placeId, label, sessionToken }
-"חפש"
-  -> discoverPlaces({ placeId, sessionToken, interests })
-       1. Place Details (placeId, sessionToken)  — אימות + types/location/viewport/country
-       2. SearchText לכל תחום עניין עם locationRestriction = viewport  [ללא שינוי]
-       3. סינון: קוד מדינה של כל תוצאה == קוד המדינה של היעד
-```
+כל השאר מוחלף. התחנות הנשמרות ממוזגות לפי שעה עם החדשות (אותו `mergeByTime`). אין נגיעה בהמלצות, מלונות, הזמנות, הוצאות או מסמכים — המחיקה היא רק של שורות `day_entries` של היום.
 
-אימות בלי Details כפול: הלקוח לא קורא ל-Details בזמן הבחירה. ה-Details היחיד רץ בשרת בתוך `discoverPlaces`, עם אותו session token, וסוגר את הסשן. חיפוש חוזר לאותו יעד (למשל שינוי תחומי עניין) שולח את ה-`placeId` בלי token, ומבצע Details Essentials נוסף. אין מטמון.
+## אטומיות, בדיקת שינוי ושחזור
+- RPC חדש `replace_day_entries(_day_id, _expected_fingerprint, _request_id, _entries jsonb, _snapshot_name)` — SECURITY INVOKER (RLS הקיים חל), בטרנזקציה אחת:
+  1. נעילת שורת היום `FOR UPDATE` ונעילת תחנותיו; אם לא נגיש — שגיאת הרשאה.
+  2. אם קיימת כבר נקודת שחזור עם אותו `_request_id` — מחזיר `already_applied` בלי לכתוב.
+  3. חישוב fingerprint (md5 על כל שדות התחנות לפי סדר) והשוואה ל-`_expected_fingerprint`; שונה → `day_changed` בלי כתיבה.
+  4. ולידציה של הקלט (כותרת, סוג מתוך ה-enum, ללא קישורים — הייבוא לא שולח קישורים).
+  5. גיבוי מלא ל-`day_snapshots` (reason `ai_replace`, עם `_request_id`).
+  6. מחיקת התחנות שאינן מוגנות, הכנסת החדשות, וכתיבת `display_order` לפי מיזוג שעות.
+  כל שגיאה מבטלת הכול — היום נשאר בשלמותו.
+- RPC קריאה `day_entries_fingerprint(_day_id)` נקרא בעת יצירת התצוגה המקדימה ומחדש לפני פתיחת שלב האישור; הלקוח מחשב את ספירות האישור מאותה קריאה.
+- `day_changed`: הגיליון טוען מחדש את התחנות, מחשב מחדש כפילויות וספירות, ומבקש אישור חדש.
+- השלמת Google (אם סומנה) רצה בלקוח לפני הקריאה ל-RPC; בתוך הטרנזקציה אין קריאות חיצוניות.
+- תשובה שאבדה: `_request_id` נוצר פעם אחת לכל אישור. אחרי כשל תקשורת לא מבצעים ניסיון חוזר אוטומטי; מציגים "לא ידוע אם ההחלפה בוצעה" ובודקים אם קיימת נקודת שחזור עם אותו מזהה. קיימת → מוצג כהצלחה. לא קיימת → ניתן לנסות שוב עם אותו מזהה (בטוח בזכות שלב 2 ושלב 3).
+- שחזור: "גרסאות היום" הקיים משחזר את הגיבוי, ללא שינוי.
 
-## FieldMask ו-SKU (לפי תיעוד Places API New)
-- Autocomplete: `suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat` (ללא שינוי). SKU: Autocomplete Requests. סשן שמסתיים ב-Details מחויב לפי Details, ובקשות ההצעות בו לא מחויבות בנפרד. סשן נטוש (ניקוי, סגירה, בחירה בלי חיפוש) — כל בקשת הצעות מחויבת כ-Autocomplete Request. לכן לא מניחים שההצעות חינמיות.
-- Details של היעד: `id,types,location,viewport,addressComponents`. כולם בשכבת Place Details Essentials (`id` הוא IDs Only). בלי `displayName`, `photos`, `rating` (Pro/Enterprise). את שם התצוגה לוקחים מההצעה שנבחרה.
-- SearchText לכל תחום עניין: ללא שינוי (Text Search Enterprise בגלל rating/photos).
-- תמונות: ללא שינוי (לפי דרישה, Place Photos).
-- יש לאמת את שיוך השדות ל-SKU מול טבלת SKU העדכנית לפני המיזוג; לא מבצעים קריאות בתשלום בשלב התכנון.
-
-## קריאות לחיפוש אחד (I = מספר תחומי העניין)
-
-| | לפני | אחרי |
-|---|---|---|
-| הצעות | 0 | N (debounce) |
-| Details | 0 | 1 (Essentials) |
-| SearchText לזיהוי היעד | 1 (Text Search Pro — `types`, `addressComponents`, `viewport`) | 0 |
-| SearchText לתוצאות | I | I |
-| תמונות | לפי דרישה | לפי דרישה |
-
-כלומר: Text Search Pro אחד מוחלף ב-Details Essentials אחד וב-N בקשות הצעות. אם החיפוש מתבצע, הבקשות האלה כלולות בסשן.
-
-## קבצים
-- `src/lib/places.functions.ts` — ל-`autocompletePlaces` נוסף פרמטר אופציונלי `includedPrimaryTypes` (רשימה מותרת קבועה, עד 5). בלעדיו ההתנהגות זהה לחלוטין. `getPlaceDetails` לא משתנה.
-- `src/components/PlacesSearch.tsx` — שני props אופציונליים:
-  - `includedPrimaryTypes`.
-  - `mode="suggestionOnly"`: בבחירה קוראים ל-`onPick({ placeId, label, sessionToken })` בלי Details ובלי תמונה, והטקסט נשאר בשדה. כל שינוי טקסט קורא ל-`onPick(null)`.
-  - ברירת המחדל לא משתנה לצרכנים הקיימים.
-- `src/lib/discover.functions.ts` — הקלט משתנה ל-`{ placeId, sessionToken?, interests }` (ולידציה: placeId בתבנית בטוחה, אורך מוגבל). שלב הזיהוי ב-SearchText והשוואות השמות (`matchesTerm` לעיר ולמדינה) מוחלפים ב:
-  - Details.
-  - בדיקת סוג מותר.
-  - חובת viewport, עם הודעה קיימת.
-  - קוד מדינה מ-`addressComponents` (`country.shortText`).
-  
-  `textQuery` לכל תחום עניין: `${INTEREST_QUERY} ${label}`, כאשר ה-label מגיע מ-Details. ה-label נגזר מרכיב הכתובת הראשי (`locality`/`sublocality`/`natural_feature`) בלי `displayName`. אם אין label, החיפוש נעשה רק לפי מונח העניין, ו-locationRestriction עושה את התחימה. סינון המדינה בתוצאות עובר להשוואה של `shortText`. פיילוט, קטגוריות, דירוג, מספר תוצאות ותמונות לא משתנים.
-- `src/components/discover/DiscoverSheet.tsx` — שני השדות מוחלפים ב-`PlacesSearch` במצב `suggestionOnly`. state הבחירה מתאפס בניקוי, בסגירה ובמעבר טיול. כל תשובת mutation מסומנת ב-seq, כדי שתשובה מאוחרת תיזרק. ההיסטוריה האחרונה (`discover-recent`) נשמרת עם placeId + label.
-- `src/routes/recommendations.tsx`, `src/routes/itinerary.$dayId.tsx` — רק העברת טקסט התחלתי במקום `defaultCity`/`defaultCountry`, אם נדרש.
-
-ללא שינוי: סכמה, ספריות, הרשאות פיילוט, שמירה, מנגנון התמונות.
+## קבצים ומיגרציה
+- מיגרציה: עמודה `request_id uuid NULL` ב-`day_snapshots` + אינדקס ייחודי חלקי; פונקציות `day_entries_fingerprint`, `replace_day_entries` (SECURITY INVOKER, `search_path=public`). ללא שינוי הרשאות/RLS.
+- `src/lib/ai-import.ts`: `prepareReplaceRows` (מיזוג שעות לחדשות + מוגנות, השלמת Google אופציונלית), `classifyProtected` (אותו כלל כמו השרת, לתצוגה בלבד), קריאת ה-RPC.
+- `src/components/ImportAISheet.tsx`: בורר מצב, שלב אישור, טיפול ב-`day_changed`/`already_applied`/תשובה אבודה. ההוספה וה-`busy` נשארים.
+- `src/hooks/use-day-snapshots.ts`: תווית ל-reason `ai_replace` בלבד.
 
 ## סיכונים ומגבלות
-- לחלק מהאגמים או האזורים אין viewport, או שה-viewport שלהם גדול מאוד. במקרה כזה מוצגת הודעה, ואין הרחבה.
-- `includedPrimaryTypes` מוגבל ל-5 סוגים. יעדים מסוג `postal_town` או `colloquial_area` עלולים לא להופיע בהצעות, אף שהשרת יקבל אותם.
-- מונח חיפוש בעברית יחד עם label בשפה אחרת עלול לשנות את איכות התוצאות. התחימה ב-locationRestriction נשארת הקובעת.
-- רשומות „אחרונים” ישנות שמבוססות על עיר+מדינה לא יתאימו לפורמט החדש. הן יוצגו כטקסט התחלתי בלבד ולא כבחירה.
-- token שפג או נוצל, כשמבצעים חיפוש שני, נשלח בלי token. החיוב לפי Details רגיל.
+- מקביליות: נעילת היום חוסמת החלפה/שחזור מקבילים. כתיבות אחרות (הוספה ידנית, סנכרון מלון) לא נועלות את שורת היום; הכנסה שנעשתה אחרי בדיקת ה-fingerprint ולפני ה-commit יכולה לשרוד או להיכלל במחיקה. החלון קצר מאוד; לא מוצג כהגנה מלאה.
+- תחנת `hotel_checkin` שהמשתמש יצר ידנית תישמר גם היא (כלל לפי סוג).
+- תחנה מקושרת להמלצה שאינה מוזמנת תוחלף; ההמלצה עצמה לא משתנה.
+- גיבוי לפני החלפה נכנס למגבלת 10 נקודות השחזור הקיימת.
 
-## אימות אחרי היישום
-`bunx tsgo --noEmit` ו-`bun run build`. את הממשק בודקים ידנית. אין בדיקות דפדפן ואין קריאות Google בתשלום מצדי.
+## בדיקות לאחר אישור
+בטיול בדיקה בלבד, ללא דפדפן וללא Google: החלפה רגילה; שימור מלון (מקושר וישן) ותחנה מוזמנת; fingerprint שגוי → אין שינוי; משתמש ללא גישה → נדחה; קלט לא תקין באמצע → rollback מלא; אותו `request_id` פעמיים → `already_applied`; שחזור מהגיבוי. לאחר מכן `bunx tsgo --noEmit` ו-`bun run build`.
