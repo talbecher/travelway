@@ -179,4 +179,4 @@
 # AI day import — replace mode
 
 - [x] Replace day plan (single-day import): atomic server replace, protected hotel/booked stops, run log with guarded transitions, confirm step, lost-response status check
-- [ ] Block direct forging of day_replace_runs (flag set only inside replace_day_entries; REST tests as partner)
+- [x] Block direct forging of day_replace_runs (flag set only inside replace_day_entries; REST tests as partner)
