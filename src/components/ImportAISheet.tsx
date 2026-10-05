@@ -7,7 +7,14 @@ import { searchPlaces, getPlacePhotoUrl } from "@/lib/places.functions";
 import {
   applyEntries,
   applyRecs,
+  checkReplaceRun,
   classifyDayDuplicates,
+  prepareDayReplace,
+  prepareReplaceRows,
+  replaceDayEntries,
+  ReplaceTransportError,
+  type ReplacePrep,
+  type ReplaceRow,
   defaultIcon,
   normalizeName,
   parseAIResponse,
@@ -16,7 +23,7 @@ import {
   type ParsedRec,
   type PlaceLookup,
 } from "@/lib/ai-import";
-import { createDaySnapshot } from "@/hooks/use-day-snapshots";
+import { createDaySnapshot, defaultSnapshotName, pruneSnapshots } from "@/hooks/use-day-snapshots";
 import { generateRecsPrompt } from "@/lib/export-to-ai";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -69,6 +76,14 @@ export function ImportAISheet({
   const [loadingDay, setLoadingDay] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [applyNotice, setApplyNotice] = useState<string | null>(null);
+  // Replace mode (single-day only)
+  const [replaceMode, setReplaceMode] = useState(false);
+  const [dayRows, setDayRows] = useState<Array<{ title: string | null; time_of_day: string | null }>>([]);
+  const [confirm, setConfirm] = useState<{ prep: ReplacePrep; added: number } | null>(null);
+  // One prepared attempt: same request id + same payload for any retry (no re-run of Google).
+  const pendingRef = useRef<{ requestId: string; fingerprint: string; rows: ReplaceRow[] } | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+  const [modeLoading, setModeLoading] = useState(false);
   // Bumped on every reset; late async results compare against it and bail.
   const reqRef = useRef(0);
 
@@ -81,6 +96,12 @@ export function ImportAISheet({
     setLoadingDay(false);
     setLoadError(null);
     setApplyNotice(null);
+    setReplaceMode(false);
+    setDayRows([]);
+    setConfirm(null);
+    pendingRef.current = null;
+    setUncertain(false);
+    setModeLoading(false);
   }
 
   useEffect(() => {
@@ -145,6 +166,7 @@ export function ImportAISheet({
       try {
         const rows = await fetchDayEntries(targetDayId);
         if (req !== reqRef.current) return;
+        setDayRows(rows);
         dups = classifyDayDuplicates(parsedEntries, rows);
       } catch (err) {
         console.error("[ImportAISheet] day load failed", err);
@@ -191,6 +213,171 @@ export function ImportAISheet({
   const selectedEntries = entries.filter((_, i) => entrySel[i]);
   const selectedRecs = recs.filter((_, i) => recSel[i]);
   const totalSelected = selectedEntries.length + selectedRecs.length;
+
+  // Any change to the selection or preview invalidates an open confirmation.
+  useEffect(() => {
+    if (!busy) {
+      setConfirm(null);
+      if (!uncertain) pendingRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entrySel, entries, enrich]);
+
+  async function switchMode(next: boolean) {
+    if (next === replaceMode || busy || !targetDayId) return;
+    setApplyNotice(null);
+    if (!next) {
+      const d = classifyDayDuplicates(entries, dayRows);
+      setReplaceMode(false);
+      setDupInfo(d);
+      setEntrySel(d.map((x) => x.exact === null));
+      return;
+    }
+    const req = reqRef.current;
+    setModeLoading(true);
+    try {
+      const prep = await prepareDayReplace(targetDayId);
+      if (req !== reqRef.current) return;
+      // Only stops that will survive (protected) count as existing duplicates.
+      const d = classifyDayDuplicates(entries, prep.protected);
+      setReplaceMode(true);
+      setDupInfo(d);
+      setEntrySel(d.map((x) => x.exact === null));
+    } catch (err) {
+      console.error("[ImportAISheet] prepare failed", err);
+      if (req === reqRef.current) setApplyNotice("לא הצלחנו לבדוק את תחנות היום. נסו שוב.");
+    } finally {
+      if (req === reqRef.current) setModeLoading(false);
+    }
+  }
+
+  async function openConfirm() {
+    if (!targetDayId || busy || !selectedEntries.length) return;
+    const req = reqRef.current;
+    setBusy(true);
+    setApplyNotice(null);
+    try {
+      const prep = await prepareDayReplace(targetDayId);
+      if (req !== reqRef.current) return;
+      const d = classifyDayDuplicates(entries, prep.protected);
+      const newDup = d.map((f, i) => f.exact !== null && f.exact !== dupInfo[i]?.exact);
+      setDupInfo(d);
+      if (newDup.some(Boolean)) {
+        setEntrySel((s) => s.map((v, i) => (newDup[i] ? false : v)));
+        setApplyNotice("נמצאו כפילויות חדשות מול תחנות שנשמרות. הן בוטלו מהבחירה — בדקו ואשרו שוב.");
+        return;
+      }
+      setConfirm({ prep, added: selectedEntries.length });
+    } catch (err) {
+      console.error("[ImportAISheet] prepare failed", err);
+      if (req === reqRef.current) setApplyNotice("לא הצלחנו לבדוק את תחנות היום. הבחירה נשמרה — נסו שוב.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function finishReplace(r: { removed: number; kept: number; added: number }) {
+    qc.invalidateQueries({ queryKey: ["day-entries"] });
+    qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+    qc.invalidateQueries({ queryKey: ["day-snapshots"] });
+    if (targetDayId) void pruneSnapshots(targetDayId).catch(() => {});
+    pendingRef.current = null;
+    setUncertain(false);
+    toast.success(`תכנון היום הוחלף: נוספו ${r.added}, הוסרו ${r.removed}, נשמרו ${r.kept}`, {
+      description: "נשמרה נקודת שחזור — אפשר לחזור אחורה מ'גרסאות היום'",
+    });
+    onOpenChange(false);
+  }
+
+  function handleDayChanged() {
+    pendingRef.current = null;
+    setUncertain(false);
+    setConfirm(null);
+    setReplaceMode(false);
+    void switchModeFresh();
+  }
+
+  async function switchModeFresh() {
+    // Re-enter replace mode against the current day state; user must confirm again.
+    if (!targetDayId) return;
+    try {
+      const prep = await prepareDayReplace(targetDayId);
+      const d = classifyDayDuplicates(entries, prep.protected);
+      setReplaceMode(true);
+      setDupInfo(d);
+    } catch {
+      /* keep notice below */
+    }
+    setApplyNotice("היום השתנה מאז האישור. בדקו את התצוגה ואשרו שוב.");
+  }
+
+  async function runReplace() {
+    if (!targetDayId || !confirm || busy) return;
+    const req = reqRef.current;
+    setBusy(true);
+    setApplyNotice(null);
+    try {
+      if (!pendingRef.current) {
+        const rows = await prepareReplaceRows(selectedEntries, enrich ? lookup : undefined);
+        if (req !== reqRef.current) return;
+        pendingRef.current = { requestId: crypto.randomUUID(), fingerprint: confirm.prep.fingerprint, rows };
+      }
+      const p = pendingRef.current;
+      const out = await replaceDayEntries({
+        dayId: targetDayId,
+        fingerprint: p.fingerprint,
+        requestId: p.requestId,
+        rows: p.rows,
+        snapshotName: `לפני החלפת יום · ${defaultSnapshotName("manual").split(" · ")[1] ?? ""}`,
+      });
+      if (out.status === "done" || out.status === "already_applied") return finishReplace(out);
+      if (out.status === "day_changed") return handleDayChanged();
+      if (out.status === "in_progress") {
+        setUncertain(true);
+        setApplyNotice("ההחלפה עדיין בתהליך. בדקו סטטוס בעוד רגע.");
+        return;
+      }
+      pendingRef.current = null;
+      setConfirm(null);
+      setApplyNotice("הבקשה לא תאמה ניסיון קודם. אשרו שוב.");
+    } catch (err) {
+      console.error("[ImportAISheet] replace failed", err);
+      if (err instanceof ReplaceTransportError) {
+        setUncertain(true);
+        setApplyNotice("החיבור נקטע — לא ידוע אם ההחלפה בוצעה. בדקו סטטוס לפני כל פעולה.");
+      } else {
+        pendingRef.current = null;
+        setConfirm(null);
+        setApplyNotice("ההחלפה נכשלה. היום נשאר כפי שהיה.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function checkStatus() {
+    const p = pendingRef.current;
+    if (!targetDayId || !p || busy) return;
+    setBusy(true);
+    try {
+      const { status: st, result } = await checkReplaceRun(targetDayId, p.requestId);
+      if (st === "done") {
+        return finishReplace(result ?? { added: p.rows.length, removed: 0, kept: 0 });
+      }
+      if (st === "day_changed") return handleDayChanged();
+      setApplyNotice(
+        st === "pending"
+          ? "ההחלפה עדיין בתהליך. בדקו שוב בעוד רגע."
+          : "ההחלפה לא בוצעה. אפשר לנסות שוב — אותה בקשה בדיוק תישלח."
+      );
+      if (st === "absent") setUncertain(false);
+    } catch (err) {
+      console.error("[ImportAISheet] status check failed", err);
+      setApplyNotice("לא הצלחנו לבדוק את הסטטוס — עדיין לא ידוע אם ההחלפה בוצעה. נסו לבדוק שוב.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleApply() {
     if (!totalSelected || busy) return;
@@ -369,6 +556,29 @@ export function ImportAISheet({
               </div>
             )}
 
+            {isDayMode && entries.length > 0 && (
+              <div className="mt-3 flex gap-2" role="radiogroup" aria-label="אופן הייבוא">
+                {([false, true] as const).map((v) => (
+                  <button
+                    key={String(v)}
+                    type="button"
+                    role="radio"
+                    aria-checked={replaceMode === v}
+                    disabled={busy || modeLoading || uncertain}
+                    onClick={() => void switchMode(v)}
+                    className={
+                      "flex-1 min-h-11 rounded-xl text-[13px] border px-2 disabled:opacity-60 " +
+                      (replaceMode === v
+                        ? "bg-[color:var(--accent)] text-white border-transparent"
+                        : "bg-surface border-border")
+                    }
+                  >
+                    {v ? "החלף את תכנון היום" : "הוסף לתכנון הקיים"}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="mt-3 max-h-[46vh] overflow-y-auto space-y-2">
               {tab === "itinerary" &&
                 (entries.length === 0 ? (
@@ -409,7 +619,9 @@ export function ImportAISheet({
                         </span>
                         {dupInfo[i]?.exact && (
                           <span className="block text-[12px] font-medium text-[color:var(--accent-2)] mt-0.5">
-                            {dupInfo[i]!.exact === "existing" ? "כבר קיים ביום" : "מופיע פעמיים בייבוא"}
+                            {dupInfo[i]!.exact === "existing"
+                              ? replaceMode ? "כבר קיים בתחנה שנשמרת" : "כבר קיים ביום"
+                              : "מופיע פעמיים בייבוא"}
                           </span>
                         )}
                         {dupInfo[i]?.otherTime && (
@@ -500,6 +712,59 @@ export function ImportAISheet({
               {applyNotice && (
                 <div role="alert" className="text-[13px] text-[color:var(--accent-2)]">{applyNotice}</div>
               )}
+              {replaceMode && recs.length > 0 && (
+                <div className="text-[12px] text-muted-foreground">במצב החלפה רק תחנות היום מוחלפות — המלצות לא ייובאו.</div>
+              )}
+              {replaceMode && confirm && (
+                <div className="rounded-xl border border-border bg-[color:var(--surface-2)] p-3 text-[13px] space-y-1">
+                  <div className="font-medium">
+                    {dayLabel(fixedDayNumber ?? days[0]?.day_number ?? 0)} · {days[0]?.date}
+                  </div>
+                  <div>
+                    יוסרו {confirm.prep.remove_count} · יישמרו {confirm.prep.keep_count} · יתווספו {confirm.added}
+                  </div>
+                  {confirm.prep.protected.length > 0 && (
+                    <ul className="text-[12px] text-muted-foreground">
+                      {confirm.prep.protected.map((p) => (
+                        <li key={p.id}>
+                          {p.reason === "hotel" ? "🏨 נשמר (מלון)" : "🎟 נשמר (הוזמן)"}: {p.title}
+                          {p.time_of_day ? ` · ${p.time_of_day}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {replaceMode ? (
+                uncertain ? (
+                  <button
+                    type="button"
+                    onClick={() => void checkStatus()}
+                    disabled={busy}
+                    className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px] disabled:opacity-50"
+                  >
+                    {busy ? "בודק…" : "בדוק סטטוס"}
+                  </button>
+                ) : confirm ? (
+                  <button
+                    type="button"
+                    onClick={() => void runReplace()}
+                    disabled={busy || !selectedEntries.length}
+                    className="h-12 rounded-xl bg-[color:var(--accent-2)] text-white font-medium text-[14px] disabled:opacity-50"
+                  >
+                    {busy ? "מחליף…" : "אישור — החלף את תכנון היום"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void openConfirm()}
+                    disabled={busy || !selectedEntries.length}
+                    className="h-12 rounded-xl bg-[color:var(--accent)] text-white font-medium text-[14px] disabled:opacity-50"
+                  >
+                    {busy ? "בודק…" : `החלף ב-${selectedEntries.length} תחנות`}
+                  </button>
+                )
+              ) : (
               <button
                 type="button"
                 onClick={handleApply}
@@ -508,6 +773,7 @@ export function ImportAISheet({
               >
                 {busy ? "מוסיף…" : `הוסף ${totalSelected} פריטים`}
               </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

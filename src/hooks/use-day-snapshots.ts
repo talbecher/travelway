@@ -106,7 +106,7 @@ export async function createDaySnapshot(opts: {
   return data as DaySnapshot;
 }
 
-async function pruneSnapshots(dayId: string) {
+export async function pruneSnapshots(dayId: string) {
   const { data } = await supabase
     .from("day_snapshots")
     .select("id")
