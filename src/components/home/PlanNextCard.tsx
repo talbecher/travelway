@@ -62,8 +62,11 @@ function DayPicker({
     const scroller = scrollerRef.current;
     const selected = selectedRef.current;
     if (!scroller || !selected) return;
-    const target = selected.offsetLeft - (scroller.clientWidth - selected.clientWidth) / 2;
-    scroller.scrollTo({ left: target, behavior: "smooth" });
+    // Direction-agnostic centering (RTL scrollLeft is negative in modern browsers).
+    const sRect = scroller.getBoundingClientRect();
+    const bRect = selected.getBoundingClientRect();
+    const delta = bRect.left + bRect.width / 2 - (sRect.left + sRect.width / 2);
+    scroller.scrollBy({ left: delta, behavior: "smooth" });
     lastRevealedId.current = selectedDayId;
   }, [selectedDayId]);
 
