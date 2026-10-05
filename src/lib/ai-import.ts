@@ -446,3 +446,104 @@ export function classifyDayDuplicates(entries: NameTime[], existing: NameTime[])
     return { exact, otherTime: times.size > 0 };
   });
 }
+
+/* ---------- day replace (single-day import, server-side atomic) ---------- */
+
+export type ReplacePrep = {
+  fingerprint: string;
+  remove_count: number;
+  keep_count: number;
+  protected: Array<{ id: string; title: string; time_of_day: string | null; reason: "hotel" | "booked" }>;
+};
+
+export type ReplaceRow = {
+  entry_type: ImportEntryType;
+  title: string;
+  description: string | null;
+  time_of_day: string | null;
+  location_name: string | null;
+  google_maps_url: string | null;
+  icon_emoji: string;
+  latitude: number | null;
+  longitude: number | null;
+  photo_url: string | null;
+};
+
+export type ReplaceOutcome =
+  | { status: "done" | "already_applied"; removed: number; kept: number; added: number }
+  | { status: "day_changed" | "request_conflict" | "in_progress" };
+
+/** Read-only: fingerprint + counts + protected stops, all from the server's single rule. */
+export async function prepareDayReplace(dayId: string): Promise<ReplacePrep> {
+  const { data, error } = await supabase.rpc("prepare_day_replace", { _day_id: dayId });
+  if (error) throw error;
+  return data as unknown as ReplacePrep;
+}
+
+/** Builds only the new rows (and optional Google completion). Ordering/protection happen on the server. */
+export async function prepareReplaceRows(entries: ParsedEntry[], lookup?: PlaceLookup): Promise<ReplaceRow[]> {
+  const out: ReplaceRow[] = [];
+  for (const e of entries) {
+    let place: Awaited<ReturnType<PlaceLookup>> | null = null;
+    if (lookup && e.entry_type !== "note") place = await lookup(e.location_name || e.title);
+    out.push({
+      entry_type: e.entry_type,
+      title: e.title,
+      description: e.description,
+      time_of_day: e.time_of_day,
+      location_name: e.location_name ?? place?.address ?? null,
+      google_maps_url: place?.google_maps_url ?? null,
+      icon_emoji: e.icon_emoji ?? defaultIcon(e.entry_type),
+      latitude: place?.latitude ?? null,
+      longitude: place?.longitude ?? null,
+      photo_url: place?.photo_url ?? null,
+    });
+  }
+  return out;
+}
+
+export class ReplaceTransportError extends Error {}
+
+export async function replaceDayEntries(args: {
+  dayId: string;
+  fingerprint: string;
+  requestId: string;
+  rows: ReplaceRow[];
+  snapshotName: string;
+}): Promise<ReplaceOutcome> {
+  let res;
+  try {
+    res = await supabase.rpc("replace_day_entries", {
+      _day_id: args.dayId,
+      _expected_fingerprint: args.fingerprint,
+      _request_id: args.requestId,
+      _entries: args.rows as never,
+      _snapshot_name: args.snapshotName,
+    });
+  } catch (e) {
+    throw new ReplaceTransportError(e instanceof Error ? e.message : "network");
+  }
+  if (res.error) {
+    // No HTTP status / code means the response never arrived — outcome unknown.
+    if (!res.error.code && /fetch|network|load failed/i.test(res.error.message ?? "")) {
+      throw new ReplaceTransportError(res.error.message);
+    }
+    throw res.error;
+  }
+  return res.data as unknown as ReplaceOutcome;
+}
+
+/** After a lost response: read the run log. Throws if the check itself fails (outcome stays unknown). */
+export async function checkReplaceRun(
+  dayId: string,
+  requestId: string
+): Promise<"done" | "day_changed" | "pending" | "absent"> {
+  const { data, error } = await supabase
+    .from("day_replace_runs")
+    .select("status")
+    .eq("day_id", dayId)
+    .eq("request_id", requestId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.status as "done" | "day_changed" | "pending" | undefined) ?? "absent";
+}
