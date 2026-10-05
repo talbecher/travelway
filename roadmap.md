@@ -178,4 +178,4 @@
 
 # AI day import — replace mode
 
-- [ ] Replace day plan (single-day import): atomic server replace, protected hotel/booked stops, run log with guarded transitions, confirm step, lost-response status check
+- [x] Replace day plan (single-day import): atomic server replace, protected hotel/booked stops, run log with guarded transitions, confirm step, lost-response status check
