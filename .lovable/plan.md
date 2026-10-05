@@ -11,16 +11,18 @@
 - אין שינוי בהמלצות, מלונות, הזמנות, הוצאות או מסמכים.
 
 ## 3. זרימת שרת — שני RPC
-**`prepare_day_replace(_day_id)`** (קריאה, SECURITY INVOKER): נעילת היום `FOR SHARE`, קריאת כל התחנות + `booking_status` של המלצות המקושרות, סיווג מוגנות, מיון מוצע, והחזרה מאותו מצב נתונים: fingerprint, תחנות מוגנות וספירות לאישור.
+מקור אמת אחד: פונקציה פנימית `_day_replace_state(_day_id)` (SECURITY INVOKER, STABLE) מחזירה תחנות, `is_protected` ו-fingerprint; שני ה-RPC משתמשים רק בה. המיון הסופי בשרת בלבד.
+
+**`prepare_day_replace(_day_id)`** (קריאה בלבד, ללא נעילות, SECURITY INVOKER): מחזיר fingerprint, ספירת יוסרו/יישמרו ורשימת המוגנות עם הסיבה. "יתווספו" נגזר מהבחירה בלקוח; כל שינוי בבחירה או בנתונים אחרי פתיחת האישור מבטל אותו.
 **`replace_day_entries(_day_id, _expected_fingerprint, _request_id, _entries jsonb, _snapshot_name)`** (טרנזקציה אחת, SECURITY INVOKER):
-1. אימות הרשאה (`can_access_trip`) וולידציית קלט (כותרת, סוג enum, בלי קישורים — הייבוא לא שולח קישורים).
-2. נעילת שורת היום `FOR UPDATE`, נעילת תחנותיו, ונעילת שורות ההמלצות המקושרות `FOR SHARE` — כך `booking_status` יציב בין הבדיקה למחיקה.
-3. `day_replace_runs`: אם קיים `_request_id` עם אותו hash תוכן → מחזיר תוצאת הביצוע הקודמת; אותו מזהה עם תוכן אחר → נדחה. insert מוקדם של הרשומה תוך הסתמכות על unique index מונע ביצוע כפול של שני ניסיונות מקבילים (השני נחסם עד commit ואז מקבל unique violation).
-4. חישוב fingerprint (md5 על שדות התחנות הרלוונטיים לפי סדר + מצב ההזמנות הקובע שימור) והשוואה ל-`_expected_fingerprint`; שונה → `day_changed` בלי כתיבה.
+1. אימות הרשאה (`can_access_trip`) וולידציית קלט (כותרת, סוג enum, בלי קישורים).
+2. נעילת שורת היום `FOR UPDATE` (מסדרת בתור החלפות של אותו יום), נעילת תחנותיו ונעילת ההמלצות המקושרות `FOR SHARE` — `booking_status` יציב עד סוף הטרנזקציה.
+3. `INSERT ... ON CONFLICT (day_id, request_id) DO NOTHING` לרשומת `day_replace_runs` במצב `pending` עם `payload_hash`. אם הרשומה כבר קיימת: hash שונה → `request_conflict`; status `done` → `already_applied` עם התוצאה השמורה; status `day_changed` → `day_changed` שוב. אין שגיאה גולמית ללקוח.
+4. fingerprint דרך `_day_replace_state` והשוואה; שונה → עדכון הרשומה ל-`day_changed`, commit, והחזרת `day_changed` בלי לגעת בתחנות. אישור מחודש בלקוח יוצר `request_id` חדש.
 5. גיבוי מלא ל-`day_snapshots` (reason `ai_replace`).
-6. מחיקה ממוקדת: רק מזהי תחנות שנקראו וננעלו וסווגו כלא מוגנות — לא DELETE כללי לפי day_id. תחנה שנוספה אחרי קריאת הרשימה הנעולה אינה נמחקת.
-7. הכנסת החדשות וכתיבת `display_order` רק לנשמרות הננעלות ולחדשות (מיון לפי `mergeByTime`).
-8. עדכון רשומת הביצוע ל-`done` עם תוצאת הספירות.
+6. מחיקה ממוקדת לפי מזהי התחנות שננעלו וסווגו כלא מוגנות — לא DELETE כללי לפי day_id.
+7. הכנסת החדשות ו-`display_order` רק לנשמרות הננעלות ולחדשות (מיון לפי שעה בשרת).
+8. עדכון הרשומה ל-`done` עם תוצאת הספירות.
 שגיאה בכל שלב → rollback מלא, היום נשאר בשלמותו.
 
 ## 4. fingerprint ושינוי מאז האישור
@@ -28,12 +30,12 @@
 - השלמת Google (אם נבחרה) מסתיימת בלקוח לפני הקריאה ל-RPC; אין קריאות חיצוניות בטרנזקציה.
 
 ## 5. ניסיון חוזר ותשובה שאבדה
-- טבלה חדשה `day_replace_runs(day_id, request_id, payload_hash, status, result jsonb, created_at)` — רישום מצומצם נפרד מ-`day_snapshots`, לא נגזם עם הגיבויים, RLS לפי `can_access_trip`. הלקוח קורא בלבד; כתיבה רק מתוך ה-RPC — אי אפשר לזייף הצלחה.
+- טבלה חדשה `day_replace_runs(day_id, trip_id, request_id, payload_hash, status, result jsonb, created_at)`. זה רישום מצומצם ונפרד מ-`day_snapshots`, ולכן לא נמחק כשגיבויים ישנים נגזמים. `status` יכול להיות `pending`, `done` או `day_changed`. גישה: SELECT, INSERT ו-UPDATE ל-authenticated תחת RLS של `can_access_trip` על הטיול, בלי DELETE. משתמש יכול לזייף רשומה רק בטיול שלו עצמו, וזה משפיע רק עליו. זה מקובל.
 - `request_id` נוצר פעם אחת לכל אישור. אחרי כשל תקשורת: בדיקת סטטוס ב-`day_replace_runs`; כשל בבדיקה עצמה מוצג כ"לא ידוע" ולא ככישלון. ניסיון חוזר משתמש באותו מזהה ובאותו payload מוכן — בלי הרצה חוזרת של השלמת Google.
 
 ## 6. שחזור והרשאות
 - נקודות השחזור הקיימות: `restore_day_snapshot` כבר כולל את כל שדות התחנות, כולל `linked_hotel_id` ו-`linked_recommendation_id` — נבדק בקוד ואין צורך בשינוי; גיבויי `ai_replace` תואמים לפורמט הקיים. יתווסף רק מיפוי תווית ל-reason החדש ב-`use-day-snapshots.ts`.
-- פונקציות חדשות: `SECURITY INVOKER`, `search_path=public`, שמות טבלאות מוסמכים, `REVOKE` מ-PUBLIC/anon, `GRANT EXECUTE` ל-authenticated בלבד. `day_replace_runs`: `GRANT SELECT` ל-authenticated + RLS דרך `can_access_trip`; ללא GRANT כתיבה ללקוח.
+- כל הפונקציות החדשות: `SECURITY INVOKER` (בלי SECURITY DEFINER), `search_path=public`, שמות טבלאות מוסמכים, `REVOKE` מ-PUBLIC/anon, `GRANT EXECUTE` ל-authenticated בלבד.
 
 ## 7. קבצים ומיגרציה
 - מיגרציה: טבלת `day_replace_runs` + אינדקס ייחודי `(day_id, request_id)`, פונקציות `prepare_day_replace` ו-`replace_day_entries`. ללא שינוי ב-RLS הקיים מעבר לטבלה החדשה.
