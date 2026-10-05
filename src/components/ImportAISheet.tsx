@@ -360,10 +360,9 @@ export function ImportAISheet({
     if (!targetDayId || !p || busy) return;
     setBusy(true);
     try {
-      const st = await checkReplaceRun(targetDayId, p.requestId);
+      const { status: st, result } = await checkReplaceRun(targetDayId, p.requestId);
       if (st === "done") {
-        const fresh = await prepareDayReplace(targetDayId).catch(() => null);
-        return finishReplace({ added: p.rows.length, removed: 0, kept: fresh?.keep_count ?? 0 });
+        return finishReplace(result ?? { added: p.rows.length, removed: 0, kept: 0 });
       }
       if (st === "day_changed") return handleDayChanged();
       setApplyNotice(
@@ -712,6 +711,9 @@ export function ImportAISheet({
             <div className="mt-3 flex flex-col gap-2">
               {applyNotice && (
                 <div role="alert" className="text-[13px] text-[color:var(--accent-2)]">{applyNotice}</div>
+              )}
+              {replaceMode && recs.length > 0 && (
+                <div className="text-[12px] text-muted-foreground">במצב החלפה רק תחנות היום מוחלפות — המלצות לא ייובאו.</div>
               )}
               {replaceMode && confirm && (
                 <div className="rounded-xl border border-border bg-[color:var(--surface-2)] p-3 text-[13px] space-y-1">

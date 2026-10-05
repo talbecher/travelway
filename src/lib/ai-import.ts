@@ -537,13 +537,14 @@ export async function replaceDayEntries(args: {
 export async function checkReplaceRun(
   dayId: string,
   requestId: string
-): Promise<"done" | "day_changed" | "pending" | "absent"> {
+): Promise<{ status: "done" | "day_changed" | "pending" | "absent"; result: { removed: number; kept: number; added: number } | null }> {
   const { data, error } = await supabase
     .from("day_replace_runs")
-    .select("status")
+    .select("status, result")
     .eq("day_id", dayId)
     .eq("request_id", requestId)
     .maybeSingle();
   if (error) throw error;
-  return (data?.status as "done" | "day_changed" | "pending" | undefined) ?? "absent";
+  const status = (data?.status as "done" | "day_changed" | "pending" | undefined) ?? "absent";
+  return { status, result: (data?.result as { removed: number; kept: number; added: number } | null) ?? null };
 }
