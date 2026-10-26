@@ -11,9 +11,15 @@ import {
   CHECKLIST_CATEGORIES,
   CHECKLIST_TEMPLATES,
   TEMPLATE_CATEGORIES,
+  CHECKLIST_PRIORITIES,
+  PRIORITY_LABEL,
   categoryMeta,
+  displayCategory,
+  isKnownCategory,
   type ChecklistPriority,
 } from "@/lib/checklist-templates";
+import { sortChecklistTasks, taskUrgency } from "@/lib/checklist-sort";
+import { todayLocal } from "@/lib/format";
 import {
   celebrate,
   useAddChecklistItem,
@@ -39,11 +45,6 @@ export const Route = createFileRoute("/checklist")({
   component: ChecklistPage,
 });
 
-const PRIORITY_LABEL: Record<ChecklistPriority, string> = {
-  high: "גבוהה",
-  normal: "רגילה",
-  low: "נמוכה",
-};
 
 function Progress({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -87,15 +88,28 @@ function Checkbox({ done, onToggle }: { done: boolean; onToggle: () => void }) {
   );
 }
 
+function Tag({ tone, children }: { tone: "danger" | "accent" | "muted"; children: React.ReactNode }) {
+  const cls =
+    tone === "danger"
+      ? "text-[color:var(--destructive)] border-[color:var(--destructive)]/40"
+      : tone === "accent"
+        ? "text-[color:var(--accent)] border-[color:var(--accent)]/40"
+        : "text-muted-foreground border-border";
+  return <span className={`inline-flex items-center rounded-full border px-1.5 text-[11px] leading-5 ${cls}`}>{children}</span>;
+}
+
 function ItemRow({
   item,
+  today,
   onToggle,
   onMenu,
 }: {
   item: ChecklistItem;
+  today: string;
   onToggle: () => void;
   onMenu: () => void;
 }) {
+  const urgency = taskUrgency(item, today);
   return (
     <div className="flex items-center gap-1 min-h-[52px] px-1.5 border-b border-border/60 last:border-b-0">
       <Checkbox done={item.is_done} onToggle={onToggle} />
@@ -105,9 +119,15 @@ function ItemRow({
             item.is_done ? "line-through text-muted-foreground" : ""
           }`}
         >
-          {item.priority === "high" && !item.is_done && <span className="ml-1">🔴</span>}
           {item.title}
         </div>
+        {!item.is_done && (urgency === "overdue" || urgency === "today" || item.priority === "high") && (
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {urgency === "overdue" && <Tag tone="danger">באיחור</Tag>}
+            {urgency === "today" && <Tag tone="accent">להיום</Tag>}
+            {item.priority === "high" && <Tag tone="muted">עדיפות גבוהה</Tag>}
+          </div>
+        )}
         {(item.due_date || item.notes) && (
           <div className="text-[12px] text-muted-foreground truncate mt-0.5">
             {item.due_date && <span>עד {item.due_date.split("-").reverse().join("/")}</span>}
@@ -119,7 +139,7 @@ function ItemRow({
       <button
         onClick={onMenu}
         aria-label="אפשרויות"
-        className="shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground min-h-0"
+        className="shrink-0 w-11 h-11 flex items-center justify-center text-muted-foreground min-h-0"
       >
         <MoreHorizontal size={18} />
       </button>
@@ -127,7 +147,7 @@ function ItemRow({
   );
 }
 
-function Onboarding({ onSkip }: { onSkip: () => void }) {
+function Onboarding({ onSkip, onImport }: { onSkip: () => void; onImport: () => void }) {
   const bulkAdd = useBulkAddItems();
   const [selected, setSelected] = useState<string[]>(TEMPLATE_CATEGORIES.map((c) => c.id));
 
@@ -204,6 +224,13 @@ function Onboarding({ onSkip }: { onSkip: () => void }) {
           התחל מאפס
         </button>
       </div>
+      <button
+        type="button"
+        onClick={onImport}
+        className="w-full h-11 rounded-xl border border-border text-sm inline-flex items-center justify-center gap-1.5"
+      >
+        <Sparkles className="h-4 w-4" /> ייבוא מ־AI
+      </button>
     </div>
   );
 }
@@ -231,17 +258,23 @@ function ChecklistPage() {
     if (filter === "all") return items;
     if (filter === "open") return items.filter((i) => !i.is_done);
     if (filter === "done") return items.filter((i) => i.is_done);
-    return items.filter((i) => i.category === filter);
+    return items.filter((i) => displayCategory(i.category) === filter);
   }, [items, filter]);
 
+  const today = todayLocal();
   const groups = useMemo(() => {
-    return CHECKLIST_CATEGORIES.map((c) => ({
-      cat: c,
-      items: visible.filter((i) => i.category === c.id),
-      total: items.filter((i) => i.category === c.id).length,
-      done: items.filter((i) => i.category === c.id && i.is_done).length,
-    })).filter((g) => g.items.length > 0);
-  }, [visible, items]);
+    return CHECKLIST_CATEGORIES.map((c) => {
+      const all = items.filter((i) => displayCategory(i.category) === c.id);
+      return {
+        cat: c,
+        items: sortChecklistTasks(
+          visible.filter((i) => displayCategory(i.category) === c.id),
+          today,
+        ),
+        open: all.filter((i) => !i.is_done).length,
+      };
+    }).filter((g) => g.items.length > 0);
+  }, [visible, items, today]);
 
   function handleToggle(item: ChecklistItem) {
     const next = !item.is_done;
@@ -252,7 +285,7 @@ function ChecklistPage() {
           if (!next) return;
           const after = items.map((i) => (i.id === item.id ? { ...i, is_done: true } : i));
           const allDone = after.every((i) => i.is_done);
-          const catItems = after.filter((i) => i.category === item.category);
+          const catItems = after.filter((i) => displayCategory(i.category) === displayCategory(item.category));
           const catDone = catItems.every((i) => i.is_done);
           if (allDone) {
             void celebrate("all");
@@ -293,7 +326,12 @@ function ChecklistPage() {
   }
 
   if (items.length === 0 && !skippedOnboarding) {
-    return <Onboarding onSkip={() => setSkippedOnboarding(true)} />;
+    return (
+      <>
+        <Onboarding onSkip={() => setSkippedOnboarding(true)} onImport={() => setImportOpen(true)} />
+        <ImportChecklistSheet open={importOpen} onOpenChange={setImportOpen} />
+      </>
+    );
   }
 
   return (
@@ -324,7 +362,7 @@ function ChecklistPage() {
               {f.label}
             </FilterPill>
           ))}
-          {CHECKLIST_CATEGORIES.filter((c) => items.some((i) => i.category === c.id)).map((c) => (
+          {CHECKLIST_CATEGORIES.filter((c) => items.some((i) => displayCategory(i.category) === c.id)).map((c) => (
             <FilterPill key={c.id} active={filter === c.id} onClick={() => setFilter(c.id)}>
               {c.emoji} {c.label}
             </FilterPill>
@@ -345,12 +383,13 @@ function ChecklistPage() {
                     c.includes(g.cat.id) ? c.filter((x) => x !== g.cat.id) : [...c, g.cat.id],
                   )
                 }
-                className="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-right min-h-0"
+                aria-expanded={open}
+                className="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-right min-h-11"
               >
                 <span className="text-sm font-semibold">
                   {g.cat.emoji} {g.cat.label}{" "}
                   <span className="text-muted-foreground font-normal">
-                    ({g.done}/{g.total})
+                    · {g.open > 0 ? `${g.open} פתוחות` : "הכל בוצע"}
                   </span>
                 </span>
                 <ChevronDown
@@ -372,6 +411,7 @@ function ChecklistPage() {
                       <ItemRow
                         key={item.id}
                         item={item}
+                        today={today}
                         onToggle={() => handleToggle(item)}
                         onMenu={() => setMenuItem(item)}
                       />
@@ -506,14 +546,16 @@ function EditForm({
   saving: boolean;
   onSave: (patch: {
     title: string;
-    category: string;
+    category?: string;
     priority: ChecklistPriority;
     notes: string | null;
     due_date: string | null;
   }) => void;
 }) {
   const [title, setTitle] = useState(item.title);
-  const [category, setCategory] = useState(item.category);
+  const unknownCategory = !isKnownCategory(item.category);
+  // "" = keep the stored (unknown) value; never shown as "other".
+  const [category, setCategory] = useState(unknownCategory ? "" : item.category);
   const [priority, setPriority] = useState<ChecklistPriority>(item.priority);
   const [notes, setNotes] = useState(item.notes ?? "");
   const [dueDate, setDueDate] = useState(item.due_date ?? "");
@@ -537,22 +579,29 @@ function EditForm({
           onChange={(e) => setCategory(e.target.value)}
           className="mt-1 w-full h-11 rounded-lg bg-background border border-input px-3 text-sm"
         >
+          {unknownCategory && <option value="">קטגוריה קיימת לא מוכרת — ללא שינוי</option>}
           {CHECKLIST_CATEGORIES.map((c) => (
             <option key={c.id} value={c.id}>
               {c.emoji} {c.label}
             </option>
           ))}
         </select>
+        {unknownCategory && category === "" && (
+          <span className="mt-1 block text-[12px] text-muted-foreground">
+            קטגוריה קיימת לא מוכרת — מוצגת תחת אחר. אפשר לבחור קטגוריה תקינה.
+          </span>
+        )}
       </label>
 
       <div>
         <span className="text-xs text-muted-foreground">עדיפות</span>
         <div className="mt-1 flex gap-2">
-          {(["high", "normal", "low"] as ChecklistPriority[]).map((p) => (
+          {CHECKLIST_PRIORITIES.map((p) => (
             <button
+              type="button"
               key={p}
               onClick={() => setPriority(p)}
-              className={`flex-1 h-10 rounded-lg text-xs border ${
+              className={`flex-1 h-11 rounded-lg text-xs border ${
                 priority === p
                   ? "bg-[color:var(--accent)] text-white border-transparent"
                   : "border-border text-muted-foreground"
@@ -587,7 +636,8 @@ function EditForm({
           if (!assertOnline()) return;
           onSave({
             title: title.trim() || item.title,
-            category,
+            // Send category only when the user actually changed it.
+            ...(category && category !== item.category ? { category } : {}),
             priority,
             notes: notes.trim() || null,
             due_date: dueDate || null,
