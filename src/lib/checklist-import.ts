@@ -1,8 +1,16 @@
 import { extractJsonBlock, normalizeEntryName } from "@/lib/ai-import";
-import { CHECKLIST_CATEGORIES, type ChecklistPriority } from "@/lib/checklist-templates";
+import {
+  CHECKLIST_CATEGORIES,
+  CHECKLIST_PRIORITIES,
+  categoryMeta,
+  type ChecklistPriority,
+} from "@/lib/checklist-templates";
 
-export const CHECKLIST_PRIORITIES: ChecklistPriority[] = ["high", "normal", "low"];
+export { CHECKLIST_PRIORITIES };
 const CATEGORY_IDS = CHECKLIST_CATEGORIES.map((c) => c.id);
+
+/** Known import-only aliases. No guessing beyond these. */
+export const CATEGORY_ALIASES: Record<string, string> = { booking: "bookings", finance: "money" };
 
 export const CHECKLIST_IMPORT_EXAMPLE = `{
   "version": 1,
@@ -20,6 +28,8 @@ export type ChecklistImportRow = {
   due_date: string | null;
   notes: string | null;
   errors: string[];
+  /** Set when the category was mapped from a known alias. */
+  categoryNote: string | null;
 };
 
 export type ChecklistParseResult = { rows: ChecklistImportRow[]; error?: string };
@@ -62,10 +72,15 @@ export function parseChecklistImport(raw: string): ChecklistParseResult {
     else if (title.length > 200) errors.push("כותרת ארוכה מ-200 תווים");
 
     const catRaw = str(o.category);
-    const category = catRaw ?? "other";
-    if (catRaw && !CATEGORY_IDS.includes(catRaw)) errors.push(`קטגוריה לא מוכרת: ${catRaw}`);
+    const catNorm = catRaw?.toLowerCase() ?? null;
+    let category = catNorm ?? "other";
+    let categoryNote: string | null = null;
+    if (catNorm && CATEGORY_ALIASES[catNorm]) {
+      category = CATEGORY_ALIASES[catNorm];
+      categoryNote = `הקטגוריה הותאמה ל${categoryMeta(category).label}`;
+    } else if (catNorm && !CATEGORY_IDS.includes(catNorm)) errors.push(`קטגוריה לא מוכרת: ${catRaw}`);
 
-    const priRaw = str(o.priority);
+    const priRaw = str(o.priority)?.toLowerCase() ?? null;
     const priority = (priRaw ?? "normal") as ChecklistPriority;
     if (priRaw && !CHECKLIST_PRIORITIES.includes(priRaw as ChecklistPriority))
       errors.push(`עדיפות לא מוכרת: ${priRaw}`);
@@ -81,6 +96,7 @@ export function parseChecklistImport(raw: string): ChecklistParseResult {
       due_date: dueRaw,
       notes: str(o.notes),
       errors,
+      categoryNote,
     };
   });
   return { rows };
@@ -112,4 +128,29 @@ export function defaultChecklistSelection(rows: ChecklistImportRow[], dups: Chec
     if (!r.errors.length && !dups[i]) s.add(r.index);
   });
   return s;
+}
+
+/** Copyable prompt for the chat; values come from the same shared definitions the parser uses. */
+export function buildChecklistPrompt(trip?: {
+  title?: string | null;
+  destination_country?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+} | null): string {
+  const dest = [trip?.title, trip?.destination_country].filter(Boolean).join(" · ");
+  const dates = trip?.start_date && trip?.end_date ? ` (${trip.start_date} עד ${trip.end_date})` : "";
+  const head = dest ? `צ׳ק־ליסט הכנה לטיול: ${dest}${dates}.` : `צ׳ק־ליסט הכנה לטיול${dates}.`;
+  return [
+    `הכן ${head}`,
+    "החזר JSON בלבד, בלי טקסט נוסף, במבנה של הדוגמה:",
+    CHECKLIST_IMPORT_EXAMPLE,
+    "כללים:",
+    '- "version": 1 ומערך "checklist".',
+    '- "title" חובה, עד 200 תווים. כל שאר השדות אופציונליים.',
+    `- "category" אחד מ: ${CATEGORY_IDS.join(", ")} (ברירת מחדל other).`,
+    `- "priority" אחד מ: ${CHECKLIST_PRIORITIES.join(", ")} (ברירת מחדל normal).`,
+    '- "due_date" רק כשיש מועד אמיתי וידוע, תאריך קיים בפורמט YYYY-MM-DD. אל תמציא תאריכי יעד.',
+    '- "notes" הערה קצרה אופציונלית.',
+    "- אל תכלול משימות שהושלמו, ואל תכלול משימות שכבר קיימות בצ׳ק־ליסט אם הן ידועות לך.",
+  ].join("\n");
 }
