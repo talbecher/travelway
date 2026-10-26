@@ -1,6 +1,7 @@
 // @ts-nocheck -- run with `bun test`; bun:test types are not installed (no new deps).
 import { describe, expect, test } from "bun:test";
 import {
+  buildChecklistPrompt,
   classifyChecklistDuplicates,
   defaultChecklistSelection,
   parseChecklistImport,
@@ -48,5 +49,35 @@ describe("duplicates", () => {
     const dups = classifyChecklistDuplicates(rows, ["A"]);
     expect(dups).toEqual(["existing", "existing"]);
     expect(defaultChecklistSelection(rows, dups).size).toBe(0);
+  });
+});
+
+describe("categories, aliases and prompt", () => {
+  test("transport is a valid category", () => {
+    const r = parseChecklistImport(wrap([{ title: "רכבת", category: "transport" }]));
+    expect(r.rows[0]).toMatchObject({ category: "transport", errors: [], categoryNote: null });
+  });
+  test("booking / finance are mapped with a note; case and spaces normalized", () => {
+    const r = parseChecklistImport(wrap([{ title: "a", category: " Booking " }, { title: "b", category: "FINANCE" }, { title: "c", category: " Tech " }]));
+    expect(r.rows[0]).toMatchObject({ category: "bookings", errors: [] });
+    expect(r.rows[0].categoryNote).toContain("הזמנות");
+    expect(r.rows[1]).toMatchObject({ category: "money", errors: [] });
+    expect(r.rows[2]).toMatchObject({ category: "tech", errors: [], categoryNote: null });
+  });
+  test("other unknown category stays an error (transport not mapped elsewhere)", () => {
+    const r = parseChecklistImport(wrap([{ title: "a", category: "travel" }]));
+    expect(r.rows[0].errors.length).toBe(1);
+  });
+  test("priority case-normalized", () => {
+    expect(parseChecklistImport(wrap([{ title: "a", priority: "HIGH" }])).rows[0]).toMatchObject({ priority: "high", errors: [] });
+  });
+  test("prompt contains valid JSON example that passes the parser and lists all values", () => {
+    const p = buildChecklistPrompt({ title: "יפן", start_date: "2026-11-01", end_date: "2026-11-20" });
+    const r = parseChecklistImport(p);
+    expect(r.error).toBeUndefined();
+    expect(r.rows.length).toBeGreaterThan(0);
+    expect(r.rows.every((x) => x.errors.length === 0)).toBe(true);
+    for (const id of ["documents", "money", "bookings", "transport", "health", "tech", "packing", "departure", "other", "high", "normal", "low"]) expect(p).toContain(id);
+    expect(p).toContain("2026-11-01");
   });
 });
