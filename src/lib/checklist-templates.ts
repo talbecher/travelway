@@ -1,5 +1,13 @@
 export type ChecklistPriority = "high" | "normal" | "low";
 
+export const CHECKLIST_PRIORITIES: ChecklistPriority[] = ["high", "normal", "low"];
+
+export const PRIORITY_LABEL: Record<ChecklistPriority, string> = {
+  high: "גבוהה",
+  normal: "רגילה",
+  low: "נמוכה",
+};
+
 export type ChecklistCategory = {
   id: string;
   label: string;
@@ -10,6 +18,7 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = [
   { id: "documents", label: "מסמכים", emoji: "📄" },
   { id: "money", label: "כספים", emoji: "💳" },
   { id: "bookings", label: "הזמנות", emoji: "🎫" },
+  { id: "transport", label: "תחבורה", emoji: "🚆" },
   { id: "health", label: "בריאות", emoji: "💊" },
   { id: "tech", label: "טכנולוגיה", emoji: "🔌" },
   { id: "packing", label: "אריזה", emoji: "🧳" },
@@ -20,6 +29,15 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = [
 export const CATEGORY_BY_ID: Record<string, ChecklistCategory> = Object.fromEntries(
   CHECKLIST_CATEGORIES.map((c) => [c.id, c]),
 );
+
+export function isKnownCategory(id: string): boolean {
+  return id in CATEGORY_BY_ID;
+}
+
+/** Display bucket: unknown stored categories are shown under "other" (display only, never written). */
+export function displayCategory(id: string): string {
+  return isKnownCategory(id) ? id : "other";
+}
 
 export function categoryMeta(id: string): ChecklistCategory {
   return CATEGORY_BY_ID[id] ?? { id, label: "אחר", emoji: "📝" };
