@@ -5,22 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { assertOnline } from "@/hooks/use-online";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useBulkAddItems } from "@/hooks/use-checklist";
-import { categoryMeta } from "@/lib/checklist-templates";
+import { useTrip } from "@/hooks/use-trip";
+import { PRIORITY_LABEL, categoryMeta } from "@/lib/checklist-templates";
 import {
   CHECKLIST_IMPORT_EXAMPLE,
+  buildChecklistPrompt,
   classifyChecklistDuplicates,
   defaultChecklistSelection,
   parseChecklistImport,
   type ChecklistImportRow,
 } from "@/lib/checklist-import";
 
-const PRIORITY_LABEL = { high: "גבוהה", normal: "רגילה", low: "נמוכה" } as const;
 
 type Existing = { titles: string[]; count: number };
 
 export function ImportChecklistSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const tripId = useActiveTripId();
   const bulkAdd = useBulkAddItems();
+  const { data: trip } = useTrip();
   // Bumped on every open, close and trip change; async results from an older value are ignored.
   const sessionRef = useRef(0);
 
@@ -131,14 +133,25 @@ export function ImportChecklistSheet({ open, onOpenChange }: { open: boolean; on
             <details className="rounded-xl border border-border bg-surface p-3 text-[13px]">
               <summary className="cursor-pointer font-medium min-h-11 flex items-center">מה לבקש מהצ׳אט?</summary>
               <p className="mt-1 text-muted-foreground">
-                בקשו תשובה בפורמט הבא בלבד. category: documents, money, bookings, health, tech, packing, departure, other.
-                priority: high, normal, low. due_date בפורמט YYYY-MM-DD. רק title חובה.
+                העתיקו את הבקשה המוכנה לצ׳אט, ואז הדביקו כאן את התשובה. רק title חובה.
               </p>
+              <button
+                type="button"
+                onClick={() =>
+                  void navigator.clipboard
+                    ?.writeText(buildChecklistPrompt(trip))
+                    .then(() => toast.success("הבקשה הועתקה"))
+                    .catch(() => toast.error("ההעתקה נכשלה"))
+                }
+                className="mt-2 h-11 px-4 rounded-xl bg-[color:var(--accent)] text-[color:var(--accent-foreground)] font-medium"
+              >
+                העתק בקשה ל־AI
+              </button>
               <pre dir="ltr" className="mt-2 overflow-x-auto rounded-lg bg-muted p-2 text-[11px]">{CHECKLIST_IMPORT_EXAMPLE}</pre>
               <button
                 type="button"
                 onClick={() => void navigator.clipboard?.writeText(CHECKLIST_IMPORT_EXAMPLE).then(() => toast.success("הדוגמה הועתקה"))}
-                className="mt-2 h-11 px-4 rounded-xl border border-border"
+                className="mt-2 ms-2 h-11 px-4 rounded-xl border border-border"
               >
                 העתק דוגמה
               </button>
@@ -180,6 +193,7 @@ export function ImportChecklistSheet({ open, onOpenChange }: { open: boolean; on
                           {cat.emoji} {cat.label} · עדיפות {PRIORITY_LABEL[r.priority] ?? r.priority}
                           {r.due_date ? ` · עד ${r.due_date}` : ""}
                         </span>
+                        {r.categoryNote && <span className="block text-[12px] text-muted-foreground">{r.categoryNote}</span>}
                         {r.notes && <span className="block text-[12px] text-muted-foreground">{r.notes}</span>}
                         {dups[i] === "existing" && <span className="block text-[12px] text-[color:var(--accent)]">כבר קיימת</span>}
                         {dups[i] === "in_import" && <span className="block text-[12px] text-[color:var(--accent)]">מופיעה פעמיים בייבוא</span>}
