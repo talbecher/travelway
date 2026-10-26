@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
 import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
+import { ImportChecklistSheet } from "@/components/ImportChecklistSheet";
 import {
   CHECKLIST_CATEGORIES,
   CHECKLIST_TEMPLATES,
@@ -222,6 +223,7 @@ function ChecklistPage() {
 
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("other");
+  const [importOpen, setImportOpen] = useState(false);
 
   const doneCount = items.filter((i) => i.is_done).length;
 
@@ -298,7 +300,17 @@ function ChecklistPage() {
     <div className="pt-4 pb-28">
       <div className="space-y-3">
         <div>
-          <h1 className="text-xl font-semibold mb-2">צ'קליסט</h1>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h1 className="text-xl font-semibold">צ'קליסט</h1>
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="h-11 px-3 rounded-xl border border-border text-sm inline-flex items-center gap-1.5"
+            >
+              <Sparkles className="h-4 w-4" /> ייבוא מ־AI
+            </button>
+          </div>
+          <ImportChecklistSheet open={importOpen} onOpenChange={setImportOpen} />
           <Progress done={doneCount} total={items.length} />
         </div>
 
