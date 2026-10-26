@@ -1,3 +1,4 @@
+// @ts-nocheck -- run with `bun test`; bun:test types are not installed (no new deps).
 import { describe, expect, test } from "bun:test";
 import {
   classifyChecklistDuplicates,

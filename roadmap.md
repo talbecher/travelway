@@ -187,3 +187,6 @@
 - [x] Main button wording per state (add / check replace / confirm replace); counts, locks, loading unchanged
 - [x] Confirm step mentions the automatic backup; Google completion shown as a secondary option (day mode only)
 - [x] tsgo + build; no browser checks
+
+## Checklist AI import
+- [x] Paste → preview → select → add; validation, duplicates, stale-guard; bun tests
