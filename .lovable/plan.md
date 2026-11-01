@@ -119,3 +119,35 @@
    - מתקבל `day_changed` והיום לא משתנה.
    - `reconfirm` עם fingerprint ישן נדחה.
    - `reconfirm` עם ה-fingerprint שהוצג ואחריו אישור: ההחלפה מצליחה פעם אחת, והקריאה החוזרת מחזירה `already_applied`.
+
+## תיקונים אחרונים (מאושרים)
+
+### מה נחשב כהחלה של הצעה
+- `applied` פירושו שקיים ב-`day_replace_runs` run עם `status='done'` עבור ה-`request_id` הנוכחי או עבור אחד מ-`superseded_request_ids`. במקרה הזה התשובה היא `already_applied`.
+- run עם `day_changed` אינו הצלחה. ההצעה נשארת `pending`, אפשר לבצע `reconfirm`, והיא ממשיכה להיספר במכסת הממתינות.
+- כל הבדיקות (apply, reconfirm, תצוגה ומכסה) משתמשות בפונקציה פנימית אחת, `_proposal_done(_id)`, שבודקת run במצב `done` על כל ה-request_ids של ההצעה.
+
+### נעילות
+- `_proposal_claim`, `reject_day_proposal` ו-`reconfirm_day_proposal` פועלות באותו סדר:
+  1. `SELECT ... FROM public.day_replace_proposals WHERE id=_id FOR UPDATE`. נועלים קודם, לפני כל בדיקה.
+  2. רק אחר כך בודקים מחדש את `can_access_trip`, `day_id ∈ trip_id`, `status='pending'`, `expires_at > now()`, `_proposal_done`, ושהטוקן לא בוטל ולא פג.
+- בגלל הסדר הזה, דחייה, אישור ואישור מחודש שמגיעים במקביל ייבדקו כל אחד מול המצב שאחרי ההמתנה לנעילה.
+
+### apply ו-`_seen_fingerprint`
+- החתימה: `apply_day_proposal(_id uuid, _seen_fingerprint text)`.
+- `_proposal_claim` דוחה עם `stale_view` אם `_seen_fingerprint <> proposal.fingerprint`. כלומר המשתמש ראה השוואה אחרת מזו שההצעה שמורה עליה, למשל כי בוצע `reconfirm` ממכשיר אחר.
+- התחנות, ה-fingerprint וה-request_id שמבוצעים נלקחים תמיד מההצעה השמורה. `_seen_fingerprint` משמש לבדיקת התאמה בלבד.
+- אם היום עצמו השתנה, `replace_day_entries` יחזיר `day_changed`.
+
+### כל פונקציית SECURITY DEFINER חדשה
+- `SET search_path = public`, ושמות טבלאות מלאים (`public.x`).
+- בדיקה ש-`auth.uid() IS NOT NULL`, ובדיקה מפורשת של `can_access_trip`.
+- `REVOKE EXECUTE ... FROM PUBLIC, anon` בכל אחת.
+  - ל-`authenticated`: רק הפונקציות שהמשתמש צריך להריץ (`_proposal_claim` דרך `apply`, `reject`, `reconfirm`, `get_day_proposal_view`).
+  - `api_create_day_proposal` ל-`service_role` בלבד. היא בודקת את הטוקן במקום את `auth.uid`.
+
+### בדיקה נוספת
+apply מחזיר `day_changed` → ההצעה עדיין `pending` ונספרת במכסה → reconfirm עם ה-fingerprint שהוצג מצליח → apply מחיל פעם אחת → apply חוזר מחזיר `already_applied` (גם דרך ה-request_id הקודם).
+
+### דיווח
+בסיום יופרדו מה שהורץ (בדיקות SQL ו-REST בטיול בדיקה, tsgo, build) ממה שנבדק בקוד בלבד (ממשק). ללא Google וללא דפדפן.
