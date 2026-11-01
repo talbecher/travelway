@@ -72,3 +72,50 @@
 7. חריגה ממגבלת הגודל או מספר התחנות: נדחה.
 8. GET לקישור לא משנה אף שורה.
 9. tsgo ו-build.
+
+## השלמות לפני יישום
+
+### הרשאות apply/reject/reconfirm (session רגיל, SELECT בלבד)
+- `FOR UPDATE` דורש הרשאת UPDATE, ולכן לא ירוץ ב-INVOKER. לכן הנעילה והקריאה יתבצעו ב-helper מסוג SECURITY DEFINER בשם `_proposal_claim(_id, _seen_fingerprint)`. ל-authenticated תינתן הרשאת EXECUTE בלבד.
+- `_proposal_claim` יבדוק `can_access_trip(trip_id)` לפי `auth.uid()` של ה-session. הוא יבדוק גם `day_id ∈ trip_id`, `status='pending'`, `expires_at > now()`, ושהטוקן לא בוטל ולא פג. את הטוקן הוא קורא כבעלים, והלקוח אינו מקבל גישה ל-`api_tokens`. אחר כך הוא נועל את השורה `FOR UPDATE` ומחזיר `day_id`, `entries`, `fingerprint` ו-`request_id`.
+  - הנעילה נשמרת עד סוף הטרנזקציה, גם אחרי שה-helper חוזר.
+  - אם המשתמש יקרא ל-helper ישירות, הוא רק קורא נתונים שכבר גלויים לו ונועל לרגע.
+- `apply_day_proposal` עצמו רץ כ-SECURITY INVOKER. הוא קורא ל-`_proposal_claim`, ואז ל-`replace_day_entries` כמשתמש, עם התוכן השמור. ההרשאות של `replace_day_entries` לא משתנות.
+- `reject_day_proposal` ו-`reconfirm_day_proposal` יהיו SECURITY DEFINER עם אותן בדיקות. כל אחד מבצע מעבר אחד מוגדר ולא מקבל שדות תוכן.
+- ללקוח אין INSERT, UPDATE או DELETE על הטבלה. הטריגר עם הדגל הוא רק הגנה נוספת ולא מעניק הרשאה. ה-DEFINER הוא שמאפשר את הכתיבה, ורק דרך שלוש הפונקציות.
+
+### אישור מחודש בלי לרענן מאחורי הקלעים
+- `get_day_proposal_view(_id)` (DEFINER, קריאה בלבד) מחזיר את ההשוואה מול המצב הנוכחי ואת `current_fingerprint` שלפיו חושבה ההשוואה. הוא מבוסס על `_day_replace_rows` ו-`_day_replace_fingerprint`.
+- הלקוח שולח את ה-fingerprint שהוצג לו כ-`_seen_fingerprint`.
+- `reconfirm_day_proposal(_id, _seen_fingerprint)`:
+  - מחשב מחדש את המצב הנוכחי. אם הוא שונה מ-`_seen_fingerprint`, מחזיר `day_changed` עם השוואה חדשה ולא משנה דבר.
+  - אם קיים כבר run שהסתיים עבור `request_id` הנוכחי, מחזיר `already_applied`.
+  - אחרת: שומר `fingerprint = _seen_fingerprint`, מעביר את ה-`request_id` הקודם ל-`superseded_request_ids uuid[]` ומייצר `request_id` חדש. הסטטוס נשאר `pending`.
+- אחר כך האישור עובר דרך `replace_day_entries` עם ה-fingerprint שהוצג. אם היום השתנה שוב בינתיים, מתקבל `day_changed` ושום דבר לא מוחל.
+- הצגת הסטטוס בודקת את כל ה-`request_id`, כולל הקודמים, מול `day_replace_runs`, כדי שהחלה ישנה לא תיעלם.
+
+### תוקף
+- `expires_at` נבדק בקריאה (`get_day_proposal_view`) ובאישור (`_proposal_claim`, `reconfirm`). אין תהליך מתוזמן.
+- הסטטוס המוצג מחושב: הצעה `pending` שעבר תוקפה מוצגת כ„פג תוקף” וחסומה לפעולה.
+- מכסת 20 ההצעות סופרת רק הצעות `pending` שתוקפן לא עבר ושאין להן run שהסתיים.
+
+### אימות: מה נבדק איפה
+- **TypeScript (בקוד שמטפל בבקשה):** zod על המבנה, גודל הבקשה, והמפענח הקיים של מצב היום מ-`ai-import`. כך ההודעות לצ׳אט ברורות.
+- **RPC (`api_create_day_proposal`):**
+  - בדיקות הרשאה: scope, ה-trip של הטוקן, ש-`day_id ∈ trip_id`.
+  - מגבלות: `jsonb_array_length ≤ 40`, `octet_length(entries::text) ≤ 65536`, `title` לא ריק ועד 200 תווים, `entry_type` מתוך ה-enum, ושדות לפי החוזה הקיים בלבד. שדות לא מוכרים נזרקים.
+  - מכסת ההצעות.
+- **באישור:** `replace_day_entries` מריץ שוב את האימות הקיים שלו.
+- **תצוגה:** כותרות והערות מוצגות כטקסט פשוט, בלי HTML ובלי המרה אוטומטית לקישורים. מותר שיופיעו בהן קישורים כטקסט. שדות קישור שכבר קיימים בחוזה, כמו `google_maps_url`, נפתחים כקישור רק כשהם http/https.
+
+### מגבלות ידועות
+- אם התשובה אבדה בין `reconfirm` לבין האישור, ההצעה נשארת `pending` עם ה-fingerprint החדש. האישור הבא יבדוק אותו שוב.
+- שני מכשירים שמאשרים במקביל: אחד מחיל, והשני מקבל `already_applied` או `day_changed`.
+
+### בדיקות חיוניות נוספות
+1. משתמש משותף רגיל: apply, reject ו-reconfirm עובדים. INSERT/UPDATE ישירים דרך REST נחסמים.
+2. הצעה `pending` שתוקפה עבר: התצוגה מראה „פג תוקף”, apply ו-reconfirm נדחים, והיא לא נספרת במכסה.
+3. שינוי ביום בין הצגת ההשוואה לאישור:
+   - מתקבל `day_changed` והיום לא משתנה.
+   - `reconfirm` עם fingerprint ישן נדחה.
+   - `reconfirm` עם ה-fingerprint שהוצג ואחריו אישור: ההחלפה מצליחה פעם אחת, והקריאה החוזרת מחזירה `already_applied`.
