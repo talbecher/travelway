@@ -22,6 +22,7 @@ export type Database = {
           label: string
           last_used_at: string | null
           revoked_at: string | null
+          scopes: string[]
           token_hash: string
           trip_id: string | null
           user_id: string
@@ -33,6 +34,7 @@ export type Database = {
           label: string
           last_used_at?: string | null
           revoked_at?: string | null
+          scopes?: string[]
           token_hash: string
           trip_id?: string | null
           user_id: string
@@ -44,6 +46,7 @@ export type Database = {
           label?: string
           last_used_at?: string | null
           revoked_at?: string | null
+          scopes?: string[]
           token_hash?: string
           trip_id?: string | null
           user_id?: string
@@ -183,6 +186,82 @@ export type Database = {
             columns: ["linked_recommendation_id"]
             isOneToOne: false
             referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      day_replace_proposals: {
+        Row: {
+          created_at: string
+          created_by: string
+          day_id: string
+          decided_at: string | null
+          entries: Json
+          entry_count: number
+          expires_at: string
+          fingerprint: string
+          id: string
+          note: string | null
+          request_id: string
+          status: string
+          superseded_request_ids: string[]
+          token_id: string | null
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          day_id: string
+          decided_at?: string | null
+          entries: Json
+          entry_count: number
+          expires_at?: string
+          fingerprint: string
+          id?: string
+          note?: string | null
+          request_id?: string
+          status?: string
+          superseded_request_ids?: string[]
+          token_id?: string | null
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          day_id?: string
+          decided_at?: string | null
+          entries?: Json
+          entry_count?: number
+          expires_at?: string
+          fingerprint?: string
+          id?: string
+          note?: string | null
+          request_id?: string
+          status?: string
+          superseded_request_ids?: string[]
+          token_id?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_replace_proposals_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_replace_proposals_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "api_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_replace_proposals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]
@@ -860,6 +939,25 @@ export type Database = {
           title: string
         }[]
       }
+      _proposal_claim: {
+        Args: { _id: string; _seen_fingerprint: string }
+        Returns: Json
+      }
+      _proposal_done: {
+        Args: { _day_id: string; _request_id: string; _superseded: string[] }
+        Returns: Json
+      }
+      _proposal_token_ok: { Args: { _token_id: string }; Returns: boolean }
+      api_create_day_proposal: {
+        Args: {
+          _date: string
+          _entries: Json
+          _hash: string
+          _note: string
+          _trip_id: string
+        }
+        Returns: Json
+      }
       api_itinerary_items: {
         Args: {
           _after_created: string
@@ -897,12 +995,17 @@ export type Database = {
           token_user_id: string
         }[]
       }
+      apply_day_proposal: {
+        Args: { _id: string; _seen_fingerprint: string }
+        Returns: Json
+      }
       booking_notes_block: {
         Args: { _note: string; _time: string; _url: string }
         Returns: string
       }
       can_access_trip: { Args: { _trip_id: string }; Returns: boolean }
       claim_share: { Args: { _token: string }; Returns: string }
+      get_day_proposal_view: { Args: { _id: string }; Returns: Json }
       import_my_map: {
         Args: {
           _city: string
@@ -927,6 +1030,11 @@ export type Database = {
         Returns: string
       }
       prepare_day_replace: { Args: { _day_id: string }; Returns: Json }
+      reconfirm_day_proposal: {
+        Args: { _id: string; _seen_fingerprint: string }
+        Returns: Json
+      }
+      reject_day_proposal: { Args: { _id: string }; Returns: Json }
       replace_day_entries: {
         Args: {
           _day_id: string

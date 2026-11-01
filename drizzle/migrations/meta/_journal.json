@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793532602123,
+      "tag": "0000_day_replace_proposals",
+      "breakpoints": true
+    }
+  ]
+}
