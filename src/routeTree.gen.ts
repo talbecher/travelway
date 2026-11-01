@@ -18,9 +18,11 @@ import { Route as ItineraryRouteImport } from './routes/itinerary'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
+import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
+import { Route as ApiPublicDayProposalsRouteImport } from './routes/api/public/day-proposals'
 import { Route as ApiPublicOpenapiDotjsonRouteImport } from './routes/api/public/openapi[.]json'
 import { Route as ApiPublicTripContextRouteImport } from './routes/api/public/trip-context'
 
@@ -69,6 +71,11 @@ const RecommendationsRoute = RecommendationsRouteImport.update({
   path: '/recommendations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DayProposalsIdRoute = DayProposalsIdRouteImport.update({
+  id: '/day-proposals/$id',
+  path: '/day-proposals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -82,6 +89,11 @@ const ItineraryDayIdRoute = ItineraryDayIdRouteImport.update({
 const JoinTokenRoute = JoinTokenRouteImport.update({
   id: '/join/$token',
   path: '/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDayProposalsRoute = ApiPublicDayProposalsRouteImport.update({
+  id: '/api/public/day-proposals',
+  path: '/api/public/day-proposals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicOpenapiDotjsonRoute = ApiPublicOpenapiDotjsonRouteImport.update({
@@ -105,9 +117,11 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
@@ -120,9 +134,11 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
+  '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
@@ -137,9 +153,11 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
@@ -155,9 +173,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
   fileRoutesByTo: FileRoutesByTo
@@ -170,9 +190,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
+    | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
   id:
@@ -186,9 +208,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
   fileRoutesById: FileRoutesById
@@ -203,7 +227,9 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PhrasebookRoute: typeof PhrasebookRoute
   RecommendationsRoute: typeof RecommendationsRoute
+  DayProposalsIdRoute: typeof DayProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
+  ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
   ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
   ApiPublicTripContextRoute: typeof ApiPublicTripContextRoute
 }
@@ -273,6 +299,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecommendationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/day-proposals/$id': {
+      id: '/day-proposals/$id'
+      path: '/day-proposals/$id'
+      fullPath: '/day-proposals/$id'
+      preLoaderRoute: typeof DayProposalsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/itinerary/': {
       id: '/itinerary/'
       path: '/'
@@ -292,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/join/$token'
       fullPath: '/join/$token'
       preLoaderRoute: typeof JoinTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/day-proposals': {
+      id: '/api/public/day-proposals'
+      path: '/api/public/day-proposals'
+      fullPath: '/api/public/day-proposals'
+      preLoaderRoute: typeof ApiPublicDayProposalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/openapi.json': {
@@ -335,7 +375,9 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PhrasebookRoute: PhrasebookRoute,
   RecommendationsRoute: RecommendationsRoute,
+  DayProposalsIdRoute: DayProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
+  ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
   ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
   ApiPublicTripContextRoute: ApiPublicTripContextRoute,
 }
