@@ -6,7 +6,7 @@ const err = (d: string) => ({ description: d, content: { "application/json": { s
 const spec = {
   openapi: "3.1.0",
   info: {
-    title: "TravelWay trip context (read-only)",
+    title: "TravelWay trip context",
     version: "1.0",
     description:
       "Read-only view of one trip. Trip-scoped tokens may omit trip_id (a different trip_id returns 403). Tokens without a trip scope must send trip_id (400 otherwise). Access is re-checked on every call: the token owner must currently own the trip or have it shared. Full-trip mode returns complete days and summaries; lists marked items_included:false must be fetched with section=<use_section>, paginated with pagination.next_cursor.",
@@ -18,6 +18,43 @@ const spec = {
   },
   security: [{ bearer: [] }],
   paths: {
+    "/api/public/day-proposals": {
+      post: {
+        operationId: "proposeDayReplacement",
+        summary: "Save a proposal to replace one day's plan (nothing changes until the user approves in TravelWay)",
+        description: "Requires a trip-scoped token with the 'submit day proposals' permission. Hotel check-ins and booked stops are always kept. Return review_url to the user; they must open it and approve. Max 40 entries. Proposals expire after 72 hours.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object", additionalProperties: false, required: ["date", "entries"],
+            properties: {
+              trip_id: { type: "string", format: "uuid" },
+              date: { type: "string", format: "date", description: "Day date in the active itinerary." },
+              note: { type: "string", maxLength: 2000 },
+              entries: { type: "array", minItems: 1, maxItems: 40, items: {
+                type: "object", required: ["title", "entry_type"],
+                properties: {
+                  title: { type: "string", maxLength: 200 },
+                  entry_type: { type: "string", enum: ["attraction", "food", "transport", "note", "flight", "hotel_checkin"] },
+                  time_of_day: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+                  location_name: { type: "string" }, description: { type: "string" }, icon_emoji: { type: "string" },
+                },
+              } },
+            },
+          } } },
+        },
+        responses: {
+          "201": { description: "Proposal saved (pending). Includes id, review_url, expires_at.", content: { "application/json": { schema: { type: "object", additionalProperties: true } } } },
+          "400": err("Invalid body or entries"),
+          "401": err("Missing, invalid, revoked or expired token"),
+          "403": err("Token lacks the proposal permission or trip scope"),
+          "404": err("Trip or day not available"),
+          "413": err("Body too large"),
+          "429": err("Too many pending proposals for this trip"),
+          "500": err("Unexpected error"),
+        },
+      },
+    },
     "/api/public/trip-context": {
       get: {
         operationId: "getTripContext",
