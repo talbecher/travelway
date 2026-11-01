@@ -36,7 +36,7 @@ const STATE_LABEL: Record<View["state"], string> = {
 
 function ProposalPage() {
   const { id } = Route.useParams();
-  const { user, loading } = useAuth() as { user: unknown; loading?: boolean };
+  const { user, loading } = useAuth();
   const qc = useQueryClient();
   const key = ["day-proposal", id];
   const q = useQuery({

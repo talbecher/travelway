@@ -18,6 +18,7 @@ import { Route as ItineraryRouteImport } from './routes/itinerary'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
+import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
@@ -70,6 +71,11 @@ const RecommendationsRoute = RecommendationsRouteImport.update({
   path: '/recommendations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DayProposalsIdRoute = DayProposalsIdRouteImport.update({
+  id: '/day-proposals/$id',
+  path: '/day-proposals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
@@ -215,6 +227,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PhrasebookRoute: typeof PhrasebookRoute
   RecommendationsRoute: typeof RecommendationsRoute
+  DayProposalsIdRoute: typeof DayProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
   ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
@@ -286,6 +299,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecommendationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/day-proposals/$id': {
+      id: '/day-proposals/$id'
+      path: '/day-proposals/$id'
+      fullPath: '/day-proposals/$id'
+      preLoaderRoute: typeof DayProposalsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/itinerary/': {
       id: '/itinerary/'
       path: '/'
@@ -355,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PhrasebookRoute: PhrasebookRoute,
   RecommendationsRoute: RecommendationsRoute,
+  DayProposalsIdRoute: DayProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
   ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
