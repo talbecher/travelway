@@ -38,6 +38,7 @@ function AiAccessPage() {
   const [label, setLabel] = useState("ChatGPT");
   const [tripId, setTripId] = useState<string>("");
   const [days, setDays] = useState<30 | 90 | 365>(90);
+  const [canPropose, setCanPropose] = useState(false);
   const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
   const scope = tripId || activeTripId || "";
@@ -47,7 +48,7 @@ function AiAccessPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const r = await create({ data: { label, tripId: scope === "all" ? null : scope || null, days } });
+      const r = await create({ data: { label, tripId: scope === "all" ? null : scope || null, days, canPropose: canPropose && scope !== "all" } });
       setShown(r.token);
       qc.invalidateQueries({ queryKey: ["api-tokens"] });
     } catch (err) {
@@ -74,7 +75,7 @@ function AiAccessPage() {
       <header className="space-y-1">
         <h1 className="flex items-center gap-2 text-xl font-bold"><KeyRound size={20} /> גישת AI</h1>
         <p className="text-sm text-muted-foreground">
-          הטוקן נותן גישת קריאה בלבד לנתוני הטיול שלכם. הוא לא יכול לשנות את הטיולים.
+          כברירת מחדל הטוקן נותן גישת קריאה בלבד. אם תאפשרו הגשת הצעות, הצ׳אט יוכל לשמור הצעה להחלפת יום, והיא תחכה לאישור שלכם.
         </p>
       </header>
 
@@ -112,6 +113,16 @@ function AiAccessPage() {
             <option value={365}>שנה</option>
           </select>
         </label>
+        <label className="flex min-h-11 items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={canPropose && scope !== "all"} disabled={scope === "all"}
+            onChange={(e) => setCanPropose(e.target.checked)} />
+          <span>
+            מותר להגיש הצעות להחלפת יום
+            <span className="block text-xs text-muted-foreground">
+              הצ׳אט יוכל רק לשמור הצעה. שום דבר לא משתנה עד שתאשרו אותה באפליקציה. זמין רק לטוקן של טיול אחד.
+            </span>
+          </span>
+        </label>
         <button type="submit" disabled={busy || !scope}
           className="h-11 w-full rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
           {busy ? "יוצר…" : "צור טוקן"}
@@ -129,7 +140,8 @@ function AiAccessPage() {
             return (
               <li key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-3 text-sm">
                 <div className="min-w-0">
-                  <p className="font-medium">{t.label} · <span className="text-muted-foreground">{state}</span></p>
+                  <p className="font-medium">{t.label} · <span className="text-muted-foreground">{state}</span>
+                    {t.scopes?.includes("propose_day") && <span className="text-muted-foreground"> · קריאה + הגשת הצעות</span>}</p>
                   <p className="text-xs text-muted-foreground">
                     {t.trip_id ? `טיול: ${t.trip_title ?? "לא זמין"}` : "כל הטיולים"} · נוצר {fmt(t.created_at)} · שימוש אחרון {fmt(t.last_used_at)} · תוקף עד {fmt(t.expires_at)}
                   </p>

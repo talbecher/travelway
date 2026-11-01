@@ -21,6 +21,7 @@ import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
+import { Route as ApiPublicDayProposalsRouteImport } from './routes/api/public/day-proposals'
 import { Route as ApiPublicOpenapiDotjsonRouteImport } from './routes/api/public/openapi[.]json'
 import { Route as ApiPublicTripContextRouteImport } from './routes/api/public/trip-context'
 
@@ -84,6 +85,11 @@ const JoinTokenRoute = JoinTokenRouteImport.update({
   path: '/join/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDayProposalsRoute = ApiPublicDayProposalsRouteImport.update({
+  id: '/api/public/day-proposals',
+  path: '/api/public/day-proposals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicOpenapiDotjsonRoute = ApiPublicOpenapiDotjsonRouteImport.update({
   id: '/api/public/openapi.json',
   path: '/api/public/openapi.json',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
+  '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
 }
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
   fileRoutesByTo: FileRoutesByTo
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
+    | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
   id:
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
   fileRoutesById: FileRoutesById
@@ -204,6 +216,7 @@ export interface RootRouteChildren {
   PhrasebookRoute: typeof PhrasebookRoute
   RecommendationsRoute: typeof RecommendationsRoute
   JoinTokenRoute: typeof JoinTokenRoute
+  ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
   ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
   ApiPublicTripContextRoute: typeof ApiPublicTripContextRoute
 }
@@ -294,6 +307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/day-proposals': {
+      id: '/api/public/day-proposals'
+      path: '/api/public/day-proposals'
+      fullPath: '/api/public/day-proposals'
+      preLoaderRoute: typeof ApiPublicDayProposalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/openapi.json': {
       id: '/api/public/openapi.json'
       path: '/api/public/openapi.json'
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   PhrasebookRoute: PhrasebookRoute,
   RecommendationsRoute: RecommendationsRoute,
   JoinTokenRoute: JoinTokenRoute,
+  ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
   ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
   ApiPublicTripContextRoute: ApiPublicTripContextRoute,
 }

@@ -7,6 +7,7 @@ export type ApiTokenInfo = {
   label: string;
   trip_id: string | null;
   trip_title: string | null;
+  scopes: string[];
   created_at: string;
   expires_at: string;
   revoked_at: string | null;
@@ -20,7 +21,8 @@ export const createApiToken = createServerFn({ method: "POST" })
       label: z.string().trim().min(1).max(60),
       tripId: z.string().uuid().nullable(),
       days: z.union([z.literal(30), z.literal(90), z.literal(365)]),
-    }).parse(d),
+      canPropose: z.boolean().default(false),
+    }).refine((v) => !v.canPropose || !!v.tripId, { message: "הגשת הצעות מחייבת טיול אחד" }).parse(d),
   )
   .handler(async ({ data, context }) => {
     if (data.tripId) {
@@ -37,6 +39,7 @@ export const createApiToken = createServerFn({ method: "POST" })
       token_hash: hashToken(raw),
       label: data.label,
       trip_id: data.tripId,
+      scopes: data.canPropose ? ["read", "propose_day"] : ["read"],
       expires_at: new Date(Date.now() + data.days * 86400000).toISOString(),
     });
     if (error) throw new Error("יצירת הטוקן נכשלה");
@@ -49,7 +52,7 @@ export const listApiTokens = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("api_tokens")
-      .select("id,label,trip_id,created_at,expires_at,revoked_at,last_used_at")
+      .select("id,label,trip_id,scopes,created_at,expires_at,revoked_at,last_used_at")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error("טעינת הטוקנים נכשלה");
