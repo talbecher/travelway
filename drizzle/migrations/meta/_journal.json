@@ -8,6 +8,13 @@
       "when": 1793532602123,
       "tag": "0000_day_replace_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793532871109,
+      "tag": "0001_proposal_quota_excludes_revoked",
+      "breakpoints": true
     }
   ]
 }
