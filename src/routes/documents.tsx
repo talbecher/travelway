@@ -20,6 +20,7 @@ import {
 } from "@/hooks/use-documents";
 import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { hebDate, ils } from "@/lib/format";
 
@@ -80,12 +81,12 @@ function DocumentsPage() {
         <div className="flex gap-2 min-w-max">
           {FILTER_TYPES.map((t) => {
             const active = filter === t;
-            const label = t === "all" ? "הכל" : `${DOC_TYPE_META[t].emoji} ${DOC_TYPE_META[t].label}`;
+            const label = t === "all" ? "הכל" : <span className="inline-flex items-center gap-1.5"><CategoryIcon category={t} size={20} />{DOC_TYPE_META[t].label}</span>;
             return (
               <button
                 key={t}
                 onClick={() => setFilter(t)}
-                className={`h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
+                className={`h-8 px-3 inline-flex items-center rounded-full text-xs font-medium border transition-colors ${
                   active
                     ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]"
                     : "bg-card text-muted-foreground border-border"
@@ -215,7 +216,7 @@ function DocumentCard({
       </button>
       <button
         onClick={onDelete}
-        className="h-9 w-9 rounded-full border border-border text-[color:var(--accent-2)] inline-flex items-center justify-center"
+        className="h-9 w-9 rounded-full border border-border text-muted-foreground inline-flex items-center justify-center"
         aria-label="מחק"
       >
         <Trash2 size={16} />
@@ -231,8 +232,8 @@ function DocumentCard({
       <section className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--accent)]/10 to-transparent">
           <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
-            <span className="text-lg">✈️</span>
-            <span className="truncate">{parsed ? parsed.airline || "טיסה" : doc.title}</span>
+            <CategoryIcon category="flight" size={28} />
+            <span className="truncate"><bdi>{parsed ? parsed.airline || "טיסה" : doc.title}</bdi></span>
             {stops > 0 && (
               <span className="ms-auto text-[10px] rounded-full px-2 py-0.5 bg-[color:var(--accent)]/15 text-[color:var(--accent)] font-medium">
                 קונקשן · {stops} {stops === 1 ? "עצירה" : "עצירות"}
@@ -247,7 +248,7 @@ function DocumentCard({
                   {i < codes.length - 1 && (
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <span className="w-3 border-t border-dashed border-border" />
-                      <span className="text-sm">✈</span>
+                      <span className="text-sm" aria-hidden>→</span>
                       <span className="w-3 border-t border-dashed border-border" />
                     </span>
                   )}
@@ -266,7 +267,7 @@ function DocumentCard({
             )}
             {paidBadge}
           </div>
-          {doc.notes && <div className="text-xs text-muted-foreground line-clamp-2">{doc.notes}</div>}
+          {doc.notes && <div className="text-xs text-muted-foreground line-clamp-2"><bdi>{doc.notes}</bdi></div>}
           {actions}
         </div>
       </section>
@@ -279,8 +280,8 @@ function DocumentCard({
       <section className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--terracotta)]/10 to-transparent">
           <div className="flex items-center gap-2 text-sm font-medium">
-            <span className="text-lg">🏨</span>
-            <span className="truncate">{doc.title}</span>
+            <CategoryIcon category="hotel" size={28} />
+            <span className="truncate"><bdi>{doc.title}</bdi></span>
           </div>
           {doc.valid_date && (
             <div className="text-xs text-muted-foreground mt-1">צ'ק-אין: {hebDate(doc.valid_date)}</div>
@@ -290,7 +291,7 @@ function DocumentCard({
         <div className="px-4 py-3 space-y-2">
           <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
             {doc.notes ? (
-              <span className="text-muted-foreground truncate max-w-[60%]">{doc.notes}</span>
+              <span className="text-muted-foreground truncate max-w-[60%]"><bdi>{doc.notes}</bdi></span>
             ) : (
               <span />
             )}
@@ -306,10 +307,10 @@ function DocumentCard({
   return (
     <section className="rounded-2xl border border-border bg-card px-4 py-3 space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <span className="text-lg">{meta.emoji}</span>
-        <span className="truncate">{doc.title}</span>
+        <CategoryIcon category={doc.type} size={28} />
+        <span className="truncate"><bdi>{doc.title}</bdi></span>
       </div>
-      {doc.notes && <div className="text-xs text-muted-foreground line-clamp-2">{doc.notes}</div>}
+      {doc.notes && <div className="text-xs text-muted-foreground line-clamp-2"><bdi>{doc.notes}</bdi></div>}
       <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
         {doc.valid_date ? (
           <span className="text-muted-foreground">📅 {hebDate(doc.valid_date)}</span>
@@ -509,7 +510,7 @@ function DocumentFormSheet({
                       : "bg-background text-foreground border-input"
                   }`}
                 >
-                  {DOC_TYPE_META[t].emoji} {DOC_TYPE_META[t].label}
+                  <span className="inline-flex items-center gap-1.5"><CategoryIcon category={t} size={20} />{DOC_TYPE_META[t].label}</span>
                 </button>
               );
             })}

@@ -15,10 +15,11 @@ import {
   conversionLabel,
   NO_RATE_MESSAGE,
 } from "@/lib/currency";
-import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
 import { openQuickExpense } from "@/components/GlobalFab";
@@ -138,13 +139,7 @@ function Budget() {
               >
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[13px]"
-                      style={{
-                        background: `color-mix(in oklab, ${CATEGORY_COLORS[k]} 22%, transparent)`,
-                        color: CATEGORY_COLORS[k],
-                      }}
-                    >{CATEGORY_ICONS[k]}</span>
+                    <CategoryIcon category={k} size={28} />
                     <span>{CATEGORY_LABELS[k]}</span>
                   </div>
                   <div className="flex items-center gap-2 tabular-nums">
@@ -170,7 +165,7 @@ function Budget() {
                       ) : items.map((e) => (
                         <div key={e.id} className="p-3 flex items-center gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm truncate">{e.description || CATEGORY_LABELS[e.category]}</div>
+                            <div className="text-sm truncate"><bdi>{e.description || CATEGORY_LABELS[e.category]}</bdi></div>
                             <div className="text-xs text-muted-foreground">
                               {hebDate(e.expense_date)}{e.location_name ? ` · ${e.location_name}` : ""}
                             </div>
