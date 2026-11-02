@@ -16,7 +16,7 @@ export function BottomNav() {
   return (
     <nav
       data-bottom-nav
-      className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-surface backdrop-blur-xl"
+      className="fixed bottom-0 inset-x-0 z-40 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] border-t border-border bg-surface backdrop-blur-xl"
       style={{ background: "color-mix(in oklab, var(--surface) 92%, transparent)" }}
     >
       <div className="max-w-md mx-auto grid grid-cols-6">
