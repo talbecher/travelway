@@ -83,6 +83,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CategoryIcon, isDefaultCategoryEmoji } from "@/components/CategoryIcon";
 
 
 export const Route = createFileRoute("/itinerary/$dayId")({
@@ -120,6 +121,13 @@ const TYPE_COLOR: Record<string, string> = {
 const TYPE_ICON: Record<string, string> = {
   flight: "✈️", hotel_checkin: "🏨", attraction: "⛩", food: "🍜", transport: "🚆", note: "📝",
 };
+
+/** Display only: app-default category emoji → CategoryIcon; custom/special stored emoji (e.g. 🧭) stays. */
+function entryIcon(entry: { icon_emoji: string | null; entry_type: string }, size: number) {
+  const def = TYPE_ICON[entry.entry_type];
+  if (def && isDefaultCategoryEmoji(entry.icon_emoji, [def, "📍"])) return <CategoryIcon category={entry.entry_type} size={size} />;
+  return entry.icon_emoji || def || "•";
+}
 
 function sortEntries(list: EntryRow[]): EntryRow[] {
   return [...list].sort((a, b) => {
@@ -1116,7 +1124,7 @@ function DayDetail() {
                 <button key={t.type} onClick={() => setEntryType(t.type as EntryType)}
                   className="flex flex-col items-center justify-center gap-3 py-6 rounded-2xl border border-border bg-background active:scale-[0.98] transition-transform"
                   style={{ background: `color-mix(in oklab, ${tint} 8%, transparent)` }}>
-                  <span className="text-4xl">{t.icon}</span>
+                  <CategoryIcon category={t.type} size={52} />
                   <span className="text-sm font-medium">{t.label}</span>
                 </button>
               );
@@ -1242,7 +1250,7 @@ function DayDetail() {
                     {d.city_label && (
                       <>
                         <span className="text-muted-foreground text-[12px] shrink-0">·</span>
-                        <span className="text-[12px] text-muted-foreground truncate" dir="ltr">{d.city_label}</span>
+                        <span className="text-[12px] text-muted-foreground truncate"><bdi>{d.city_label}</bdi></span>
                       </>
                     )}
                   </span>
@@ -1355,17 +1363,17 @@ function DayDetail() {
             const moved = oldPos !== -1 && oldPos !== idx;
             return (
               <div key={entry.id} className="flex items-center gap-2.5 py-2 border-b border-border/60 last:border-b-0">
-                <span className="w-6 h-6 rounded-full bg-accent text-white text-[11px] font-medium flex items-center justify-center shrink-0 tabular-nums">
+                <span className="w-6 h-6 rounded-full bg-muted text-foreground text-[11px] font-medium flex items-center justify-center shrink-0 tabular-nums">
                   {idx + 1}
                 </span>
                 {entry.photo_url ? (
                   <img src={entry.photo_url} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }} className="w-9 h-9 rounded-lg object-cover shrink-0" />
                 ) : (
                   <span className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center text-[16px] shrink-0">
-                    {entry.icon_emoji ?? TYPE_ICON[entry.entry_type] ?? "📍"}
+                    {entryIcon(entry, 36)}
                   </span>
                 )}
-                <span className="flex-1 min-w-0 text-[13px] truncate">{entry.title}</span>
+                <span className="flex-1 min-w-0 text-[13px] truncate"><bdi>{entry.title}</bdi></span>
                 {moved && (
                   <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full shrink-0">
                     ↕ היה מקום {oldPos + 1}
@@ -1573,7 +1581,7 @@ function SortableEntry({
   };
   const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
-  const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
+  const icon = entryIcon(entry, 36);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? null;
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
@@ -1592,11 +1600,7 @@ function SortableEntry({
     return h > 0 ? `⏱ ${h}h${m > 0 ? ` ${m}m` : ""}` : `⏱ ${m} דקות`;
   })();
 
-  const notesSnippet = entry.description
-    ? entry.description.length > 80
-      ? entry.description.slice(0, 80) + "..."
-      : entry.description
-    : null;
+  const notesSnippet = entry.description || null;
 
   const [pulse, setPulse] = useState(!!hintHandle);
   useEffect(() => {
@@ -1619,8 +1623,7 @@ function SortableEntry({
         {hasCoords ? (
           <span
             aria-label={`תחנה ${pinIndex} במפה`}
-            className="relative w-[22px] h-[22px] rounded-full text-[11px] font-semibold text-white flex items-center justify-center tabular-nums"
-            style={{ background: pinColor }}
+            className="relative w-[22px] h-[22px] rounded-full bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center tabular-nums"
           >
             {pinIndex}
           </span>
@@ -1707,13 +1710,13 @@ function SortableEntry({
               {entry.location_name && (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="min-w-0 break-words">📍 <span dir="ltr">{entry.location_name}</span></span>
+                  <span className="min-w-0 break-words">📍 <bdi>{entry.location_name}</bdi></span>
                 </>
               )}
             </div>
 
             {notesSnippet && (
-              <div className="text-[11px] text-muted-foreground/90 italic mt-0.5 break-words">{notesSnippet}</div>
+              <div className="text-[11px] text-muted-foreground/90 italic mt-0.5 break-words line-clamp-2"><bdi>{notesSnippet}</bdi></div>
             )}
 
             {/* Actions */}
@@ -1782,7 +1785,8 @@ function EntryDetails({
   }
   const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
-  const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
+  const icon = entryIcon(entry, 56);
+  const smallIcon = entryIcon(entry, 18);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? entry.entry_type;
   const hasCoords = coordsOf(entry) != null;
   const mapHref = hasCoords && entry.latitude != null && entry.longitude != null
@@ -1818,7 +1822,7 @@ function EntryDetails({
           className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-1 rounded-full text-white"
           style={{ background: pinColor }}
         >
-          <span>{icon}</span>
+          <span>{smallIcon}</span>
           <span>{typeLabel}</span>
         </span>
         {editingTime ? (
@@ -2013,8 +2017,8 @@ function NavigateToForm({
           <div className="flex items-start gap-2 p-2 rounded-lg border border-border bg-muted/40">
             <span className="text-lg">📍</span>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate" dir="ltr">{place.name}</div>
-              <div className="text-[11px] text-muted-foreground truncate" dir="ltr">{place.address}</div>
+              <div className="text-sm font-medium truncate"><bdi>{place.name}</bdi></div>
+              <div className="text-[11px] text-muted-foreground truncate"><bdi>{place.address}</bdi></div>
             </div>
             <button
               type="button"
@@ -2117,7 +2121,7 @@ function MapStopCard({
   cardRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const coords = coordsOf(entry);
-  const icon = entry.icon_emoji || TYPE_ICON[entry.entry_type] || "•";
+  const icon = entryIcon(entry, 48);
   return (
     <div
       ref={cardRef}
@@ -2140,13 +2144,13 @@ function MapStopCard({
         )}
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-semibold truncate">
-            {pinIndex != null ? `${pinIndex} · ` : ""}{entry.title}
+            {pinIndex != null ? `${pinIndex} · ` : ""}<bdi>{entry.title}</bdi>
           </div>
           <div className="text-[12px] text-muted-foreground truncate">
             {[ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label, entry.time_of_day].filter(Boolean).join(" · ")}
           </div>
           {entry.location_name && (
-            <div className="text-[11px] text-muted-foreground truncate" dir="ltr">{entry.location_name}</div>
+            <div className="text-[11px] text-muted-foreground truncate"><bdi>{entry.location_name}</bdi></div>
           )}
         </div>
         <button
@@ -3122,7 +3126,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
           <div className="flex-1 min-w-0">
             <div className="text-[color:var(--accent-3)]">✅ {placeSelected.name}</div>
             {placeSelected.address && (
-              <div className="text-muted-foreground truncate" dir="ltr">{placeSelected.address}</div>
+              <div className="text-muted-foreground truncate"><bdi>{placeSelected.address}</bdi></div>
             )}
             {placeCoords && <div className="text-[10px] text-muted-foreground mt-0.5">✅ מיקום זוהה</div>}
           </div>
