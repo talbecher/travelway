@@ -133,6 +133,15 @@ async function run(request: Request): Promise<Response> {
   const userId: string = r.token_user_id;
   const tripId: string = r.resolved_trip_id;
 
+  // Legacy tokens all carry "read" (full trip read, unchanged). A token without "read" may only
+  // read the checklist section, and only if it holds "read_checklist".
+  const { data: tok, error: sErr } = await db.from("api_tokens").select("scopes").eq("token_hash", hashToken(raw)).maybeSingle();
+  if (sErr || !tok) throw new ApiFail(500, "server_error");
+  const scopes: string[] = tok.scopes ?? [];
+  if (!scopes.includes("read") && !(scopes.includes("read_checklist") && section === "checklist")) {
+    throw new ApiFail(403, "forbidden");
+  }
+
   const { data: trip, error: tErr } = await db.from("trips")
     .select("id,title,start_date,end_date,destination_country,num_travelers").eq("id", tripId).maybeSingle();
   if (tErr) throw new ApiFail(500, "server_error");

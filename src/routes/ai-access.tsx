@@ -39,6 +39,8 @@ function AiAccessPage() {
   const [tripId, setTripId] = useState<string>("");
   const [days, setDays] = useState<30 | 90 | 365>(90);
   const [canPropose, setCanPropose] = useState(false);
+  const [canProposeChecklist, setCanProposeChecklist] = useState(false);
+  const [readMode, setReadMode] = useState<"all" | "checklist">("all");
   const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
   const scope = tripId || activeTripId || "";
@@ -48,7 +50,13 @@ function AiAccessPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const r = await create({ data: { label, tripId: scope === "all" ? null : scope || null, days, canPropose: canPropose && scope !== "all" } });
+      const one = scope !== "all";
+      const r = await create({ data: {
+        label, tripId: one ? scope || null : null, days,
+        canPropose: canPropose && one && readMode === "all",
+        canProposeChecklist: canProposeChecklist && one,
+        readMode: one ? readMode : "all",
+      } });
       setShown(r.token);
       qc.invalidateQueries({ queryKey: ["api-tokens"] });
     } catch (err) {
