@@ -55,6 +55,52 @@ const spec = {
         },
       },
     },
+    "/api/public/checklist-proposals": {
+      post: {
+        operationId: "proposeChecklistChanges",
+        summary: "Save a proposal to add, update or mark checklist tasks done (nothing changes until the user approves in TravelWay)",
+        description: "Requires a trip-scoped token with the 'propose checklist changes' permission. Use task ids from getTripContext section=checklist for update/mark_done. Tasks not listed are never touched. Duplicate titles are flagged for the user. Return review_url to the user. Max 50 operations. Proposals expire after 72 hours.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object", additionalProperties: false, required: ["operations"],
+            properties: {
+              trip_id: { type: "string", format: "uuid" },
+              note: { type: "string", maxLength: 2000 },
+              operations: { type: "array", minItems: 1, maxItems: 50, items: {
+                type: "object", required: ["op"],
+                properties: {
+                  op: { type: "string", enum: ["add", "update", "mark_done"] },
+                  id: { type: "string", format: "uuid", description: "Required for update and mark_done." },
+                  title: { type: "string", maxLength: 200, description: "Required for add." },
+                  category: { type: "string", enum: ["documents", "money", "bookings", "transport", "health", "tech", "packing", "departure", "other"] },
+                  priority: { type: "string", enum: ["high", "normal", "low"] },
+                  due_date: { type: ["string", "null"], format: "date" },
+                  notes: { type: ["string", "null"], maxLength: 2000 },
+                  is_done: { type: "boolean", description: "update/mark_done only." },
+                },
+              } },
+            },
+          } } },
+        },
+        responses: {
+          "201": { description: "Proposal saved (pending).", content: { "application/json": { schema: {
+            type: "object",
+            properties: {
+              id: { type: "string" }, status: { type: "string" }, expires_at: { type: "string" },
+              operation_count: { type: "integer" }, review_url: { type: "string" }, message: { type: "string" },
+            },
+          } } } },
+          "400": err("Invalid body or operations"),
+          "401": err("Missing, invalid, revoked or expired token"),
+          "403": err("Token lacks the checklist proposal permission or trip scope"),
+          "404": err("Trip or task not available"),
+          "413": err("Body too large"),
+          "429": err("Too many pending proposals for this trip"),
+          "500": err("Unexpected error"),
+        },
+      },
+    },
     "/api/public/trip-context": {
       get: {
         operationId: "getTripContext",
@@ -74,7 +120,7 @@ const spec = {
           },
           "400": err("Invalid parameters, missing trip_id, or invalid cursor"),
           "401": err("Missing, invalid, revoked or expired token"),
-          "403": err("trip_id outside the token's trip scope"),
+          "403": err("trip_id outside the token's trip scope, or a checklist-only token asking for other data"),
           "404": err("Trip not available"),
           "500": err("Unexpected error"),
         },
