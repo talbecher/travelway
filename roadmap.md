@@ -202,5 +202,7 @@
 
 - [x] Chat checklist proposals (add/update/mark done, approve in app)
 - [x] Checklist hardening: live token-owner access at view/approve, structured task signatures, final-state duplicate checks bound to the preview, request_id idempotency, strict op validation
-- [ ] Chat document proposals: new private per-trip storage, in-app upload, approval page, hourly cleanup
+- [x] Documents stage A: private storage area + database rules (proposals, staged uploads, approved file history, approval/cleanup functions)
+- [ ] Documents stage B: chat endpoint, in-app upload + file checks, review/approval page, open-file button, token permission + action schema
+- [ ] Documents stage C: hourly cleanup route + scheduled job, runtime tests
 - [ ] Old document/photo files: any signed-in user can open them today (code-read finding). Separate task, not started.
