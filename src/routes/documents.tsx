@@ -22,6 +22,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { supabase } from "@/integrations/supabase/client";
+import { getDocumentFileUrl } from "@/lib/document-files.functions";
 import { hebDate, ils } from "@/lib/format";
 
 export const Route = createFileRoute("/documents")({
