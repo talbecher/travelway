@@ -63,8 +63,9 @@ const spec = {
         requestBody: {
           required: true,
           content: { "application/json": { schema: {
-            type: "object", additionalProperties: false, required: ["operations"],
+            type: "object", additionalProperties: false, required: ["request_id", "operations"],
             properties: {
+              request_id: { type: "string", format: "uuid", description: "Unique id you generate for this request. Retrying with the same request_id and payload returns the existing proposal instead of creating a duplicate." },
               trip_id: { type: "string", format: "uuid" },
               note: { type: "string", maxLength: 2000 },
               operations: { type: "array", minItems: 1, maxItems: 50, items: {
