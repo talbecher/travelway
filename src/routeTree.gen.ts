@@ -18,6 +18,7 @@ import { Route as ItineraryRouteImport } from './routes/itinerary'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
+import { Route as ChecklistProposalsIdRouteImport } from './routes/checklist-proposals.$id'
 import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
@@ -72,6 +73,11 @@ const RecommendationsRoute = RecommendationsRouteImport.update({
   path: '/recommendations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChecklistProposalsIdRoute = ChecklistProposalsIdRouteImport.update({
+  id: '/checklist-proposals/$id',
+  path: '/checklist-proposals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DayProposalsIdRoute = DayProposalsIdRouteImport.update({
   id: '/day-proposals/$id',
   path: '/day-proposals/$id',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/phrasebook': typeof PhrasebookRoute
   '/recommendations': typeof RecommendationsRoute
+  '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/phrasebook'
     | '/recommendations'
+    | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PhrasebookRoute: typeof PhrasebookRoute
   RecommendationsRoute: typeof RecommendationsRoute
+  ChecklistProposalsIdRoute: typeof ChecklistProposalsIdRoute
   DayProposalsIdRoute: typeof DayProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   ApiPublicChecklistProposalsRoute: typeof ApiPublicChecklistProposalsRoute
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       path: '/recommendations'
       fullPath: '/recommendations'
       preLoaderRoute: typeof RecommendationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checklist-proposals/$id': {
+      id: '/checklist-proposals/$id'
+      path: '/checklist-proposals/$id'
+      fullPath: '/checklist-proposals/$id'
+      preLoaderRoute: typeof ChecklistProposalsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/day-proposals/$id': {
@@ -396,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PhrasebookRoute: PhrasebookRoute,
   RecommendationsRoute: RecommendationsRoute,
+  ChecklistProposalsIdRoute: ChecklistProposalsIdRoute,
   DayProposalsIdRoute: DayProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   ApiPublicChecklistProposalsRoute: ApiPublicChecklistProposalsRoute,
