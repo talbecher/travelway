@@ -22,6 +22,13 @@
       "when": 1793632371923,
       "tag": "0002_checklist_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793633018325,
+      "tag": "0003_checklist_proposal_hardening",
+      "breakpoints": true
     }
   ]
 }

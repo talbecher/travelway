@@ -122,6 +122,8 @@ export type Database = {
           note: string | null
           op_count: number
           ops: Json
+          payload_hash: string | null
+          request_id: string | null
           result: Json | null
           status: string
           token_id: string | null
@@ -137,6 +139,8 @@ export type Database = {
           note?: string | null
           op_count: number
           ops: Json
+          payload_hash?: string | null
+          request_id?: string | null
           result?: Json | null
           status?: string
           token_id?: string | null
@@ -152,6 +156,8 @@ export type Database = {
           note?: string | null
           op_count?: number
           ops?: Json
+          payload_hash?: string | null
+          request_id?: string | null
           result?: Json | null
           status?: string
           token_id?: string | null
@@ -994,7 +1000,18 @@ export type Database = {
         Args: { _i: Database["public"]["Tables"]["checklist_items"]["Row"] }
         Returns: string
       }
+      _checklist_token_live: {
+        Args: { _token_id: string; _trip_id: string }
+        Returns: boolean
+      }
       _checklist_token_ok: { Args: { _token_id: string }; Returns: boolean }
+      _checklist_view_hash: {
+        Args: {
+          _a: Json
+          _p: Database["public"]["Tables"]["checklist_proposals"]["Row"]
+        }
+        Returns: string
+      }
       _day_replace_fingerprint: { Args: { _day_id: string }; Returns: string }
       _day_replace_rows: {
         Args: { _day_id: string }
@@ -1022,10 +1039,21 @@ export type Database = {
         Returns: Json
       }
       _proposal_token_ok: { Args: { _token_id: string }; Returns: boolean }
-      api_create_checklist_proposal: {
-        Args: { _hash: string; _note: string; _ops: Json; _trip_id: string }
-        Returns: Json
-      }
+      api_create_checklist_proposal:
+        | {
+            Args: { _hash: string; _note: string; _ops: Json; _trip_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _hash: string
+              _note: string
+              _ops: Json
+              _request_id: string
+              _trip_id: string
+            }
+            Returns: Json
+          }
       api_create_day_proposal: {
         Args: {
           _date: string
