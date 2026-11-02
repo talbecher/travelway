@@ -15,6 +15,13 @@
       "when": 1793532871109,
       "tag": "0001_proposal_quota_excludes_revoked",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793632371923,
+      "tag": "0002_checklist_proposals",
+      "breakpoints": true
     }
   ]
 }

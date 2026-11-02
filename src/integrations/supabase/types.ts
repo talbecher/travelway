@@ -111,6 +111,69 @@ export type Database = {
           },
         ]
       }
+      checklist_proposals: {
+        Row: {
+          base: Json
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          expires_at: string
+          id: string
+          note: string | null
+          op_count: number
+          ops: Json
+          result: Json | null
+          status: string
+          token_id: string | null
+          trip_id: string
+        }
+        Insert: {
+          base?: Json
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          expires_at?: string
+          id?: string
+          note?: string | null
+          op_count: number
+          ops: Json
+          result?: Json | null
+          status?: string
+          token_id?: string | null
+          trip_id: string
+        }
+        Update: {
+          base?: Json
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          expires_at?: string
+          id?: string
+          note?: string | null
+          op_count?: number
+          ops?: Json
+          result?: Json | null
+          status?: string
+          token_id?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_proposals_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "api_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_proposals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       day_entries: {
         Row: {
           created_at: string
@@ -921,6 +984,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _checklist_analyze: {
+        Args: { _p: Database["public"]["Tables"]["checklist_proposals"]["Row"] }
+        Returns: Json
+      }
+      _checklist_norm: { Args: { _t: string }; Returns: string }
+      _checklist_op_error: { Args: { _o: Json }; Returns: string }
+      _checklist_sig: {
+        Args: { _i: Database["public"]["Tables"]["checklist_items"]["Row"] }
+        Returns: string
+      }
+      _checklist_token_ok: { Args: { _token_id: string }; Returns: boolean }
       _day_replace_fingerprint: { Args: { _day_id: string }; Returns: string }
       _day_replace_rows: {
         Args: { _day_id: string }
@@ -948,6 +1022,10 @@ export type Database = {
         Returns: Json
       }
       _proposal_token_ok: { Args: { _token_id: string }; Returns: boolean }
+      api_create_checklist_proposal: {
+        Args: { _hash: string; _note: string; _ops: Json; _trip_id: string }
+        Returns: Json
+      }
       api_create_day_proposal: {
         Args: {
           _date: string
@@ -995,6 +1073,10 @@ export type Database = {
           token_user_id: string
         }[]
       }
+      apply_checklist_proposal: {
+        Args: { _accept_duplicates: number[]; _id: string; _seen_hash: string }
+        Returns: Json
+      }
       apply_day_proposal: {
         Args: { _id: string; _seen_fingerprint: string }
         Returns: Json
@@ -1005,6 +1087,7 @@ export type Database = {
       }
       can_access_trip: { Args: { _trip_id: string }; Returns: boolean }
       claim_share: { Args: { _token: string }; Returns: string }
+      get_checklist_proposal_view: { Args: { _id: string }; Returns: Json }
       get_day_proposal_view: { Args: { _id: string }; Returns: Json }
       import_my_map: {
         Args: {
@@ -1034,6 +1117,7 @@ export type Database = {
         Args: { _id: string; _seen_fingerprint: string }
         Returns: Json
       }
+      reject_checklist_proposal: { Args: { _id: string }; Returns: Json }
       reject_day_proposal: { Args: { _id: string }; Returns: Json }
       replace_day_entries: {
         Args: {
