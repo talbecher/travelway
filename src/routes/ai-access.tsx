@@ -39,6 +39,8 @@ function AiAccessPage() {
   const [tripId, setTripId] = useState<string>("");
   const [days, setDays] = useState<30 | 90 | 365>(90);
   const [canPropose, setCanPropose] = useState(false);
+  const [canProposeChecklist, setCanProposeChecklist] = useState(false);
+  const [readMode, setReadMode] = useState<"all" | "checklist">("all");
   const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
   const scope = tripId || activeTripId || "";
@@ -48,7 +50,13 @@ function AiAccessPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const r = await create({ data: { label, tripId: scope === "all" ? null : scope || null, days, canPropose: canPropose && scope !== "all" } });
+      const one = scope !== "all";
+      const r = await create({ data: {
+        label, tripId: one ? scope || null : null, days,
+        canPropose: canPropose && one && readMode === "all",
+        canProposeChecklist: canProposeChecklist && one,
+        readMode: one ? readMode : "all",
+      } });
       setShown(r.token);
       qc.invalidateQueries({ queryKey: ["api-tokens"] });
     } catch (err) {
@@ -113,14 +121,31 @@ function AiAccessPage() {
             <option value={365}>שנה</option>
           </select>
         </label>
+        {scope !== "all" && (
+          <label className="block text-sm">מה הצ׳אט יוכל לקרוא
+            <select value={readMode} onChange={(e) => setReadMode(e.target.value as "all" | "checklist")}
+              className="mt-1 h-11 w-full rounded-lg border border-input bg-background px-3">
+              <option value="all">את כל הטיול</option>
+              <option value="checklist">רק את הצ׳ק־ליסט</option>
+            </select>
+          </label>
+        )}
         <label className="flex min-h-11 items-start gap-2 text-sm">
-          <input type="checkbox" className="mt-1 h-5 w-5" checked={canPropose && scope !== "all"} disabled={scope === "all"}
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={canPropose && scope !== "all" && readMode === "all"} disabled={scope === "all" || readMode !== "all"}
             onChange={(e) => setCanPropose(e.target.checked)} />
           <span>
             מותר להגיש הצעות להחלפת יום
             <span className="block text-xs text-muted-foreground">
-              הצ׳אט יוכל רק לשמור הצעה. שום דבר לא משתנה עד שתאשרו אותה באפליקציה. זמין רק לטוקן של טיול אחד.
+              הצ׳אט יוכל רק לשמור הצעה. שום דבר לא משתנה עד שתאשרו אותה באפליקציה. זמין רק לטוקן של טיול אחד שקורא את כל הטיול.
             </span>
+          </span>
+        </label>
+        <label className="flex min-h-11 items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={canProposeChecklist && scope !== "all"} disabled={scope === "all"}
+            onChange={(e) => setCanProposeChecklist(e.target.checked)} />
+          <span>
+            מותר להציע שינויים בצ׳ק־ליסט
+            <span className="block text-xs text-muted-foreground">הוספה, עדכון וסימון כבוצע — רק אחרי אישור שלכם באפליקציה.</span>
           </span>
         </label>
         <button type="submit" disabled={busy || !scope}
@@ -137,11 +162,16 @@ function AiAccessPage() {
           {tokens.data?.map((t) => {
             const expired = new Date(t.expires_at) <= new Date();
             const state = t.revoked_at ? "בוטל" : expired ? "פג תוקף" : "פעיל";
+            const perms = [
+              t.scopes?.includes("read") ? "קריאה" : t.scopes?.includes("read_checklist") ? "קריאת צ׳ק־ליסט" : null,
+              t.scopes?.includes("propose_day") ? "הצעות יום" : null,
+              t.scopes?.includes("propose_checklist") ? "הצעות צ׳ק־ליסט" : null,
+            ].filter(Boolean).join(" + ");
             return (
               <li key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-3 text-sm">
                 <div className="min-w-0">
                   <p className="font-medium">{t.label} · <span className="text-muted-foreground">{state}</span>
-                    {t.scopes?.includes("propose_day") && <span className="text-muted-foreground"> · קריאה + הגשת הצעות</span>}</p>
+                    {perms && <span className="text-muted-foreground"> · {perms}</span>}</p>
                   <p className="text-xs text-muted-foreground">
                     {t.trip_id ? `טיול: ${t.trip_title ?? "לא זמין"}` : "כל הטיולים"} · נוצר {fmt(t.created_at)} · שימוש אחרון {fmt(t.last_used_at)} · תוקף עד {fmt(t.expires_at)}
                   </p>

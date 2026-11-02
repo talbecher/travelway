@@ -22,7 +22,12 @@ export const createApiToken = createServerFn({ method: "POST" })
       tripId: z.string().uuid().nullable(),
       days: z.union([z.literal(30), z.literal(90), z.literal(365)]),
       canPropose: z.boolean().default(false),
-    }).refine((v) => !v.canPropose || !!v.tripId, { message: "הגשת הצעות מחייבת טיול אחד" }).parse(d),
+      canProposeChecklist: z.boolean().default(false),
+      readMode: z.enum(["all", "checklist"]).default("all"),
+    })
+      .refine((v) => (!v.canPropose && !v.canProposeChecklist && v.readMode === "all") || !!v.tripId, { message: "הרשאה זו מחייבת טיול אחד" })
+      .refine((v) => !(v.canPropose && v.readMode === "checklist"), { message: "הצעות ליום מחייבות קריאת הטיול המלא" })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     if (data.tripId) {
@@ -39,7 +44,11 @@ export const createApiToken = createServerFn({ method: "POST" })
       token_hash: hashToken(raw),
       label: data.label,
       trip_id: data.tripId,
-      scopes: data.canPropose ? ["read", "propose_day"] : ["read"],
+      scopes: [
+        data.readMode === "all" ? "read" : "read_checklist",
+        ...(data.canPropose ? ["propose_day"] : []),
+        ...(data.canProposeChecklist ? ["propose_checklist"] : []),
+      ],
       expires_at: new Date(Date.now() + data.days * 86400000).toISOString(),
     });
     if (error) throw new Error("יצירת הטוקן נכשלה");
