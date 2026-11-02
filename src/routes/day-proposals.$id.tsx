@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock, MapPin, MessageSquare } from "lucide-react";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 export const Route = createFileRoute("/day-proposals/$id")({
   head: () => ({
@@ -90,28 +92,43 @@ function ProposalPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-4 p-4 pb-24" dir="rtl">
-      <header className="space-y-1">
-        <h1 className="text-xl font-bold">הצעה להחלפת יום {v.day_number}</h1>
-        <p className="text-sm text-muted-foreground">
-          {fmtDate(v.date)}{v.city_label ? ` · ${v.city_label}` : ""} · {STATE_LABEL[v.state]}
-        </p>
-        {v.note && <p className="whitespace-pre-wrap rounded-lg bg-muted p-3 text-sm">{v.note}</p>}
+  const v = q.data;
+  const changed = v.fingerprint !== v.current.fingerprint;
+  const actionable = v.state === "pending";
+  const stateTone = v.state === "pending" ? "bg-accent-soft text-accent-foreground" : v.state === "applied" ? "bg-cat-booked text-cat-booked-foreground" : "bg-muted text-muted-foreground";
+
+  return (
+    <div className="mx-auto max-w-xl space-y-5 p-4 pb-48" dir="rtl">
+      <header className="space-y-2">
+        <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${stateTone}`}>{STATE_LABEL[v.state]}</span>
+        <h1 className="text-2xl font-bold leading-tight">יום {v.day_number}{v.city_label ? ` · ${v.city_label}` : ""}</h1>
+        <p className="text-sm text-muted-foreground"><span dir="ltr">{fmtDate(v.date)}</span> · הצ׳אט הציע תכנון חדש ליום הזה. בדקו ואשרו.</p>
       </header>
 
       {v.state === "applied" && v.result && (
-        <p className="rounded-xl border border-border bg-card p-3 text-sm">
-          הוחל: {v.result.removed} הוסרו, {v.result.kept} נשמרו, {v.result.added} נוספו.{" "}
-          <Link to="/itinerary/$dayId" params={{ dayId: v.day_id }} className="underline">פתח את היום</Link>
-        </p>
+        <div className="flex items-start gap-3 rounded-2xl bg-cat-booked p-4 text-sm text-cat-booked-foreground">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
+          <p>הוחל: {v.result.removed} הוסרו, {v.result.kept} נשמרו, {v.result.added} נוספו.{" "}
+            <Link to="/itinerary/$dayId" params={{ dayId: v.day_id }} className="font-semibold underline">פתח את היום</Link></p>
+        </div>
       )}
 
       {actionable && (
-        <section className="space-y-1 rounded-xl border border-border bg-card p-3 text-sm">
-          <p>יוסרו {v.current.remove_count} תחנות · יישמרו {v.current.keep_count} · יתווספו {v.entry_count}</p>
+        <section className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Stat n={v.current.remove_count} label="יוסרו" cls="bg-accent-soft text-accent-foreground" />
+            <Stat n={v.current.keep_count} label="יישמרו" cls="bg-muted text-foreground" />
+            <Stat n={v.entry_count} label="יתווספו" cls="bg-cat-booked text-cat-booked-foreground" />
+          </div>
           {v.current.protected.length > 0 && (
-            <ul className="text-xs text-muted-foreground">
+            <ul className="space-y-1 rounded-2xl border border-border bg-card p-3 text-sm">
               {v.current.protected.map((p, i) => (
-                <li key={i}>נשמרת: {p.time_of_day ? `${p.time_of_day} · ` : ""}{p.title} ({p.reason === "hotel" ? "מלון" : "הוזמן"})</li>
+                <li key={i} className="flex items-center gap-2">
+                  <Lock className="size-4 shrink-0 text-muted-foreground" />
+                  <span dir="auto" className="min-w-0 flex-1 truncate text-start">{p.title}</span>
+                  {p.time_of_day && <span dir="ltr" className="text-xs text-muted-foreground">{p.time_of_day}</span>}
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{p.reason === "hotel" ? "מלון" : "הוזמן"}</span>
+                </li>
               ))}
             </ul>
           )}
@@ -119,52 +136,103 @@ function ProposalPage() {
       )}
 
       {actionable && changed && (
-        <div className="space-y-2 rounded-xl border border-destructive bg-card p-3 text-sm" role="alert">
-          <p>התכנון של היום השתנה מאז שההצעה נשמרה. ההשוואה כאן מציגה את המצב הנוכחי.</p>
-          <button type="button" disabled={busy} className="h-11 w-full rounded-lg border border-border font-semibold disabled:opacity-60"
+        <div className="space-y-3 rounded-2xl border border-destructive bg-card p-4 text-sm" role="alert">
+          <p className="flex items-start gap-2"><AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />התכנון של היום השתנה מאז שההצעה נשמרה. ההשוואה כאן מציגה את המצב הנוכחי.</p>
+          <button type="button" disabled={busy} className="h-11 w-full rounded-xl border border-border font-semibold disabled:opacity-60"
             onClick={() => call("reconfirm_day_proposal", { _id: v.id, _seen_fingerprint: v.current.fingerprint })}>
             {busy ? "בודק…" : "בדקתי — עדכן את ההשוואה לפי המצב הנוכחי"}
           </button>
         </div>
       )}
 
-      <section className="space-y-2">
-        <h2 className="font-semibold">התכנון המוצע ({v.entry_count})</h2>
-        <RowList rows={v.entries} />
-      </section>
-      <section className="space-y-2">
-        <h2 className="font-semibold">התכנון הנוכחי ({v.current_rows.length})</h2>
-        {v.current_rows.length ? <RowList rows={v.current_rows} /> : <p className="text-sm text-muted-foreground">היום ריק.</p>}
+      {v.note && <NoteBox text={v.note} />}
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">התכנון המוצע <span className="text-muted-foreground">({v.entry_count})</span></h2>
+        <Timeline rows={v.entries} />
       </section>
 
+      <details className="group rounded-2xl border border-border bg-card">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          התכנון הנוכחי ({v.current_rows.length})
+          <ChevronDown className="size-5 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4">
+          {v.current_rows.length ? <Timeline rows={v.current_rows} /> : <p className="text-sm text-muted-foreground">היום ריק.</p>}
+        </div>
+      </details>
+
       {actionable && !changed && (
-        <div className="sticky bottom-0 space-y-2 border-t border-border bg-background py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-          {confirming && <p className="text-sm">לפני ההחלפה יישמר גיבוי שאפשר לשחזר דרך ׳גרסאות היום׳.</p>}
-          <button type="button" disabled={busy} className="h-11 w-full rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60"
-            onClick={() => (confirming ? call("apply_day_proposal", { _id: v.id, _seen_fingerprint: v.fingerprint }) : setConfirming(true))}>
-            {busy ? "מחליף…" : confirming ? "אשר והחלף את התכנון" : "בדיקת החלפת היום"}
-          </button>
-          <button type="button" disabled={busy} className="h-11 w-full rounded-lg border border-border disabled:opacity-60"
-            onClick={() => (confirming ? setConfirming(false) : call("reject_day_proposal", { _id: v.id }))}>
-            {confirming ? "ביטול" : "דחה את ההצעה"}
-          </button>
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-xl space-y-1 p-3">
+            {confirming && <p className="pb-1 text-sm">לפני ההחלפה יישמר גיבוי שאפשר לשחזר דרך ׳גרסאות היום׳.</p>}
+            <button type="button" disabled={busy} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-60"
+              onClick={() => (confirming ? call("apply_day_proposal", { _id: v.id, _seen_fingerprint: v.fingerprint }) : setConfirming(true))}>
+              {busy ? "מחליף…" : confirming ? "אשר והחלף את התכנון" : "בדיקת החלפת היום"}
+            </button>
+            <button type="button" disabled={busy} className="h-11 w-full text-sm font-medium text-muted-foreground disabled:opacity-60"
+              onClick={() => (confirming ? setConfirming(false) : call("reject_day_proposal", { _id: v.id }))}>
+              {confirming ? "ביטול" : "דחה את ההצעה"}
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function RowList({ rows }: { rows: Row[] }) {
+function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
   return (
-    <ul className="space-y-1">
+    <div className={`rounded-2xl p-3 text-center ${cls}`}>
+      <div className="text-2xl font-bold leading-none">{n}</div>
+      <div className="mt-1 text-xs font-medium">{label}</div>
+    </div>
+  );
+}
+
+function NoteBox({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-2xl bg-muted p-4 text-sm">
+      <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><MessageSquare className="size-4" />הערה מהצ׳אט</p>
+      <p dir="auto" className={`whitespace-pre-wrap text-start leading-relaxed ${open ? "" : "line-clamp-3"}`}>{text}</p>
+      <button type="button" className="mt-1 min-h-11 text-sm font-semibold text-primary" onClick={() => setOpen((o) => !o)}>{open ? "הצג פחות" : "הצג עוד"}</button>
+    </section>
+  );
+}
+
+function Timeline({ rows }: { rows: Row[] }) {
+  return (
+    <ol className="relative space-y-3">
       {rows.map((r, i) => (
-        <li key={i} className="rounded-lg border border-border bg-card p-2 text-sm">
-          <span className="font-medium">{r.time_of_day ? `${r.time_of_day} · ` : ""}{r.title}</span>
-          {r.is_protected && <span className="text-xs text-muted-foreground"> · נשמרת</span>}
-          {r.location_name && <span className="block text-xs text-muted-foreground">{r.location_name}</span>}
-          {r.description && <span className="block whitespace-pre-wrap text-xs text-muted-foreground">{r.description}</span>}
+        <li key={i} className="flex gap-3">
+          <div className="flex w-12 shrink-0 flex-col items-center gap-1">
+            <span dir="ltr" className="text-sm font-semibold tabular-nums">{r.time_of_day ?? "—"}</span>
+            <CategoryIcon category={r.entry_type ?? "other"} size={30} />
+            {i < rows.length - 1 && <span className="w-px flex-1 bg-border" />}
+          </div>
+          <RowCard r={r} />
         </li>
       ))}
-    </ul>
+    </ol>
+  );
+}
+
+function RowCard({ r }: { r: Row }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-3">
+      <div className="flex items-start gap-2">
+        <p dir="auto" className="min-w-0 flex-1 text-start font-semibold leading-snug">{r.title}</p>
+        {r.is_protected && <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs"><Lock className="size-3" />נשמרת</span>}
+      </div>
+      {r.location_name && <p dir="auto" className="mt-1 flex items-center gap-1 text-start text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" /><span className="truncate">{r.location_name}</span></p>}
+      {r.description && (
+        <>
+          <p dir="auto" className={`mt-2 whitespace-pre-wrap text-start text-sm text-muted-foreground ${open ? "" : "line-clamp-2"}`}>{r.description}</p>
+          {r.description.length > 90 && <button type="button" className="min-h-9 text-xs font-semibold text-primary" onClick={() => setOpen((o) => !o)}>{open ? "פחות" : "עוד"}</button>}
+        </>
+      )}
+    </div>
   );
 }
