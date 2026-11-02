@@ -195,4 +195,4 @@
 
 - [x] Tokens, radii, category colors; safe-area; 16px inputs; dvh; :active; reduced motion; theme-color
 
-- [ ] סבב 1ב: CategoryIcon, טקסט דו-כיווני, צבעים קשיחים (יום/תקציב/מסמכים)
+- [x] סבב 1ב: CategoryIcon, טקסט דו-כיווני, צבעים קשיחים (יום/תקציב/מסמכים)

@@ -15,7 +15,7 @@ import {
   conversionLabel,
   NO_RATE_MESSAGE,
 } from "@/lib/currency";
-import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import { EmptyState } from "@/components/EmptyState";
