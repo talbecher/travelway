@@ -47,6 +47,9 @@ function Page() {
     },
   });
   const [accept, setAccept] = useState<Set<number>>(new Set());
+  // Manual "add anyway" overrides belong to one displayed state; any new view (new hash) clears them.
+  const [acceptFor, setAcceptFor] = useState<string | null>(null);
+  if (q.data && q.data.seen_hash !== acceptFor) { setAcceptFor(q.data.seen_hash); if (accept.size) setAccept(new Set()); }
   const [busy, setBusy] = useState(false);
 
   async function call(fn: "apply_checklist_proposal" | "reject_checklist_proposal", args: Record<string, unknown>) {

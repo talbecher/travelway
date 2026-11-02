@@ -28,6 +28,7 @@ const opSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("mark_done"), id: z.string().uuid(), is_done: z.boolean().optional() }).strict(),
 ]);
 const bodySchema = z.object({
+  request_id: z.string().uuid(),
   trip_id: z.string().uuid().optional(),
   note: z.string().max(2000).optional(),
   operations: z.array(opSchema).min(1).max(MAX_CHECKLIST_OPS),
@@ -53,7 +54,7 @@ const STATUS_MAP: Record<string, [number, string]> = {
   invalid: [401, "unauthorized"], revoked: [401, "unauthorized"], expired: [401, "unauthorized"],
   missing_trip: [403, "forbidden"], scope_mismatch: [403, "forbidden"], missing_scope: [403, "forbidden"],
   no_access: [404, "not_found"], item_not_found: [404, "item_not_found"],
-  invalid_ops: [400, "invalid_operations"], quota_exceeded: [429, "too_many_pending_proposals"],
+  invalid_ops: [400, "invalid_operations"], idempotency_conflict: [409, "request_id_reused_with_different_payload"], quota_exceeded: [429, "too_many_pending_proposals"],
 };
 
 export async function handleCreateChecklistProposal(request: Request): Promise<Response> {
@@ -78,19 +79,20 @@ export async function handleCreateChecklistProposal(request: Request): Promise<R
       _trip_id: (b.data.trip_id ?? null) as never,
       _ops: ops as never,
       _note: (b.data.note ?? null) as never,
+      _request_id: b.data.request_id,
     });
     if (error) {
       console.error("[checklist-proposals] server_error");
       return json(500, { error: "server_error" });
     }
-    const r = data as { status: string; id?: string; expires_at?: string; reason?: string };
+    const r = data as { status: string; id?: string; expires_at?: string; reason?: string; replayed?: boolean };
     if (r.status !== "ok") {
       const [s, code] = STATUS_MAP[r.status] ?? [500, "server_error"];
       return json(s, { error: code, ...(r.reason ? { reason: r.reason } : {}) });
     }
     const origin = new URL(request.url).origin;
-    return json(201, {
-      id: r.id, status: "pending", expires_at: r.expires_at, operation_count: ops.length,
+    return json(r.replayed ? 200 : 201, {
+      id: r.id, status: "pending", replayed: !!r.replayed, expires_at: r.expires_at, operation_count: ops.length,
       review_url: `${origin}/checklist-proposals/${r.id}`,
       message: "Proposal saved. Nothing changed yet — the user must open review_url and approve it in TravelWay.",
     });
