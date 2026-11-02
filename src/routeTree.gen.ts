@@ -28,6 +28,7 @@ import { Route as ApiPublicDayProposalsRouteImport } from './routes/api/public/d
 import { Route as ApiPublicDocumentProposalsRouteImport } from './routes/api/public/document-proposals'
 import { Route as ApiPublicOpenapiDotjsonRouteImport } from './routes/api/public/openapi[.]json'
 import { Route as ApiPublicTripContextRouteImport } from './routes/api/public/trip-context'
+import { Route as ApiPublicHooksDocumentCleanupRouteImport } from './routes/api/public/hooks/document-cleanup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -126,6 +127,12 @@ const ApiPublicTripContextRoute = ApiPublicTripContextRouteImport.update({
   path: '/api/public/trip-context',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksDocumentCleanupRoute =
+  ApiPublicHooksDocumentCleanupRouteImport.update({
+    id: '/api/public/hooks/document-cleanup',
+    path: '/api/public/hooks/document-cleanup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/api/public/document-proposals': typeof ApiPublicDocumentProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
+  '/api/public/hooks/document-cleanup': typeof ApiPublicHooksDocumentCleanupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -167,6 +175,7 @@ export interface FileRoutesByTo {
   '/api/public/document-proposals': typeof ApiPublicDocumentProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
+  '/api/public/hooks/document-cleanup': typeof ApiPublicHooksDocumentCleanupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -189,6 +198,7 @@ export interface FileRoutesById {
   '/api/public/document-proposals': typeof ApiPublicDocumentProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
+  '/api/public/hooks/document-cleanup': typeof ApiPublicHooksDocumentCleanupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/api/public/document-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
+    | '/api/public/hooks/document-cleanup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/api/public/document-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
+    | '/api/public/hooks/document-cleanup'
   id:
     | '__root__'
     | '/'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
     | '/api/public/document-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
+    | '/api/public/hooks/document-cleanup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -273,6 +286,7 @@ export interface RootRouteChildren {
   ApiPublicDocumentProposalsRoute: typeof ApiPublicDocumentProposalsRoute
   ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
   ApiPublicTripContextRoute: typeof ApiPublicTripContextRoute
+  ApiPublicHooksDocumentCleanupRoute: typeof ApiPublicHooksDocumentCleanupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -410,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTripContextRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/document-cleanup': {
+      id: '/api/public/hooks/document-cleanup'
+      path: '/api/public/hooks/document-cleanup'
+      fullPath: '/api/public/hooks/document-cleanup'
+      preLoaderRoute: typeof ApiPublicHooksDocumentCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -445,6 +466,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDocumentProposalsRoute: ApiPublicDocumentProposalsRoute,
   ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
   ApiPublicTripContextRoute: ApiPublicTripContextRoute,
+  ApiPublicHooksDocumentCleanupRoute: ApiPublicHooksDocumentCleanupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
