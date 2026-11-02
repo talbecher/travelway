@@ -122,6 +122,8 @@ export type Database = {
           note: string | null
           op_count: number
           ops: Json
+          payload_hash: string | null
+          request_id: string | null
           result: Json | null
           status: string
           token_id: string | null
@@ -137,6 +139,8 @@ export type Database = {
           note?: string | null
           op_count: number
           ops: Json
+          payload_hash?: string | null
+          request_id?: string | null
           result?: Json | null
           status?: string
           token_id?: string | null
@@ -152,6 +156,8 @@ export type Database = {
           note?: string | null
           op_count?: number
           ops?: Json
+          payload_hash?: string | null
+          request_id?: string | null
           result?: Json | null
           status?: string
           token_id?: string | null
@@ -425,6 +431,218 @@ export type Database = {
           },
         ]
       }
+      document_files: {
+        Row: {
+          created_at: string
+          document_id: string | null
+          id: string
+          mime: string
+          path: string
+          proposal_id: string | null
+          size: number
+          status: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          mime: string
+          path: string
+          proposal_id?: string | null
+          size: number
+          status: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          mime?: string
+          path?: string
+          proposal_id?: string | null
+          size?: number
+          status?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_files_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_files_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "document_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_files_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_proposals: {
+        Row: {
+          base: string | null
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          expires_at: string
+          fields: Json
+          id: string
+          note: string | null
+          payload_hash: string
+          request_id: string
+          result: Json | null
+          status: string
+          target_document_id: string | null
+          token_id: string | null
+          trip_id: string
+          upload_id: string | null
+          wants_file: boolean
+        }
+        Insert: {
+          base?: string | null
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          expires_at?: string
+          fields: Json
+          id?: string
+          note?: string | null
+          payload_hash: string
+          request_id: string
+          result?: Json | null
+          status?: string
+          target_document_id?: string | null
+          token_id?: string | null
+          trip_id: string
+          upload_id?: string | null
+          wants_file?: boolean
+        }
+        Update: {
+          base?: string | null
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          expires_at?: string
+          fields?: Json
+          id?: string
+          note?: string | null
+          payload_hash?: string
+          request_id?: string
+          result?: Json | null
+          status?: string
+          target_document_id?: string | null
+          token_id?: string | null
+          trip_id?: string
+          upload_id?: string | null
+          wants_file?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_proposals_target_document_id_fkey"
+            columns: ["target_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_proposals_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "api_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_proposals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_uploads: {
+        Row: {
+          cleaned_at: string | null
+          created_at: string
+          declared_mime: string
+          declared_size: number
+          expires_at: string
+          file_name: string | null
+          final_path: string | null
+          id: string
+          mime: string | null
+          proposal_id: string
+          sha256: string | null
+          size: number | null
+          staged_path: string
+          status: string
+          trip_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          cleaned_at?: string | null
+          created_at?: string
+          declared_mime: string
+          declared_size: number
+          expires_at: string
+          file_name?: string | null
+          final_path?: string | null
+          id?: string
+          mime?: string | null
+          proposal_id: string
+          sha256?: string | null
+          size?: number | null
+          staged_path: string
+          status?: string
+          trip_id: string
+          uploaded_by: string
+        }
+        Update: {
+          cleaned_at?: string | null
+          created_at?: string
+          declared_mime?: string
+          declared_size?: number
+          expires_at?: string
+          file_name?: string | null
+          final_path?: string | null
+          id?: string
+          mime?: string | null
+          proposal_id?: string
+          sha256?: string | null
+          size?: number | null
+          staged_path?: string
+          status?: string
+          trip_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_uploads_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "document_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_uploads_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           amount_ils: number | null
@@ -433,6 +651,9 @@ export type Database = {
           created_at: string
           display_order: number
           external_url: string | null
+          file_mime: string | null
+          file_path: string | null
+          file_size: number | null
           file_url: string | null
           id: string
           is_paid: boolean
@@ -450,6 +671,9 @@ export type Database = {
           created_at?: string
           display_order?: number
           external_url?: string | null
+          file_mime?: string | null
+          file_path?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
           is_paid?: boolean
@@ -467,6 +691,9 @@ export type Database = {
           created_at?: string
           display_order?: number
           external_url?: string | null
+          file_mime?: string | null
+          file_path?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
           is_paid?: boolean
@@ -994,7 +1221,18 @@ export type Database = {
         Args: { _i: Database["public"]["Tables"]["checklist_items"]["Row"] }
         Returns: string
       }
+      _checklist_token_live: {
+        Args: { _token_id: string; _trip_id: string }
+        Returns: boolean
+      }
       _checklist_token_ok: { Args: { _token_id: string }; Returns: boolean }
+      _checklist_view_hash: {
+        Args: {
+          _a: Json
+          _p: Database["public"]["Tables"]["checklist_proposals"]["Row"]
+        }
+        Returns: string
+      }
       _day_replace_fingerprint: { Args: { _day_id: string }; Returns: string }
       _day_replace_rows: {
         Args: { _day_id: string }
@@ -1013,6 +1251,26 @@ export type Database = {
           title: string
         }[]
       }
+      _doc_apply_check: {
+        Args: {
+          _p: Database["public"]["Tables"]["document_proposals"]["Row"]
+          _seen_hash: string
+        }
+        Returns: string
+      }
+      _doc_fields_error: {
+        Args: { _f: Json; _is_add: boolean }
+        Returns: string
+      }
+      _doc_fp: { Args: { _doc_id: string }; Returns: string }
+      _doc_token_live: {
+        Args: { _token_id: string; _trip_id: string }
+        Returns: boolean
+      }
+      _doc_view_hash: {
+        Args: { _p: Database["public"]["Tables"]["document_proposals"]["Row"] }
+        Returns: string
+      }
       _proposal_claim: {
         Args: { _id: string; _seen_fingerprint: string }
         Returns: Json
@@ -1022,10 +1280,21 @@ export type Database = {
         Returns: Json
       }
       _proposal_token_ok: { Args: { _token_id: string }; Returns: boolean }
-      api_create_checklist_proposal: {
-        Args: { _hash: string; _note: string; _ops: Json; _trip_id: string }
-        Returns: Json
-      }
+      api_create_checklist_proposal:
+        | {
+            Args: { _hash: string; _note: string; _ops: Json; _trip_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _hash: string
+              _note: string
+              _ops: Json
+              _request_id: string
+              _trip_id: string
+            }
+            Returns: Json
+          }
       api_create_day_proposal: {
         Args: {
           _date: string
@@ -1033,6 +1302,18 @@ export type Database = {
           _hash: string
           _note: string
           _trip_id: string
+        }
+        Returns: Json
+      }
+      api_create_document_proposal: {
+        Args: {
+          _fields: Json
+          _hash: string
+          _note: string
+          _request_id: string
+          _target: string
+          _trip_id: string
+          _wants_file: boolean
         }
         Returns: Json
       }
@@ -1086,9 +1367,22 @@ export type Database = {
         Returns: string
       }
       can_access_trip: { Args: { _trip_id: string }; Returns: boolean }
+      claim_document_apply: {
+        Args: { _id: string; _seen_hash: string }
+        Returns: Json
+      }
       claim_share: { Args: { _token: string }; Returns: string }
+      document_proposal_staged_path: {
+        Args: { _proposal_id: string }
+        Returns: string
+      }
+      finalize_document_proposal: {
+        Args: { _id: string; _seen_hash: string }
+        Returns: Json
+      }
       get_checklist_proposal_view: { Args: { _id: string }; Returns: Json }
       get_day_proposal_view: { Args: { _id: string }; Returns: Json }
+      get_document_proposal_view: { Args: { _id: string }; Returns: Json }
       import_my_map: {
         Args: {
           _city: string
@@ -1119,6 +1413,7 @@ export type Database = {
       }
       reject_checklist_proposal: { Args: { _id: string }; Returns: Json }
       reject_day_proposal: { Args: { _id: string }; Returns: Json }
+      reject_document_proposal: { Args: { _id: string }; Returns: Json }
       replace_day_entries: {
         Args: {
           _day_id: string
@@ -1129,10 +1424,42 @@ export type Database = {
         }
         Returns: Json
       }
+      reserve_document_upload: {
+        Args: { _mime: string; _proposal_id: string; _size: number }
+        Returns: Json
+      }
       restore_day_snapshot: {
         Args: { _pre_restore_name: string; _snapshot_id: string }
         Returns: number
       }
+      server_document_cleanup_candidates: {
+        Args: { _limit: number }
+        Returns: {
+          paths: string[]
+          upload_id: string
+        }[]
+      }
+      server_document_cleanup_done: {
+        Args: { _ids: string[] }
+        Returns: number
+      }
+      server_mark_upload_copied: { Args: { _upload_id: string }; Returns: Json }
+      server_mark_upload_staged: {
+        Args: {
+          _mime: string
+          _name: string
+          _sha: string
+          _size: number
+          _upload_id: string
+          _user: string
+        }
+        Returns: Json
+      }
+      server_upload_for_user: {
+        Args: { _upload_id: string; _user: string }
+        Returns: Json
+      }
+      server_upload_paths: { Args: { _upload_id: string }; Returns: Json }
     }
     Enums: {
       entry_type:

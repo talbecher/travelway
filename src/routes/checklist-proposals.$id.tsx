@@ -47,6 +47,9 @@ function Page() {
     },
   });
   const [accept, setAccept] = useState<Set<number>>(new Set());
+  // Manual "add anyway" overrides belong to one displayed state; any new view (new hash) clears them.
+  const [acceptFor, setAcceptFor] = useState<string | null>(null);
+  if (q.data && q.data.seen_hash !== acceptFor) { setAcceptFor(q.data.seen_hash); if (accept.size) setAccept(new Set()); }
   const [busy, setBusy] = useState(false);
 
   async function call(fn: "apply_checklist_proposal" | "reject_checklist_proposal", args: Record<string, unknown>) {
@@ -145,7 +148,7 @@ function Page() {
                 <span className="flex-1">{o.duplicate === "existing" ? "משימה בשם הזה כבר קיימת" : "מופיעה פעמיים בהצעה"}</span>
                 <input type="checkbox" className="h-5 w-5" checked={accept.has(o.index)}
                   onChange={(e) => setAccept((s) => { const n = new Set(s); e.target.checked ? n.add(o.index) : n.delete(o.index); return n; })} />
-                הוסף בכל זאת
+                אשר בכל זאת
               </label>
             )}
           </li>
