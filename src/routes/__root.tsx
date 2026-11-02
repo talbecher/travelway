@@ -149,6 +149,11 @@ function AppShell() {
     select: (s) => (s.location.search as Record<string, unknown>).edit === true,
   });
   const isOnboarding = pathname === "/onboarding";
+  const { user } = useAuth();
+  const { data: tripsForSwitcher = [] } = useTripsList(user?.id);
+  // Single source: the trip switcher (with sign-out inside) shows iff this is true;
+  // otherwise the header keeps its sign-out button, so sign-out is never hidden.
+  const showTripSwitcher = !isOnboarding && tripsForSwitcher.length >= 1;
   // Create mode only (edit !== true): hide bottom nav. Edit mode shell unchanged.
   const isCreating = isOnboarding && !isEditFlag;
   const [searchOpen, setSearchOpen] = useState(false);
@@ -157,7 +162,7 @@ function AppShell() {
       <header className="sticky top-0 z-30 pt-[env(safe-area-inset-top)] border-b border-border bg-background backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 92%, transparent)" }}>
         <div className="mx-auto flex min-h-[52px] max-w-md items-center justify-between gap-1 px-3 py-1">
           <div className="flex min-w-0 items-center gap-1">
-            {!isOnboarding && <SwitchTripButton />}
+            {showTripSwitcher && <SwitchTripButton />}
             {!isOnboarding && (
               <button
                 onClick={() => setSearchOpen(true)}
@@ -171,7 +176,7 @@ function AppShell() {
           <div className="flex min-w-0 items-center gap-1">
             {!isOnboarding && <ConverterPill />}
             {!isOnboarding && <TripSettingsLink />}
-            <SignOutButton />
+            {!showTripSwitcher && <SignOutButton />}
           </div>
         </div>
       </header>
@@ -224,14 +229,18 @@ function AuthListener() {
   return null;
 }
 
-function SignOutButton() {
+function useSignOutHandler() {
   const qc = useQueryClient();
-  async function handleClick() {
+  return async function handleClick() {
     await qc.cancelQueries();
     qc.clear();
     await signOut();
     window.location.href = "/";
-  }
+  };
+}
+
+function SignOutButton() {
+  const handleClick = useSignOutHandler();
   return (
     <button
       onClick={handleClick}
@@ -271,6 +280,7 @@ function SwitchTripButton() {
   const { data: trips = [] } = useTripsList(user?.id);
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const handleSignOut = useSignOutHandler();
   if (trips.length < 1) return null;
   const activeId = getActiveTripId();
   return (
@@ -304,6 +314,16 @@ function SwitchTripButton() {
         >
           גישת AI לקריאת הטיול
         </Link>
+        <div className="mt-3 border-t border-border pt-2">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-sm font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <LogOut size={18} />
+            <span>התנתקות</span>
+          </button>
+        </div>
       </BottomSheet>
     </>
   );
