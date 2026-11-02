@@ -22,6 +22,7 @@ import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
+import { Route as ApiPublicChecklistProposalsRouteImport } from './routes/api/public/checklist-proposals'
 import { Route as ApiPublicDayProposalsRouteImport } from './routes/api/public/day-proposals'
 import { Route as ApiPublicOpenapiDotjsonRouteImport } from './routes/api/public/openapi[.]json'
 import { Route as ApiPublicTripContextRouteImport } from './routes/api/public/trip-context'
@@ -91,6 +92,12 @@ const JoinTokenRoute = JoinTokenRouteImport.update({
   path: '/join/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicChecklistProposalsRoute =
+  ApiPublicChecklistProposalsRouteImport.update({
+    id: '/api/public/checklist-proposals',
+    path: '/api/public/checklist-proposals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicDayProposalsRoute = ApiPublicDayProposalsRouteImport.update({
   id: '/api/public/day-proposals',
   path: '/api/public/day-proposals',
@@ -121,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/checklist-proposals': typeof ApiPublicChecklistProposalsRoute
   '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
@@ -138,6 +146,7 @@ export interface FileRoutesByTo {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
+  '/api/public/checklist-proposals': typeof ApiPublicChecklistProposalsRoute
   '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
@@ -157,6 +166,7 @@ export interface FileRoutesById {
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
+  '/api/public/checklist-proposals': typeof ApiPublicChecklistProposalsRoute
   '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/checklist-proposals'
     | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
+    | '/api/public/checklist-proposals'
     | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
@@ -212,6 +224,7 @@ export interface FileRouteTypes {
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
+    | '/api/public/checklist-proposals'
     | '/api/public/day-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
@@ -229,6 +242,7 @@ export interface RootRouteChildren {
   RecommendationsRoute: typeof RecommendationsRoute
   DayProposalsIdRoute: typeof DayProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
+  ApiPublicChecklistProposalsRoute: typeof ApiPublicChecklistProposalsRoute
   ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
   ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
   ApiPublicTripContextRoute: typeof ApiPublicTripContextRoute
@@ -327,6 +341,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/checklist-proposals': {
+      id: '/api/public/checklist-proposals'
+      path: '/api/public/checklist-proposals'
+      fullPath: '/api/public/checklist-proposals'
+      preLoaderRoute: typeof ApiPublicChecklistProposalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/day-proposals': {
       id: '/api/public/day-proposals'
       path: '/api/public/day-proposals'
@@ -377,6 +398,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecommendationsRoute: RecommendationsRoute,
   DayProposalsIdRoute: DayProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
+  ApiPublicChecklistProposalsRoute: ApiPublicChecklistProposalsRoute,
   ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
   ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
   ApiPublicTripContextRoute: ApiPublicTripContextRoute,
