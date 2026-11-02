@@ -40,6 +40,7 @@ function AiAccessPage() {
   const [days, setDays] = useState<30 | 90 | 365>(90);
   const [canPropose, setCanPropose] = useState(false);
   const [canProposeChecklist, setCanProposeChecklist] = useState(false);
+  const [canUploadDocuments, setCanUploadDocuments] = useState(false);
   const [readMode, setReadMode] = useState<"all" | "checklist">("all");
   const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
@@ -55,6 +56,7 @@ function AiAccessPage() {
         label, tripId: one ? scope || null : null, days,
         canPropose: canPropose && one && readMode === "all",
         canProposeChecklist: canProposeChecklist && one,
+        canUploadDocuments: canUploadDocuments && one,
         readMode: one ? readMode : "all",
       } });
       setShown(r.token);
@@ -148,6 +150,14 @@ function AiAccessPage() {
             <span className="block text-xs text-muted-foreground">הוספה, עדכון וסימון כבוצע — רק אחרי אישור שלכם באפליקציה.</span>
           </span>
         </label>
+        <label className="flex min-h-11 items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={canUploadDocuments && scope !== "all"} disabled={scope === "all"}
+            onChange={(e) => setCanUploadDocuments(e.target.checked)} />
+          <span>
+            מותר להציע מסמכים
+            <span className="block text-xs text-muted-foreground">הוספה או עדכון של מסמך — רק אחרי אישור שלכם באפליקציה. את הקובץ עצמו מצרפים באפליקציה, לא בצ׳אט.</span>
+          </span>
+        </label>
         <button type="submit" disabled={busy || !scope}
           className="h-11 w-full rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
           {busy ? "יוצר…" : "צור טוקן"}
@@ -166,6 +176,7 @@ function AiAccessPage() {
               t.scopes?.includes("read") ? "קריאה" : t.scopes?.includes("read_checklist") ? "קריאת צ׳ק־ליסט" : null,
               t.scopes?.includes("propose_day") ? "הצעות יום" : null,
               t.scopes?.includes("propose_checklist") ? "הצעות צ׳ק־ליסט" : null,
+              t.scopes?.includes("upload_documents") ? "הצעות מסמכים" : null,
             ].filter(Boolean).join(" + ");
             return (
               <li key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-3 text-sm">

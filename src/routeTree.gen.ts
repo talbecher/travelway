@@ -20,6 +20,7 @@ import { Route as PhrasebookRouteImport } from './routes/phrasebook'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ChecklistProposalsIdRouteImport } from './routes/checklist-proposals.$id'
 import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
+import { Route as DocumentProposalsIdRouteImport } from './routes/document-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
@@ -85,6 +86,11 @@ const DayProposalsIdRoute = DayProposalsIdRouteImport.update({
   path: '/day-proposals/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentProposalsIdRoute = DocumentProposalsIdRouteImport.update({
+  id: '/document-proposals/$id',
+  path: '/document-proposals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/recommendations': typeof RecommendationsRoute
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
+  '/document-proposals/$id': typeof DocumentProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/recommendations': typeof RecommendationsRoute
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
+  '/document-proposals/$id': typeof DocumentProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/recommendations': typeof RecommendationsRoute
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
+  '/document-proposals/$id': typeof DocumentProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/recommendations'
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
+    | '/document-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
@@ -235,6 +245,7 @@ export interface FileRouteTypes {
     | '/recommendations'
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
+    | '/document-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/recommendations'
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
+    | '/document-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
@@ -280,6 +292,7 @@ export interface RootRouteChildren {
   RecommendationsRoute: typeof RecommendationsRoute
   ChecklistProposalsIdRoute: typeof ChecklistProposalsIdRoute
   DayProposalsIdRoute: typeof DayProposalsIdRoute
+  DocumentProposalsIdRoute: typeof DocumentProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   ApiPublicChecklistProposalsRoute: typeof ApiPublicChecklistProposalsRoute
   ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
@@ -366,6 +379,13 @@ declare module '@tanstack/react-router' {
       path: '/day-proposals/$id'
       fullPath: '/day-proposals/$id'
       preLoaderRoute: typeof DayProposalsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/document-proposals/$id': {
+      id: '/document-proposals/$id'
+      path: '/document-proposals/$id'
+      fullPath: '/document-proposals/$id'
+      preLoaderRoute: typeof DocumentProposalsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/itinerary/': {
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecommendationsRoute: RecommendationsRoute,
   ChecklistProposalsIdRoute: ChecklistProposalsIdRoute,
   DayProposalsIdRoute: DayProposalsIdRoute,
+  DocumentProposalsIdRoute: DocumentProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   ApiPublicChecklistProposalsRoute: ApiPublicChecklistProposalsRoute,
   ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
