@@ -148,7 +148,7 @@ function Page() {
                 <span className="flex-1">{o.duplicate === "existing" ? "משימה בשם הזה כבר קיימת" : "מופיעה פעמיים בהצעה"}</span>
                 <input type="checkbox" className="h-5 w-5" checked={accept.has(o.index)}
                   onChange={(e) => setAccept((s) => { const n = new Set(s); e.target.checked ? n.add(o.index) : n.delete(o.index); return n; })} />
-                הוסף בכל זאת
+                אשר בכל זאת
               </label>
             )}
           </li>
