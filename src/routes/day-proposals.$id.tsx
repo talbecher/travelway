@@ -89,12 +89,6 @@ function ProposalPage() {
   const v = q.data;
   const changed = v.fingerprint !== v.current.fingerprint;
   const actionable = v.state === "pending";
-
-  return (
-    <div className="mx-auto max-w-xl space-y-4 p-4 pb-24" dir="rtl">
-  const v = q.data;
-  const changed = v.fingerprint !== v.current.fingerprint;
-  const actionable = v.state === "pending";
   const stateTone = v.state === "pending" ? "bg-accent-soft text-accent-foreground" : v.state === "applied" ? "bg-cat-booked text-cat-booked-foreground" : "bg-muted text-muted-foreground";
 
   return (
