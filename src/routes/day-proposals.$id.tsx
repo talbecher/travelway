@@ -89,7 +89,7 @@ function ProposalPage() {
   const v = q.data;
   const changed = v.fingerprint !== v.current.fingerprint;
   const actionable = v.state === "pending";
-  const stateTone = v.state === "pending" ? "bg-accent-soft text-accent-foreground" : v.state === "applied" ? "bg-cat-booked text-cat-booked-foreground" : "bg-muted text-muted-foreground";
+  const stateTone = v.state === "pending" ? "bg-accent-soft text-accent-text" : v.state === "applied" ? "bg-cat-booked text-cat-booked-foreground" : "bg-muted text-muted-foreground";
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4 pb-48" dir="rtl">
@@ -110,7 +110,7 @@ function ProposalPage() {
       {actionable && (
         <section className="space-y-3">
           <div className="grid grid-cols-3 gap-2">
-            <Stat n={v.current.remove_count} label="יוסרו" cls="bg-accent-soft text-accent-foreground" />
+            <Stat n={v.current.remove_count} label="יוסרו" cls="bg-accent-soft text-accent-text" />
             <Stat n={v.current.keep_count} label="יישמרו" cls="bg-muted text-foreground" />
             <Stat n={v.entry_count} label="יתווספו" cls="bg-cat-booked text-cat-booked-foreground" />
           </div>
