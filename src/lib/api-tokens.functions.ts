@@ -23,9 +23,10 @@ export const createApiToken = createServerFn({ method: "POST" })
       days: z.union([z.literal(30), z.literal(90), z.literal(365)]),
       canPropose: z.boolean().default(false),
       canProposeChecklist: z.boolean().default(false),
+      canUploadDocuments: z.boolean().default(false),
       readMode: z.enum(["all", "checklist"]).default("all"),
     })
-      .refine((v) => (!v.canPropose && !v.canProposeChecklist && v.readMode === "all") || !!v.tripId, { message: "הרשאה זו מחייבת טיול אחד" })
+      .refine((v) => (!v.canPropose && !v.canProposeChecklist && !v.canUploadDocuments && v.readMode === "all") || !!v.tripId, { message: "הרשאה זו מחייבת טיול אחד" })
       .refine((v) => !(v.canPropose && v.readMode === "checklist"), { message: "הצעות ליום מחייבות קריאת הטיול המלא" })
       .parse(d),
   )
@@ -48,6 +49,7 @@ export const createApiToken = createServerFn({ method: "POST" })
         data.readMode === "all" ? "read" : "read_checklist",
         ...(data.canPropose ? ["propose_day"] : []),
         ...(data.canProposeChecklist ? ["propose_checklist"] : []),
+        ...(data.canUploadDocuments ? ["upload_documents"] : []),
       ],
       expires_at: new Date(Date.now() + data.days * 86400000).toISOString(),
     });

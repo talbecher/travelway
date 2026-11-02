@@ -22,6 +22,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { DateField } from "@/components/DateField";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { supabase } from "@/integrations/supabase/client";
+import { getDocumentFileUrl } from "@/lib/document-files.functions";
 import { hebDate, ils } from "@/lib/format";
 
 export const Route = createFileRoute("/documents")({
@@ -186,6 +187,21 @@ function DocumentCard({
           className="h-10 px-4 rounded-full bg-[color:var(--terracotta)] text-white text-sm font-medium inline-flex items-center gap-1.5"
         >
           <QrCode size={16} /> הצג ברקוד
+        </button>
+      )}
+      {doc.file_path && (
+        <button
+          onClick={async () => {
+            try {
+              const r = await getDocumentFileUrl({ data: { documentId: doc.id } });
+              window.open(r.url, "_blank", "noopener,noreferrer");
+            } catch {
+              toast.error("פתיחת הקובץ נכשלה");
+            }
+          }}
+          className="h-9 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
+        >
+          <Paperclip size={15} /> פתח קובץ
         </button>
       )}
       {doc.file_url && (

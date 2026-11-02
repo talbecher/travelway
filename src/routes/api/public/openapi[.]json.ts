@@ -63,8 +63,9 @@ const spec = {
         requestBody: {
           required: true,
           content: { "application/json": { schema: {
-            type: "object", additionalProperties: false, required: ["operations"],
+            type: "object", additionalProperties: false, required: ["request_id", "operations"],
             properties: {
+              request_id: { type: "string", format: "uuid", description: "Unique id you generate for this request. Retrying with the same request_id and payload returns the existing proposal instead of creating a duplicate." },
               trip_id: { type: "string", format: "uuid" },
               note: { type: "string", maxLength: 2000 },
               operations: { type: "array", minItems: 1, maxItems: 50, items: {
@@ -95,6 +96,54 @@ const spec = {
           "401": err("Missing, invalid, revoked or expired token"),
           "403": err("Token lacks the checklist proposal permission or trip scope"),
           "404": err("Trip or task not available"),
+          "413": err("Body too large"),
+          "429": err("Too many pending proposals for this trip"),
+          "500": err("Unexpected error"),
+        },
+      },
+    },
+    "/api/public/document-proposals": {
+      post: {
+        operationId: "proposeDocumentChanges",
+        summary: "Save a proposal to add or update a trip document (nothing changes until the user approves in TravelWay)",
+        description: "Requires a trip-scoped token with the 'propose documents' permission. Omit target_document_id to add a new document; send it to update an existing one (use document ids from getTripContext section=documents). Never deletes anything. This action NEVER receives files: if the document needs a PDF or image, set wants_file=true and tell the user to attach the file on the review page before approving. Return review_url to the user; they must open it and approve. Updating details only keeps the existing file; replacing a file keeps the previous one as a prior version. Proposals expire after 72 hours.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object", additionalProperties: false, required: ["request_id", "fields"],
+            properties: {
+              request_id: { type: "string", format: "uuid", description: "Unique id you generate for this request. Retrying with the same request_id and payload returns the existing proposal instead of creating a duplicate." },
+              trip_id: { type: "string", format: "uuid" },
+              target_document_id: { type: ["string", "null"], format: "uuid", description: "Omit or null to add a new document." },
+              wants_file: { type: "boolean", description: "True when the document should have a PDF/image attached. The user attaches it in the app; the chat never sends files." },
+              note: { type: "string", maxLength: 2000 },
+              fields: {
+                type: "object", additionalProperties: false,
+                properties: {
+                  title: { type: "string", maxLength: 200, description: "Required when adding." },
+                  type: { type: "string", enum: ["flight", "hotel", "attraction", "insurance", "visa", "transport", "other"] },
+                  valid_date: { type: ["string", "null"], format: "date" },
+                  notes: { type: ["string", "null"], maxLength: 2000 },
+                  external_url: { type: ["string", "null"], maxLength: 2000, description: "http/https link, e.g. a booking confirmation page." },
+                  linked_recommendation_id: { type: ["string", "null"], format: "uuid", description: "A recommendation id from the same trip (getTripContext section=saved_places)." },
+                },
+              },
+            },
+          } } },
+        },
+        responses: {
+          "201": { description: "Proposal saved (pending).", content: { "application/json": { schema: {
+            type: "object",
+            properties: {
+              id: { type: "string" }, status: { type: "string" }, expires_at: { type: "string" },
+              review_url: { type: "string" }, message: { type: "string" },
+            },
+          } } } },
+          "400": err("Invalid body or fields"),
+          "401": err("Missing, invalid, revoked or expired token"),
+          "403": err("Token lacks the documents proposal permission or trip scope"),
+          "404": err("Trip, document or recommendation not available"),
+          "409": err("request_id reused with a different payload"),
           "413": err("Body too large"),
           "429": err("Too many pending proposals for this trip"),
           "500": err("Unexpected error"),

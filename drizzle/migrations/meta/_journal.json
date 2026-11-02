@@ -36,6 +36,20 @@
       "when": 1793633513975,
       "tag": "0004_document_proposals_private_files",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793637971119,
+      "tag": "0005_trip_files_staging_upload_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793638237484,
+      "tag": "0006_fix_trip_files_staging_path_depth",
+      "breakpoints": true
     }
   ]
 }
