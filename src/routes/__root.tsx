@@ -41,7 +41,7 @@ const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(!t){l
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6" dir="rtl">
+    <div className="flex min-h-screen min-h-dvh items-center justify-center bg-background px-6" dir="rtl">
       <div className="max-w-sm text-center space-y-3">
         <h1 className="text-5xl font-medium">404</h1>
         <p className="text-muted-foreground">הדף לא נמצא.</p>
@@ -55,7 +55,7 @@ function ErrorComponentBase({ error, reset }: { error: unknown; reset: () => voi
   const router = useRouter();
   useEffect(() => { reportLovableError(error, { boundary: "root" }); }, [error]);
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6" dir="rtl">
+    <div className="flex min-h-screen min-h-dvh items-center justify-center bg-background px-6" dir="rtl">
       <div className="max-w-sm text-center space-y-3">
         <h1 className="text-xl font-medium">משהו השתבש</h1>
         <p className="text-sm text-muted-foreground">נסה שוב או חזור לדף הבית.</p>
@@ -78,7 +78,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "TravelWay" },
       { name: "description", content: "TravelWay — your all-in-one travel planner" },
-      { name: "theme-color", content: "#0F0F13" },
+      { name: "theme-color", content: "#FAF7F2", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#191713", media: "(prefers-color-scheme: dark)" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "TravelWay" },
@@ -152,8 +153,8 @@ function AppShell() {
   const isCreating = isOnboarding && !isEditFlag;
   const [searchOpen, setSearchOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-background backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 92%, transparent)" }}>
+    <div className="min-h-screen min-h-dvh bg-background text-foreground">
+      <header className="sticky top-0 z-30 pt-[env(safe-area-inset-top)] border-b border-border bg-background backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 92%, transparent)" }}>
         <div className="mx-auto flex min-h-[52px] max-w-md items-center justify-between gap-1 px-3 py-1">
           <div className="flex min-w-0 items-center gap-1">
             {!isOnboarding && <SwitchTripButton />}

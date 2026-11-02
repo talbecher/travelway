@@ -190,3 +190,7 @@
 
 ## Checklist AI import
 - [x] Paste → preview → select → add; validation, duplicates, stale-guard; bun tests
+
+# Round 1A — CSS & mobile foundations
+
+- [x] Tokens, radii, category colors; safe-area; 16px inputs; dvh; :active; reduced motion; theme-color

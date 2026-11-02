@@ -40,6 +40,18 @@
   --color-surface-2: var(--surface-2);
   --color-accent-2: var(--accent-2);
   --color-accent-3: var(--accent-3);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-cat-food: var(--cat-food-bg);
+  --color-cat-food-foreground: var(--cat-food-fg);
+  --color-cat-attraction: var(--cat-attraction-bg);
+  --color-cat-attraction-foreground: var(--cat-attraction-fg);
+  --color-cat-lodging: var(--cat-lodging-bg);
+  --color-cat-lodging-foreground: var(--cat-lodging-fg);
+  --color-cat-transport: var(--cat-transport-bg);
+  --color-cat-transport-foreground: var(--cat-transport-fg);
+  --color-cat-booked: var(--cat-booked-bg);
+  --color-cat-booked-foreground: var(--cat-booked-fg);
   --color-terracotta: var(--terracotta);
   --color-terracotta-soft: var(--terracotta-soft);
   --color-warning: var(--warning);
@@ -74,7 +86,17 @@
   --surface: #FFFFFF;
   --surface-2: #F2EDE6;
   --foreground: #1C1917;
-  --muted-foreground: #78716C;
+  --muted-foreground: #6B635B;
+  --accent-text: #C8432E;
+  --accent-soft: #FCE9E4;
+  --cat-food-bg: #FBEFD9; --cat-food-fg: #7A4F08;
+  --cat-attraction-bg: #DDF0EC; --cat-attraction-fg: #0F5A51;
+  --cat-lodging-bg: #E7EBF3; --cat-lodging-fg: #3A4A66;
+  --cat-transport-bg: #EFEAE3; --cat-transport-fg: #5D554C;
+  --cat-booked-bg: #E3F2E6; --cat-booked-fg: #23662F;
+  --radius-card: 18px;
+  --radius-button: 14px;
+  --radius-chip: 8px;
   --border: #EDE8E3;
   --border-strong: #D6CFC7;
 
@@ -137,6 +159,13 @@
   --surface-2: #302C28;
   --foreground: #F5F0EB;
   --muted-foreground: #A8A09A;
+  --accent-text: #F28A7A;
+  --accent-soft: #3A2622;
+  --cat-food-bg: #3A2F1E; --cat-food-fg: #F2C97A;
+  --cat-attraction-bg: #1C332F; --cat-attraction-fg: #8FD6C8;
+  --cat-lodging-bg: #252B37; --cat-lodging-fg: #AFC0DE;
+  --cat-transport-bg: #2F2B27; --cat-transport-fg: #CFC6BB;
+  --cat-booked-bg: #1F3323; --cat-booked-fg: #94D3A0;
   --border: #3D3733;
   --border-strong: #4A4440;
 
@@ -185,7 +214,9 @@
     text-rendering: optimizeLegibility;
   }
   button, [role="button"] { min-height: 44px; }
-  input, select, textarea { min-height: 44px; }
+  input, select, textarea { min-height: 44px; font-size: max(16px, 1em); }
+  html { -webkit-tap-highlight-color: transparent; }
+  .overflow-x-auto { overscroll-behavior-x: contain; }
   h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
   h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
   h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
@@ -276,4 +307,24 @@ html.near-lock,
 html.near-lock body {
   overflow: hidden !important;
   overscroll-behavior: none;
+}
+
+/* Pressed feedback — opacity only; skipped for Leaflet controls and drag handles. */
+:is(button, [role="button"], a[href], [data-card][role="button"]):active:not(:disabled):not(.leaflet-container *):not([aria-roledescription="sortable"]):not([data-dragging]) {
+  opacity: 0.7;
+}
+
+@utility chips-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* Reduced motion: shorten rather than remove, so animationend/transitionend still fire (Vaul). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
