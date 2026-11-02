@@ -20,6 +20,9 @@ export type TripDocument = {
   title: string;
   type: DocumentType;
   file_url: string | null;
+  file_path: string | null;
+  file_mime: string | null;
+  file_size: number | null;
   external_url: string | null;
   barcode_value: string | null;
   barcode_type: BarcodeType | null;
