@@ -1,48 +1,58 @@
-# סבב 1א — יסודות CSS ומובייל (תצוגה בלבד)
+# סבב 1ב — אייקוני קטגוריה, טקסט דו-כיווני וצבעים קשיחים (תצוגה בלבד)
 
-## ממצאים לפני היישום
-- קובץ ה-CSS הגלובלי הוא `src/styles.css`. אין `tailwind.config` בפרויקט (Tailwind v4) — לא ייווצר.
-- **הסרגל העליון יושב בתוך `src/routes/__root.tsx`** (שורה 156), לא ברכיב נפרד. ההרשאה ל-`__root` היא רק ל-theme-color — לכן נדרש אישור (ראו "שאלה פתוחה").
-- `__root.tsx` מכיל `min-h-screen` (שורות 44, 58, 155) — לא ישונה בלי אישור.
-- שורת ההוספה המהירה (`itinerary.$dayId.tsx` שורה 1057) כבר כוללת safe-area תחתון; השדה שבה מכריח `!text-[13px]` — זה יגבר על כלל 16px הגלובלי.
-- BottomNav כבר כולל ריפוד safe-area תחתון. theme-color כיום אחד בלבד (`#0F0F13`, כהה גם במצב בהיר).
+אין שינוי ב-hooks, queries, mutations, handlers, תנאים, חתימות props, סכמה, נתיבים או ערכים שנשמרים. קבועי אמוג'י שנשמרים למסד (`icon_emoji` בהכנסת תחנה) נשארים כמו שהם.
 
-## השוואת ערכים (הצעה: לשמר כשקרוב)
-```text
-טוקן           קיים      מוצע      החלטה
-background     #FAF7F2   #F7F3EE   לשמר (קרוב)
-surface/card   #FFFFFF   #FFFFFF   זהה
-border         #EDE8E3   #ECE5DC   לשמר (קרוב)
-foreground     #1C1917   #1F1B16   לשמר (קרוב)
-muted-fg       #78716C   #6B635B   לשנות (כהה יותר, ניגודיות טובה יותר)
-accent         #E8614D   #E2553F   לשמר (קרוב)
-accent-text    —         #C8432E   חדש: --accent-text
-accent-soft    —         #FCE9E4   חדש: --accent-soft
-```
-מצב כהה: הערכים הקיימים נשמרים; נוספים רק מקבילים לטוקנים החדשים (accent-text, accent-soft, צבעי קטגוריה) בגוונים שמתאימים לפלטה הכהה הנוכחית.
+## קבצים ומה משתנה
 
-## שינויים ב-`src/styles.css`
-1. טוקנים חדשים (בהיר+כהה) וחשיפתם ב-`@theme inline`: `--accent-text`, `--accent-soft`, צבעי קטגוריה `--cat-food-bg/fg`, `--cat-attraction-*`, `--cat-lodging-*`, `--cat-transport-*`, `--cat-booked-*`. ללא שינוי שימושים קיימים.
-2. רדיוסים כמשתנים: `--radius-card: 18px`, `--radius-button: 14px`, `--radius-chip: 8px` (הקיימים `--radius*` לא משתנים).
-3. מובייל:
-   - `input, select, textarea { font-size: max(16px, 1em) }`.
-   - `-webkit-tap-highlight-color: transparent` גלובלי; `:active` עדין (scale/opacity) ל-`button`, `[role=button]`, `a[href]` עם כלל עוקף ל-`prefers-reduced-motion`.
-   - utility `chips-scroll` עם `overscroll-behavior-x: contain` + כלל גלובלי ל-`.overflow-x-auto`.
-   - `@media (prefers-reduced-motion: reduce)` — ביטול אנימציות/מעברים לא חיוניים.
-   - אין `100vh/100svh` ב-CSS הגלובלי כיום — אין מה להחליף.
+1. **`src/components/CategoryIcon.tsx` (חדש)** — אייקון קו של lucide בתוך עיגול. מקבל `category` ו-`size`. מיפוי:
+   - food → `Utensils`, משתני `--cat-food-*`
+   - attraction → `Landmark`, משתני `--cat-attraction-*`
+   - hotel / hotel_checkin / accommodation → `BedDouble`, משתני `--cat-lodging-*`
+   - transport → `TrainFront`, משתני `--cat-transport-*`
+   - flight → `Plane`, note → `StickyNote`, shopping → `ShoppingBag`, insurance → `Shield`, visa → `FileText`, other → `MapPin` או `File`. לכל אלה אפור ניטרלי (`bg-muted` + `text-muted-foreground`), כי אין להן משתנה.
+2. **`src/routes/itinerary.$dayId.tsx`**
+   - כרטיס התחנה (בערך בשורה 1678), שורת המפה/המיני (1811, 1821), כרטיס העריכה (2138) ותצוגת "סדר מוצע" (1365): האייקון יגיע מ-`CategoryIcon` לפי `entry_type`.
+   - בורר הסוג (1121): `CategoryIcon` גדול במקום `t.icon`.
+   - מספר התחנה (1620): במקום רקע `pinColor` (סגול `#6C63FF` לאטרקציה/טיסה) יופיע רקע `bg-foreground` עם `text-background`. זה רק בכרטיס, וצבע הנעץ במפה לא משתנה.
+   - `<bdi>` / `dir="auto"` + `text-start` לכותרת התחנה, ל-`location_name` ולשמות מלונות ומקומות. מחליף את `dir="ltr"` הקשיח בשורות 1710, 2016-2017, 2149, 3125 ו-1245 (`city_label`).
+   - קטע ההערות (1597): `slice(0,80)+"..."` יוחלף בטקסט מלא עם `line-clamp-2`.
+3. **`src/routes/budget.tsx`** — שורות הקטגוריה (147): `CategoryIcon` במקום `CATEGORY_ICONS[k]`. צבעי הגרף (`CATEGORY_COLORS`) לא משתנים. תיאור ההוצאה (173) יקבל `dir="auto"`.
+4. **`src/routes/documents.tsx`**
+   - צ'יפי הסינון (83), בורר הסוג בטופס (512), כותרת הכרטיס הכללי (309) וכרטיס הטיסה (234): `CategoryIcon` במקום `DOC_TYPE_META[t].emoji`.
+   - אייקון הפח (219): `text-[color:var(--accent-2)]` יוחלף ב-`text-muted-foreground`.
+   - כותרות המסמכים (235, 283, 310) והערות (269, 293, 312): `dir="auto"`.
+   - מסלול הטיסה (241): `dir="ltr"` יוחלף ב-`dir="rtl"`, כך שהמוצא יופיע מימין. ה-`✈` בין הקודים יוחלף באייקון `Plane` של lucide, מסובב כך שיצביע שמאלה. קודי השדות עצמם יעטפו ב-`<bdi>`.
+5. **`src/lib/constants.ts`, `src/hooks/use-documents.ts`** — ללא שינוי (השדות `icon`/`emoji` נשארים לשימושים אחרים).
 
-## שינויי className במעטפת
-- `BottomNav.tsx`: מינימום 44px לפריטי הניווט (אם חסר); safe-area כבר קיים.
-- `GlobalFab.tsx`: מיקום הכפתור הצף עם `calc(... + env(safe-area-inset-bottom))` ו-44px מינימום.
-- שורת ההוספה המהירה: safe-area קיים נשמר; הוספת `env(safe-area-inset-left/right)` לריפוד הצדדים.
-- `__root.tsx`: שני מטא theme-color עם `media` — בהיר `#FAF7F2`, כהה `#191713`.
+## היכן מוחלף אמוג'י
+- כרטיסי תחנות במסך היום, תצוגת סדר מוצע, כרטיס עריכה, שורות מפה.
+- בורר סוג התחנה.
+- שורות קטגוריה בתקציב.
+- צ'יפים, בורר סוג וכרטיסים במסמכים.
 
-## שאלה פתוחה (נדרשת תשובה לפני יישום)
-- האם מותר לשנות className בסרגל העליון ובמעטפת `min-h-screen`→`min-h-dvh` בתוך `__root.tsx`? בלי אישור — הסרגל העליון יישאר ללא safe-area עליון.
-- האם להסיר את `!text-[13px]` משדה ההוספה המהירה (נדרש ל-16px ולמניעת זום ב-iPhone)?
+## היכן אמוג'י נשאר, ולמה
+- `entry.icon_emoji` כערך במסד — לא נמחק. רק התצוגה מתעלמת ממנו לטובת הסוג (ראו שאלה 1).
+- שמות, כותרות והערות שהמשתמש הקליד — לא נוגעים.
+- סיכומי ימים ב-`itinerary.index.tsx` — מחוץ לסבב, לפי הבקשה.
+- הודעות, תגיות סטטוס וכפתורים (✅, ⚠️, 📍, 🔴, 📅, ⏱) — הם לא אייקוני קטגוריה.
+- `recommendations.tsx`, `ImportAISheet.tsx`, `ActiveTodayCard.tsx`, `GlobalFab`, `HayinuKanSheet`, `onboarding` — יש בהם אמוג'י קטגוריה, אבל הם לא ברשימה שלך (ראו שאלה 2).
+
+## חיתוכי טקסט שנמצאו
+| מקום | סוג | פעולה |
+|---|---|---|
+| `itinerary.$dayId.tsx:1597` `description.slice(0,80)` | תצוגה בלבד | יוחלף ב-`line-clamp-2` |
+| `itinerary.$dayId.tsx:479` `note.slice(0,60)` בכותרת "נווט אל" | **נשמר במסד** | לא נוגעים |
+| `onboarding.tsx:580` `slice(0,200)` בהערות | **מגביל קלט שנשמר** | לא נוגעים |
+| `itinerary.index.tsx:80-101` `title.slice(..)` | תצוגה, בסיכומי ימים | מחוץ לסבב |
+| `time_of_day.slice(0,5)`, `toISOString().slice`, ‏`deadline.slice` | עיצוב שעה/תאריך, לא חיתוך שם | לא נוגעים |
+| `list.slice(0,limit)`, ‏`items.slice(0,4)` וכדומה | הגבלת מספר פריטים, לא טקסט | לא נוגעים |
+
+## שאלות פתוחות
+1. **`icon_emoji` שמור:** התחנות שומרות אמוג'י (ברירת המחדל של האפליקציה, ו-🧭 לתחנת ניווט). אני מתכנן להציג `CategoryIcon` לפי הסוג ולהתעלם מהאמוג'י השמור בתצוגה. כך 🧭 יוצג כאייקון תחבורה. לאשר?
+2. **מסכים נוספים עם אמוג'י קטגוריה** (המלצות: הסגמנטים 🍜/⛩/🏨 והאייקון ברשימה; תצוגת ייבוא AI; "היום" בבית במהלך הטיול; הוצאה מהירה) — להשאיר לסבב אחר, או לכלול?
+3. **מספר התחנה:** ניטרלי כהה (`foreground` על `background`), או `muted` עם טקסט רגיל?
+4. **פח במסמכים:** בפועל הוא בצבע `--accent-2`, ולא צהוב קשיח. מחליף אותו ל-`text-muted-foreground` כמבוקש.
+5. **כיוון מסלול הטיסה:** אני מניח שהמוצא מימין והחץ מצביע שמאלה (TLV ← NRT). אם רצית שמאל-לימין עם ניסוח עברי סביבו, אעדכן.
 
 ## בדיקות
-`bunx tsgo --noEmit`, `bun run build`, צילום 393×852 בהיר/כהה של בית ומסך יום.
-
-## דוח
-קבצים ששונו, ערכים שנשמרו, מקומות לא ברורים, והצהרה שלא שונו לוגיקה/נתונים.
+`bunx tsgo --noEmit`, `bun run build`, וצילומי מסך ב-393×852 (בהיר וכהה) של מסך היום, בורר הסוג, התקציב והמסמכים.
