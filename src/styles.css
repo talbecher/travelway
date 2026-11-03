@@ -440,20 +440,3 @@ html:not(.dark) .pretrip-home .pretrip-tools > * + * {
   border-inline-start: 1px solid var(--border);
 }
 
-@media (min-width: 600px) {
-  html:not(.dark) .pretrip-home {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  html:not(.dark) .pretrip-home > * {
-    grid-column: 1 / -1;
-  }
-  html:not(.dark) .pretrip-home > .pretrip-checklist {
-    grid-column: 1;
-  }
-  html:not(.dark) .pretrip-home > .pretrip-budget {
-    grid-column: 2;
-  }
-  html:not(.dark) .pretrip-home:not(:has(> .pretrip-checklist)) > .pretrip-budget {
-    grid-column: 1 / -1;
-  }
-}
