@@ -687,7 +687,10 @@ function DayDetail() {
     // which pushes the pane down and clips its bottom — re-measure on any size change.
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     if (ro) {
-      if (headerRef.current) ro.observe(headerRef.current);
+      // The root covers every block above the pane (header, city row, tabs, banners):
+      // any of them growing after the first measure shifts the pane down and would
+      // otherwise leave it too tall, clipping the quick-add under the bottom nav.
+      if (rootRef.current) ro.observe(rootRef.current);
       if (paneRef.current) ro.observe(paneRef.current);
       const nav = document.querySelector("[data-bottom-nav]");
       if (nav) ro.observe(nav);
