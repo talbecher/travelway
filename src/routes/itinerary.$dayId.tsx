@@ -1019,19 +1019,17 @@ function DayDetail() {
           </button>
         )}
         </div>
-      </div>
-
-      {discoverVisible && view === "list" && hasAnyEntries && (
-        <div className="day-inspiration px-4 pt-2" dir="rtl">
+        {discoverVisible && view === "list" && hasAnyEntries && (
           <button
             type="button"
             onClick={() => setDiscoverOpen(true)}
-            className="min-h-9 px-3 rounded-full text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
+            className="day-inspiration-btn shrink-0 min-h-11 px-3 rounded-2xl text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
           >
             <Compass size={14} className="text-[color:var(--accent)]" /> השראה למקומות
           </button>
+        )}
         </div>
-      )}
+      </div>
 
       {/* View switch — same day, two modes */}
       <div className="day-tabs-wrap px-4 pt-2" dir="rtl">
