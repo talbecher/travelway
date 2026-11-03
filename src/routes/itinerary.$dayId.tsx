@@ -701,9 +701,61 @@ function DayDetail() {
   return (
     <div className="-mx-4 day-visual-preview">
       <style>{`
+        html:not(.dark) .day-visual-preview .day-header {
+          padding-block: 4px;
+        }
+        html:not(.dark) .day-visual-preview .day-header-list {
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) auto 44px;
+          align-items: center;
+          column-gap: 4px;
+          row-gap: 2px;
+        }
+        html:not(.dark) .day-visual-preview .day-header-copy,
+        html:not(.dark) .day-visual-preview .day-header-extras {
+          display: contents;
+        }
+        html:not(.dark) .day-header-list > button:first-child {
+          grid-column: 1;
+          grid-row: 1 / span 2;
+        }
+        html:not(.dark) .day-header-copy h1 {
+          grid-column: 2 / span 2;
+          grid-row: 1;
+          line-height: 1.2;
+          letter-spacing: 0;
+        }
+        html:not(.dark) .day-header-copy p:first-of-type {
+          grid-column: 2;
+          grid-row: 2;
+          margin: 0;
+        }
+        html:not(.dark) .day-header-copy p:nth-of-type(2) {
+          grid-column: 2 / span 2;
+          margin: 0;
+        }
+        html:not(.dark) .day-header-extras > button {
+          grid-column: 4;
+          grid-row: 1 / span 2;
+        }
+        html:not(.dark) .day-header-extras > div {
+          grid-column: 3;
+          grid-row: 2;
+        }
+        html:not(.dark) .day-visual-preview .day-city,
+        html:not(.dark) .day-visual-preview .day-inspiration,
+        html:not(.dark) .day-visual-preview .day-tabs-wrap {
+          padding-top: 4px;
+        }
+        html:not(.dark) .day-visual-preview .day-city > div {
+          padding-block: 2px;
+        }
+        html:not(.dark) .day-visual-preview .day-inspiration button {
+          min-height: 44px;
+        }
         html:not(.dark) .day-visual-preview .day-view-tabs {
           background: var(--card);
-          padding: 4px;
+          padding: 2px;
         }
         html:not(.dark) .day-visual-preview .day-view-tabs [role="tab"] {
           min-height: 44px;
@@ -716,9 +768,19 @@ function DayDetail() {
         }
         html:not(.dark) .day-visual-preview .day-list-actions {
           flex-wrap: wrap;
-          row-gap: 8px;
-          padding-top: 12px;
-          padding-bottom: 4px;
+          row-gap: 4px;
+          padding-top: 4px;
+          padding-bottom: 0;
+          flex-shrink: 0;
+        }
+        html:not(.dark) .day-visual-preview .day-list-pane {
+          min-height: 0;
+          padding-top: 8px;
+          scroll-padding-block: 8px;
+          overscroll-behavior-y: contain;
+        }
+        html:not(.dark) .day-visual-preview .day-quick-add {
+          flex-shrink: 0;
         }
         html:not(.dark) .day-visual-preview .day-list-actions button {
           min-height: 44px;
@@ -744,9 +806,14 @@ function DayDetail() {
         }
         html:not(.dark) .day-visual-preview .day-stop-card {
           width: 100%;
-          padding: 14px 44px 14px 14px;
-          background: color-mix(in oklab, var(--stop-tint) 4%, var(--card));
-          border-inline-start: 3px solid color-mix(in oklab, var(--stop-tint) 35%, var(--border)) !important;
+          padding: 10px 40px 10px 10px;
+          background: color-mix(in oklab, var(--stop-tint) 8%, var(--card));
+          border-inline-start: 3px solid color-mix(in oklab, var(--stop-tint) 65%, var(--border)) !important;
+          scroll-margin-block: 8px;
+        }
+        html:not(.dark) .day-visual-preview .day-stop-card button {
+          min-height: 44px;
+          min-width: 44px;
         }
         html:not(.dark) .day-visual-preview .day-stop .entry-title {
           font-size: 16px;
@@ -755,7 +822,7 @@ function DayDetail() {
           overflow-wrap: anywhere;
         }
         html:not(.dark) .day-visual-preview .day-stop-meta {
-          margin-top: 5px;
+          margin-top: 3px;
           font-size: 12px;
           line-height: 1.65;
         }
@@ -765,7 +832,7 @@ function DayDetail() {
           color: var(--accent-text);
         }
         html:not(.dark) .day-visual-preview .day-stop-notes {
-          margin-top: 6px;
+          margin-top: 4px;
           font-size: 12px;
           line-height: 1.6;
           font-style: normal;
@@ -773,6 +840,13 @@ function DayDetail() {
         }
         html:not(.dark) .day-visual-preview .day-segment button {
           color: var(--accent-text) !important;
+          font-weight: 600;
+          font-size: 13px;
+        }
+        html:not(.dark) .day-visual-preview .day-segment > div {
+          padding-inline-start: 40px !important;
+          padding-block: 4px;
+          background: color-mix(in oklab, var(--accent) 12%, var(--card)) !important;
         }
         html:not(.dark) .day-visual-preview .day-map-stop {
           border-top: 3px solid var(--accent-soft);
@@ -809,12 +883,12 @@ function DayDetail() {
         return (
           <div
             className={
-              "relative w-full bg-background border-b border-border " +
+              "day-header relative w-full bg-background border-b border-border " +
               (view === "list" ? "pt-2 pb-2.5" : "py-1.5")
             }
             dir="rtl"
           >
-            <div className={"px-3 " + (view === "list" ? "flex items-start gap-1" : "flex items-center gap-1")}>
+            <div className={"px-3 " + (view === "list" ? "day-header-list flex items-start gap-1" : "flex items-center gap-1")}>
               {/* Back — always first in RTL, 44×44 hit area */}
               <button
                 onClick={() => navigate({ to: "/itinerary" })}
@@ -826,7 +900,7 @@ function DayDetail() {
 
               {view === "list" ? (
                 <>
-                  <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="day-header-copy min-w-0 flex-1 pt-0.5">
                     <h1 className="text-[28px] font-bold leading-none tracking-tight text-foreground">
                       יום {day.day_number}
                     </h1>
@@ -839,7 +913,7 @@ function DayDetail() {
                       </p>
                     )}
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1 pt-1">
+                  <div className="day-header-extras flex shrink-0 flex-col items-end gap-1 pt-1">
                     <button
                       type="button"
                       onClick={() => setMoreOpen(true)}
@@ -877,7 +951,7 @@ function DayDetail() {
         );
       })()}
 
-      <div className="px-4 pt-2" dir="rtl">
+      <div className="day-city px-4 pt-2" dir="rtl">
         <div className="rounded-2xl border border-border bg-card px-3 py-1.5">
         {editingCity ? (
           <div className="space-y-1.5">
@@ -923,7 +997,7 @@ function DayDetail() {
       </div>
 
       {discoverVisible && view === "list" && hasAnyEntries && (
-        <div className="px-4 pt-2" dir="rtl">
+        <div className="day-inspiration px-4 pt-2" dir="rtl">
           <button
             type="button"
             onClick={() => setDiscoverOpen(true)}
@@ -935,7 +1009,7 @@ function DayDetail() {
       )}
 
       {/* View switch — same day, two modes */}
-      <div className="px-4 pt-2" dir="rtl">
+      <div className="day-tabs-wrap px-4 pt-2" dir="rtl">
         <div className="day-view-tabs inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
           {([
             { key: "list", label: "מסלול" },
@@ -1121,7 +1195,7 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-6 relative">
+          <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-3 pb-6 relative">
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
@@ -1172,7 +1246,7 @@ function DayDetail() {
 
           {/* Bottom action row — search takes the remaining width, add sits beside it */}
           <div
-            className="sticky bottom-0 bg-card border-t border-border px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] flex items-center gap-2"
+            className="day-quick-add sticky bottom-0 bg-card border-t border-border px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] flex items-center gap-2"
             style={{ minHeight: 56, paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))", paddingTop: "0.375rem" }}
           >
             <div className="flex-1 min-w-0 [&_input]:!h-11 [&_input]:!rounded-[22px] [&_input]:!text-base">
