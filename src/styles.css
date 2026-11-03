@@ -440,3 +440,85 @@ html:not(.dark) .pretrip-home .pretrip-tools > * + * {
   border-inline-start: 1px solid var(--border);
 }
 
+/* ===== Checklist page — warm light-mode polish (scoped, light only) ===== */
+html:not(.dark) .checklist-page {
+  --cl-shadow: 0 2px 8px color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+/* Warm paper backdrop behind this branch only. */
+html:not(.dark) body:has(.checklist-page) {
+  background: oklch(0.955 0.014 75);
+}
+
+/* Group cards: soft elevation, generous radius. */
+html:not(.dark) .checklist-page .cl-group {
+  border-radius: var(--radius-card);
+  box-shadow: var(--cl-shadow);
+}
+
+/* Colored category chip in each group header (per data-cat). */
+html:not(.dark) .checklist-page .cl-cat-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  font-size: 15px;
+  margin-inline-end: 8px;
+  vertical-align: -8px;
+  background: var(--muted);
+}
+html:not(.dark) .checklist-page .cl-cat-ico:empty {
+  display: none;
+}
+html:not(.dark) .checklist-page .cl-group[data-cat="documents"] .cl-cat-ico { background: #E1EBFA; }
+html:not(.dark) .checklist-page .cl-group[data-cat="money"] .cl-cat-ico { background: #DDF0E3; }
+html:not(.dark) .checklist-page .cl-group[data-cat="bookings"] .cl-cat-ico { background: #EDE7F8; }
+html:not(.dark) .checklist-page .cl-group[data-cat="transport"] .cl-cat-ico { background: #DDF0EE; }
+html:not(.dark) .checklist-page .cl-group[data-cat="health"] .cl-cat-ico { background: #FBE4E0; }
+html:not(.dark) .checklist-page .cl-group[data-cat="tech"] .cl-cat-ico { background: #E4E7F5; }
+html:not(.dark) .checklist-page .cl-group[data-cat="packing"] .cl-cat-ico { background: #F9ECD8; }
+html:not(.dark) .checklist-page .cl-group[data-cat="departure"] .cl-cat-ico { background: #E0F0F8; }
+
+/* Group header row: comfortable spacing, colored start accent. */
+html:not(.dark) .checklist-page .cl-group > button {
+  padding-block: 12px;
+}
+html:not(.dark) .checklist-page .cl-group-head {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* Rows: compact but breathable; long RTL titles wrap cleanly. */
+html:not(.dark) .checklist-page .cl-row {
+  padding-block: 2px;
+}
+html:not(.dark) .checklist-page .cl-title {
+  overflow-wrap: anywhere;
+}
+
+/* High-priority badge: stronger fill, readable accent text. */
+html:not(.dark) .checklist-page .cl-high {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent-text) 45%, transparent);
+  color: var(--accent-text);
+}
+
+/* Sort toggle: selected state is clearly filled, unselected stays quiet. */
+html:not(.dark) .checklist-page .cl-sort {
+  background: var(--muted);
+  border-color: transparent;
+}
+html:not(.dark) .checklist-page .cl-sort button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: var(--cl-shadow);
+}
+html:not(.dark) .checklist-page .cl-sort button[aria-pressed="false"] {
+  color: var(--muted-foreground);
+}
+

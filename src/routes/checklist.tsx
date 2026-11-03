@@ -114,11 +114,11 @@ function ItemRow({
 }) {
   const urgency = taskUrgency(item, today);
   return (
-    <div className="flex items-center gap-1 min-h-[52px] px-1.5 border-b border-border/60 last:border-b-0">
+    <div className="cl-row flex items-center gap-1 min-h-[52px] px-1.5 border-b border-border/60 last:border-b-0">
       <Checkbox done={item.is_done} onToggle={onToggle} />
       <Button variant="ghost" onClick={onDetails} aria-label={`פרטי משימה: ${item.title}`} className="flex-1 min-w-0 h-auto min-h-11 block whitespace-normal px-1 py-1.5 text-right text-foreground font-normal">
         <div
-          className={`text-[15px] leading-snug transition-all ${
+          className={`cl-title text-[15px] leading-snug transition-all ${
             item.is_done ? "line-through text-muted-foreground" : ""
           }`}
         >
@@ -151,7 +151,7 @@ function ItemRow({
 }
 
 function HighPriorityBadge() {
-  return <span className="inline-flex items-center rounded-lg border border-accent-text/40 bg-accent-soft px-2 py-0.5 text-xs leading-5 font-semibold text-foreground">עדיפות גבוהה</span>;
+  return <span className="cl-high inline-flex items-center rounded-lg border border-accent-text/40 bg-accent-soft px-2 py-0.5 text-xs leading-5 font-semibold text-foreground">עדיפות גבוהה</span>;
 }
 
 function Onboarding({ onSkip, onImport }: { onSkip: () => void; onImport: () => void }) {
@@ -179,7 +179,7 @@ function Onboarding({ onSkip, onImport }: { onSkip: () => void; onImport: () => 
   }
 
   return (
-    <div className="pt-6 pb-8 space-y-4">
+    <div className="checklist-page pt-6 pb-8 space-y-4">
       <div className="rounded-2xl border border-border bg-card p-5 text-center space-y-1">
         <div className="text-4xl">✅</div>
         <h1 className="text-xl font-semibold">צ'קליסט לטיול</h1>
@@ -355,7 +355,7 @@ function ChecklistPage() {
   }
 
   return (
-    <div className="pt-4 pb-28">
+    <div className="checklist-page pt-4 pb-28">
       <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between gap-2 mb-2">
@@ -389,7 +389,7 @@ function ChecklistPage() {
           ))}
         </div>
 
-        <div className="flex gap-1 rounded-xl border border-border p-1" role="group" aria-label="מיון משימות">
+        <div className="cl-sort flex gap-1 rounded-xl border border-border p-1" role="group" aria-label="מיון משימות">
           {(["category", "priority"] as const).map((mode) => (
             <Button key={mode} variant={sortMode === mode ? "secondary" : "ghost"} aria-pressed={sortMode === mode} onClick={() => setSortMode(mode)} className="flex-1">
               {mode === "category" ? "לפי קטגוריה" : "לפי עדיפות"}
@@ -404,7 +404,7 @@ function ChecklistPage() {
         {displayGroups.map((g) => {
           const open = !collapsed.includes(g.cat.id);
           return (
-            <div key={g.cat.id} className="rounded-xl border border-border bg-card overflow-hidden">
+            <div key={g.cat.id} data-cat={g.cat.id} className="cl-group rounded-xl border border-border bg-card overflow-hidden">
               <button
                 onClick={() =>
                   setCollapsed((c) =>
@@ -414,8 +414,9 @@ function ChecklistPage() {
                 aria-expanded={open}
                 className="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-right min-h-11"
               >
-                <span className="text-sm font-semibold">
-                  {g.cat.emoji} {g.cat.label}{" "}
+                <span className="cl-group-head text-sm font-semibold">
+                  <span className="cl-cat-ico" aria-hidden>{g.cat.emoji}</span>
+                  {g.cat.label}{" "}
                   <span className="text-muted-foreground font-normal">
                     · {g.open > 0 ? `${g.open} פתוחות` : "הכל בוצע"}
                   </span>
