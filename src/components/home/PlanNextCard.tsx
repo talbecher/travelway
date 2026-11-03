@@ -169,7 +169,7 @@ export function PlanNextCard({
 
   if (variant === "preTripHome") {
     return (
-      <Shell onOpenItinerary={onOpenItinerary}>
+      <Shell onOpenItinerary={onOpenItinerary} className="pretrip-plan">
         <DayPicker days={days} selectedDayId={selectedDayId} onSelectDay={onSelectDay} soft />
         {selectedDay ? (
           <div className="space-y-2.5">
