@@ -757,15 +757,19 @@ function DayDetail() {
           grid-column: 3;
           grid-row: 2;
         }
-        html:not(.dark) .day-visual-preview .day-city,
-        html:not(.dark) .day-visual-preview .day-inspiration,
-        html:not(.dark) .day-visual-preview .day-tabs-wrap {
+        html:not(.dark) .day-visual-preview .day-city {
           padding-top: 4px;
         }
-        html:not(.dark) .day-visual-preview .day-city > div {
+        html:not(.dark) .day-visual-preview .day-tabs-wrap {
+          padding-top: 2px;
+        }
+        html:not(.dark) .day-visual-preview .day-city-row {
+          flex-wrap: wrap;
+        }
+        html:not(.dark) .day-visual-preview .day-city-card {
           padding-block: 2px;
         }
-        html:not(.dark) .day-visual-preview .day-inspiration button {
+        html:not(.dark) .day-visual-preview .day-inspiration-btn {
           min-height: 44px;
         }
         html:not(.dark) .day-visual-preview .day-view-tabs {
