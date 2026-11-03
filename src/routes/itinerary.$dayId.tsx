@@ -895,6 +895,7 @@ function DayDetail() {
         ).length;
         return (
           <div
+            ref={headerRef}
             className={
               "day-header relative w-full bg-background border-b border-border " +
               (view === "list" ? "pt-2 pb-2.5" : "py-1.5")
