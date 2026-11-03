@@ -209,7 +209,7 @@
 
 # Targeted checklist & documents UX
 
-- [ ] Read-only task details; independent checkbox/menu; prominent accessible high-priority badge
-- [ ] Optional cross-category priority sort, keeping category default and stable ties
-- [ ] One attachment open action, separate external link; preserve signed-file access
+- [x] Read-only task details; independent checkbox/menu; prominent accessible high-priority badge
+- [x] Optional cross-category priority sort, keeping category default and stable ties
+- [x] One attachment open action, separate external link; preserve signed-file access
 - [ ] Focused checks and preview compilation; no publish

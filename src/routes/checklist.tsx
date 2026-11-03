@@ -151,7 +151,7 @@ function ItemRow({
 }
 
 function HighPriorityBadge() {
-  return <span className="inline-flex items-center rounded-lg border border-accent-text/40 bg-accent-soft px-2 py-0.5 text-xs leading-5 font-semibold text-accent-text">עדיפות גבוהה</span>;
+  return <span className="inline-flex items-center rounded-lg border border-accent-text/40 bg-accent-soft px-2 py-0.5 text-xs leading-5 font-semibold text-foreground">עדיפות גבוהה</span>;
 }
 
 function Onboarding({ onSkip, onImport }: { onSkip: () => void; onImport: () => void }) {
