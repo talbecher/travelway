@@ -330,47 +330,121 @@ html.near-lock body {
 }
 
 /* ===== Pre-trip home — warm editorial light-mode pass (scoped, light only) ===== */
-/* Warm paper backdrop behind the whole screen. */
-html:not(.dark) body:has(.pretrip-home) {
-  background: #F6F1EA;
-  background-image: radial-gradient(1200px 520px at 50% -8%, #FCF7EF 0%, rgba(252, 247, 239, 0) 62%);
+html:not(.dark) .pretrip-home {
+  --pretrip-paper: oklch(0.955 0.014 75);
+  --pretrip-plan-surface: oklch(0.925 0.038 40);
+  --pretrip-amber-surface: oklch(0.975 0.025 85);
+  --pretrip-amber-border: oklch(0.9 0.05 85);
+  --pretrip-shadow: 0 2px 8px color-mix(in oklab, var(--foreground) 5%, transparent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 860px;
+  gap: 16px;
 }
 
-/* Softer, warmer card elevation on this screen only. */
+html:not(.dark) .pretrip-home > * {
+  min-width: 0;
+}
+
+/* Warm paper backdrop behind this branch only. */
+html:not(.dark) body:has(.pretrip-home) {
+  background: oklch(0.955 0.014 75);
+}
+
 html:not(.dark) .pretrip-home section {
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(74, 52, 36, 0.05), 0 12px 26px -16px rgba(122, 79, 8, 0.16);
+  box-shadow: var(--pretrip-shadow);
 }
 
-/* Terracotta emphasis on the "ממשיכים לתכנן" card. */
-html:not(.dark) .pretrip-plan {
-  background: linear-gradient(165deg, #FDF2EC 0%, var(--card) 58%);
-  border-color: color-mix(in oklab, var(--accent) 24%, var(--border));
+/* Full-width low panorama; the existing image, scrim and text stay intact. */
+html:not(.dark) .pretrip-home > section:first-child {
+  min-height: 160px;
+  padding: 16px 20px;
+  border: 0;
+  border-radius: var(--radius-card);
 }
-html:not(.dark) .pretrip-plan h2 {
+html:not(.dark) .pretrip-home h1,
+html:not(.dark) .pretrip-home h2 {
+  letter-spacing: 0;
+}
+
+/* The planning block is the primary destination, with its picker unchanged. */
+html:not(.dark) .pretrip-home .pretrip-plan {
+  background: var(--pretrip-plan-surface);
+  border-color: color-mix(in oklab, var(--accent-text) 25%, var(--border));
+  padding: 20px;
+}
+html:not(.dark) .pretrip-home .pretrip-plan h2 {
+  font-size: 22px;
   color: var(--accent-text);
 }
-
-/* Subtle amber for the deadlines card. */
-html:not(.dark) .pretrip-deadlines {
-  background: #FDF8EC;
-  border-color: #F0E3C6;
+html:not(.dark) .pretrip-home .pretrip-plan > div:last-child {
+  margin-top: 16px;
+}
+html:not(.dark) .pretrip-home .pretrip-plan > div:last-child > button {
+  min-height: 52px;
+  background: var(--accent-text);
+  color: var(--accent-foreground);
+  font-size: 16px;
+  border-radius: var(--radius-button);
 }
 
-/* Calmer checklist / budget / tools: more air, softer type hierarchy. */
-html:not(.dark) .pretrip-checklist {
-  padding: 16px;
+html:not(.dark) .pretrip-home .pretrip-deadlines {
+  background: var(--pretrip-amber-surface);
+  border-color: var(--pretrip-amber-border);
+  padding: 8px 16px;
 }
-html:not(.dark) .pretrip-checklist h2 {
-  font-size: 15px;
+
+html:not(.dark) .pretrip-home .pretrip-checklist,
+html:not(.dark) .pretrip-home .pretrip-budget {
+  padding: 16px 18px;
+  border-radius: var(--radius-card);
 }
-html:not(.dark) .pretrip-budget {
-  padding: 14px 16px;
+html:not(.dark) .pretrip-home .pretrip-checklist h2,
+html:not(.dark) .pretrip-home .pretrip-budget h2 {
+  font-size: 17px;
 }
-html:not(.dark) .pretrip-tools {
-  border-radius: 16px;
+html:not(.dark) .pretrip-home .pretrip-checklist a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
-html:not(.dark) .pretrip-tools > * {
-  padding-top: 12px;
-  padding-bottom: 12px;
+html:not(.dark) .pretrip-home .pretrip-checklist button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Both existing shortcuts, paired without changing their actions. */
+html:not(.dark) .pretrip-home .pretrip-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-radius: var(--radius-card);
+}
+html:not(.dark) .pretrip-home .pretrip-tools > * {
+  min-width: 0;
+  min-height: 56px;
+  padding: 10px 12px;
+  gap: 8px;
+  border-bottom: 0;
+}
+html:not(.dark) .pretrip-home .pretrip-tools > * + * {
+  border-inline-start: 1px solid var(--border);
+}
+
+@media (min-width: 600px) {
+  html:not(.dark) .pretrip-home {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  html:not(.dark) .pretrip-home > * {
+    grid-column: 1 / -1;
+  }
+  html:not(.dark) .pretrip-home > .pretrip-checklist {
+    grid-column: 1;
+  }
+  html:not(.dark) .pretrip-home > .pretrip-budget {
+    grid-column: 2;
+  }
+  html:not(.dark) .pretrip-home:not(:has(> .pretrip-checklist)) > .pretrip-budget {
+    grid-column: 1 / -1;
+  }
 }
