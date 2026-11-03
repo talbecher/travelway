@@ -1686,13 +1686,13 @@ function SortableEntry({
 
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
-  const style: React.CSSProperties = {
+  const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
+  const style: React.CSSProperties & { "--stop-tint": string } = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
+    "--stop-tint": tint,
   };
-  const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
-  style["--stop-tint" as keyof React.CSSProperties] = tint;
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entryIcon(entry, 36);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? null;
