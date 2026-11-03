@@ -710,6 +710,11 @@ function DayDetail() {
   return (
     <div className="-mx-4 day-visual-preview">
       <style>{`
+        html:not(.dark) .day-visual-preview {
+          --cat-transport-bg: #DDF0E3; --cat-transport-fg: #1C6B38;
+          --cat-attraction-bg: #E1EBFA; --cat-attraction-fg: #21549E;
+          --cat-lodging-bg: #F9ECD8; --cat-lodging-fg: #8A5A12;
+        }
         html:not(.dark) .day-visual-preview .day-header {
           padding-block: 4px;
         }
