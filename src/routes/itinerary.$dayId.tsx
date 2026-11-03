@@ -688,6 +688,8 @@ function DayDetail() {
     if (ro) {
       if (headerRef.current) ro.observe(headerRef.current);
       if (paneRef.current) ro.observe(paneRef.current);
+      const nav = document.querySelector("[data-bottom-nav]");
+      if (nav) ro.observe(nav);
     }
     return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); ro?.disconnect(); };
   }, [view, selectedStopId, selectedSegment, entries.length]);
