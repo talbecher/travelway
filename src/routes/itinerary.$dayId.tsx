@@ -788,13 +788,13 @@ function DayDetail() {
         html:not(.dark) .day-visual-preview .day-list-actions {
           flex-wrap: wrap;
           row-gap: 4px;
-          padding-top: 4px;
+          padding-top: 2px;
           padding-bottom: 0;
           flex-shrink: 0;
         }
         html:not(.dark) .day-visual-preview .day-list-pane {
           min-height: 0;
-          padding-top: 8px;
+          padding-top: 6px;
           scroll-padding-block: 8px;
           overscroll-behavior-y: contain;
         }
