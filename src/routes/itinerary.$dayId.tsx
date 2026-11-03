@@ -664,6 +664,7 @@ function DayDetail() {
   // so map overlays never sit on top of the navigation or the map attribution.
   const paneRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const [paneH, setPaneH] = useState<number | null>(null);
   const [overlayH, setOverlayH] = useState(0);
   useEffect(() => {
@@ -673,14 +674,22 @@ function DayDetail() {
         const top = el.getBoundingClientRect().top;
         const nav = document.querySelector("[data-bottom-nav]") as HTMLElement | null;
         const navH = nav ? nav.getBoundingClientRect().height : 0;
-        setPaneH(Math.max(260, Math.round(window.innerHeight - top - navH - 8)));
+        // Map mode keeps an 8px cushion for the attribution; list mode sits flush.
+        setPaneH(Math.max(260, Math.round(window.innerHeight - top - navH - (view === "map" ? 8 : 0))));
       }
       setOverlayH(overlayRef.current ? Math.round(overlayRef.current.getBoundingClientRect().height) : 0);
     };
     measure();
     const t = window.setTimeout(measure, 120);
     window.addEventListener("resize", measure);
-    return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); };
+    // The header can grow after the first measure (weather line loads async),
+    // which pushes the pane down and clips its bottom — re-measure on any size change.
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro) {
+      if (headerRef.current) ro.observe(headerRef.current);
+      if (paneRef.current) ro.observe(paneRef.current);
+    }
+    return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); ro?.disconnect(); };
   }, [view, selectedStopId, selectedSegment, entries.length]);
 
 
