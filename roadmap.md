@@ -218,4 +218,4 @@
 
 - [x] Full-width low panorama, dominant planning block and solid CTA; retain all existing content and controls
 - [x] Responsive checklist/budget pairing and compact paired shortcuts; light pre-trip scope only
-- [ ] Focused 393px/narrow layout and automatic type/build checks; no publish
+- [x] Automatic build passed; authenticated 393px layout attempt could not reach pre-trip home with the current account, so 320px/paired visual checks remain unverified. No standalone typecheck or publish.
