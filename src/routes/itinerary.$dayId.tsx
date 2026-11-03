@@ -976,7 +976,8 @@ function DayDetail() {
       })()}
 
       <div className="day-city px-4 pt-2" dir="rtl">
-        <div className="rounded-2xl border border-border bg-card px-3 py-1.5">
+        <div className="day-city-row flex items-center gap-2">
+        <div className="day-city-card min-w-0 flex-1 rounded-2xl border border-border bg-card px-3 py-1.5">
         {editingCity ? (
           <div className="space-y-1.5">
             <div className="flex min-w-0 items-center gap-2">
