@@ -724,7 +724,7 @@ function Home() {
       ),
     );
     return (
-      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
+      <div className="pretrip-home mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
         <PreTripHero
           title={trip.title}
           flag={flagFor(trip.destination_country)}
