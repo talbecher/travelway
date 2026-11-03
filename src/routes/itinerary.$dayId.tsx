@@ -714,7 +714,7 @@ function DayDetail() {
     : null;
 
   return (
-    <div className="-mx-4 day-visual-preview">
+    <div ref={rootRef} className="-mx-4 day-visual-preview">
       <style>{`
         html:not(.dark) .day-visual-preview {
           --cat-transport-bg: #DDF0E3; --cat-transport-fg: #1C6B38;
