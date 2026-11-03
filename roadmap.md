@@ -213,3 +213,9 @@
 - [x] Optional cross-category priority sort, keeping category default and stable ties
 - [x] One attachment open action, separate external link; preserve signed-file access
 - [x] Eight sort tests, source interaction review, light/dark contrast and automatic build passed; no browser check or standalone tsgo run; no publish
+
+# Pre-trip light home — second visual pass
+
+- [x] Full-width low panorama, dominant planning block and solid CTA; retain all existing content and controls
+- [x] Responsive checklist/budget pairing and compact paired shortcuts; light pre-trip scope only
+- [ ] Focused 393px/narrow layout and automatic type/build checks; no publish
