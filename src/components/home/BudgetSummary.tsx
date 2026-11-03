@@ -22,7 +22,7 @@ export function BudgetSummary({
 
   if (rounded) {
     return (
-      <section className="rounded-[20px] bg-card px-3.5 py-2.5 shadow-sm">
+      <section className="pretrip-budget rounded-[20px] bg-card px-3.5 py-2.5 shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <h2 className="min-w-0 truncate text-[18px] font-semibold">תקציב</h2>
           <Link

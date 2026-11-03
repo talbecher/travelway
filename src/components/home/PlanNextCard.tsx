@@ -18,14 +18,16 @@ export type PlanningEntry = {
 function Shell({
   title = "ממשיכים לתכנן",
   onOpenItinerary,
+  className = "",
   children,
 }: {
   title?: string;
   onOpenItinerary?: () => void;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-2.5 rounded-[22px] bg-card px-3.5 py-3 shadow-sm">
+    <section className={"space-y-2.5 rounded-[22px] bg-card px-3.5 py-3 shadow-sm " + className}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <h2 className="min-w-0 break-words text-[18px] font-semibold">{title}</h2>
         {onOpenItinerary && (
@@ -167,7 +169,7 @@ export function PlanNextCard({
 
   if (variant === "preTripHome") {
     return (
-      <Shell onOpenItinerary={onOpenItinerary}>
+      <Shell onOpenItinerary={onOpenItinerary} className="pretrip-plan">
         <DayPicker days={days} selectedDayId={selectedDayId} onSelectDay={onSelectDay} soft />
         {selectedDay ? (
           <div className="space-y-2.5">

@@ -248,7 +248,7 @@ function DeadlinesCard({
   const effectiveOpen = openKey ?? mostUrgentKey;
 
   return (
-    <section className={compact ? "rounded-[20px] bg-card px-3 py-1.5 shadow-sm" : "space-y-2"}>
+    <section className={compact ? "pretrip-deadlines rounded-[20px] bg-card px-3 py-1.5 shadow-sm" : "space-y-2"}>
       {!compact && (
         <div className="flex items-center gap-2 text-sm font-medium">
           <AlertTriangle size={16} className="text-[color:var(--accent-2)]" />
@@ -724,7 +724,7 @@ function Home() {
       ),
     );
     return (
-      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
+      <div className="pretrip-home mx-auto flex w-full max-w-[620px] flex-col gap-3 pb-28 pt-3">
         <PreTripHero
           title={trip.title}
           flag={flagFor(trip.destination_country)}
