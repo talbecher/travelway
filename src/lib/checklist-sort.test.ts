@@ -1,6 +1,6 @@
 // @ts-nocheck -- run with `bun test`; bun:test types are not installed (no new deps).
 import { describe, expect, test } from "bun:test";
-import { sortChecklistTasks, taskUrgency } from "./checklist-sort";
+import { sortChecklistTasks, sortChecklistByPriority, taskUrgency } from "./checklist-sort";
 import { displayCategory, isKnownCategory } from "./checklist-templates";
 
 const T = "2026-11-10";
@@ -51,5 +51,26 @@ describe("unknown category display", () => {
     expect(displayCategory(item.category)).toBe("other");
     expect(item.category).toBe("visa_stuff");
     expect(displayCategory("transport")).toBe("transport");
+  });
+});
+
+describe("priority display mode", () => {
+  test("high then normal then low across categories, separately for open and completed", () => {
+    const items = [
+      t("done-low", { is_done: true, priority: "low", category: "documents" }),
+      t("open-low", { priority: "low", category: "documents", due_date: "2026-01-01" }),
+      t("done-high", { is_done: true, priority: "high", category: "packing" }),
+      t("open-normal", { category: "money" }),
+      t("open-high", { priority: "high", category: "packing" }),
+      t("done-normal", { is_done: true, category: "money" }),
+    ];
+    expect(sortChecklistByPriority(items).map((x) => x.id)).toEqual([
+      "open-high", "open-normal", "open-low", "done-high", "done-normal", "done-low",
+    ]);
+  });
+  test("ties preserve existing order and input is not mutated", () => {
+    const items = [t("b"), t("a"), t("high", { priority: "high" })];
+    expect(sortChecklistByPriority(items).map((x) => x.id)).toEqual(["high", "b", "a"]);
+    expect(items.map((x) => x.id)).toEqual(["b", "a", "high"]);
   });
 });

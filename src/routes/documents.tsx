@@ -19,6 +19,7 @@ import {
   type DocumentInput,
 } from "@/hooks/use-documents";
 import { BottomSheet } from "@/components/BottomSheet";
+import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/DateField";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +31,10 @@ export const Route = createFileRoute("/documents")({
     meta: [
       { title: "מסמכים · TravelWay" },
       { name: "description", content: "כרטיסים, אישורי הזמנה, ברקודים ומסמכי טיסה במקום אחד" },
+      { property: "og:title", content: "מסמכים · TravelWay" },
+      { property: "og:description", content: "כרטיסים, אישורי הזמנה, ברקודים ומסמכי טיסה במקום אחד" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: DocumentsPage,
@@ -190,7 +195,7 @@ function DocumentCard({
         </button>
       )}
       {doc.file_path && (
-        <button
+        <Button variant="outline"
           onClick={async () => {
             try {
               const r = await getDocumentFileUrl({ data: { documentId: doc.id } });
@@ -199,20 +204,19 @@ function DocumentCard({
               toast.error("פתיחת הקובץ נכשלה");
             }
           }}
-          className="h-9 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
+          className="rounded-full"
         >
           <Paperclip size={15} /> פתח קובץ
-        </button>
+        </Button>
       )}
-      {doc.file_url && (
-        <a
+      {!doc.file_path && doc.file_url && (
+        <Button asChild variant="outline" className="rounded-full"><a
           href={doc.file_url}
           target="_blank"
-          rel="noreferrer"
-          className="h-9 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
+          rel="noopener noreferrer"
         >
-          <Paperclip size={15} /> קובץ
-        </a>
+          <Paperclip size={15} /> פתח קובץ
+        </a></Button>
       )}
       {safeExternalUrl(doc.external_url) && (
         <a
