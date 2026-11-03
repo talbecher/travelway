@@ -22,6 +22,14 @@ export function taskUrgency(t: SortableTask, today: string): Urgency {
 const URGENCY_RANK: Record<Urgency, number> = { overdue: 0, today: 1, open: 2, done: 3 };
 const PRIORITY_RANK: Record<string, number> = { high: 0, normal: 1, low: 2 };
 
+/** Display-only priority mode: open before completed; stable ties keep the supplied category order. */
+export function sortChecklistByPriority<T extends SortableTask>(items: T[]): T[] {
+  return [...items].sort((a, b) =>
+    Number(a.is_done) - Number(b.is_done) ||
+    (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1),
+  );
+}
+
 /** Display-only ordering within a category. Returns a new array. */
 export function sortChecklistTasks<T extends SortableTask>(items: T[], today: string): T[] {
   return [...items].sort((a, b) => {

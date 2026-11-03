@@ -5,6 +5,7 @@ import { Check, Plus, MoreHorizontal, Trash2, Pencil, ChevronDown, Sparkles } fr
 import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
 import { BottomSheet } from "@/components/BottomSheet";
+import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/DateField";
 import { ImportChecklistSheet } from "@/components/ImportChecklistSheet";
 import {
@@ -18,7 +19,7 @@ import {
   isKnownCategory,
   type ChecklistPriority,
 } from "@/lib/checklist-templates";
-import { sortChecklistTasks, taskUrgency } from "@/lib/checklist-sort";
+import { sortChecklistTasks, sortChecklistByPriority, taskUrgency } from "@/lib/checklist-sort";
 import { todayLocal } from "@/lib/format";
 import {
   celebrate,
@@ -103,29 +104,31 @@ function ItemRow({
   today,
   onToggle,
   onMenu,
+  onDetails,
 }: {
   item: ChecklistItem;
   today: string;
   onToggle: () => void;
   onMenu: () => void;
+  onDetails: () => void;
 }) {
   const urgency = taskUrgency(item, today);
   return (
     <div className="flex items-center gap-1 min-h-[52px] px-1.5 border-b border-border/60 last:border-b-0">
       <Checkbox done={item.is_done} onToggle={onToggle} />
-      <div className="flex-1 min-w-0 py-1.5">
+      <Button variant="ghost" onClick={onDetails} aria-label={`פרטי משימה: ${item.title}`} className="flex-1 min-w-0 h-auto min-h-11 block whitespace-normal px-1 py-1.5 text-right text-foreground font-normal">
         <div
           className={`text-[15px] leading-snug transition-all ${
             item.is_done ? "line-through text-muted-foreground" : ""
           }`}
         >
-          {item.title}
+          <bdi>{item.title}</bdi>
         </div>
         {!item.is_done && (urgency === "overdue" || urgency === "today" || item.priority === "high") && (
           <div className="mt-0.5 flex flex-wrap gap-1">
             {urgency === "overdue" && <Tag tone="danger">באיחור</Tag>}
             {urgency === "today" && <Tag tone="accent">להיום</Tag>}
-            {item.priority === "high" && <Tag tone="muted">עדיפות גבוהה</Tag>}
+            {item.priority === "high" && <HighPriorityBadge />}
           </div>
         )}
         {(item.due_date || item.notes) && (
@@ -135,7 +138,7 @@ function ItemRow({
             {item.notes}
           </div>
         )}
-      </div>
+      </Button>
       <button
         onClick={onMenu}
         aria-label="אפשרויות"
@@ -145,6 +148,10 @@ function ItemRow({
       </button>
     </div>
   );
+}
+
+function HighPriorityBadge() {
+  return <span className="inline-flex items-center rounded-lg border border-accent-text/40 bg-accent-soft px-2 py-0.5 text-xs leading-5 font-semibold text-accent-text">עדיפות גבוהה</span>;
 }
 
 function Onboarding({ onSkip, onImport }: { onSkip: () => void; onImport: () => void }) {
@@ -247,6 +254,9 @@ function ChecklistPage() {
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [menuItem, setMenuItem] = useState<ChecklistItem | null>(null);
   const [editItem, setEditItem] = useState<ChecklistItem | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<"category" | "priority">("category");
+  const detailItem = items.find((item) => item.id === detailId);
 
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("other");
@@ -275,6 +285,16 @@ function ChecklistPage() {
       };
     }).filter((g) => g.items.length > 0);
   }, [visible, items, today]);
+
+  const displayGroups = useMemo(() => {
+    if (sortMode === "category") return groups;
+    const ordered = sortChecklistByPriority(groups.flatMap((group) => group.items));
+    return [false, true].map((done) => ({
+      cat: { id: done ? "priority-done" : "priority-open", label: done ? "בוצע" : "פתוח", emoji: "" },
+      items: ordered.filter((item) => item.is_done === done),
+      open: done ? 0 : ordered.filter((item) => !item.is_done).length,
+    })).filter((group) => group.items.length > 0);
+  }, [groups, sortMode]);
 
   function handleToggle(item: ChecklistItem) {
     const next = !item.is_done;
@@ -369,11 +389,19 @@ function ChecklistPage() {
           ))}
         </div>
 
-        {groups.length === 0 && (
+        <div className="flex gap-1 rounded-xl border border-border p-1" role="group" aria-label="מיון משימות">
+          {(["category", "priority"] as const).map((mode) => (
+            <Button key={mode} variant={sortMode === mode ? "secondary" : "ghost"} aria-pressed={sortMode === mode} onClick={() => setSortMode(mode)} className="flex-1">
+              {mode === "category" ? "לפי קטגוריה" : "לפי עדיפות"}
+            </Button>
+          ))}
+        </div>
+
+        {displayGroups.length === 0 && (
           <div className="text-center text-sm text-muted-foreground py-10">אין משימות בתצוגה הזו</div>
         )}
 
-        {groups.map((g) => {
+        {displayGroups.map((g) => {
           const open = !collapsed.includes(g.cat.id);
           return (
             <div key={g.cat.id} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -414,6 +442,7 @@ function ChecklistPage() {
                         today={today}
                         onToggle={() => handleToggle(item)}
                         onMenu={() => setMenuItem(item)}
+                        onDetails={() => setDetailId(item.id)}
                       />
                     ))}
                   </motion.div>
@@ -460,6 +489,22 @@ function ChecklistPage() {
           </button>
         </div>
       </div>
+
+      <BottomSheet open={!!detailItem} onOpenChange={(open) => !open && setDetailId(null)} title="פרטי משימה">
+        {detailItem && (
+          <div className="space-y-4 text-right">
+            <h2 className="text-lg font-semibold whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><bdi>{detailItem.title}</bdi></h2>
+            <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+              <dt className="text-muted-foreground">קטגוריה</dt><dd><bdi>{categoryMeta(detailItem.category).label}</bdi></dd>
+              <dt className="text-muted-foreground">עדיפות</dt><dd>{detailItem.priority === "high" ? <HighPriorityBadge /> : PRIORITY_LABEL[detailItem.priority]}</dd>
+              <dt className="text-muted-foreground">מצב</dt><dd>{detailItem.is_done ? "בוצע" : "פתוח"}</dd>
+              {detailItem.due_date && <><dt className="text-muted-foreground">תאריך יעד</dt><dd><bdi>{detailItem.due_date.split("-").reverse().join("/")}</bdi></dd></>}
+              {detailItem.is_done && detailItem.done_at && <><dt className="text-muted-foreground">הושלם בתאריך</dt><dd><bdi>{new Date(detailItem.done_at).toLocaleDateString("he-IL")}</bdi></dd></>}
+            </dl>
+            {detailItem.notes && <div className="space-y-1"><h3 className="text-sm text-muted-foreground">הערות</h3><p className="text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><bdi>{detailItem.notes}</bdi></p></div>}
+          </div>
+        )}
+      </BottomSheet>
 
       {/* Item menu */}
       <BottomSheet open={!!menuItem} onOpenChange={(o) => !o && setMenuItem(null)} title={menuItem?.title}>

@@ -206,3 +206,10 @@
 - [ ] Documents stage B: chat endpoint, in-app upload + file checks, review/approval page, open-file button, token permission + action schema
 - [ ] Documents stage C: hourly cleanup route + scheduled job, runtime tests
 - [ ] Old document/photo files: any signed-in user can open them today (code-read finding). Separate task, not started.
+
+# Targeted checklist & documents UX
+
+- [ ] Read-only task details; independent checkbox/menu; prominent accessible high-priority badge
+- [ ] Optional cross-category priority sort, keeping category default and stable ties
+- [ ] One attachment open action, separate external link; preserve signed-file access
+- [ ] Focused checks and preview compilation; no publish
