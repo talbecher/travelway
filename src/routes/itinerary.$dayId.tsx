@@ -1884,13 +1884,15 @@ function SortableEntry({
               onError={() => setPhotoFailed(true)}
               className="w-[72px] h-[72px] rounded-xl object-cover shrink-0"
             />
-          ) : (
+          ) : typeof icon === "string" ? (
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0"
               style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
             >
               {icon}
             </div>
+          ) : (
+            icon
           )}
 
           <div className="flex-1 min-w-0">
