@@ -212,4 +212,4 @@
 - [x] Read-only task details; independent checkbox/menu; prominent accessible high-priority badge
 - [x] Optional cross-category priority sort, keeping category default and stable ties
 - [x] One attachment open action, separate external link; preserve signed-file access
-- [ ] Focused checks and preview compilation; no publish
+- [x] Eight sort tests, source interaction review, light/dark contrast and automatic build passed; no browser check or standalone tsgo run; no publish
