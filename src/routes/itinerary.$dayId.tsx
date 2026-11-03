@@ -843,6 +843,10 @@ function DayDetail() {
           font-weight: 600;
           font-size: 13px;
         }
+        html:not(.dark) .day-visual-preview .day-directions-icon {
+          display: block;
+          flex-shrink: 0;
+        }
         html:not(.dark) .day-visual-preview .day-segment > div {
           padding-inline-start: 40px !important;
           padding-block: 4px;
@@ -1625,6 +1629,7 @@ function SegmentRow({
             color: "var(--accent)",
           }}
         >
+          <Compass size={16} className="day-directions-icon hidden" aria-hidden="true" />
           אפשרויות הגעה <ChevronRight size={12} className="rotate-180" />
         </button>
         <button
