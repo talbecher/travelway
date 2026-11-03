@@ -696,7 +696,7 @@ function DayDetail() {
       if (nav) ro.observe(nav);
     }
     return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); ro?.disconnect(); };
-  }, [view, selectedStopId, selectedSegment, entries.length]);
+  }, [view, selectedStopId, selectedSegment, entries.length, day?.id]);
 
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
