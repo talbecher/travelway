@@ -664,6 +664,8 @@ function DayDetail() {
   // so map overlays never sit on top of the navigation or the map attribution.
   const paneRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [paneH, setPaneH] = useState<number | null>(null);
   const [overlayH, setOverlayH] = useState(0);
   useEffect(() => {
@@ -673,15 +675,28 @@ function DayDetail() {
         const top = el.getBoundingClientRect().top;
         const nav = document.querySelector("[data-bottom-nav]") as HTMLElement | null;
         const navH = nav ? nav.getBoundingClientRect().height : 0;
-        setPaneH(Math.max(260, Math.round(window.innerHeight - top - navH - 8)));
+        // Map mode keeps an 8px cushion for the attribution; list mode sits flush.
+        setPaneH(Math.max(260, Math.round(window.innerHeight - top - navH - (view === "map" ? 8 : 0))));
       }
       setOverlayH(overlayRef.current ? Math.round(overlayRef.current.getBoundingClientRect().height) : 0);
     };
     measure();
     const t = window.setTimeout(measure, 120);
     window.addEventListener("resize", measure);
-    return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); };
-  }, [view, selectedStopId, selectedSegment, entries.length]);
+    // The header can grow after the first measure (weather line loads async),
+    // which pushes the pane down and clips its bottom — re-measure on any size change.
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro) {
+      // The root covers every block above the pane (header, city row, tabs, banners):
+      // any of them growing after the first measure shifts the pane down and would
+      // otherwise leave it too tall, clipping the quick-add under the bottom nav.
+      if (rootRef.current) ro.observe(rootRef.current);
+      if (paneRef.current) ro.observe(paneRef.current);
+      const nav = document.querySelector("[data-bottom-nav]");
+      if (nav) ro.observe(nav);
+    }
+    return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); ro?.disconnect(); };
+  }, [view, selectedStopId, selectedSegment, entries.length, day?.id]);
 
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
@@ -699,8 +714,13 @@ function DayDetail() {
     : null;
 
   return (
-    <div className="-mx-4 day-visual-preview">
+    <div ref={rootRef} className="-mx-4 day-visual-preview">
       <style>{`
+        html:not(.dark) .day-visual-preview {
+          --cat-transport-bg: #DDF0E3; --cat-transport-fg: #1C6B38;
+          --cat-attraction-bg: #E1EBFA; --cat-attraction-fg: #21549E;
+          --cat-lodging-bg: #F9ECD8; --cat-lodging-fg: #8A5A12;
+        }
         html:not(.dark) .day-visual-preview .day-header {
           padding-block: 4px;
         }
@@ -724,6 +744,7 @@ function DayDetail() {
           grid-row: 1;
           line-height: 1.2;
           letter-spacing: 0;
+          font-size: 22px;
         }
         html:not(.dark) .day-header-copy p:first-of-type {
           grid-column: 2;
@@ -742,15 +763,19 @@ function DayDetail() {
           grid-column: 3;
           grid-row: 2;
         }
-        html:not(.dark) .day-visual-preview .day-city,
-        html:not(.dark) .day-visual-preview .day-inspiration,
-        html:not(.dark) .day-visual-preview .day-tabs-wrap {
+        html:not(.dark) .day-visual-preview .day-city {
           padding-top: 4px;
         }
-        html:not(.dark) .day-visual-preview .day-city > div {
+        html:not(.dark) .day-visual-preview .day-tabs-wrap {
+          padding-top: 2px;
+        }
+        html:not(.dark) .day-visual-preview .day-city-row {
+          flex-wrap: wrap;
+        }
+        html:not(.dark) .day-visual-preview .day-city-card {
           padding-block: 2px;
         }
-        html:not(.dark) .day-visual-preview .day-inspiration button {
+        html:not(.dark) .day-visual-preview .day-inspiration-btn {
           min-height: 44px;
         }
         html:not(.dark) .day-visual-preview .day-view-tabs {
@@ -769,13 +794,13 @@ function DayDetail() {
         html:not(.dark) .day-visual-preview .day-list-actions {
           flex-wrap: wrap;
           row-gap: 4px;
-          padding-top: 4px;
+          padding-top: 2px;
           padding-bottom: 0;
           flex-shrink: 0;
         }
         html:not(.dark) .day-visual-preview .day-list-pane {
           min-height: 0;
-          padding-top: 8px;
+          padding-top: 6px;
           scroll-padding-block: 8px;
           overscroll-behavior-y: contain;
         }
@@ -886,6 +911,7 @@ function DayDetail() {
         ).length;
         return (
           <div
+            ref={headerRef}
             className={
               "day-header relative w-full bg-background border-b border-border " +
               (view === "list" ? "pt-2 pb-2.5" : "py-1.5")
@@ -956,7 +982,8 @@ function DayDetail() {
       })()}
 
       <div className="day-city px-4 pt-2" dir="rtl">
-        <div className="rounded-2xl border border-border bg-card px-3 py-1.5">
+        <div className="day-city-row flex items-center gap-2">
+        <div className="day-city-card min-w-0 flex-1 rounded-2xl border border-border bg-card px-3 py-1.5">
         {editingCity ? (
           <div className="space-y-1.5">
             <div className="flex min-w-0 items-center gap-2">
@@ -998,19 +1025,17 @@ function DayDetail() {
           </button>
         )}
         </div>
-      </div>
-
-      {discoverVisible && view === "list" && hasAnyEntries && (
-        <div className="day-inspiration px-4 pt-2" dir="rtl">
+        {discoverVisible && view === "list" && hasAnyEntries && (
           <button
             type="button"
             onClick={() => setDiscoverOpen(true)}
-            className="min-h-9 px-3 rounded-full text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
+            className="day-inspiration-btn shrink-0 min-h-11 px-3 rounded-2xl text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
           >
             <Compass size={14} className="text-[color:var(--accent)]" /> השראה למקומות
           </button>
+        )}
         </div>
-      )}
+      </div>
 
       {/* View switch — same day, two modes */}
       <div className="day-tabs-wrap px-4 pt-2" dir="rtl">
@@ -1865,13 +1890,15 @@ function SortableEntry({
               onError={() => setPhotoFailed(true)}
               className="w-[72px] h-[72px] rounded-xl object-cover shrink-0"
             />
-          ) : (
+          ) : typeof icon === "string" ? (
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0"
               style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
             >
               {icon}
             </div>
+          ) : (
+            icon
           )}
 
           <div className="flex-1 min-w-0">
