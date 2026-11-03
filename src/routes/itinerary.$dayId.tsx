@@ -738,6 +738,7 @@ function DayDetail() {
           grid-row: 1;
           line-height: 1.2;
           letter-spacing: 0;
+          font-size: 22px;
         }
         html:not(.dark) .day-header-copy p:first-of-type {
           grid-column: 2;
