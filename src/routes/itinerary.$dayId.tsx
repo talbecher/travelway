@@ -87,6 +87,16 @@ import { CategoryIcon, isDefaultCategoryEmoji } from "@/components/CategoryIcon"
 
 
 export const Route = createFileRoute("/itinerary/$dayId")({
+  head: () => ({
+    meta: [
+      { title: "תכנון היום | Travel Way" },
+      { name: "description", content: "תחנות היום, שעות, מפה ואפשרויות הגעה במסלול האישי שלכם ב־Travel Way." },
+      { property: "og:title", content: "תכנון היום | Travel Way" },
+      { property: "og:description", content: "תחנות היום, שעות, מפה ואפשרויות הגעה במסלול האישי שלכם ב־Travel Way." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: DayDetail,
 });
 
@@ -689,7 +699,107 @@ function DayDetail() {
     : null;
 
   return (
-    <div className="-mx-4">
+    <div className="-mx-4 day-visual-preview">
+      <style>{`
+        html:not(.dark) .day-visual-preview .day-view-tabs {
+          background: var(--card);
+          padding: 4px;
+        }
+        html:not(.dark) .day-visual-preview .day-view-tabs [role="tab"] {
+          min-height: 44px;
+          font-size: 14px;
+          font-weight: 600;
+        }
+        html:not(.dark) .day-visual-preview .day-view-tabs [aria-selected="true"] {
+          background: var(--accent-text);
+          color: var(--accent-foreground);
+        }
+        html:not(.dark) .day-visual-preview .day-list-actions {
+          flex-wrap: wrap;
+          row-gap: 8px;
+          padding-top: 12px;
+          padding-bottom: 4px;
+        }
+        html:not(.dark) .day-visual-preview .day-list-actions button {
+          min-height: 44px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--accent-text);
+          border-color: color-mix(in oklab, var(--accent-text) 30%, var(--border));
+        }
+        html:not(.dark) .day-visual-preview .day-list-actions [aria-pressed="true"] {
+          background: var(--accent-text);
+          color: var(--accent-foreground);
+        }
+        html:not(.dark) .day-visual-preview .day-stop {
+          width: 100%;
+          isolation: isolate;
+        }
+        html:not(.dark) .day-visual-preview .day-stop-rail {
+          position: absolute;
+          right: 4px;
+          top: 6px;
+          bottom: 0;
+          z-index: 1;
+        }
+        html:not(.dark) .day-visual-preview .day-stop-card {
+          width: 100%;
+          padding: 14px 44px 14px 14px;
+          background: color-mix(in oklab, var(--stop-tint) 4%, var(--card));
+          border-inline-start: 3px solid color-mix(in oklab, var(--stop-tint) 35%, var(--border)) !important;
+        }
+        html:not(.dark) .day-visual-preview .day-stop .entry-title {
+          font-size: 16px;
+          font-weight: 700;
+          line-height: 1.5;
+          overflow-wrap: anywhere;
+        }
+        html:not(.dark) .day-visual-preview .day-stop-meta {
+          margin-top: 5px;
+          font-size: 12px;
+          line-height: 1.65;
+        }
+        html:not(.dark) .day-visual-preview .day-stop-meta > span[dir="ltr"] {
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--accent-text);
+        }
+        html:not(.dark) .day-visual-preview .day-stop-notes {
+          margin-top: 6px;
+          font-size: 12px;
+          line-height: 1.6;
+          font-style: normal;
+          color: var(--muted-foreground);
+        }
+        html:not(.dark) .day-visual-preview .day-segment button {
+          color: var(--accent-text) !important;
+        }
+        html:not(.dark) .day-visual-preview .day-map-stop {
+          border-top: 3px solid var(--accent-soft);
+        }
+        html:not(.dark) .day-visual-preview .day-map-title {
+          font-size: 16px;
+          line-height: 1.5;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+        html:not(.dark) .day-order-preview .day-order-row {
+          padding-block: 12px;
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+        html:not(.dark) .day-order-preview .day-order-title {
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 1.5;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+        html:not(.dark) .day-order-preview .day-order-confirm {
+          background: var(--accent-text);
+          color: var(--accent-foreground);
+        }
+      `}</style>
       {/* Day header — clean warm header in list mode, compact in map mode */}
       {(() => {
         const totalLinked = entries.filter((e) => e.linked_recommendation_id).length;
@@ -826,7 +936,7 @@ function DayDetail() {
 
       {/* View switch — same day, two modes */}
       <div className="px-4 pt-2" dir="rtl">
-        <div className="inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
+        <div className="day-view-tabs inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
           {([
             { key: "list", label: "מסלול" },
             { key: "map", label: "מפה" },
@@ -981,7 +1091,7 @@ function DayDetail() {
       ) : (
         <div ref={paneRef} className="relative flex flex-col" style={{ height: paneH ? `${paneH}px` : "calc(100dvh - 254px)" }}>
           {/* Summary + list actions */}
-          <div className="px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
+          <div className="day-list-actions px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
             <span className="text-[12px] text-muted-foreground">
               {entries.length} תחנות · סדר ידני
             </span>
@@ -1353,6 +1463,7 @@ function DayDetail() {
 
 
       <BottomSheet open={showOptimizePreview} onOpenChange={setShowOptimizePreview} title="סדר מסלול מוצע">
+        <div className="day-order-preview">
         <div className="text-[12px] text-muted-foreground mb-3">
           חיסכון של ~{optimize.savedMinutes} דקות נסיעה ·{" "}
           <span dir="ltr" className="tabular-nums">{optimize.currentDistKm} ק״מ → {optimize.optimalDistKm} ק״מ</span>
@@ -1362,7 +1473,7 @@ function DayDetail() {
             const oldPos = entries.findIndex((e) => e.id === entry.id);
             const moved = oldPos !== -1 && oldPos !== idx;
             return (
-              <div key={entry.id} className="flex items-center gap-2.5 py-2 border-b border-border/60 last:border-b-0">
+              <div key={entry.id} className="day-order-row flex items-center gap-2.5 py-2 border-b border-border/60 last:border-b-0">
                 <span className="w-6 h-6 rounded-full bg-muted text-foreground text-[11px] font-medium flex items-center justify-center shrink-0 tabular-nums">
                   {idx + 1}
                 </span>
@@ -1373,7 +1484,7 @@ function DayDetail() {
                     {entryIcon(entry, 36)}
                   </span>
                 )}
-                <span className="flex-1 min-w-0 text-[13px] truncate"><bdi>{entry.title}</bdi></span>
+                <span className="day-order-title flex-1 min-w-0 text-[13px] truncate"><bdi>{entry.title}</bdi></span>
                 {moved && (
                   <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full shrink-0">
                     ↕ היה מקום {oldPos + 1}
@@ -1387,7 +1498,7 @@ function DayDetail() {
           <button
             type="button"
             disabled={applyOptimalOrder.isPending}
-            className="w-full h-12 rounded-xl bg-accent text-white text-[14px] font-medium disabled:opacity-50"
+            className="day-order-confirm w-full h-12 rounded-xl bg-accent text-white text-[14px] font-medium disabled:opacity-50"
             onClick={() => applyOptimalOrder.mutate(optimize.optimalOrder)}
           >
             {applyOptimalOrder.isPending ? "מעדכן…" : "✅ אשר ועדכן סדר"}
@@ -1399,6 +1510,7 @@ function DayDetail() {
           >
             ביטול
           </button>
+        </div>
         </div>
       </BottomSheet>
 
@@ -1415,7 +1527,7 @@ function SegmentRow({
   onShowOnMap: () => void;
 }) {
   return (
-    <div className="relative flex items-center min-h-[56px]" dir="rtl">
+    <div className="day-segment relative flex items-center min-h-[56px]" dir="rtl">
       {/* Bridge tie — visually connects the bridge to the timeline rail (display only) */}
       <span
         aria-hidden
@@ -1580,6 +1692,7 @@ function SortableEntry({
     opacity: isDragging ? 0.6 : 1,
   };
   const tint = TYPE_COLOR[entry.entry_type] ?? "var(--chart-6)";
+  style["--stop-tint" as keyof React.CSSProperties] = tint;
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const icon = entryIcon(entry, 36);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? null;
@@ -1610,9 +1723,9 @@ function SortableEntry({
   }, [hintHandle]);
 
   return (
-    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="relative flex items-stretch gap-2">
+    <div ref={(el) => { setNodeRef(el); setRef(el); }} style={style} dir="rtl" className="day-stop relative flex items-stretch gap-2">
       {/* Timeline rail (right in RTL) — narrow, content gets the width */}
-      <div className="w-[36px] shrink-0 relative flex flex-col items-center pt-2 pointer-events-none">
+      <div className="day-stop-rail w-[36px] shrink-0 relative flex flex-col items-center pt-2 pointer-events-none">
         {!isLast && (
           <div
             className="absolute right-1/2 translate-x-1/2 top-[30px] bottom-[-16px] w-0"
@@ -1642,7 +1755,7 @@ function SortableEntry({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetails(); } }}
         animate={highlighted ? { boxShadow: `0 0 0 2px ${pinColor}` } : { boxShadow: "0 0 0 0px transparent" }}
         transition={{ duration: 0.35 }}
-        className="relative flex-1 min-w-0 bg-card rounded-2xl cursor-pointer p-2.5"
+        className="day-stop-card relative flex-1 min-w-0 bg-card rounded-2xl cursor-pointer p-2.5"
         style={{ border: "1px solid var(--border)" }}
       >
         <div className="flex items-start gap-2.5">
@@ -1701,7 +1814,7 @@ function SortableEntry({
             </div>
 
             {/* Meta — may wrap to two lines */}
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+            <div className="day-stop-meta mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
               <span className={entry.time_of_day ? "font-medium text-foreground tabular-nums" : ""} dir={entry.time_of_day ? "ltr" : undefined}>
                 {entry.time_of_day || "ללא שעה"}
               </span>
@@ -1716,7 +1829,7 @@ function SortableEntry({
             </div>
 
             {notesSnippet && (
-              <div className="text-[11px] text-muted-foreground/90 italic mt-0.5 break-words line-clamp-2"><bdi>{notesSnippet}</bdi></div>
+              <div className="day-stop-notes text-[11px] text-muted-foreground/90 italic mt-0.5 break-words line-clamp-2"><bdi>{notesSnippet}</bdi></div>
             )}
 
             {/* Actions */}
@@ -2125,7 +2238,7 @@ function MapStopCard({
   return (
     <div
       ref={cardRef}
-      className="absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
+      className="day-map-stop absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       dir="rtl"
     >
@@ -2143,7 +2256,7 @@ function MapStopCard({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-[15px] font-semibold truncate">
+          <div className="day-map-title text-[15px] font-semibold truncate">
             {pinIndex != null ? `${pinIndex} · ` : ""}<bdi>{entry.title}</bdi>
           </div>
           <div className="text-[12px] text-muted-foreground truncate">
