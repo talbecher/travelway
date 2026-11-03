@@ -340,6 +340,8 @@ html:not(.dark) .pretrip-home {
   grid-template-columns: minmax(0, 1fr);
   max-width: 860px;
   gap: 16px;
+  /* The shell already reserves 96px plus the bottom safe area for navigation. */
+  padding-bottom: 0;
 }
 
 html:not(.dark) .pretrip-home > * {
@@ -422,10 +424,17 @@ html:not(.dark) .pretrip-home .pretrip-tools {
 }
 html:not(.dark) .pretrip-home .pretrip-tools > * {
   min-width: 0;
-  min-height: 66px;
+  min-height: 84px;
   padding: 15px 12px;
   gap: 8px;
   border-bottom: 0;
+}
+html:not(.dark) .pretrip-home .pretrip-tools > * > svg:first-child {
+  width: 22px;
+  height: 22px;
+}
+html:not(.dark) .pretrip-home .pretrip-tools > * > span {
+  font-size: 15px;
 }
 html:not(.dark) .pretrip-home .pretrip-tools > * + * {
   border-inline-start: 1px solid var(--border);
