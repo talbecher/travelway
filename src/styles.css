@@ -328,3 +328,49 @@ html.near-lock body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Pre-trip home — warm editorial light-mode pass (scoped, light only) ===== */
+/* Warm paper backdrop behind the whole screen. */
+html:not(.dark) body:has(.pretrip-home) {
+  background: #F6F1EA;
+  background-image: radial-gradient(1200px 520px at 50% -8%, #FCF7EF 0%, rgba(252, 247, 239, 0) 62%);
+}
+
+/* Softer, warmer card elevation on this screen only. */
+html:not(.dark) .pretrip-home section {
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(74, 52, 36, 0.05), 0 12px 26px -16px rgba(122, 79, 8, 0.16);
+}
+
+/* Terracotta emphasis on the "ממשיכים לתכנן" card. */
+html:not(.dark) .pretrip-plan {
+  background: linear-gradient(165deg, #FDF2EC 0%, var(--card) 58%);
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--border));
+}
+html:not(.dark) .pretrip-plan h2 {
+  color: var(--accent-text);
+}
+
+/* Subtle amber for the deadlines card. */
+html:not(.dark) .pretrip-deadlines {
+  background: #FDF8EC;
+  border-color: #F0E3C6;
+}
+
+/* Calmer checklist / budget / tools: more air, softer type hierarchy. */
+html:not(.dark) .pretrip-checklist {
+  padding: 16px;
+}
+html:not(.dark) .pretrip-checklist h2 {
+  font-size: 15px;
+}
+html:not(.dark) .pretrip-budget {
+  padding: 14px 16px;
+}
+html:not(.dark) .pretrip-tools {
+  border-radius: 16px;
+}
+html:not(.dark) .pretrip-tools > * {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
