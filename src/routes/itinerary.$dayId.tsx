@@ -665,6 +665,7 @@ function DayDetail() {
   const paneRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [paneH, setPaneH] = useState<number | null>(null);
   const [overlayH, setOverlayH] = useState(0);
   useEffect(() => {
