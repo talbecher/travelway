@@ -74,7 +74,11 @@ function iconFor(t: string) {
   return m[t] ?? "•";
 }
 
-function buildSummary(entries: EntryRow[]): string {
+function buildSummary(entries: EntryRow[], fullTitles = false): string {
+  // Light overview isolates complete titles; dark keeps its existing presentation.
+  const title = (value: string, legacyLimit: number) => fullTitles
+    ? `\u2068${value}\u2069`
+    : value.slice(0, legacyLimit);
   const byType = {
     attraction: entries.filter((e) => e.entry_type === "attraction"),
     food: entries.filter((e) => e.entry_type === "food"),
@@ -87,28 +91,28 @@ function buildSummary(entries: EntryRow[]): string {
 
   // Flight first
   if (byType.flight.length) {
-    parts.push(`✈️ ${byType.flight[0].title.slice(0, 20)}`);
+    parts.push(`✈️ ${title(byType.flight[0].title, 20)}`);
   }
 
   // Hotel
   if (byType.hotel.length) {
-    parts.push(`🏨 ${byType.hotel[0].title.slice(0, 18)}`);
+    parts.push(`🏨 ${title(byType.hotel[0].title, 18)}`);
   }
 
   // Attractions: show first 2 by name
   if (byType.attraction.length === 1) {
-    parts.push(`⛩ ${byType.attraction[0].title.slice(0, 20)}`);
+    parts.push(`⛩ ${title(byType.attraction[0].title, 20)}`);
   } else if (byType.attraction.length === 2) {
-    parts.push(`⛩ ${byType.attraction[0].title.slice(0, 15)} · ${byType.attraction[1].title.slice(0, 15)}`);
+    parts.push(`⛩ ${title(byType.attraction[0].title, 15)} · ${title(byType.attraction[1].title, 15)}`);
   } else if (byType.attraction.length > 2) {
-    parts.push(`⛩ ${byType.attraction[0].title.slice(0, 15)} · ${byType.attraction[1].title.slice(0, 12)} +${byType.attraction.length - 2}`);
+    parts.push(`⛩ ${title(byType.attraction[0].title, 15)} · ${title(byType.attraction[1].title, 12)} +${byType.attraction.length - 2}`);
   }
 
   // Food: show first by name + count
   if (byType.food.length === 1) {
-    parts.push(`🍜 ${byType.food[0].title.slice(0, 20)}`);
+    parts.push(`🍜 ${title(byType.food[0].title, 20)}`);
   } else if (byType.food.length > 1) {
-    parts.push(`🍜 ${byType.food[0].title.slice(0, 15)} +${byType.food.length - 1}`);
+    parts.push(`🍜 ${title(byType.food[0].title, 15)} +${byType.food.length - 1}`);
   }
 
   // Transport
@@ -302,23 +306,32 @@ function Itinerary() {
     <div className="itinerary-overview space-y-3 overflow-x-hidden pt-2 pb-24">
       <style>{`
         html:not(.dark) .itinerary-overview { background: var(--background); }
+        html:not(.dark) .itinerary-overview > :not(style) { margin-block-end: 6px; }
+        html:not(.dark) .itinerary-overview .overview-search { margin-block-end: 4px; }
         html:not(.dark) .itinerary-overview .overview-header { align-items: center; gap: 8px; }
         html:not(.dark) .itinerary-overview .overview-header h1 { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: 0; }
         html:not(.dark) .itinerary-overview .overview-header p { margin-top: 2px; font-size: 13px; }
         html:not(.dark) .itinerary-overview .overview-city-strip { background: var(--background); }
-        html:not(.dark) .itinerary-overview .overview-city-strip button { font-size: 12px; }
+        html:not(.dark) .itinerary-overview .overview-city-strip button { font-size: 12px; height: auto; min-height: 44px; max-width: calc(100vw - 48px); }
+        html:not(.dark) .itinerary-overview .overview-city-strip button > span { height: auto; min-height: 32px; padding-block: 5px; min-width: 0; }
+        html:not(.dark) .itinerary-overview .overview-city-strip button > span > span:first-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+        html:not(.dark) .itinerary-overview .overview-city-strip button > span > span:last-child { flex-shrink: 0; }
         html:not(.dark) .itinerary-overview .overview-city-strip .bg-accent { background: var(--accent-soft); color: var(--accent-text); }
-        html:not(.dark) .itinerary-overview .overview-group-heading { margin-top: 16px; margin-bottom: 8px; }
+        html:not(.dark) .itinerary-overview .overview-group-heading { margin-top: 8px; margin-bottom: 6px; }
         html:not(.dark) .itinerary-overview .overview-city-label { min-width: 0; max-width: 80%; font-size: 15px; font-weight: 650; color: var(--foreground); text-align: right; overflow-wrap: anywhere; letter-spacing: 0; text-transform: none; }
         html:not(.dark) .itinerary-overview .overview-day { border-radius: var(--radius-card); background: var(--surface); }
         html:not(.dark) .itinerary-overview .overview-day[data-empty="true"] { background: var(--background); opacity: 1; }
         html:not(.dark) .itinerary-overview .overview-day[data-today="true"] { background: var(--accent-soft); border-color: var(--accent); }
         html:not(.dark) .itinerary-overview .overview-day-content { padding: 11px 14px; min-height: 66px; }
-        html:not(.dark) .itinerary-overview .overview-day-heading { gap: 8px; }
+        html:not(.dark) .itinerary-overview .overview-day-heading { grid-template-columns: auto auto minmax(0,1fr); gap: 8px; align-items: baseline; }
+        html:not(.dark) .itinerary-overview .overview-day-heading > span:last-child { justify-self: start; padding-inline-start: 8px; border-inline-start: 1px solid var(--border-strong); }
         html:not(.dark) .itinerary-overview .overview-day[data-today="true"] .overview-day-heading { padding-inline-end: 36px; }
         html:not(.dark) .itinerary-overview .overview-day-number { font-size: 16px; font-weight: 700; color: var(--accent-text); }
         html:not(.dark) .itinerary-overview .overview-day-heading > span:not(.overview-day-number) { font-size: 12px; }
-        html:not(.dark) .itinerary-overview .overview-summary { margin-top: 6px; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; text-align: right; }
+        .itinerary-overview .overview-summary-full { display: none; }
+        html:not(.dark) .itinerary-overview .overview-summary-legacy { display: none; }
+        html:not(.dark) .itinerary-overview .overview-summary-full { display: -webkit-box; }
+        html:not(.dark) .itinerary-overview .overview-summary { margin-top: 6px; font-size: 13px; line-height: 1.65; overflow-wrap: break-word; text-align: right; }
         html:not(.dark) .itinerary-overview .overview-today { top: 12px; left: 10px; font-size: 11px; font-weight: 650; background: var(--surface); color: var(--accent-text); }
         html:not(.dark) .itinerary-overview .overview-search-result > span:nth-child(2) > span { white-space: normal; overflow-wrap: anywhere; }
       `}</style>
@@ -370,7 +383,7 @@ function Itinerary() {
 
       <VersionSelector tripId={tripId} />
 
-      <div className="relative">
+      <div className="overview-search relative">
         <Search size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
           type="search"
@@ -538,8 +551,13 @@ function Itinerary() {
                         ) : (
                           <>
                             {summary && (
-                              <span className="overview-summary mt-1 block line-clamp-2 text-[11px] text-foreground">
+                              <span className="overview-summary overview-summary-legacy mt-1 block line-clamp-2 text-[11px] text-foreground">
                                 {summary}
+                              </span>
+                            )}
+                            {summary && (
+                              <span className="overview-summary overview-summary-full mt-1 line-clamp-2 text-[11px] text-foreground" dir="rtl">
+                                {buildSummary(entries, true)}
                               </span>
                             )}
                             <span className="mt-0.5 flex min-h-4 items-center">
