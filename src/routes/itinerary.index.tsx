@@ -316,6 +316,7 @@ function Itinerary() {
         html:not(.dark) .itinerary-overview .overview-city-strip button > span { height: auto; min-height: 32px; padding-block: 5px; min-width: 0; }
         html:not(.dark) .itinerary-overview .overview-city-strip button > span > span:first-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
         html:not(.dark) .itinerary-overview .overview-city-strip button > span > span:last-child { flex-shrink: 0; }
+        html:not(.dark) .itinerary-overview .overview-city-strip .bg-accent { position: sticky; right: 0; left: 0; z-index: 1; }
         html:not(.dark) .itinerary-overview .overview-city-strip .bg-accent { background: var(--accent-soft); color: var(--accent-text); }
         html:not(.dark) .itinerary-overview .overview-group-heading { margin-top: 8px; margin-bottom: 6px; }
         html:not(.dark) .itinerary-overview .overview-city-label { min-width: 0; max-width: 80%; font-size: 15px; font-weight: 650; color: var(--foreground); text-align: right; overflow-wrap: anywhere; letter-spacing: 0; text-transform: none; }
