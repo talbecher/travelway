@@ -66,7 +66,29 @@ function DocumentsPage() {
   );
 
   return (
-    <div className="pt-4 pb-8 flex flex-col gap-4">
+    <div className="documents-wallet pt-4 pb-8 flex flex-col gap-4">
+      <style>{`
+        html:not(.dark) .documents-wallet { gap: 12px; }
+        html:not(.dark) .documents-wallet .wallet-card { --wallet-tint: var(--muted); --wallet-ink: var(--muted-foreground); border-inline-start: 3px solid var(--wallet-ink); border-radius: var(--radius-card); }
+        html:not(.dark) .documents-wallet .wallet-card[data-type="flight"],
+        html:not(.dark) .documents-wallet .wallet-card[data-type="visa"] { --wallet-tint: var(--cat-lodging-bg); --wallet-ink: var(--cat-lodging-fg); }
+        html:not(.dark) .documents-wallet .wallet-card[data-type="hotel"] { --wallet-tint: var(--cat-food-bg); --wallet-ink: var(--cat-food-fg); }
+        html:not(.dark) .documents-wallet .wallet-card[data-type="attraction"] { --wallet-tint: var(--cat-attraction-bg); --wallet-ink: var(--cat-attraction-fg); }
+        html:not(.dark) .documents-wallet .wallet-card[data-type="insurance"],
+        html:not(.dark) .documents-wallet .wallet-card[data-type="transport"] { --wallet-tint: var(--cat-booked-bg); --wallet-ink: var(--cat-booked-fg); }
+        html:not(.dark) .documents-wallet .wallet-card-top { background: color-mix(in oklab, var(--wallet-tint) 45%, var(--surface)); padding-top: 12px; padding-bottom: 10px; }
+        html:not(.dark) .documents-wallet .wallet-title-row { align-items: start; min-width: 0; }
+        html:not(.dark) .documents-wallet .wallet-title-row > span[aria-hidden] { background: var(--wallet-tint) !important; color: var(--wallet-ink) !important; }
+        html:not(.dark) .documents-wallet .wallet-title { min-width: 0; flex: 1; white-space: normal; overflow-wrap: anywhere; font-size: 15px; font-weight: 650; line-height: 1.55; }
+        html:not(.dark) .documents-wallet .wallet-notes { white-space: normal; overflow-wrap: anywhere; max-width: 100%; line-height: 1.6; }
+        html:not(.dark) .documents-wallet .wallet-meta { row-gap: 6px; }
+        html:not(.dark) .documents-wallet .wallet-date { font-size: 13px; font-weight: 550; color: var(--foreground); font-variant-numeric: tabular-nums; }
+        html:not(.dark) .documents-wallet .wallet-actions { gap: 8px; padding-top: 6px; }
+        html:not(.dark) .documents-wallet .wallet-actions > button,
+        html:not(.dark) .documents-wallet .wallet-actions > a { min-height: 44px; }
+        html:not(.dark) .documents-wallet .wallet-file { background: var(--wallet-tint); color: var(--wallet-ink); border-color: var(--wallet-tint); font-weight: 650; padding-inline: 14px; }
+        html:not(.dark) .documents-wallet .wallet-link { background: var(--surface); color: var(--foreground); }
+      `}</style>
       <header className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-medium">מסמכים</h1>
@@ -174,6 +196,8 @@ function DocumentCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const externalUrl = safeExternalUrl(doc.external_url);
+  const separateExternalUrl = externalUrl && externalUrl !== safeExternalUrl(doc.file_url) ? externalUrl : null;
   const paidBadge = doc.is_paid ? (
     <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-medium">
       ✓ שולם{doc.amount_ils ? ` · ${ils(Number(doc.amount_ils))}` : ""}
@@ -185,7 +209,7 @@ function DocumentCard({
   );
 
   const actions = (
-    <div className="flex flex-wrap items-center gap-2 pt-1">
+    <div className="wallet-actions flex flex-wrap items-center gap-2 pt-1">
       {doc.barcode_value && (
         <button
           onClick={onShowBarcode}
@@ -204,13 +228,13 @@ function DocumentCard({
               toast.error("פתיחת הקובץ נכשלה");
             }
           }}
-          className="rounded-full"
+          className="wallet-file rounded-full"
         >
           <Paperclip size={15} /> פתח קובץ
         </Button>
       )}
       {!doc.file_path && doc.file_url && (
-        <Button asChild variant="outline" className="rounded-full"><a
+        <Button asChild variant="outline" className="wallet-file rounded-full"><a
           href={doc.file_url}
           target="_blank"
           rel="noopener noreferrer"
@@ -218,15 +242,14 @@ function DocumentCard({
           <Paperclip size={15} /> פתח קובץ
         </a></Button>
       )}
-      {safeExternalUrl(doc.external_url) && (
-        <a
-          href={safeExternalUrl(doc.external_url)!}
+      {separateExternalUrl && (
+        <Button asChild variant="outline" className="wallet-link h-11 rounded-full px-4"><a
+          href={separateExternalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="h-11 px-4 rounded-full border border-border text-sm font-medium inline-flex items-center gap-1.5"
         >
           <ExternalLink size={15} /> פתח קישור
-        </a>
+        </a></Button>
       )}
       <button
         onClick={onEdit}
@@ -249,11 +272,11 @@ function DocumentCard({
     const codes = parsed?.codes ?? [];
     const stops = codes.length >= 3 ? codes.length - 2 : 0;
     return (
-      <section className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--accent)]/10 to-transparent">
-          <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
+      <section data-type={doc.type} className="wallet-card rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="wallet-card-top px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--accent)]/10 to-transparent">
+          <div className="wallet-title-row flex items-center gap-2 text-sm font-medium flex-wrap">
             <CategoryIcon category="flight" size={28} />
-            <span className="truncate"><bdi>{parsed ? parsed.airline || "טיסה" : doc.title}</bdi></span>
+            <span className="wallet-title truncate"><bdi>{parsed ? parsed.airline || "טיסה" : doc.title}</bdi></span>
             {stops > 0 && (
               <span className="ms-auto text-[10px] rounded-full px-2 py-0.5 bg-[color:var(--accent)]/15 text-[color:var(--accent)] font-medium">
                 קונקשן · {stops} {stops === 1 ? "עצירה" : "עצירות"}
@@ -279,15 +302,15 @@ function DocumentCard({
         </div>
         <div className="border-t border-dashed border-border" />
         <div className="px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+          <div className="wallet-meta flex items-center justify-between gap-2 flex-wrap text-xs">
             {doc.valid_date ? (
-              <span className="text-muted-foreground">📅 {hebDate(doc.valid_date)}</span>
+              <span className="wallet-date text-muted-foreground">📅 <bdi>{hebDate(doc.valid_date)}</bdi></span>
             ) : (
               <span />
             )}
             {paidBadge}
           </div>
-          {doc.notes && <div className="text-xs text-muted-foreground line-clamp-2"><bdi>{doc.notes}</bdi></div>}
+          {doc.notes && <div className="wallet-notes text-xs text-muted-foreground line-clamp-2"><bdi>{doc.notes}</bdi></div>}
           {actions}
         </div>
       </section>
@@ -297,21 +320,21 @@ function DocumentCard({
 
   if (doc.type === "hotel") {
     return (
-      <section className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--terracotta)]/10 to-transparent">
-          <div className="flex items-center gap-2 text-sm font-medium">
+      <section data-type={doc.type} className="wallet-card rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="wallet-card-top px-4 pt-4 pb-3 bg-gradient-to-br from-[color:var(--terracotta)]/10 to-transparent">
+          <div className="wallet-title-row flex items-center gap-2 text-sm font-medium">
             <CategoryIcon category="hotel" size={28} />
-            <span className="truncate"><bdi>{doc.title}</bdi></span>
+            <span className="wallet-title truncate"><bdi>{doc.title}</bdi></span>
           </div>
           {doc.valid_date && (
-            <div className="text-xs text-muted-foreground mt-1">צ'ק-אין: {hebDate(doc.valid_date)}</div>
+            <div className="wallet-date text-xs text-muted-foreground mt-1">צ'ק-אין: <bdi>{hebDate(doc.valid_date)}</bdi></div>
           )}
         </div>
         <div className="border-t border-dashed border-border" />
         <div className="px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+          <div className="wallet-meta flex items-center justify-between gap-2 flex-wrap text-xs">
             {doc.notes ? (
-              <span className="text-muted-foreground truncate max-w-[60%]"><bdi>{doc.notes}</bdi></span>
+              <span className="wallet-notes text-muted-foreground truncate max-w-[60%]"><bdi>{doc.notes}</bdi></span>
             ) : (
               <span />
             )}
@@ -325,15 +348,15 @@ function DocumentCard({
 
   const meta = DOC_TYPE_META[doc.type];
   return (
-    <section className="rounded-2xl border border-border bg-card px-4 py-3 space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium">
+    <section data-type={doc.type} className="wallet-card rounded-2xl border border-border bg-card px-4 py-3 space-y-2">
+      <div className="wallet-title-row flex items-center gap-2 text-sm font-medium">
         <CategoryIcon category={doc.type} size={28} />
-        <span className="truncate"><bdi>{doc.title}</bdi></span>
+        <span className="wallet-title truncate"><bdi>{doc.title}</bdi></span>
       </div>
-      {doc.notes && <div className="text-xs text-muted-foreground line-clamp-2"><bdi>{doc.notes}</bdi></div>}
-      <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+      {doc.notes && <div className="wallet-notes text-xs text-muted-foreground line-clamp-2"><bdi>{doc.notes}</bdi></div>}
+      <div className="wallet-meta flex items-center justify-between gap-2 flex-wrap text-xs">
         {doc.valid_date ? (
-          <span className="text-muted-foreground">📅 {hebDate(doc.valid_date)}</span>
+          <span className="wallet-date text-muted-foreground">📅 <bdi>{hebDate(doc.valid_date)}</bdi></span>
         ) : (
           <span />
         )}
