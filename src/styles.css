@@ -522,3 +522,58 @@ html:not(.dark) .checklist-page .cl-sort button[aria-pressed="false"] {
   color: var(--muted-foreground);
 }
 
+/* Recommendation list only; map, sheets, hotels and dark theme retain their styles. */
+html:not(.dark) .rec-list-card {
+  --rec-category-bg: #E1EBFA;
+  --rec-category-fg: #21549E;
+  padding: 14px;
+}
+html:not(.dark) .rec-list-card[data-category="food"] {
+  --rec-category-bg: #DDF0E3;
+  --rec-category-fg: #1C6B38;
+}
+html:not(.dark) .rec-list-card[data-category="hotel"] {
+  --rec-category-bg: #F9ECD8;
+  --rec-category-fg: #8A5A12;
+}
+html:not(.dark) .rec-list-card .rec-category {
+  background: var(--rec-category-bg);
+  color: var(--rec-category-fg);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+}
+html:not(.dark) .rec-list-card .rec-card-header { gap: 8px; }
+html:not(.dark) .rec-list-card .rec-card-content { margin-top: 12px; }
+html:not(.dark) .rec-list-card .rec-photo {
+  width: 104px;
+  height: 120px;
+  object-position: center;
+}
+html:not(.dark) .rec-list-card .rec-name {
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+html:not(.dark) .rec-list-card .rec-card-content > div { text-align: right; }
+html:not(.dark) .rec-list-card .rec-add-day {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border: 1px solid color-mix(in oklab, var(--accent-text) 22%, var(--accent-soft));
+  font-size: 13px;
+}
+html:not(.dark) .rec-list-card .rec-visit-actions {
+  column-gap: 12px;
+  row-gap: 0;
+  padding-top: 4px;
+}
+html:not(.dark) .rec-list-card .rec-visit-actions button {
+  min-height: 44px;
+  padding-inline: 4px;
+  color: var(--foreground);
+}
+@media (max-width: 374px) {
+  html:not(.dark) .rec-list-card .rec-photo { width: 92px; height: 112px; }
+}
+
