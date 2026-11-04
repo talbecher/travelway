@@ -32,6 +32,16 @@ function DayWeatherBadge({ city, date }: { city: string | null; date: string }) 
 }
 
 export const Route = createFileRoute("/itinerary/")({
+  head: () => ({
+    meta: [
+      { title: "מסלול הטיול | Travel Way" },
+      { name: "description", content: "סקירת ימי הטיול, הערים והתחנות המתוכננות ב־Travel Way." },
+      { property: "og:title", content: "מסלול הטיול | Travel Way" },
+      { property: "og:description", content: "כל ימי הטיול והתחנות המתוכננות במבט אחד." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Itinerary,
 });
 
@@ -289,8 +299,30 @@ function Itinerary() {
   }
 
   return (
-    <div className="space-y-3 overflow-x-hidden pt-2 pb-24">
-      <header className="relative grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+    <div className="itinerary-overview space-y-3 overflow-x-hidden pt-2 pb-24">
+      <style>{`
+        html:not(.dark) .itinerary-overview { background: var(--background); }
+        html:not(.dark) .itinerary-overview .overview-header { align-items: center; gap: 8px; }
+        html:not(.dark) .itinerary-overview .overview-header h1 { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: 0; }
+        html:not(.dark) .itinerary-overview .overview-header p { margin-top: 2px; font-size: 13px; }
+        html:not(.dark) .itinerary-overview .overview-city-strip { background: var(--background); }
+        html:not(.dark) .itinerary-overview .overview-city-strip button { font-size: 12px; }
+        html:not(.dark) .itinerary-overview .overview-city-strip .bg-accent { background: var(--accent-soft); color: var(--accent-text); }
+        html:not(.dark) .itinerary-overview .overview-group-heading { margin-top: 16px; margin-bottom: 8px; }
+        html:not(.dark) .itinerary-overview .overview-city-label { min-width: 0; max-width: 80%; font-size: 15px; font-weight: 650; color: var(--foreground); text-align: right; overflow-wrap: anywhere; letter-spacing: 0; text-transform: none; }
+        html:not(.dark) .itinerary-overview .overview-day { border-radius: var(--radius-card); background: var(--surface); }
+        html:not(.dark) .itinerary-overview .overview-day[data-empty="true"] { background: var(--background); opacity: 1; }
+        html:not(.dark) .itinerary-overview .overview-day[data-today="true"] { background: var(--accent-soft); border-color: var(--accent); }
+        html:not(.dark) .itinerary-overview .overview-day-content { padding: 11px 14px; min-height: 66px; }
+        html:not(.dark) .itinerary-overview .overview-day-heading { gap: 8px; }
+        html:not(.dark) .itinerary-overview .overview-day[data-today="true"] .overview-day-heading { padding-inline-end: 36px; }
+        html:not(.dark) .itinerary-overview .overview-day-number { font-size: 16px; font-weight: 700; color: var(--accent-text); }
+        html:not(.dark) .itinerary-overview .overview-day-heading > span:not(.overview-day-number) { font-size: 12px; }
+        html:not(.dark) .itinerary-overview .overview-summary { margin-top: 6px; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; text-align: right; }
+        html:not(.dark) .itinerary-overview .overview-today { top: 12px; left: 10px; font-size: 11px; font-weight: 650; background: var(--surface); color: var(--accent-text); }
+        html:not(.dark) .itinerary-overview .overview-search-result > span:nth-child(2) > span { white-space: normal; overflow-wrap: anywhere; }
+      `}</style>
+      <header className="overview-header relative grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h1 className="text-[20px] font-medium">מסלול</h1>
           <p className="mt-1 truncate text-[12px] text-muted-foreground">
@@ -371,7 +403,7 @@ function Itinerary() {
                 key={entry.id}
                 type="button"
                 onClick={() => navigate({ to: "/itinerary/$dayId", params: { dayId: day.id } })}
-                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 text-right"
+                className="overview-search-result flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 text-right"
               >
                 <span className="shrink-0 text-base">{entry.icon_emoji || iconFor(entry.entry_type)}</span>
                 <span className="min-w-0 flex-1">
@@ -388,7 +420,7 @@ function Itinerary() {
 
       {/* City navigation strip */}
       {!term && grouped.length > 1 && (
-        <div className="sticky top-0 z-10 -mx-4 overflow-x-auto border-b border-border bg-surface px-4 no-scrollbar">
+        <div className="overview-city-strip sticky top-0 z-10 -mx-4 overflow-x-auto border-b border-border bg-surface px-4 no-scrollbar">
           <div className="flex w-max gap-1.5" dir="rtl">
             {grouped.map((g, i) => {
               const key = `${g.city || "—"}-${i}`;
@@ -427,9 +459,9 @@ function Itinerary() {
             className="scroll-mt-14"
           >
             {/* Group divider header */}
-            <div className="mt-3 mb-1 flex items-center gap-2">
+            <div className="overview-group-heading mt-3 mb-1 flex items-center gap-2">
               <div className="h-px flex-1 bg-border opacity-60" />
-              <div className="text-[11px] font-medium tracking-[0.05em] text-muted-foreground uppercase" dir="ltr">
+              <div className="overview-city-label text-[11px] font-medium tracking-[0.05em] text-muted-foreground uppercase" dir="ltr">
                 {g.city || "ללא עיר"}
               </div>
               <div className="h-px flex-1 bg-border opacity-60" />
@@ -447,18 +479,20 @@ function Itinerary() {
                 return (
                   <div
                     key={d.id}
-                    className={`relative overflow-visible rounded-xl transition-colors ${
+                    data-empty={isEmpty}
+                    data-today={isToday}
+                    className={`overview-day relative overflow-visible rounded-xl transition-colors ${
                       isEmpty
                         ? "border border-dashed border-border-strong bg-transparent opacity-65"
                         : "border border-border bg-card"
                     } ${isToday ? "border-s-[3px] border-s-accent" : ""}`}
                   >
                     {isToday && (
-                      <span className="absolute top-2 left-2 z-10 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
+                      <span className="overview-today absolute top-2 left-2 z-10 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
                         היום
                       </span>
                     )}
-                    <div className={isEmpty ? "px-3.5 py-2.5" : `min-h-[72px] px-3.5 py-3 ${isToday ? "ps-5" : ""}`}>
+                    <div className={`overview-day-content ${isEmpty ? "px-3.5 py-2.5" : `min-h-[72px] px-3.5 py-3 ${isToday ? "ps-5" : ""}`}`}>
                       <button
                         type="button"
                         aria-label={`פתח יום ${d.day_number}`}
@@ -486,8 +520,8 @@ function Itinerary() {
                         }}
                         className="block min-h-11 w-full min-w-0 text-right"
                       >
-                        <span className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                          <span className={`shrink-0 text-[13px] font-medium ${isEmpty ? "text-muted-foreground" : "text-accent"}`}>
+                        <span className="overview-day-heading grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                          <span className={`overview-day-number shrink-0 text-[13px] font-medium ${isEmpty ? "text-muted-foreground" : "text-accent"}`}>
                             יום {d.day_number}
                           </span>
                           <span className="truncate text-center text-[11px] text-muted-foreground">
@@ -504,7 +538,7 @@ function Itinerary() {
                         ) : (
                           <>
                             {summary && (
-                              <span className="mt-1 block line-clamp-2 text-[11px] text-foreground">
+                              <span className="overview-summary mt-1 block line-clamp-2 text-[11px] text-foreground">
                                 {summary}
                               </span>
                             )}
