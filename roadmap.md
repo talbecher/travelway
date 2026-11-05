@@ -1,5 +1,9 @@
 # Phase 1B — done
 
+# Preview-only day location resolution
+- [ ] Shared validated stop → explicit Maps URL → linked recommendation resolution; no data writes or external lookups
+- [ ] Focused coordinate tests and real day 6 arrival/map checks if accessible; automatic build check; no publish
+
 # Day-detail: arrival-options gap + spacing polish
 - [x] Diagnosed day 6 KOKO HOTEL → Kaminarimon Gate: Kaminarimon entry has NULL lat/lng (read-only DB check); no code hiding bug, no DB changes
 - [x] Subtle hint row when a stop lacks a saved location (no guessed coordinates, no bulky row); segment eligibility logic unchanged
