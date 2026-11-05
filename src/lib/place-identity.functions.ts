@@ -1,8 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { z } from 'zod';
-import { identityInput, searchBusiness, placesRequest, signReview, verifyReview } from './place-identity.server';
-import { identityOnlyPatch, isGooglePhoto } from './place-identity';
+import { identityInput, searchBusiness, placesRequest, signReview } from './place-identity.server';
+import { isGooglePhoto } from './place-identity';
+import { applyReviewedIdentity } from './place-identity-apply.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
 
 const scope = z.object({ tripId: z.string().uuid(), id: z.string().uuid() });
@@ -19,12 +20,13 @@ export const matchNewRecommendation = createServerFn({ method: 'POST' })
 
 export const reviewRecommendationIdentities = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator(input => z.object({ tripId: z.string().uuid(), after: z.string().uuid().nullable().optional() }).parse(input))
+  .inputValidator(input => z.object({ tripId: z.string().uuid(), after: z.string().uuid().nullable().optional(), ids: z.array(z.string().uuid()).min(1).max(5).optional() }).parse(input))
   .handler(async ({ data, context }) => {
     setResponseHeader('Cache-Control', 'private, no-store');
     const { data: trip } = await context.supabase.from('trips').select('id').eq('id', data.tripId).maybeSingle();
     if (!trip) throw new Error('אין גישה לטיול');
-    let query = context.supabase.from('recommendations').select('*').eq('trip_id', data.tripId).order('id').limit(6);
+    let query = context.supabase.from('recommendations').select('*').eq('trip_id', data.tripId).is('provider_place_id', null).order('id').limit(6);
+    if (data.ids) query = query.in('id', data.ids);
     if (data.after) query = query.gt('id', data.after);
     const { data: rows, error } = await query;
     if (error) throw error;
@@ -41,37 +43,38 @@ export const reviewRecommendationIdentities = createServerFn({ method: 'POST' })
       }
       const match = await searchBusiness({ tripId: data.tripId, ...row }, credentials);
       requests += match.requests;
+      if (match.status === 'api_failure') {
+        return { results, requests, next: results.at(-1)?.id ?? data.after ?? null, stopped: true, deferred: row.id };
+      }
       const review = match.proposed && secret ? await signReview({ userId: context.userId, tripId: data.tripId, row, placeId: match.proposed.id, expires: Date.now() + 30 * 60 * 1000 }, secret) : null;
       results.push({ id: row.id, name: row.name, status: match.status, candidates: match.candidates, proposed: match.proposed, review, missingPhoto, error: match.error });
       // Do not keep spending after a provider/key failure.
       if (match.status === 'api_failure') break;
     }
     const last = results.at(-1);
-    return { results, requests, next: last && (rows?.length === 6 || results.length < Math.min(rows?.length ?? 0, 5)) ? last.id : null };
+    return { results, requests, next: !data.ids && last && rows?.length === 6 ? last.id : null, stopped: false, deferred: null };
   });
 
 export const applyRecommendationIdentity = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator(input => z.object({ text: z.string().max(30000), signature: z.string().length(64) }).parse(input))
   .handler(async ({ data, context }) => {
-    const secret = process.env['API_CURSOR_SECRET'];
-    if (!secret || !await verifyReview(data.text, data.signature, secret)) throw new Error('אישור לא תקין');
-    const payload = z.object({ userId: z.string().uuid(), tripId: z.string().uuid(), placeId: z.string().regex(/^[A-Za-z0-9_-]{5,300}$/), expires: z.number(), row: z.record(z.unknown()) }).parse(JSON.parse(data.text));
-    if (payload.userId !== context.userId || payload.expires < Date.now() || payload.row.provider_place_id) throw new Error('האישור פג או שהמקום כבר משויך');
-    const id = z.string().uuid().parse(payload.row.id);
-    const { data: current, error } = await context.supabase.from('recommendations').select('*').eq('trip_id', payload.tripId).eq('id', id).maybeSingle();
-    if (error) throw error;
-    if (!current || current.provider_place_id || JSON.stringify(current) !== JSON.stringify(payload.row)) throw new Error('ההמלצה השתנתה; יש לבדוק מחדש');
-    // Compare every reviewed column at UPDATE time too: no read/update race or identity overwrite.
-    let update = context.supabase.from('recommendations').update(identityOnlyPatch(payload.placeId)).eq('trip_id', payload.tripId).eq('id', id).is('provider_place_id', null);
-    for (const [column, value] of Object.entries(payload.row)) {
-      if (value === undefined) throw new Error('Invalid reviewed row');
-      update = value === null ? update.is(column, null) : update.eq(column, value);
-    }
-    const { data: applied, error: applyError } = await update.select('id').maybeSingle();
-    if (applyError) throw applyError;
-    if (!applied) throw new Error('ההמלצה השתנתה; לא בוצע שיוך');
+    setResponseHeader('Cache-Control', 'private, no-store');
+    const result = await applyReviewedIdentity(data, context, process.env['API_CURSOR_SECRET']);
+    if (result.status !== 'applied') throw new Error(result.error ?? 'ההמלצה השתנתה; יש לבדוק מחדש');
     return { applied: true };
+  });
+
+export const applyRecommendationIdentities = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ tripId: z.string().uuid(), receipts: z.array(z.object({ text: z.string().max(30000), signature: z.string().length(64) })).min(1).max(5) }).parse(input))
+  .handler(async ({ data, context }) => {
+    setResponseHeader('Cache-Control', 'private, no-store');
+    const { data: trip } = await context.supabase.from('trips').select('id').eq('id', data.tripId).maybeSingle();
+    if (!trip) throw new Error('אין גישה לטיול');
+    const results = [];
+    for (const receipt of data.receipts) results.push(await applyReviewedIdentity(receipt, context, process.env['API_CURSOR_SECRET'], data.tripId));
+    return { results };
   });
 
 export const recommendationBusinessMedia = createServerFn({ method: 'POST' })
