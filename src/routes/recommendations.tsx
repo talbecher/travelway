@@ -27,7 +27,10 @@ import { ImportAISheet } from "@/components/ImportAISheet";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
-import { enrichRecommendationPhoto } from "@/lib/places.functions";
+import { matchNewRecommendation } from "@/lib/place-identity.functions";
+import { RecommendationBusiness, RecommendationIdentityReview } from "@/components/RecommendationBusiness";
+import { isGooglePhoto } from "@/lib/place-identity";
+import { resolveDayLocation } from "@/lib/day-location";
 import { useServerFn } from "@tanstack/react-start";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
 import { markRecommendationBooked, invalidateBookingQueries } from "@/lib/booking";
@@ -109,6 +112,8 @@ type Rec = {
   id: string; name: string; type: string; city: string | null; address: string | null;
   google_maps_url: string | null; status: string; rating: number | null; review: string | null;
   notes: string | null; latitude: number | string | null; longitude: number | string | null;
+  provider_place_id?: string | null;
+  provider?: string | null;
   photo_url?: string | null;
   google_rating?: number | string | null;
   google_rating_count?: number | null;
@@ -613,7 +618,7 @@ function Recs() {
           )}
         </section>
 
-        <AdminBackfillButton recs={recs as Rec[]} />
+        <RecommendationIdentityReview key={getActiveTripId()} tripId={getActiveTripId()} />
 
         {tab === "hotels" ? (
           <HotelsList
@@ -1116,7 +1121,8 @@ function PlaceCard({
   }[rec.status as "wishlist" | "visited" | "skipped"];
 
   const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
-  const googleRating = rec.google_rating != null ? Number(rec.google_rating) : null;
+  const [businessPhoto, setBusinessPhoto] = useState<string | null>(null);
+  const displayPhoto = rec.photo_url && !isGooglePhoto(rec.photo_url) ? rec.photo_url : businessPhoto;
 
   const cardInner = (
     <div data-category={rec.type} className={`rec-list-card relative overflow-hidden rounded-2xl border bg-card p-3.5 transition-colors ${selected ? "border-primary ring-2 ring-ring/30" : "border-border"}`}>
@@ -1168,9 +1174,9 @@ function PlaceCard({
       </div>
 
       <div className="rec-card-content mt-2 flex items-start gap-3">
-        {rec.photo_url && !imgFailed && (
+        {displayPhoto && !imgFailed && (
           <img
-            src={rec.photo_url}
+            src={displayPhoto ?? undefined}
             alt=""
             loading="lazy"
             onError={() => setImgFailed(true)}
@@ -1218,17 +1224,11 @@ function PlaceCard({
           />
         )}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-          {googleRating != null && (
-            <span className="inline-flex items-center gap-0.5" dir="ltr">
-              <Star size={11} className="text-yellow-500 fill-yellow-500" />
-              {googleRating.toFixed(1)}
-              {rec.google_rating_count ? ` (${rec.google_rating_count})` : ""}
-            </span>
-          )}
           {distance != null && Number.isFinite(distance) && (
             <span>{fmtDistance(distance)}</span>
           )}
         </div>
+        <RecommendationBusiness id={rec.id} placeId={rec.provider_place_id} name={rec.name} tripId={getActiveTripId()} onPhoto={(url) => { setBusinessPhoto(url); setImgFailed(false); }} />
         {rec.notes && (
           <div className="text-xs text-muted-foreground mt-1.5 line-clamp-2 whitespace-pre-line">{rec.notes}</div>
         )}
@@ -1317,6 +1317,8 @@ function PlaceCard({
 
 function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; existing?: Rec; onDone: () => void }) {
   const qc = useQueryClient();
+  const match = useServerFn(matchNewRecommendation);
+  const [placeId, setPlaceId] = useState<string | null>(existing?.provider_place_id ?? null);
   const [type, setType] = useState<RecType>((existing?.type as RecType) ?? defaultType);
   const [name, setName] = useState(existing?.name ?? "");
   const [city, setCity] = useState(existing?.city ?? "");
@@ -1353,20 +1355,23 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     setAddress(p.address);
     setUrl(p.google_maps_url);
     setSelectedCoords({ lat: p.latitude, lng: p.longitude });
-    setPhotoUrl(p.photo_url);
+    setPlaceId(p.placeId ?? null);
+    // Google media is fetched on demand, never stored over user photos.
     if (p.city) setCity(p.city);
-    setGoogleRating(p.rating);
-    setGoogleRatingCount(p.userRatingCount);
+    setGoogleRating(null);
+    setGoogleRatingCount(null);
     setPlaceSelected({ name: p.name, address: p.address });
   }
 
   function clearPlace() {
+    setManualMode(false);
+    setPlaceId(null);
     setPlaceSelected(null);
     setName("");
     setAddress("");
     setUrl("");
     setSelectedCoords(null);
-    setPhotoUrl(null);
+    // Keep the user-uploaded photo when changing a Google selection.
     setGoogleRating(null);
     setGoogleRatingCount(null);
   }
@@ -1375,7 +1380,11 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     mutationFn: async () => {
       if (!name.trim()) throw new Error("שם חסר");
       if (!city.trim()) throw new Error("עיר חסרה");
-      const coords = selectedCoords ?? parseLatLngFromMapsUrl(url);
+      const coords = selectedCoords ?? resolveDayLocation({ google_maps_url: url });
+      let identity = placeId;
+      if (!existing && !identity && coords) {
+        try { identity = (await match({ data: { tripId: getActiveTripId(), name: name.trim(), latitude: coords.lat, longitude: coords.lng } })).proposed?.id ?? null; } catch { /* Optional matching must not fail pin-only creation. */ }
+      }
       const basePayload = {
         type, name: name.trim(), city: city.trim(),
         address: address.trim() || null,
@@ -1383,9 +1392,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         notes: notes.trim() || null,
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
-        photo_url: photoUrl,
-        google_rating: googleRating,
-        google_rating_count: googleRatingCount,
+        photo_url: isGooglePhoto(photoUrl) ? null : photoUrl,
+        ...(existing?.provider_place_id ? {} : { provider: identity ? "google" : null, provider_place_id: identity }),
         booking_deadline: bookingDeadline || null,
       };
       // Booked → booking fields + status are written ONLY via the atomic RPC.
@@ -1497,7 +1505,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       <div className="min-w-0 max-w-full space-y-3 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
         {!manualMode && !placeSelected && (
           <>
-            <PlacesSearch onSelect={handlePlace} />
+            <PlacesSearch onSelect={handlePlace} fieldProfile="expense" />
             <button
               type="button"
               onClick={() => setManualMode(true)}
@@ -1815,106 +1823,3 @@ function ListSkeleton() {
   return <div className="space-y-2.5 animate-pulse">{[0, 1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl border border-border bg-card" />)}</div>;
 }
 
-function AdminBackfillButton({ recs }: { recs: Rec[] }) {
-  const qc = useQueryClient();
-  const enrichFn = useServerFn(enrichRecommendationPhoto);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [stopRef] = useState<{ stop: boolean }>({ stop: false });
-  const [progress, setProgress] = useState<{ done: number; total: number; updated: number } | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const p = new URLSearchParams(window.location.search);
-    setIsAdmin(p.get("admin") === "1");
-  }, []);
-
-  const targets = useMemo(
-    () =>
-      recs.filter(
-        (r) =>
-          !r.photo_url &&
-          (r.type === "food" || r.type === "attraction"),
-      ),
-    [recs],
-  );
-
-  if (!isAdmin) return null;
-
-  const run = async () => {
-    if (targets.length === 0) {
-      toast.info("אין המלצות ללא תמונה");
-      return;
-    }
-    if (!confirm(`נמצאו ${targets.length} המלצות ללא תמונה. להמשיך?`)) return;
-    setRunning(true);
-    stopRef.stop = false;
-    let done = 0;
-    let updated = 0;
-    setProgress({ done: 0, total: targets.length, updated: 0 });
-    const toastId = toast.loading(`מעדכן תמונות... 0/${targets.length}`);
-    const BATCH = 10;
-    try {
-      for (let i = 0; i < targets.length; i += BATCH) {
-        if (stopRef.stop) break;
-        const slice = targets.slice(i, i + BATCH);
-        const results = await Promise.all(
-          slice.map((r) => {
-            const lat = typeof r.latitude === "string" ? parseFloat(r.latitude) : r.latitude;
-            const lng = typeof r.longitude === "string" ? parseFloat(r.longitude) : r.longitude;
-            return enrichFn({
-              data: {
-                id: r.id,
-                name: r.name,
-                city: r.city,
-                lat: Number.isFinite(lat as number) ? (lat as number) : null,
-                lng: Number.isFinite(lng as number) ? (lng as number) : null,
-              },
-            }).catch(() => null);
-          }),
-        );
-        results.forEach((r) => {
-          if (r?.updated && r.photo_url) updated += 1;
-        });
-        done = Math.min(i + BATCH, targets.length);
-        setProgress({ done, total: targets.length, updated });
-        toast.loading(`מעדכן תמונות... ${done}/${targets.length}`, { id: toastId });
-      }
-      toast.success(`✅ עודכנו ${updated} תמונות`, { id: toastId });
-      qc.invalidateQueries({ queryKey: ["recs", getActiveTripId()] });
-      qc.invalidateQueries({ queryKey: ["recs"] });
-    } finally {
-      setRunning(false);
-      setProgress(null);
-    }
-  };
-
-  return (
-    <div className="border border-dashed border-amber-500/50 rounded-lg p-2 text-xs bg-amber-500/5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground">
-          🛠 מצב אדמין · {targets.length} המלצות ללא תמונה
-        </span>
-        <div className="flex gap-1">
-          {running && (
-            <button
-              onClick={() => {
-                stopRef.stop = true;
-              }}
-              className="h-8 px-3 rounded-md bg-[color:var(--accent-2)] text-white min-h-0"
-            >
-              עצור
-            </button>
-          )}
-          <button
-            onClick={run}
-            disabled={running || targets.length === 0}
-            className="h-8 px-3 rounded-md bg-amber-500 text-white disabled:opacity-40 min-h-0"
-          >
-            {running ? `מעדכן... ${progress?.done ?? 0}/${progress?.total ?? 0}` : "עדכן תמונות חסרות"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
