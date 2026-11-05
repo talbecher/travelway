@@ -149,7 +149,7 @@ export function ActiveTripHero({
                 <WeatherIcon condition={condition ?? "unknown"} size="sm" />
                 <span className="min-w-0">
                   {temperature != null ? <span className="font-semibold tabular-nums" dir="ltr">{temperature}°</span> : weatherLabel && <span className="font-medium">{weatherLabel}</span>}
-                  <span className="mr-1.5 max-w-24 truncate align-middle font-medium">{reliableWeatherLocation}</span>
+                  <span className="mr-1.5 inline-block max-w-24 truncate align-middle font-medium">{reliableWeatherLocation}</span>
                 </span>
               </a>
             )}

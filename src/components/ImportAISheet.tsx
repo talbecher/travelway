@@ -247,7 +247,8 @@ export function ImportAISheet({
       const d = classifyDayDuplicates(entries, dayRows);
       setReplaceMode(false);
       setDupInfo(d);
-      setEntrySel(d.map((x) => x.exact === null));
+      // Keep the user's manual checks; only newly detected duplicates default off.
+      setEntrySel((prev) => d.map((x, i) => (x.exact === null ? prev[i] ?? true : false)));
       return;
     }
     const req = reqRef.current;
@@ -259,7 +260,8 @@ export function ImportAISheet({
       const d = classifyDayDuplicates(entries, prep.protected);
       setReplaceMode(true);
       setDupInfo(d);
-      setEntrySel(d.map((x) => x.exact === null));
+      // Keep the user's manual checks; only newly detected duplicates default off.
+      setEntrySel((prev) => d.map((x, i) => (x.exact === null ? prev[i] ?? true : false)));
     } catch (err) {
       console.error("[ImportAISheet] prepare failed", err);
       if (req === reqRef.current) setApplyNotice("לא הצלחנו לבדוק את תחנות היום. נסו שוב.");

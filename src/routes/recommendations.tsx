@@ -9,7 +9,7 @@ import { suggestDayForRec, recLatLng, fmtApproxDistance } from "@/lib/day-sugges
 import { DiscoverSheet, useDiscoverAccess } from "@/components/discover/DiscoverSheet";
 import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
-import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
+import { hebDate, ils, daysBetween, todayLocal } from "@/lib/format";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
@@ -29,7 +29,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { matchNewRecommendation } from "@/lib/place-identity.functions";
 import { RecommendationBusiness, RecommendationIdentityReview } from "@/components/RecommendationBusiness";
-import { isGooglePhoto } from "@/lib/place-identity";
 import { resolveDayLocation } from "@/lib/day-location";
 import { useServerFn } from "@tanstack/react-start";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
@@ -1122,7 +1121,9 @@ function PlaceCard({
 
   const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
   const [businessPhoto, setBusinessPhoto] = useState<string | null>(null);
-  const displayPhoto = rec.photo_url && !isGooglePhoto(rec.photo_url) ? rec.photo_url : businessPhoto;
+  // A saved photo is shown as-is (including previously saved Google photos);
+  // the on-demand business photo is only a fallback when none is saved.
+  const displayPhoto = rec.photo_url ?? businessPhoto;
 
   const cardInner = (
     <div data-category={rec.type} className={`rec-list-card relative overflow-hidden rounded-2xl border bg-card p-3.5 transition-colors ${selected ? "border-primary ring-2 ring-ring/30" : "border-border"}`}>
@@ -1193,7 +1194,7 @@ function PlaceCard({
           </div>
         )}
         {(() => {
-          const chip = bookingChip(rec.booking_deadline, rec.booking_status, todayISO());
+          const chip = bookingChip(rec.booking_deadline, rec.booking_status, todayLocal());
           if (!chip) return null;
           const cls =
             chip.tone === "booked" ? "bg-[color:var(--accent-3)]/15 text-[color:var(--accent-3)]"
@@ -1216,13 +1217,6 @@ function PlaceCard({
             </div>
           );
         })()}
-        {markBookedOpen && (
-          <MarkBookedSheet
-            recId={rec.id}
-            open={markBookedOpen}
-            onOpenChange={(o) => { setMarkBookedOpen(o); onOverlayOpenChange(o); }}
-          />
-        )}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
           {distance != null && Number.isFinite(distance) && (
             <span>{fmtDistance(distance)}</span>
@@ -1305,7 +1299,16 @@ function PlaceCard({
       ) : (
         cardInner
       )}
-
+      {/* Rendered outside cardInner: the card wrapper is a Maps link, and
+          portal events still bubble through the React tree — the sheet must
+          not sit inside the clickable card. */}
+      {markBookedOpen && (
+        <MarkBookedSheet
+          recId={rec.id}
+          open={markBookedOpen}
+          onOpenChange={(o) => { setMarkBookedOpen(o); onOverlayOpenChange(o); }}
+        />
+      )}
     </>
   );
 }
@@ -1392,7 +1395,9 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         notes: notes.trim() || null,
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
-        photo_url: isGooglePhoto(photoUrl) ? null : photoUrl,
+        // Never strip an already-saved photo on edit — editing notes must not
+        // wipe the photo from the recommendation and its linked day stops.
+        photo_url: photoUrl,
         ...(existing?.provider_place_id ? {} : { provider: identity ? "google" : null, provider_place_id: identity }),
         booking_deadline: bookingDeadline || null,
       };
@@ -1674,7 +1679,7 @@ function HotelsList({ onEdit: _onEdit, query, onResetFilters, onAdd, onOverlayOp
 function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
-  const today = todayISO();
+  const today = todayLocal();
   const [imgFailed, setImgFailed] = useState(false);
   const nights = h.checkin_date && h.checkout_date ? Math.max(1, daysBetween(h.checkin_date, h.checkout_date)) : 0;
   const totalCalc = nights > 0 && h.price_per_night_ils
