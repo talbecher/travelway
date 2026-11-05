@@ -1,3 +1,4 @@
+// @ts-ignore -- matches the existing dependency-free bun test suite.
 import { describe, expect, it } from 'bun:test';
 import { matchBusiness, identityOnlyPatch, isGooglePhoto } from './place-identity';
 const pin = { latitude: 34.665, longitude: 135.43 };

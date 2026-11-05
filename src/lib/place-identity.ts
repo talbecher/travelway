@@ -12,7 +12,7 @@ export function matchBusiness(name: string, pin: StoredLocation, candidates: Bus
   const nearby = candidates.flatMap(candidate => {
     const location = resolveDayLocation(candidate);
     if (!location || !candidate.id || !candidate.name) return [];
-    const distance = haversine(origin.lat, origin.lng, location.lat, location.lng);
+    const distance = haversine({ lat: origin.lat, lon: origin.lng }, { lat: location.lat, lon: location.lng }) * 1000;
     return distance <= 1000 ? [{ ...candidate, distance: Math.round(distance) }] : [];
   }).sort((a, b) => a.distance - b.distance);
   const exact = nearby.filter(p => businessName(p.name) === businessName(name));

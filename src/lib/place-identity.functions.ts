@@ -65,6 +65,7 @@ export const applyRecommendationIdentity = createServerFn({ method: 'POST' })
     // Compare every reviewed column at UPDATE time too: no read/update race or identity overwrite.
     let update = context.supabase.from('recommendations').update(identityOnlyPatch(payload.placeId)).eq('trip_id', payload.tripId).eq('id', id).is('provider_place_id', null);
     for (const [column, value] of Object.entries(payload.row)) {
+      if (value === undefined) throw new Error('Invalid reviewed row');
       update = value === null ? update.is(column, null) : update.eq(column, value);
     }
     const { data: applied, error: applyError } = await update.select('id').maybeSingle();

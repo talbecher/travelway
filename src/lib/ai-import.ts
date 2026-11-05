@@ -33,6 +33,9 @@ export type ParsedRec = {
   booking_time: string | null;
   booking_url: string | null;
   booking_note: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  google_maps_url?: string | null;
 };
 
 export type ParseResult = {
@@ -73,6 +76,9 @@ const recSchema = z.object({
   booking_time: nullableStr,
   booking_url: nullableStr,
   booking_note: nullableStr,
+  latitude: z.number().min(-90).max(90).nullish(),
+  longitude: z.number().min(-180).max(180).nullish(),
+  google_maps_url: nullableStr,
 });
 
 const rootSchema = z.object({
@@ -225,6 +231,9 @@ export function parseAIResponse(raw: string, validDayNumbers?: number[]): ParseR
       booking_time: normTime(r.data.booking_time),
       booking_url: normUrl(r.data.booking_url),
       booking_note: r.data.booking_note,
+      latitude: r.data.latitude,
+      longitude: r.data.longitude,
+      google_maps_url: normUrl(r.data.google_maps_url),
     });
   }
 
@@ -240,7 +249,7 @@ export function normalizeName(s: string): string {
 
 /* ---------- writing to the database ---------- */
 
-export type PlaceLookup = (query: string) => Promise<{
+export type PlaceLookup = (query: string, recommendation?: ParsedRec) => Promise<{
   latitude: number;
   longitude: number;
   address: string | null;
@@ -249,6 +258,7 @@ export type PlaceLookup = (query: string) => Promise<{
   photo_url: string | null;
   rating: number | null;
   ratingCount: number | null;
+  provider_place_id?: string | null;
 } | null>;
 
 type OrderItem = { id: string; time: string | null };
@@ -368,7 +378,7 @@ export async function applyRecs(
   const rows: Array<Record<string, unknown>> = [];
 
   for (const r of recs) {
-    const place = lookup ? await lookup(r.city ? `${r.name} ${r.city}` : r.name) : null;
+    const place = lookup ? await lookup(r.name, r) : null;
     rows.push({
       trip_id: tripId,
       name: r.name,
@@ -376,12 +386,11 @@ export async function applyRecs(
       city: r.city ?? place?.city ?? null,
       address: place?.address ?? null,
       notes: r.notes,
-      latitude: place?.latitude ?? null,
-      longitude: place?.longitude ?? null,
-      google_maps_url: place?.google_maps_url ?? null,
-      photo_url: place?.photo_url ?? null,
-      google_rating: place?.rating ?? null,
-      google_rating_count: place?.ratingCount ?? null,
+      latitude: r.latitude ?? place?.latitude ?? null,
+      longitude: r.longitude ?? place?.longitude ?? null,
+      google_maps_url: r.google_maps_url ?? place?.google_maps_url ?? null,
+      provider: place?.provider_place_id ? 'google' : null,
+      provider_place_id: place?.provider_place_id ?? null,
       booking_deadline: r.booking_deadline,
       booking_time: r.booking_time,
       booking_url: r.booking_url,
