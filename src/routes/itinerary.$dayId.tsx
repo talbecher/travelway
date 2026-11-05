@@ -1019,7 +1019,7 @@ function DayDetail() {
         );
       })()}
 
-      <div className="day-city px-4 pt-2" dir="rtl">
+      <div className="day-city px-4 pt-1.5" dir="rtl">
         <div className="day-city-row flex items-center gap-2">
         <div className="day-city-card min-w-0 flex-1 rounded-2xl border border-border bg-card px-3 py-1.5">
         {editingCity ? (
@@ -1076,7 +1076,7 @@ function DayDetail() {
       </div>
 
       {/* View switch — same day, two modes */}
-      <div className="day-tabs-wrap px-4 pt-2" dir="rtl">
+      <div className="day-tabs-wrap px-4 pt-1.5" dir="rtl">
         <div className="day-view-tabs inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
           {([
             { key: "list", label: "מסלול" },
@@ -1236,7 +1236,7 @@ function DayDetail() {
       ) : (
         <div ref={paneRef} className="relative flex flex-col" style={{ height: paneH ? `${paneH}px` : "calc(100dvh - 254px)" }}>
           {/* Summary + list actions */}
-          <div className="day-list-actions px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
+          <div className="day-list-actions px-4 pt-1 flex items-center justify-between gap-2" dir="rtl">
             <span className="text-[12px] text-muted-foreground">
               {entries.length} תחנות · סדר ידני
             </span>
@@ -1266,7 +1266,7 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-3 pb-6 relative">
+          <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-2 pb-6 relative">
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
