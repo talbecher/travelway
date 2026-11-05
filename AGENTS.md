@@ -18,3 +18,4 @@
 - Token scopes: `read` = full trip read (all legacy tokens); `read_checklist` = checklist section only; propose scopes are independent and never imply read. Why: new permissions must not silently widen existing tokens.
 - Checklist display sorts stay in the browser-only sort helpers; task details reuse BottomSheet without mutation controls. Why: presentation changes must not alter stored task order or completion.
 - Pre-trip light-home layout overrides live under `html:not(.dark) .pretrip-home` in the global stylesheet; retain the existing component tree. Why: dark mode and other home states must keep their original layout and behavior.
+- DayMap must be dynamically imported and rendered behind ClientOnly with Suspense. Why: its Leaflet imports access window and crash server route evaluation.
