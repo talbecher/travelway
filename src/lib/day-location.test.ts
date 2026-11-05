@@ -24,7 +24,8 @@ describe("day location resolution", () => {
     for (const latitude of [91, Infinity, NaN, "", " ", "35junk", "0x23"]) expect(resolveDayLocation({ latitude, longitude: 139 })).toBeNull();
     expect(resolveDayLocation({ latitude: 35, longitude: 181 })).toBeNull();
     expect(resolveDayLocation({ latitude: 90, longitude: -180 })).toEqual({ lat: 90, lng: -180 });
-    expect(resolveDayLocation({ latitude: 0, longitude: 0 })).toEqual({ lat: 0, lng: 0 });
+    expect(resolveDayLocation({ latitude: 0, longitude: 0 })).toBeNull();
+    expect(resolveDayLocation({ latitude: 0, longitude: 139 })).toEqual({ lat: 0, lng: 139 });
     expect(resolveDayLocation({ latitude: 91, longitude: 139, google_maps_url: url })).toEqual(point);
   });
   test("never uses viewport, text, short links or bare coordinates", () => {

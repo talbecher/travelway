@@ -18,6 +18,8 @@ function coordinate(value: unknown): number | null {
 function pair(latitude: unknown, longitude: unknown): LatLng | null {
   const lat = coordinate(latitude), lng = coordinate(longitude);
   if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  // Preserve DayMap's existing unset-location sentinel, keeping pins and sheets aligned.
+  if (lat === 0 && lng === 0) return null;
   return { lat, lng };
 }
 
