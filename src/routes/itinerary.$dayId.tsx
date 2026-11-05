@@ -721,53 +721,45 @@ function DayDetail() {
   return (
     <div ref={rootRef} className="-mx-4 day-visual-preview">
       <style>{`
-        html:not(.dark) .day-visual-preview {
-          --cat-transport-bg: #DDF0E3; --cat-transport-fg: #1C6B38;
-          --cat-attraction-bg: #E1EBFA; --cat-attraction-fg: #21549E;
-          --cat-lodging-bg: #F9ECD8; --cat-lodging-fg: #8A5A12;
+        .day-visual-preview {
+          --day-rail: #5555A0;
+          --day-rail-soft: #ECECF6;
+          --day-stop-surface: #FFFCF7;
+          --cat-transport-bg: #E5EDDC; --cat-transport-fg: #42612E;
+          --cat-attraction-bg: #E8EBF8; --cat-attraction-fg: #48559A;
+          --cat-lodging-bg: #F0E2EF; --cat-lodging-fg: #804674;
+          --cat-food-bg: #FBE4D8; --cat-food-fg: #AE4728;
         }
-        html:not(.dark) .day-visual-preview .day-header {
-          padding-block: 4px;
+        html.dark .day-visual-preview {
+          --day-rail: #B0AAE6;
+          --day-rail-soft: #303045;
+          --day-stop-surface: var(--card);
+          --cat-transport-bg: #293C29; --cat-transport-fg: #B9D69D;
+          --cat-attraction-bg: #30364E; --cat-attraction-fg: #B9C4ED;
+          --cat-lodging-bg: #422D40; --cat-lodging-fg: #E3B4DA;
+          --cat-food-bg: #482F27; --cat-food-fg: #F4B298;
         }
-        html:not(.dark) .day-visual-preview .day-header-list {
+        .day-visual-preview .day-header { padding-block: 4px; }
+        .day-visual-preview .day-header-list {
           display: grid;
-          grid-template-columns: 44px minmax(0, 1fr) auto 44px;
-          align-items: center;
-          column-gap: 4px;
-          row-gap: 2px;
+          grid-template-columns: 44px minmax(0, 1fr) 44px;
+          align-items: start;
+          gap: 2px 4px;
         }
-        html:not(.dark) .day-visual-preview .day-header-copy,
-        html:not(.dark) .day-visual-preview .day-header-extras {
-          display: contents;
+        .day-visual-preview .day-header-copy {
+          grid-column: 2; grid-row: 1; text-align: center;
         }
-        html:not(.dark) .day-header-list > button:first-child {
-          grid-column: 1;
-          grid-row: 1 / span 2;
+        .day-visual-preview .day-header-copy h1 {
+          font-size: 26px; font-weight: 800; line-height: 1.25; letter-spacing: 0;
         }
-        html:not(.dark) .day-header-copy h1 {
-          grid-column: 2 / span 2;
-          grid-row: 1;
-          line-height: 1.2;
-          letter-spacing: 0;
-          font-size: 22px;
+        .day-visual-preview .day-header-copy p { line-height: 1.5; margin-top: 2px; }
+        .day-visual-preview .day-header-extras { display: contents; }
+        .day-visual-preview .day-header-list > button:first-child { grid-column: 1; grid-row: 1; }
+        .day-visual-preview .day-header-extras > button { grid-column: 3; grid-row: 1; }
+        .day-visual-preview .day-header-extras > div {
+          grid-column: 2; grid-row: 2; align-items: center; padding-bottom: 2px;
         }
-        html:not(.dark) .day-header-copy p:first-of-type {
-          grid-column: 2;
-          grid-row: 2;
-          margin: 0;
-        }
-        html:not(.dark) .day-header-copy p:nth-of-type(2) {
-          grid-column: 2 / span 2;
-          margin: 0;
-        }
-        html:not(.dark) .day-header-extras > button {
-          grid-column: 4;
-          grid-row: 1 / span 2;
-        }
-        html:not(.dark) .day-header-extras > div {
-          grid-column: 3;
-          grid-row: 2;
-        }
+        .day-visual-preview nav[aria-label="מעבר בין ימי המסלול"] button { min-height: 44px; }
         html:not(.dark) .day-visual-preview .day-city {
           padding-top: 4px;
         }
@@ -823,65 +815,67 @@ function DayDetail() {
           background: var(--accent-text);
           color: var(--accent-foreground);
         }
-        html:not(.dark) .day-visual-preview .day-stop {
-          width: 100%;
-          isolation: isolate;
+        .day-visual-preview .day-stop-group { position: relative; isolation: isolate; }
+        .day-visual-preview .day-stop-group::before {
+          content: ""; position: absolute; inset-inline-start: 14px;
+          top: -16px; bottom: -16px; width: 2px;
+          background: var(--day-rail); pointer-events: none;
         }
-        html:not(.dark) .day-visual-preview .day-stop-rail {
-          position: absolute;
-          right: 4px;
-          top: 6px;
-          bottom: 0;
-          z-index: 1;
+        .day-visual-preview .day-stop-group:first-child::before { top: 24px; }
+        .day-visual-preview .day-stop-group:last-child::before { bottom: auto; height: 40px; }
+        .day-visual-preview .day-stop-group:last-child.day-stop-with-segment::before { height: 96px; }
+        .day-visual-preview .day-stop-group:only-child::before { display: none; }
+        .day-visual-preview .day-stop { width: 100%; isolation: isolate; }
+        .day-visual-preview .day-stop-rail {
+          position: absolute; inset-inline-start: 0; top: 10px; width: 30px;
+          padding: 0; z-index: 1;
         }
-        html:not(.dark) .day-visual-preview .day-stop-card {
-          width: 100%;
-          padding: 10px 40px 10px 10px;
-          background: color-mix(in oklab, var(--stop-tint) 8%, var(--card));
-          border-inline-start: 3px solid color-mix(in oklab, var(--stop-tint) 65%, var(--border)) !important;
+        .day-visual-preview .day-stop-rail > div { display: none; }
+        .day-visual-preview .day-stop-rail > span {
+          width: 28px; height: 28px; margin: 0;
+          background: var(--day-stop-surface); color: var(--day-rail);
+          border: 2px solid var(--day-rail); font-size: 12px; font-weight: 800;
+        }
+        .day-visual-preview .day-stop-card {
+          margin-inline-start: 38px; width: calc(100% - 38px); padding: 12px;
+          background: var(--day-stop-surface); border-radius: 8px;
           scroll-margin-block: 8px;
         }
-        html:not(.dark) .day-visual-preview .day-stop-card button {
-          min-height: 44px;
-          min-width: 44px;
+        .day-visual-preview .day-stop-card button { min-height: 44px; min-width: 44px; }
+        .day-visual-preview .day-stop-card img { width: 56px; height: 64px; border-radius: 8px; }
+        .day-visual-preview .day-stop-icon { border-radius: 8px; }
+        .day-visual-preview .day-stop .entry-title {
+          font-size: 16px; font-weight: 750; line-height: 1.5;
+          overflow-wrap: anywhere; min-width: 0; max-width: 100%;
         }
-        html:not(.dark) .day-visual-preview .day-stop .entry-title {
-          font-size: 16px;
-          font-weight: 700;
-          line-height: 1.5;
-          overflow-wrap: anywhere;
+        .day-visual-preview .day-stop-meta {
+          margin-top: 4px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere;
         }
-        html:not(.dark) .day-visual-preview .day-stop-meta {
-          margin-top: 3px;
-          font-size: 12px;
-          line-height: 1.65;
+        .day-visual-preview .day-stop-meta > span[dir="ltr"] {
+          font-size: 16px; font-weight: 800; color: var(--foreground);
         }
-        html:not(.dark) .day-visual-preview .day-stop-meta > span[dir="ltr"] {
-          font-size: 15px;
-          font-weight: 700;
-          color: var(--accent-text);
+        .day-visual-preview .day-stop-notes {
+          margin-top: 4px; font-size: 12px; line-height: 1.6;
+          font-style: normal; color: var(--muted-foreground); overflow-wrap: anywhere;
         }
-        html:not(.dark) .day-visual-preview .day-stop-notes {
-          margin-top: 4px;
-          font-size: 12px;
-          line-height: 1.6;
-          font-style: normal;
-          color: var(--muted-foreground);
+        .day-visual-preview .day-stop-actions { gap: 4px; flex-wrap: wrap; }
+        .day-visual-preview .day-segment { padding-inline-start: 38px; }
+        .day-visual-preview .day-segment > span {
+          inset-inline-start: 14px; width: 24px; border-color: var(--day-rail) !important;
         }
-        html:not(.dark) .day-visual-preview .day-segment button {
-          color: var(--accent-text) !important;
-          font-weight: 600;
-          font-size: 13px;
+        .day-visual-preview .day-segment > div {
+          padding: 4px !important; border-radius: 8px;
+          background: var(--day-rail-soft) !important; flex-wrap: wrap; gap: 0;
         }
-        html:not(.dark) .day-visual-preview .day-directions-icon {
-          display: block;
-          flex-shrink: 0;
+        .day-visual-preview .day-segment button {
+          background: transparent !important; color: var(--day-rail) !important;
+          font-weight: 600; font-size: 12px; padding-inline: 8px;
         }
-        html:not(.dark) .day-visual-preview .day-segment > div {
-          padding-inline-start: 40px !important;
-          padding-block: 4px;
-          background: color-mix(in oklab, var(--accent) 12%, var(--card)) !important;
-        }
+        .day-visual-preview .day-directions-icon { display: block; flex-shrink: 0; }
+        .day-visual-preview .day-list-actions { flex-wrap: wrap; flex-shrink: 0; }
+        .day-visual-preview .day-list-actions button { min-height: 44px; }
+        .day-visual-preview .day-list-pane { min-height: 0; scroll-padding-block: 8px; }
+        .day-visual-preview .day-quick-add { flex-shrink: 0; }
         html:not(.dark) .day-visual-preview .day-map-stop {
           border-top: 3px solid var(--accent-soft);
         }
@@ -936,7 +930,7 @@ function DayDetail() {
               {view === "list" ? (
                 <>
                   <div className="day-header-copy min-w-0 flex-1 pt-0.5">
-                    <h1 className="text-[28px] font-bold leading-none tracking-tight text-foreground">
+                    <h1 className="text-[28px] font-bold leading-none text-foreground">
                       יום {day.day_number}
                     </h1>
                     <p className="text-[12px] text-muted-foreground leading-snug mt-1">
@@ -1280,7 +1274,7 @@ function DayDetail() {
                     }
 
                     return (
-                      <div key={e.id}>
+                      <div key={e.id} className={"day-stop-group" + (prev && a && b ? " day-stop-with-segment" : "")}>
                         {prev && a && b && (
                           <SegmentRow
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
@@ -1295,6 +1289,7 @@ function DayDetail() {
                           entry={e}
                           isLast={idx === entries.length - 1}
                           nextTime={entries[idx + 1]?.time_of_day ?? null}
+                          sequenceNumber={idx + 1}
                           pinIndex={stopIndexById[e.id] ?? null}
                           highlighted={highlightId === e.id}
                           sortMode={sortMode}
@@ -1812,12 +1807,13 @@ function SegmentOptions({
 
 
 function SortableEntry({
-  entry, nextTime, pinIndex, highlighted, setRef, onOpenDetails, onEdit, sortMode, hintHandle, recById, isLast,
+  entry, nextTime, pinIndex, sequenceNumber, highlighted, setRef, onOpenDetails, onEdit, sortMode, hintHandle, recById, isLast,
 }: {
   entry: EntryRow;
   isLast?: boolean;
   nextTime?: string | null;
   pinIndex: number | null;
+  sequenceNumber: number;
   highlighted: boolean;
   setRef: (el: HTMLDivElement | null) => void;
   onOpenDetails: () => void;
@@ -1837,7 +1833,10 @@ function SortableEntry({
     "--stop-tint": tint,
   };
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
-  const icon = entryIcon(entry, 36);
+  const defaultIcon = TYPE_ICON[entry.entry_type];
+  const icon = defaultIcon && isDefaultCategoryEmoji(entry.icon_emoji, [defaultIcon, "📍"])
+    ? <CategoryIcon category={entry.entry_type} size={36} className="day-stop-icon" />
+    : entryIcon(entry, 36);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? null;
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
@@ -1876,19 +1875,12 @@ function SortableEntry({
             aria-hidden
           />
         )}
-        {hasCoords ? (
-          <span
-            aria-label={`תחנה ${pinIndex} במפה`}
-            className="relative w-[22px] h-[22px] rounded-full bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center tabular-nums"
-          >
-            {pinIndex}
-          </span>
-        ) : (
-          <span
-            className="relative w-2.5 h-2.5 mt-1.5 rounded-full"
-            style={{ background: "var(--border-strong)", border: "1.5px solid rgba(255,255,255,0.9)" }}
-          />
-        )}
+        <span
+          aria-label={hasCoords ? `תחנה ${sequenceNumber}, מספר ${pinIndex} במפה` : `תחנה ${sequenceNumber}`}
+          className="relative w-[22px] h-[22px] rounded-full bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center tabular-nums"
+        >
+          {sequenceNumber}
+        </span>
       </div>
 
       <motion.div
@@ -1923,7 +1915,7 @@ function SortableEntry({
           {/* Thumbnail or small type icon */}
           {showThumb ? (
             <img
-              src={entry.photo_url!}
+              src={entry.photo_url ?? undefined}
               alt=""
               loading="lazy"
               onError={() => setPhotoFailed(true)}
@@ -1931,7 +1923,7 @@ function SortableEntry({
             />
           ) : typeof icon === "string" ? (
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0"
+              className="day-stop-icon w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0"
               style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
             >
               {icon}
@@ -1942,7 +1934,7 @@ function SortableEntry({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-1.5 flex-wrap">
-              <span className="entry-title text-[15px] font-semibold leading-snug text-right break-words">{entry.title}</span>
+              <span className="entry-title text-[15px] font-semibold leading-snug text-right break-words"><bdi>{entry.title}</bdi></span>
               {isVisited && (
                 <>
                   <span className="inline-flex w-2 h-2 mt-1.5 rounded-full shrink-0" style={{ background: "#10B981" }} title="ביקרתם כאן" />
@@ -1978,25 +1970,25 @@ function SortableEntry({
             )}
 
             {/* Actions */}
-            <div className="mt-1.5 flex items-center gap-2">
-              <button
+            <div className="day-stop-actions mt-1.5 flex items-center gap-2">
+              <Button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 onPointerDown={(e) => e.stopPropagation()}
                 aria-label={`עריכת ${entry.title}`}
-                className="min-h-9 px-2.5 rounded-full border border-border text-[11px] text-foreground inline-flex items-center gap-1"
+                variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground"
               >
-                <Pencil size={12} /> עריכה
-              </button>
-              <button
+                <Pencil size={16} />
+              </Button>
+              <Button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
                 onPointerDown={(e) => e.stopPropagation()}
                 aria-label={`פרטים ופעולות נוספות עבור ${entry.title}`}
-                className="min-h-9 w-9 rounded-full border border-border text-muted-foreground inline-flex items-center justify-center"
+                variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground"
               >
                 <MoreHorizontal size={14} />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
