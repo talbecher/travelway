@@ -20,12 +20,12 @@ export const matchNewRecommendation = createServerFn({ method: 'POST' })
 
 export const reviewRecommendationIdentities = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator(input => z.object({ tripId: z.string().uuid(), after: z.string().uuid().nullable().optional(), ids: z.array(z.string().uuid()).min(1).max(5).optional() }).parse(input))
+  .inputValidator(input => z.object({ tripId: z.string().uuid(), after: z.string().uuid().nullable().optional(), ids: z.array(z.string().uuid()).min(1).max(5).optional(), limit: z.number().int().min(1).max(5).default(5) }).parse(input))
   .handler(async ({ data, context }) => {
     setResponseHeader('Cache-Control', 'private, no-store');
     const { data: trip } = await context.supabase.from('trips').select('id').eq('id', data.tripId).maybeSingle();
     if (!trip) throw new Error('אין גישה לטיול');
-    let query = context.supabase.from('recommendations').select('*').eq('trip_id', data.tripId).is('provider_place_id', null).order('id').limit(6);
+    let query = context.supabase.from('recommendations').select('*').eq('trip_id', data.tripId).is('provider_place_id', null).order('id').limit(data.limit + 1);
     if (data.ids) query = query.in('id', data.ids);
     if (data.after) query = query.gt('id', data.after);
     const { data: rows, error } = await query;
@@ -35,7 +35,7 @@ export const reviewRecommendationIdentities = createServerFn({ method: 'POST' })
     const secret = process.env['API_CURSOR_SECRET'];
     const results = [];
     let requests = 0;
-    for (const row of (rows ?? []).slice(0, 5)) {
+    for (const row of (rows ?? []).slice(0, data.limit)) {
       const missingPhoto = !row.photo_url || isGooglePhoto(row.photo_url);
       if (row.provider_place_id) {
         results.push({ id: row.id, name: row.name, status: 'existing' as const, candidates: [], proposed: null, review: null, missingPhoto });
@@ -48,11 +48,9 @@ export const reviewRecommendationIdentities = createServerFn({ method: 'POST' })
       }
       const review = match.proposed && secret ? await signReview({ userId: context.userId, tripId: data.tripId, row, placeId: match.proposed.id, expires: Date.now() + 30 * 60 * 1000 }, secret) : null;
       results.push({ id: row.id, name: row.name, status: match.status, candidates: match.candidates, proposed: match.proposed, review, missingPhoto, error: match.error });
-      // Do not keep spending after a provider/key failure.
-      if (match.status === 'api_failure') break;
     }
     const last = results.at(-1);
-    return { results, requests, next: !data.ids && last && rows?.length === 6 ? last.id : null, stopped: false, deferred: null };
+    return { results, requests, next: !data.ids && last && rows?.length === data.limit + 1 ? last.id : null, stopped: false, deferred: null };
   });
 
 export const applyRecommendationIdentity = createServerFn({ method: 'POST' })

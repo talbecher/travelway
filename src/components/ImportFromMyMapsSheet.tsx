@@ -121,13 +121,13 @@ export function ImportFromMyMapsSheet({
         const { data: user } = await supabase.auth.getUser();
         if (user.user) {
           try {
-            const storageKey = `identity-progress:${user.user.id}:${tripId}`;
+            const storageKey = `identity-progress:${user.user.id}:${tripId}:import`;
             const previous = localStorage.getItem(storageKey);
             const imported = importIdentityProgress(newIds);
-            // Keep another pending scan intact; add new import IDs to its retry queue.
+            // Keep import continuation isolated from the existing-trip scan.
             if (previous) {
               const saved = JSON.parse(previous);
-              saved.pending = [...new Set([...(saved.pending ?? []), ...newIds])];
+              saved.scope = [...new Set([...(saved.scope ?? []), ...newIds])];
               localStorage.setItem(storageKey, persistIdentityProgress(saved));
             } else localStorage.setItem(storageKey, persistIdentityProgress(imported));
           } catch { toast.error('הייבוא נשמר, אך המשך הבדיקה לאחר רענון אינו זמין'); }
@@ -145,7 +145,7 @@ export function ImportFromMyMapsSheet({
 
   return (
     <BottomSheet open={open} onOpenChange={handleClose} title="ייבוא מ-Google My Maps">
-      {step === "enrichment" && <div className="space-y-3"><p className="text-sm">הייבוא נשמר. אפשר לבדוק שיוך לעסקים כעת או בהמשך, ללא ייבוא חוזר.</p><IdentityReviewPanel tripId={getActiveTripId()} /><Button variant="outline" className="min-h-11" onClick={() => handleClose(false)}>סיום — המשך הבדיקה בהמלצות</Button></div>}
+      {step === "enrichment" && <div className="space-y-3"><p className="text-sm">הייבוא נשמר. אפשר לבדוק שיוך לעסקים כעת או בהמשך, ללא ייבוא חוזר.</p><IdentityReviewPanel tripId={getActiveTripId()} imported /><Button variant="outline" className="min-h-11" onClick={() => handleClose(false)}>סיום — המשך הבדיקה בהמלצות</Button></div>}
       {step === "url" && (
         <div className="pt-2 space-y-4">
           <p className="text-sm text-muted-foreground">הדבק לינק של מפה ציבורית</p>
