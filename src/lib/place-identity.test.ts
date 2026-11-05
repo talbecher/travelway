@@ -1,7 +1,7 @@
 // @ts-ignore -- matches the existing dependency-free bun test suite.
 import { describe, expect, it } from 'bun:test';
 import { matchBusiness, identityOnlyPatch, isGooglePhoto } from './place-identity';
-const pin = { latitude: 34.665, longitude: 135.43 };
+const pin = { latitude: 34.6555406, longitude: 135.4315394 };
 const kuma = { id: 'ChIJKuma', name: 'Kuma Cafe', address: 'Osaka', ...pin };
 describe('business matching', () => {
   it('matches Kuma Kafe by normalized name and nearby pin, not result order', () => {
@@ -9,12 +9,12 @@ describe('business matching', () => {
     expect(matchBusiness('Kuma Kafe', pin, [wrong, kuma]).proposed?.id).toBe('ChIJKuma');
   });
   it('requires review for ambiguous nearby branches', () => {
-    expect(matchBusiness('Kuma Kafe', pin, [kuma, { ...kuma, id: 'ChIJBranch', latitude: 34.666 }]).status).toBe('ambiguous');
+    expect(matchBusiness('Kuma Kafe', pin, [kuma, { ...kuma, id: 'ChIJBranch', latitude: 34.6565406 }]).status).toBe('ambiguous');
   });
   it('preserves a pin-only import without a result', () => {
-    const input = Object.freeze({ ...pin, google_maps_url: 'https://www.google.com/maps/search/?api=1&query=34.665,135.43' });
+    const input = Object.freeze({ ...pin, google_maps_url: 'https://www.google.com/maps/search/?api=1&query=34.6555406,135.4315394' });
     expect(matchBusiness('Kuma Kafe', input, []).status).toBe('no_match');
-    expect(input.latitude).toBe(34.665);
+    expect(input.latitude).toBe(34.6555406);
   });
   it('does not choose a far identical name or nearby wrong name', () => {
     expect(matchBusiness('Kuma Kafe', pin, [{ ...kuma, latitude: 35 }]).status).toBe('no_match');
