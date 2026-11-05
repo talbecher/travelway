@@ -40,10 +40,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         // Load all accessible trips
-        const { data: trips } = await supabase
+        const { data: trips, error: tripsError } = await supabase
           .from("trips")
           .select("id")
           .order("created_at", { ascending: true });
+
+        // Permission-denied here means the session is stale/expired — sign out
+        // so the user lands on the sign-in screen instead of an empty app.
+        if (tripsError) {
+          claimedForUserRef.current = null;
+          await supabase.auth.signOut();
+          return;
+        }
 
 
         const ids = (trips ?? []).map((t) => t.id);

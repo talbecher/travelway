@@ -9,7 +9,7 @@ import { suggestDayForRec, recLatLng, fmtApproxDistance } from "@/lib/day-sugges
 import { DiscoverSheet, useDiscoverAccess } from "@/components/discover/DiscoverSheet";
 import { getActiveTripId } from "@/lib/constants";
 import { haversine, fmtDistance } from "@/lib/geo";
-import { hebDate, ils, daysBetween, todayISO } from "@/lib/format";
+import { hebDate, ils, daysBetween, todayLocal } from "@/lib/format";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientOnly } from "@/components/ClientOnly";
@@ -29,7 +29,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { matchNewRecommendation } from "@/lib/place-identity.functions";
 import { RecommendationBusiness, RecommendationIdentityReview } from "@/components/RecommendationBusiness";
-import { isGooglePhoto } from "@/lib/place-identity";
 import { resolveDayLocation } from "@/lib/day-location";
 import { useServerFn } from "@tanstack/react-start";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
@@ -1195,7 +1194,7 @@ function PlaceCard({
           </div>
         )}
         {(() => {
-          const chip = bookingChip(rec.booking_deadline, rec.booking_status, todayISO());
+          const chip = bookingChip(rec.booking_deadline, rec.booking_status, todayLocal());
           if (!chip) return null;
           const cls =
             chip.tone === "booked" ? "bg-[color:var(--accent-3)]/15 text-[color:var(--accent-3)]"
@@ -1680,7 +1679,7 @@ function HotelsList({ onEdit: _onEdit, query, onResetFilters, onAdd, onOverlayOp
 function HotelCard({ h, onEdit }: { h: Hotel; onEdit: () => void }) {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
-  const today = todayISO();
+  const today = todayLocal();
   const [imgFailed, setImgFailed] = useState(false);
   const nights = h.checkin_date && h.checkout_date ? Math.max(1, daysBetween(h.checkin_date, h.checkout_date)) : 0;
   const totalCalc = nights > 0 && h.price_per_night_ils
