@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, MapPin, Link2, GripVertical, Footprints, Bus, TrainFront } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +9,7 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { hebDate, hebWeekday, hebWeekdayShort, daysBetween } from "@/lib/format";
 import { ENTRY_TYPES } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
-import DayMap from "@/components/DayMap";
+import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
@@ -86,6 +86,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CategoryIcon, isDefaultCategoryEmoji } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 
+const DayMap = lazy(() => import("@/components/DayMap"));
 
 export const Route = createFileRoute("/itinerary/$dayId")({
   head: () => ({
@@ -1134,6 +1135,8 @@ function DayDetail() {
           } as React.CSSProperties}
         >
           {mapStops.length > 0 ? (
+            <ClientOnly>
+            <Suspense fallback={null}>
             <DayMap
               stops={mapStops}
               highlightId={selectedStopId}
@@ -1141,6 +1144,8 @@ function DayDetail() {
               bottomPadding={overlayH ? overlayH + 24 : 48}
               onPinTap={(id) => { setSelectedSegment(null); setSelectedStopId(id); }}
             />
+            </Suspense>
+            </ClientOnly>
           ) : (
             <div className="w-full h-full bg-muted/40 flex flex-col items-center justify-center text-center gap-2 px-6">
               <MapIcon size={28} className="text-muted-foreground" />
