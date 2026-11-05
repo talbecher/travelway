@@ -1122,7 +1122,9 @@ function PlaceCard({
 
   const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
   const [businessPhoto, setBusinessPhoto] = useState<string | null>(null);
-  const displayPhoto = rec.photo_url && !isGooglePhoto(rec.photo_url) ? rec.photo_url : businessPhoto;
+  // A saved photo is shown as-is (including previously saved Google photos);
+  // the on-demand business photo is only a fallback when none is saved.
+  const displayPhoto = rec.photo_url ?? businessPhoto;
 
   const cardInner = (
     <div data-category={rec.type} className={`rec-list-card relative overflow-hidden rounded-2xl border bg-card p-3.5 transition-colors ${selected ? "border-primary ring-2 ring-ring/30" : "border-border"}`}>
@@ -1216,13 +1218,6 @@ function PlaceCard({
             </div>
           );
         })()}
-        {markBookedOpen && (
-          <MarkBookedSheet
-            recId={rec.id}
-            open={markBookedOpen}
-            onOpenChange={(o) => { setMarkBookedOpen(o); onOverlayOpenChange(o); }}
-          />
-        )}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
           {distance != null && Number.isFinite(distance) && (
             <span>{fmtDistance(distance)}</span>
@@ -1305,7 +1300,16 @@ function PlaceCard({
       ) : (
         cardInner
       )}
-
+      {/* Rendered outside cardInner: the card wrapper is a Maps link, and
+          portal events still bubble through the React tree — the sheet must
+          not sit inside the clickable card. */}
+      {markBookedOpen && (
+        <MarkBookedSheet
+          recId={rec.id}
+          open={markBookedOpen}
+          onOpenChange={(o) => { setMarkBookedOpen(o); onOverlayOpenChange(o); }}
+        />
+      )}
     </>
   );
 }
@@ -1392,7 +1396,9 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
         notes: notes.trim() || null,
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
-        photo_url: isGooglePhoto(photoUrl) ? null : photoUrl,
+        // Never strip an already-saved photo on edit — editing notes must not
+        // wipe the photo from the recommendation and its linked day stops.
+        photo_url: photoUrl,
         ...(existing?.provider_place_id ? {} : { provider: identity ? "google" : null, provider_place_id: identity }),
         booking_deadline: bookingDeadline || null,
       };
