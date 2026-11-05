@@ -847,6 +847,7 @@ function DayDetail() {
         .day-visual-preview .day-stop .entry-title {
           font-size: 16px; font-weight: 750; line-height: 1.5;
           overflow-wrap: anywhere; min-width: 0; max-width: 100%;
+          display: block; -webkit-line-clamp: unset; overflow: visible;
         }
         .day-visual-preview .day-stop-meta {
           margin-top: 4px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere;
