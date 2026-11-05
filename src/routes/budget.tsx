@@ -25,6 +25,14 @@ import { assertOnline } from "@/hooks/use-online";
 import { openQuickExpense } from "@/components/GlobalFab";
 
 export const Route = createFileRoute("/budget")({
+  head: () => ({ meta: [
+    { title: "תקציב הטיול | Travel Way" },
+    { name: "description", content: "הוצאות הטיול, יתרה ופירוט לפי קטגוריות ב־Travel Way." },
+    { property: "og:title", content: "תקציב הטיול | Travel Way" },
+    { property: "og:description", content: "מעקב אחר יתרת התקציב והוצאות הטיול לפי קטגוריות." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: Budget,
 });
 
@@ -80,7 +88,7 @@ function Budget() {
   </div>;
 
   return (
-    <div className="pt-2 space-y-5">
+    <div className="budget-page pt-2 space-y-5">
       <header className="flex items-center justify-between gap-2">
         <h1>תקציב</h1>
         <div className="flex items-center gap-2">
@@ -99,8 +107,8 @@ function Budget() {
         </div>
       </header>
 
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="relative h-52">
+      <div className="budget-summary bg-card border border-border rounded-2xl p-4" data-over-budget={budget > 0 && remaining < 0}>
+        <div className="budget-chart relative h-52">
           <ResponsiveContainer>
             <PieChart>
               <Pie data={pieData.length ? pieData : [{ name: "empty", value: 1 }]} dataKey="value" innerRadius={60} outerRadius={90} paddingAngle={2} stroke="none">
@@ -110,7 +118,7 @@ function Budget() {
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <div className="budget-balance absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <motion.div
               key={remaining}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -119,10 +127,11 @@ function Budget() {
             <div className="text-xs text-muted-foreground">נשאר</div>
           </div>
         </div>
-        <div className="grid grid-cols-2 text-center gap-3 mt-2 text-sm">
+        <div className="budget-totals grid grid-cols-2 text-center gap-3 mt-2 text-sm">
           <div><div className="text-muted-foreground text-xs">תקציב</div><div>{formatMoney(budget, base)}</div></div>
           <div><div className="text-muted-foreground text-xs">הוצאנו</div><div>{formatMoney(totalSpent, base)}</div></div>
         </div>
+        {budget > 0 && <progress className="budget-progress hidden" aria-label="הוצאות מתוך התקציב" max={budget} value={Math.min(budget, Math.max(0, totalSpent))} />}
       </div>
 
       <section className="space-y-2">
@@ -132,22 +141,22 @@ function Budget() {
           const active = expanded === k;
           const items = expensesByCat[k] ?? [];
           return (
-            <div key={k} className={`bg-card border rounded-2xl transition-colors ${active ? "border-[color:var(--accent)]" : "border-border"}`}>
+            <div key={k} data-category={k} className={`budget-category bg-card border rounded-2xl transition-colors ${active ? "border-[color:var(--accent)]" : "border-border"}`}>
               <button
                 onClick={() => setExpanded(active ? null : k)}
                 className="w-full text-right p-3"
               >
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
+                <div className="budget-category-heading flex items-center justify-between text-sm">
+                  <div className="budget-category-label flex items-center gap-2">
                     <CategoryIcon category={k} size={28} />
                     <span>{CATEGORY_LABELS[k]}</span>
                   </div>
-                  <div className="flex items-center gap-2 tabular-nums">
+                  <div className="budget-category-amount flex items-center gap-2 tabular-nums">
                     <span>{formatMoney(amount, base)} · {Math.round(pct)}%</span>
                     <ChevronDown size={14} className={`transition-transform ${active ? "rotate-180" : ""}`} />
                   </div>
                 </div>
-                <div className="h-1.5 bg-muted rounded-full mt-2 overflow-hidden">
+                <div className="budget-category-bar h-1.5 bg-muted rounded-full mt-2 overflow-hidden">
                   <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: CATEGORY_COLORS[k] }} />
                 </div>
               </button>
@@ -163,15 +172,18 @@ function Budget() {
                       {items.length === 0 ? (
                         <div className="p-3 text-xs text-muted-foreground">אין הוצאות</div>
                       ) : items.map((e) => (
-                        <div key={e.id} className="p-3 flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
+                        <div key={e.id} className="budget-expense p-3 flex items-center gap-3">
+                          <div className="budget-expense-description flex-1 min-w-0">
                             <div className="text-sm truncate"><bdi>{e.description || CATEGORY_LABELS[e.category]}</bdi></div>
                             <div className="text-xs text-muted-foreground">
                               {hebDate(e.expense_date)}{e.location_name ? ` · ${e.location_name}` : ""}
                             </div>
                           </div>
-                          <div className="tabular-nums text-sm">{formatMoney(e.amount_ils, base)}</div>
-                          <div className="flex gap-1">
+                          <div className="budget-expense-money tabular-nums text-sm">
+                            {e.amount_foreign != null && e.foreign_currency && <div className="budget-original hidden"><bdi>{formatMoney(e.amount_foreign, e.foreign_currency)}</bdi></div>}
+                            <div className={e.amount_foreign != null && e.foreign_currency ? "budget-converted" : ""}><bdi>{formatMoney(e.amount_ils, base)}</bdi></div>
+                          </div>
+                          <div className="budget-expense-actions flex gap-1">
                             <button onClick={() => setEditExpense(e)} aria-label="ערוך"
                               className="w-8 h-8 rounded-full border border-border flex items-center justify-center min-h-0">
                               <Pencil size={13} />
