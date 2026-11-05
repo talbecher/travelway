@@ -12,6 +12,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
+import { resolveDayLocation, type StoredLocation } from "@/lib/day-location";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
@@ -119,6 +120,8 @@ type EntryRow = {
   longitude: number | string | null;
   photo_url?: string | null;
   linked_hotel_id?: string | null;
+  linked_location?: StoredLocation | null;
+  recommendations?: StoredLocation | null;
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -154,11 +157,7 @@ function sortEntries(list: EntryRow[]): EntryRow[] {
 }
 
 function coordsOf(e: EntryRow): { lat: number; lng: number } | null {
-  if (e.latitude != null && e.longitude != null) {
-    const lat = Number(e.latitude), lng = Number(e.longitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-  }
-  return null;
+  return resolveDayLocation(e, e.linked_location ?? e.recommendations);
 }
 
 function rome2rioUrl(from: string, to: string): string {
@@ -299,20 +298,20 @@ function DayDetail() {
   const nextDay = dayIndex >= 0 ? days[dayIndex + 1] : undefined;
 
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
-  const entries = sortEntries(rawEntries as EntryRow[]);
+  const sortedEntries = useMemo(() => sortEntries(rawEntries as EntryRow[]), [rawEntries]);
 
   const linkedRecIds = useMemo(
-    () => entries.map((e) => e.linked_recommendation_id).filter((id): id is string => !!id),
-    [entries]
+    () => sortedEntries.map((e) => e.linked_recommendation_id).filter((id): id is string => !!id),
+    [sortedEntries]
   );
 
   const { data: linkedRecs = [] } = useQuery({
-    queryKey: ["linked-recs", linkedRecIds.join(",")],
+    queryKey: ["linked-recs", dayId, linkedRecIds.join(","), "location"],
     queryFn: async () => {
       if (linkedRecIds.length === 0) return [];
       const { data, error } = await supabase
         .from("recommendations")
-        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url")
+        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url, latitude, longitude")
         .in("id", linkedRecIds);
       if (error) throw error;
       return data ?? [];
@@ -324,6 +323,10 @@ function DayDetail() {
   const recById = useMemo(() => {
     return Object.fromEntries(linkedRecs.map((r) => [r.id, r]));
   }, [linkedRecs]);
+  const entries = useMemo(() => sortedEntries.map((entry) => ({
+    ...entry,
+    linked_location: entry.linked_recommendation_id ? recById[entry.linked_recommendation_id] : null,
+  })), [sortedEntries, recById]);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
@@ -2050,9 +2053,10 @@ function EntryDetails({
   const icon = entryIcon(entry, 56);
   const smallIcon = entryIcon(entry, 18);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? entry.entry_type;
-  const hasCoords = coordsOf(entry) != null;
-  const mapHref = hasCoords && entry.latitude != null && entry.longitude != null
-    ? mapsSearchUrl(Number(entry.latitude), Number(entry.longitude))
+  const coords = coordsOf(entry);
+  const hasCoords = coords != null;
+  const mapHref = coords
+    ? mapsSearchUrl(coords.lat, coords.lng)
     : entry.google_maps_url;
 
   const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
