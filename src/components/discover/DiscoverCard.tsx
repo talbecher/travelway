@@ -44,7 +44,7 @@ export function DiscoverCard({
   const nearRef = useRef(false);
   const photoName = place.photoName;
   const noopSub = (_: () => void) => () => {};
-  useSyncExternalStore(
+  const loaderVersion = useSyncExternalStore(
     photoLoader?.subscribe ?? noopSub,
     photoLoader?.getVersion ?? (() => 0),
     () => 0,
@@ -52,6 +52,14 @@ export function DiscoverCard({
   const photo = photoLoader && photoName ? photoLoader.get(photoName) : null;
   const photoUrl = photo?.url ?? null;
   const showImg = !!photoUrl && !imgFailed;
+
+  // After a new search resets the loader, a kept card's observer does not
+  // re-emit — re-queue the photo while the card is still near the viewport.
+  useEffect(() => {
+    if (!photoLoader || !photoName || !nearRef.current) return;
+    if (!photoLoader.get(photoName).status) photoLoader.request(photoName, () => nearRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoLoader, photoName, loaderVersion]);
 
   useEffect(() => {
     const el = frameRef.current;
