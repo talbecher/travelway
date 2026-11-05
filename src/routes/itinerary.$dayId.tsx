@@ -196,7 +196,7 @@ type OptimizeResult = {
 /**
  * Computes a nearest-neighbor route (starting from the first located entry)
  * and compares it with the current order. Returns the full suggested order —
- * entries without coordinates keep their relative position at the end.
+ * entries without coordinates or with a set time keep their original slots.
  */
 function isLodgingEntry(e: EntryRow): boolean {
   return e.entry_type === "hotel_checkin" || !!e.linked_hotel_id;
