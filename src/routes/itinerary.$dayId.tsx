@@ -818,12 +818,12 @@ function DayDetail() {
         .day-visual-preview .day-stop-group { position: relative; isolation: isolate; }
         .day-visual-preview .day-stop-group::before {
           content: ""; position: absolute; inset-inline-start: 14px;
-          top: -16px; bottom: -16px; width: 2px;
+          top: -10px; bottom: -10px; width: 2px;
           background: var(--day-rail); pointer-events: none;
         }
         .day-visual-preview .day-stop-group:first-child::before { top: 24px; }
-        .day-visual-preview .day-stop-group:last-child::before { bottom: auto; height: 40px; }
-        .day-visual-preview .day-stop-group:last-child.day-stop-with-segment::before { height: 96px; }
+        .day-visual-preview .day-stop-group:last-child::before { bottom: auto; height: 34px; }
+        .day-visual-preview .day-stop-group:last-child.day-stop-with-segment::before { height: 88px; }
         .day-visual-preview .day-stop-group:only-child::before { display: none; }
         .day-visual-preview .day-stop { width: 100%; isolation: isolate; }
         .day-visual-preview .day-stop-rail {
@@ -861,6 +861,14 @@ function DayDetail() {
         }
         .day-visual-preview .day-stop-actions { gap: 4px; flex-wrap: wrap; }
         .day-visual-preview .day-segment { padding-inline-start: 38px; }
+        .day-visual-preview .day-segment-hint {
+          padding-inline-start: 38px;
+          min-height: 24px;
+          display: flex; align-items: center;
+          font-size: 11px; line-height: 1.5;
+          color: var(--muted-foreground);
+          overflow-wrap: anywhere;
+        }
         .day-visual-preview .day-segment > span {
           inset-inline-start: 14px; width: 24px; border-color: var(--day-rail) !important;
         }
@@ -1011,7 +1019,7 @@ function DayDetail() {
         );
       })()}
 
-      <div className="day-city px-4 pt-2" dir="rtl">
+      <div className="day-city px-4 pt-1.5" dir="rtl">
         <div className="day-city-row flex items-center gap-2">
         <div className="day-city-card min-w-0 flex-1 rounded-2xl border border-border bg-card px-3 py-1.5">
         {editingCity ? (
@@ -1068,7 +1076,7 @@ function DayDetail() {
       </div>
 
       {/* View switch — same day, two modes */}
-      <div className="day-tabs-wrap px-4 pt-2" dir="rtl">
+      <div className="day-tabs-wrap px-4 pt-1.5" dir="rtl">
         <div className="day-view-tabs inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
           {([
             { key: "list", label: "מסלול" },
@@ -1228,7 +1236,7 @@ function DayDetail() {
       ) : (
         <div ref={paneRef} className="relative flex flex-col" style={{ height: paneH ? `${paneH}px` : "calc(100dvh - 254px)" }}>
           {/* Summary + list actions */}
-          <div className="day-list-actions px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
+          <div className="day-list-actions px-4 pt-1 flex items-center justify-between gap-2" dir="rtl">
             <span className="text-[12px] text-muted-foreground">
               {entries.length} תחנות · סדר ידני
             </span>
@@ -1258,25 +1266,23 @@ function DayDetail() {
           </div>
 
           {/* List pane */}
-          <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-3 pb-6 relative">
+          <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-2 pb-6 relative">
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="flex flex-col gap-4 overscroll-contain">
+                <div className="flex flex-col gap-2.5 overscroll-contain">
                   {entries.map((e, idx) => {
                     const b = coordsOf(e);
                     let prev: typeof e | null = null;
                     let a: ReturnType<typeof coordsOf> = null;
-                    if (b) {
-                      for (let i = idx - 1; i >= 0; i--) {
-                        const c = coordsOf(entries[i]);
-                        if (c) { prev = entries[i]; a = c; break; }
-                      }
+                    for (let i = idx - 1; i >= 0; i--) {
+                      const c = coordsOf(entries[i]);
+                      if (c) { prev = entries[i]; a = c; break; }
                     }
 
                     return (
                       <div key={e.id} className={"day-stop-group" + (prev && a && b ? " day-stop-with-segment" : "")}>
-                        {prev && a && b && (
+                        {prev && a && b ? (
                           <SegmentRow
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
                             onShowOnMap={() => {
@@ -1285,7 +1291,12 @@ function DayDetail() {
                               showMap();
                             }}
                           />
-                        )}
+                        ) : idx > 0 && !b ? (
+                          /* Subtle hint only — no guessed coordinates, no bulky row */
+                          <div className="day-segment-hint" dir="rtl">
+                            לתחנה אין מיקום שמור, ולכן אי אפשר להציג אפשרויות הגעה
+                          </div>
+                        ) : null}
                         <SortableEntry
                           entry={e}
                           isLast={idx === entries.length - 1}
@@ -1665,7 +1676,7 @@ function SegmentRow({
   onShowOnMap: () => void;
 }) {
   return (
-    <div className="day-segment relative flex items-center min-h-[56px]" dir="rtl">
+    <div className="day-segment relative flex items-center min-h-[48px]" dir="rtl">
       {/* Bridge tie — visually connects the bridge to the timeline rail (display only) */}
       <span
         aria-hidden
@@ -1871,7 +1882,7 @@ function SortableEntry({
       <div className="day-stop-rail w-[36px] shrink-0 relative flex flex-col items-center pt-2 pointer-events-none">
         {!isLast && (
           <div
-            className="absolute right-1/2 translate-x-1/2 top-[30px] bottom-[-16px] w-0"
+            className="absolute right-1/2 translate-x-1/2 top-[30px] bottom-[-10px] w-0"
             style={{ borderRight: "2px solid var(--terracotta-soft)" }}
             aria-hidden
           />
@@ -1971,7 +1982,7 @@ function SortableEntry({
             )}
 
             {/* Actions */}
-            <div className="day-stop-actions mt-1.5 flex items-center gap-2">
+            <div className="day-stop-actions mt-1 flex items-center gap-2">
               <Button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
