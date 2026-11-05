@@ -561,7 +561,7 @@ function Home() {
     manual: false,
   });
 
-  const { version: activeVersion } = useActiveVersion(tripId);
+  const { version: activeVersion, isLoading: versionLoading } = useActiveVersion(tripId);
   const {
     data: entriesByDay = {},
     isLoading: entriesLoading,
@@ -649,7 +649,7 @@ function Home() {
   }, [days, firstEmptyDay?.id, planSelection, tripId]);
 
   const deadlines = useMemo(
-    () => buildDeadlines(hotels as never, recs as never, todayISO()),
+    () => buildDeadlines(hotels as never, recs as never, todayLocal()),
     [hotels, recs],
   );
 
@@ -693,7 +693,7 @@ function Home() {
 
   // ===== PRE-TRIP HOME =====
   if (stats?.beforeTrip) {
-    const planDataPending = daysLoading || (!!activeVersion?.id && entriesLoading);
+    const planDataPending = daysLoading || versionLoading || (!!activeVersion?.id && entriesLoading);
     const planDataFailed = daysError || entriesError;
     const urgent = deadlines.find((d) => d.urgency === "overdue" || d.urgency === "critical") ?? null;
     const openDeadline = (item: DeadlineItem) =>
@@ -798,7 +798,7 @@ function Home() {
   // ===== ACTIVE-TRIP HOME =====
   if (tripIsActive && stats) {
     const todayEntries = todayDay ? entriesByDay[todayDay.id] ?? [] : [];
-    const todayDataPending = daysLoading || (!!activeVersion?.id && entriesLoading);
+    const todayDataPending = daysLoading || versionLoading || (!!activeVersion?.id && entriesLoading);
     const todayDataFailed = daysError || entriesError;
     const urgent = deadlines.find((deadline) => deadline.urgency === "overdue" || deadline.urgency === "critical") ?? null;
     const remainingDeadlines = urgent ? deadlines.filter((deadline) => deadline.id !== urgent.id) : deadlines;
@@ -1194,7 +1194,7 @@ function HeroCard(props: {
   weatherFallback: string | null;
 }) {
   const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity, weatherFallback } = props;
-  const today = todayISO();
+  const today = todayLocal();
   const forecast = useDayWeather(weatherCity ?? weatherFallback, today);
   const current = useCurrentWeather(weatherCity, weatherFallback);
   const wCondition = forecast?.condition ?? current?.condition ?? null;

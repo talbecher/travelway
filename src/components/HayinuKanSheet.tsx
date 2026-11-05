@@ -6,7 +6,7 @@ import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useDays, useRecs } from "@/hooks/use-trip";
-import { todayISO } from "@/lib/format";
+import { todayLocal } from "@/lib/format";
 
 type Step = "search" | "confirm" | "rate" | "done";
 
@@ -62,7 +62,7 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
   const [busy, setBusy] = useState(false);
 
   const name = selectedPlace?.name ?? manualName;
-  const today = todayISO();
+  const today = todayLocal();
   const todayDay = (days ?? []).find((d) => d.date === today);
 
   function reset() {

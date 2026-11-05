@@ -9,7 +9,7 @@ export function openQuickExpense() {
 }
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId, CATEGORY_LABELS } from "@/lib/constants";
-import { todayISO } from "@/lib/format";
+import { todayLocal } from "@/lib/format";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import {
   useBaseCurrency,
@@ -120,7 +120,7 @@ function QuickExpenseForm({ onDone }: { onDone: () => void }) {
       ? recs.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 5)
       : [];
   const clearSelection = () => { setLinkedRecId(null); setGooglePick(null); };
-  const [date, setDate] = useState(todayISO());
+  const [date, setDate] = useState(todayLocal());
 
   const recType = categoryToRecType(category);
 
