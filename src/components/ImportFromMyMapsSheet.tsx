@@ -7,9 +7,12 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { fetchMyMapKml, type ImportedPlace } from "@/lib/maps-import.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { IdentityReviewPanel } from "./IdentityReviewPanel";
+import { importIdentityProgress, persistIdentityProgress } from "@/lib/identity-progress";
 import { assertOnline } from "@/hooks/use-online";
 
-type Step = "url" | "preview";
+type Step = "url" | "preview" | "enrichment";
 
 const TYPE_ICON: Record<ImportedPlace["suggested_type"], string> = {
   food: "🍜",
@@ -104,9 +107,9 @@ export function ImportFromMyMapsSheet({
       const rows = (data ?? []) as { recommendation_id: string; is_new: boolean; place_index: number }[];
       const newCount = rows.filter((r) => r.is_new).length;
       const linkedCount = rows.length - newCount;
-      return { newCount, linkedCount };
+      return { newCount, linkedCount, tripId, newIds: rows.filter(r => r.is_new).map(r => r.recommendation_id) };
     },
-    onSuccess: ({ newCount, linkedCount }) => {
+    onSuccess: async ({ newCount, linkedCount, tripId, newIds }) => {
       qc.invalidateQueries({ queryKey: ["recs"] });
       qc.invalidateQueries({ queryKey: ["rec-sources"] });
       toast.success(
@@ -114,7 +117,23 @@ export function ImportFromMyMapsSheet({
           ? `✅ יובאו ${newCount} חדשות · ${linkedCount} קיימות קושרו למקור`
           : `✅ יובאו ${newCount} המלצות בהצלחה`,
       );
-      handleClose(false);
+      if (newIds.length) {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          try {
+            const storageKey = `identity-progress:${user.user.id}:${tripId}:import`;
+            const previous = localStorage.getItem(storageKey);
+            const imported = importIdentityProgress(newIds);
+            // Keep import continuation isolated from the existing-trip scan.
+            if (previous) {
+              const saved = JSON.parse(previous);
+              saved.scope = [...new Set([...(saved.scope ?? []), ...newIds])];
+              localStorage.setItem(storageKey, persistIdentityProgress(saved));
+            } else localStorage.setItem(storageKey, persistIdentityProgress(imported));
+          } catch { toast.error('הייבוא נשמר, אך המשך הבדיקה לאחר רענון אינו זמין'); }
+        }
+        setStep("enrichment");
+      } else handleClose(false);
     },
     onError: (e: Error) => {
       // Keep preview + selection so the user can retry.
@@ -126,6 +145,7 @@ export function ImportFromMyMapsSheet({
 
   return (
     <BottomSheet open={open} onOpenChange={handleClose} title="ייבוא מ-Google My Maps">
+      {step === "enrichment" && <div className="space-y-3"><p className="text-sm">הייבוא נשמר. אפשר לבדוק שיוך לעסקים כעת או בהמשך, ללא ייבוא חוזר.</p><IdentityReviewPanel tripId={getActiveTripId()} imported /><Button variant="outline" className="min-h-11" onClick={() => handleClose(false)}>סיום — המשך הבדיקה בהמלצות</Button></div>}
       {step === "url" && (
         <div className="pt-2 space-y-4">
           <p className="text-sm text-muted-foreground">הדבק לינק של מפה ציבורית</p>

@@ -1,5 +1,10 @@
 # Phase 1B — done
 
+# Recommendation enrichment acceptance gaps (preview only)
+- [x] Optional post-import review only for new IDs, isolated import continuation; original atomic pin RPC unchanged, error/ambiguity leaves pins intact.
+- [x] Explicit cap up to 1,200; automatic ≤5-row scans, ≤5-receipt signed/authenticated full-row CAS apply, applied/skipped/failed counters. User/trip progress stores own IDs/counters only; fresh capped review after reload.
+- [x] 17 focused tests /52 assertions; build OK. Authenticated 390px fixture panel scanned 1,153 via 231 automatic batches; reload and fresh review; 1,152 confident applied via 231 mocked batches, one ambiguous deferred. Actual import sheet: one mocked atomic RPC, only newly imported ID scanned, existing linked row excluded; no overflow/errors. Zero live Places calls/writes/publication. Google/provider responses and live apply deliberately untested; UI fixture functions mocked, signed/CAS helper tested separately with in-memory database fixtures.
+
 # Preview recommendation business identity
 - [x] Audited creation paths; selected Google IDs retained, KML atomic pin-only import unchanged; AI recommendation explicit-point matching bounded to five.
 - [x] Authenticated five-row cursor review (page-session resumable), signed receipts, full-row compare-and-set identity-only apply; no bulk writes.
