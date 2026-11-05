@@ -267,12 +267,14 @@ function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
   const optimalDist = pathDist(withAnchors(optimized));
   const savedKm = currentDist - optimalDist;
 
-  const withoutCoords = body.filter((e) => coordsOf(e) === null);
+  // Merge back: fixed entries (no coords / timed) stay at their original
+  // slots; movable entries fill the remaining slots in optimized order.
+  const queue = [...optimized];
+  const rebuiltBody = body.map((e) => (isFixed(e) ? e : queue.shift()!));
 
   const optimalOrder = [
     ...(startAnchor ? [startAnchor] : []),
-    ...optimized,
-    ...withoutCoords,
+    ...rebuiltBody,
     ...(endAnchor ? [endAnchor] : []),
   ];
 
