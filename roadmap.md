@@ -1,5 +1,12 @@
 # Phase 1B — done
 
+# Preview recommendation business identity
+- [x] Audited creation paths; selected Google IDs retained, KML atomic pin-only import unchanged; AI recommendation explicit-point matching bounded to five.
+- [x] Authenticated five-row cursor review (page-session resumable), signed receipts, full-row compare-and-set identity-only apply; no bulk writes.
+- [x] On-demand Google photo/rating in component state with attribution and business link; user photos preserved; removed unsafe automatic photo backfill endpoint.
+- [x] 19 tests / 57 assertions and automatic build OK; authenticated 390px Japan review sheet verified without API requests or writes; inventory: 1,158 rows, 5 IDs, 1,153 missing identity, 388 empty photos; Kuma Kafe lacks ID/photo.
+- [ ] Live candidate report/photo response and reviewed apply validation: blocked by unsupported sandbox Google Maps testing and required user review; zero actual Places requests, no publication. See recommendation-enrichment audit for exact limitations.
+
 # Preview-only day location resolution
 - [x] Shared validated stop → explicit Maps URL → linked recommendation resolution; no data writes or location lookups; map pins/sheets/segments share coordsOf. Existing DayMap 0,0 sentinel preserved.
 - [x] Nine tests (38+ assertions) cover URL-only, linked recommendation, precedence, ranges, untrusted/malformed URLs, viewport rejection and immutability; automatic build OK. Authenticated real day 6 checked at 390px: Kaminarimon has NULL coordinates, NULL URL and no linked recommendation, so that segment correctly remains unavailable; separate saved recommendation exists but is not linked and was not matched by name. Arrival sheet and map render with the two existing hotel locations clustered. No publication. Real URL-only/linked fallback UI not available in this day; verified by unit tests instead. External Google Maps navigation not opened.

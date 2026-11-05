@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Check } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { searchPlaces, getPlacePhotoUrl } from "@/lib/places.functions";
+import { matchNewRecommendation } from '@/lib/place-identity.functions';
 import {
   applyEntries,
   applyRecs,
@@ -60,6 +61,7 @@ export function ImportAISheet({
   const qc = useQueryClient();
   const search = useServerFn(searchPlaces);
   const getPhoto = useServerFn(getPlacePhotoUrl);
+  const matchRec = useServerFn(matchNewRecommendation);
 
   const [text, setText] = useState("");
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
@@ -209,6 +211,20 @@ export function ImportAISheet({
     } catch {
       return null;
     }
+  };
+
+  // Recommendation matching requires an explicit saved pin; no free-text geocoding.
+  // Per import at most five sequential searches; all other rows remain pin-only.
+  let recommendationRequests = 0;
+  const recommendationLookup: PlaceLookup = async (query, rec) => {
+    if (!rec || recommendationRequests >= 5) return null;
+    recommendationRequests++;
+    try {
+      const match = await matchRec({ data: { tripId, name: query, latitude: rec.latitude, longitude: rec.longitude, google_maps_url: rec.google_maps_url } });
+      const p = match.proposed;
+      if (!p) return null;
+      return { latitude: p.latitude, longitude: p.longitude, address: null, city: null, google_maps_url: null, photo_url: null, rating: null, ratingCount: null, provider_place_id: p.id };
+    } catch { return null; }
   };
 
   const selectedEntries = entries.filter((_, i) => entrySel[i]);
@@ -424,7 +440,7 @@ export function ImportAISheet({
       }
 
       const addedEntries = await applyEntries(selectedEntries, dayIdByNumber, l);
-      const addedRecs = await applyRecs(tripId, selectedRecs, l);
+      const addedRecs = await applyRecs(tripId, selectedRecs, enrich ? recommendationLookup : undefined);
 
       qc.invalidateQueries({ queryKey: ["day-entries"] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });

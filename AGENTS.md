@@ -20,3 +20,4 @@
 - Pre-trip light-home layout overrides live under `html:not(.dark) .pretrip-home` in the global stylesheet; retain the existing component tree. Why: dark mode and other home states must keep their original layout and behavior.
 - DayMap must be dynamically imported and rendered behind ClientOnly with Suspense. Why: its Leaflet imports access window and crash server route evaluation.
 - Day-detail location consumers share the pure day-location resolver and attach linked recommendation locations only to read-time entries. Why: pins and arrival endpoints must agree without modifying stored coordinates or using viewport locations.
+- Recommendation identity uses authenticated bounded matching and signed review receipts with full-row compare-and-set for existing rows; media is explicit on-demand component state, never persisted. Why: prevent ambiguous matches, stale overwrite, cross-trip writes and durable Google media caching.
