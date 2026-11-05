@@ -1262,21 +1262,19 @@ function DayDetail() {
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="flex flex-col gap-4 overscroll-contain">
+                <div className="flex flex-col gap-2.5 overscroll-contain">
                   {entries.map((e, idx) => {
                     const b = coordsOf(e);
                     let prev: typeof e | null = null;
                     let a: ReturnType<typeof coordsOf> = null;
-                    if (b) {
-                      for (let i = idx - 1; i >= 0; i--) {
-                        const c = coordsOf(entries[i]);
-                        if (c) { prev = entries[i]; a = c; break; }
-                      }
+                    for (let i = idx - 1; i >= 0; i--) {
+                      const c = coordsOf(entries[i]);
+                      if (c) { prev = entries[i]; a = c; break; }
                     }
 
                     return (
                       <div key={e.id} className={"day-stop-group" + (prev && a && b ? " day-stop-with-segment" : "")}>
-                        {prev && a && b && (
+                        {prev && a && b ? (
                           <SegmentRow
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
                             onShowOnMap={() => {
@@ -1285,7 +1283,12 @@ function DayDetail() {
                               showMap();
                             }}
                           />
-                        )}
+                        ) : idx > 0 && !b ? (
+                          /* Subtle hint only — no guessed coordinates, no bulky row */
+                          <div className="day-segment-hint" dir="rtl">
+                            לתחנה אין מיקום שמור, ולכן אי אפשר להציג אפשרויות הגעה
+                          </div>
+                        ) : null}
                         <SortableEntry
                           entry={e}
                           isLast={idx === entries.length - 1}
