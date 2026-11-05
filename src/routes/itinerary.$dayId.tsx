@@ -84,6 +84,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CategoryIcon, isDefaultCategoryEmoji } from "@/components/CategoryIcon";
+import { Button } from "@/components/ui/button";
 
 
 export const Route = createFileRoute("/itinerary/$dayId")({
@@ -292,6 +293,9 @@ function DayDetail() {
     "hiroshima", "הירושימה", "kanazawa", "קאנאזאווה",
   ].some((k) => destination.includes(k));
   const day = days.find((d) => d.id === dayId);
+  const dayIndex = days.findIndex((d) => d.id === dayId);
+  const previousDay = dayIndex > 0 ? days[dayIndex - 1] : undefined;
+  const nextDay = dayIndex >= 0 ? days[dayIndex + 1] : undefined;
 
   const { data: rawEntries = [], isLoading } = useQuery(dayEntriesQuery(dayId));
   const entries = sortEntries(rawEntries as EntryRow[]);
@@ -977,6 +981,36 @@ function DayDetail() {
                 </>
               )}
             </div>
+            <nav aria-label="מעבר בין ימי המסלול" className="flex items-center justify-between gap-2 px-3 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!previousDay}
+                aria-label={previousDay ? `יום קודם — יום ${previousDay.day_number}` : "יום קודם"}
+                onClick={() => {
+                  if (!previousDay) return;
+                  navigate({ to: "/itinerary/$dayId", params: { dayId: previousDay.id } });
+                }}
+              >
+                <ChevronRight aria-hidden="true" />
+                יום קודם
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!nextDay}
+                aria-label={nextDay ? `יום הבא — יום ${nextDay.day_number}` : "יום הבא"}
+                onClick={() => {
+                  if (!nextDay) return;
+                  navigate({ to: "/itinerary/$dayId", params: { dayId: nextDay.id } });
+                }}
+              >
+                יום הבא
+                <ChevronRight className="rotate-180" aria-hidden="true" />
+              </Button>
+            </nav>
           </div>
         );
       })()}
