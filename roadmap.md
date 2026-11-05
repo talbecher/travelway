@@ -1,5 +1,10 @@
 # Phase 1B — done
 
+# Recommendation enrichment acceptance gaps (preview only)
+- [ ] Offer bounded post-import review of only new KML rows; retain atomic import and resumable deferred IDs.
+- [ ] Automatic capped scan and bounded bulk signed/CAS apply; persist only own row IDs/status/progress, never transient Google metadata.
+- [ ] Fixture tests and narrow preview verification, zero live Places calls/data writes/publication.
+
 # Preview recommendation business identity
 - [x] Audited creation paths; selected Google IDs retained, KML atomic pin-only import unchanged; AI recommendation explicit-point matching bounded to five.
 - [x] Authenticated five-row cursor review (page-session resumable), signed receipts, full-row compare-and-set identity-only apply; no bulk writes.
