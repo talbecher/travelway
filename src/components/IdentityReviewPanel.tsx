@@ -23,7 +23,7 @@ export function IdentityReviewPanel({ tripId, imported = false }: { tripId: stri
   const stop = useRef(false);
   useEffect(() => {
     let active = true;
-    setReady(false); setRows([]); setProgress(emptyIdentityProgress());
+    setReady(false); setRows([]); setProgress({ ...emptyIdentityProgress(), scope: mode === 'import' ? [] : null });
     supabase.auth.getUser().then(({ data }) => {
       if (!active || !data.user) return;
       key.current = `identity-progress:${data.user.id}:${tripId}:${mode}`;
