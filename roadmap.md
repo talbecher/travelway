@@ -1,13 +1,13 @@
-# Project monitoring — 10 findings fix round
+# Project monitoring — 10 findings fix round — done
 
-- [ ] 1. Rec photos: stop hiding saved Google photos; stop nulling photo_url on edit (+ day_entries sync)
-- [ ] 2. MarkBookedSheet bubbles to card's Maps link — move sheet outside cardInner
-- [ ] 3. Expired session → blank app: handle TOKEN_REFRESH_FAILED + AuthGate query error → sign out
-- [ ] 4. ImportAISheet switchMode resets manual unchecks — preserve selection across mode switch
-- [ ] 5. Discover photos vanish on repeat search — re-request after loader reset for visible cards
-- [ ] 6. Weather chip city name overflows — inline-block for truncate span
-- [ ] 7. Active home flashes "no day today" — include version loading in pending gate
-- [ ] 8. PlanNextCard RTL scroll — STALE (already scrollBy/getBoundingClientRect); resolve stale
-- [ ] 9. todayISO UTC leftovers → todayLocal: index 652/1197, GlobalFab, HayinuKanSheet, recommendations 1196/1677
-- [ ] 10. Fix-route-order scrambles day: keep no-coords and timed entries at original positions
-- [ ] Tests + tsgo + build; resolve findings
+- [x] 1. Rec photos: saved photos (incl. Google) shown again; edit no longer nulls photo_url or wipes linked day stops
+- [x] 2. MarkBookedSheet moved outside the clickable card — no more Maps tab on sheet taps
+- [x] 3. AuthGate signs out on permission-denied trips query → sign-in screen instead of blank app (TOKEN_REFRESH_FAILED not emitted by installed auth-js; mid-use expiry remains a limit)
+- [x] 4. ImportAISheet mode switch preserves manual unchecks; only new duplicates default off
+- [x] 5. DiscoverCard re-queues photo after loader reset while still near viewport
+- [x] 6. Weather chip city span now inline-block so truncate/max-w apply
+- [x] 7. Home pending gates include version loading — no more false "no day today" flash
+- [x] 8. STALE — PlanNextCard already uses direction-agnostic scrollBy (resolved stale)
+- [x] 9. todayISO→todayLocal at all remaining call sites (deadlines, weather, quick expense, HayinuKan, booking chip, hotel card)
+- [x] 10. Route optimizer extracted to src/lib/day-route-order.ts; no-coords/timed entries keep original slots; 4 new tests
+- [x] 54 bun tests pass, typecheck clean, build OK. No publish.
