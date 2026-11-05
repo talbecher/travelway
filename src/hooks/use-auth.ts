@@ -14,16 +14,7 @@ export function useAuth() {
       setUser(data.session?.user ?? null);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      // A failed token refresh leaves a stale session that makes every data
-      // request fail with permission-denied — drop it so the user is sent
-      // back to sign-in instead of seeing a blank app.
-      if (event === "TOKEN_REFRESH_FAILED") {
-        void supabase.auth.signOut();
-        setUser(null);
-        setLoading(false);
-        return;
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
