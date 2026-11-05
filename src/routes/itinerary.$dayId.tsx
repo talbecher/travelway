@@ -16,6 +16,7 @@ import { resolveDayLocation, type StoredLocation } from "@/lib/day-location";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
+import { computeOptimalOrder } from "@/lib/day-route-order";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
@@ -184,108 +185,6 @@ function placeName(stop: EntryRow, fallbackCity?: string | null): string {
   return stop.location_name?.trim() || stop.title?.trim() || fallbackCity?.trim() || "";
 }
 
-
-type OptimizeResult = {
-  isSuboptimal: boolean;
-  optimalOrder: EntryRow[];
-  currentDistKm: number;
-  optimalDistKm: number;
-  savedMinutes: number;
-};
-
-/**
- * Computes a nearest-neighbor route (starting from the first located entry)
- * and compares it with the current order. Returns the full suggested order —
- * entries without coordinates or with a set time keep their original slots.
- */
-function isLodgingEntry(e: EntryRow): boolean {
-  return e.entry_type === "hotel_checkin" || !!e.linked_hotel_id;
-}
-
-function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
-  const none: OptimizeResult = {
-    isSuboptimal: false,
-    optimalOrder: entries,
-    currentDistKm: 0,
-    optimalDistKm: 0,
-    savedMinutes: 0,
-  };
-  // Pin lodging entries at the start/end of the day — the day always begins
-  // and ends at the hotel. Only the "day body" (activities in between) is reordered.
-  const startAnchor = entries.length > 0 && isLodgingEntry(entries[0]) ? entries[0] : null;
-  const endAnchor =
-    entries.length > 1 && isLodgingEntry(entries[entries.length - 1]) && entries[entries.length - 1] !== startAnchor
-      ? entries[entries.length - 1]
-      : null;
-  const body = entries.filter((e) => e !== startAnchor && e !== endAnchor);
-
-  // Only free-floating located stops are reorderable: entries without
-  // coordinates (notes, briefings) and entries with a set time (flights,
-  // reservations) keep their original positions in the day.
-  const isFixed = (e: EntryRow) => coordsOf(e) === null || !!e.time_of_day;
-  const withCoords = body.filter((e) => !isFixed(e));
-  if (withCoords.length < 3) return none;
-  const toPt = (e: EntryRow) => {
-    const c = coordsOf(e)!;
-    return { lat: c.lat, lon: c.lng };
-  };
-  const pathDist = (list: EntryRow[]) => {
-    let d = 0;
-    for (let i = 0; i < list.length - 1; i++) d += haversine(toPt(list[i]), toPt(list[i + 1]));
-    return d;
-  };
-
-  // Include pinned lodging anchors (if they have coords) in the distance math,
-  // so current vs optimal comparison reflects the real full-day path.
-  const anchorPt = (e: EntryRow | null) => (e && coordsOf(e) ? e : null);
-  const start = anchorPt(startAnchor);
-  const end = anchorPt(endAnchor);
-  const withAnchors = (list: EntryRow[]) =>
-    [...(start ? [start] : []), ...list, ...(end ? [end] : [])];
-
-  const currentDist = pathDist(withAnchors(withCoords));
-
-  // Nearest-neighbor starting from the lodging anchor (or first body entry).
-  const firstEntry = start ?? withCoords[0];
-  const remaining = withCoords.filter((e) => e !== firstEntry);
-  const optimized = start ? [] : [firstEntry];
-  let last = firstEntry;
-  while (remaining.length > 0) {
-    let nearestIdx = 0;
-    let nearestDist = Infinity;
-    remaining.forEach((e, i) => {
-      const d = haversine(toPt(last), toPt(e));
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearestIdx = i;
-      }
-    });
-    last = remaining.splice(nearestIdx, 1)[0];
-    optimized.push(last);
-  }
-
-  const optimalDist = pathDist(withAnchors(optimized));
-  const savedKm = currentDist - optimalDist;
-
-  // Merge back: fixed entries (no coords / timed) stay at their original
-  // slots; movable entries fill the remaining slots in optimized order.
-  const queue = [...optimized];
-  const rebuiltBody = body.map((e) => (isFixed(e) ? e : queue.shift()!));
-
-  const optimalOrder = [
-    ...(startAnchor ? [startAnchor] : []),
-    ...rebuiltBody,
-    ...(endAnchor ? [endAnchor] : []),
-  ];
-
-  return {
-    isSuboptimal: currentDist > optimalDist * 1.3 && savedKm > 0,
-    optimalOrder,
-    currentDistKm: Math.round(currentDist * 10) / 10,
-    optimalDistKm: Math.round(optimalDist * 10) / 10,
-    savedMinutes: Math.max(0, Math.round((savedKm / 30) * 60)),
-  };
-}
 
 function DayDetail() {
   const { dayId } = Route.useParams();
