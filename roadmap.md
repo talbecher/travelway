@@ -4,7 +4,7 @@
 - [x] Diagnosed day 6 KOKO HOTEL → Kaminarimon Gate: Kaminarimon entry has NULL lat/lng (read-only DB check); no code hiding bug, no DB changes
 - [x] Subtle hint row when a stop lacks a saved location (no guessed coordinates, no bulky row); segment eligibility logic unchanged
 - [x] Tighter gaps: list gap 16→10px (rail offsets matched), segment row 56→48px, stop actions and top controls spacing reduced
-- [ ] tsgo + build + narrow-layout check
+- [x] tsgo + build OK; real day 6 verified at 360/390px: hint row renders between KOKO HOTEL and Kaminarimon Gate, rail continuous, no overflow, prev/next intact. Dark-mode screenshot not captured (app resets theme on navigation); dark vars unchanged from prior verified pass. No publish.
 
 # Day-detail rail visual polish
 - [x] Page-local centered heading, continuous RTL rail, category tiles and readable stop hierarchy; preserve all controls and map.
