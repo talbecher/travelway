@@ -1,10 +1,11 @@
 # Phase 1B — done
 
 # Preview recommendation business identity
-- [ ] Audit creation paths; preserve selected Google identity and pin-only imports.
-- [ ] Authenticated bounded matching, resumable read-only review and stale-safe identity-only apply.
-- [ ] On-demand Google photo/rating with attribution; preserve user uploads, no durable Google media writes.
-- [ ] Focused matching/security tests, build and public/non-Maps UI checks; no live-data writes or publication.
+- [x] Audited creation paths; selected Google IDs retained, KML atomic pin-only import unchanged; AI recommendation explicit-point matching bounded to five.
+- [x] Authenticated five-row cursor review (page-session resumable), signed receipts, full-row compare-and-set identity-only apply; no bulk writes.
+- [x] On-demand Google photo/rating in component state with attribution and business link; user photos preserved; removed unsafe automatic photo backfill endpoint.
+- [x] 19 tests / 57 assertions and automatic build OK; authenticated 390px Japan review sheet verified without API requests or writes; inventory: 1,158 rows, 5 IDs, 1,153 missing identity, 388 empty photos; Kuma Kafe lacks ID/photo.
+- [ ] Live candidate report/photo response and reviewed apply validation: blocked by unsupported sandbox Google Maps testing and required user review; zero actual Places requests, no publication. See recommendation-enrichment audit for exact limitations.
 
 # Preview-only day location resolution
 - [x] Shared validated stop → explicit Maps URL → linked recommendation resolution; no data writes or location lookups; map pins/sheets/segments share coordsOf. Existing DayMap 0,0 sentinel preserved.
