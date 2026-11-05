@@ -219,7 +219,11 @@ function computeOptimalOrder(entries: EntryRow[]): OptimizeResult {
       : null;
   const body = entries.filter((e) => e !== startAnchor && e !== endAnchor);
 
-  const withCoords = body.filter((e) => coordsOf(e) !== null);
+  // Only free-floating located stops are reorderable: entries without
+  // coordinates (notes, briefings) and entries with a set time (flights,
+  // reservations) keep their original positions in the day.
+  const isFixed = (e: EntryRow) => coordsOf(e) === null || !!e.time_of_day;
+  const withCoords = body.filter((e) => !isFixed(e));
   if (withCoords.length < 3) return none;
   const toPt = (e: EntryRow) => {
     const c = coordsOf(e)!;
