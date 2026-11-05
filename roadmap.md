@@ -1,5 +1,9 @@
 # Phase 1B — done
 
+# Day-detail rail visual polish
+- [x] Page-local centered heading, continuous RTL rail, category tiles and readable stop hierarchy; preserve all controls and map.
+- [x] Real populated day checked at 360/390px light/dark: full long names, synthetic mixed-name stress check, 44px targets, no horizontal overflow, previous/next and details; Leaflet rendered. Automatic build OK; no publication. Device-specific touch/drag and saved mutations not tested (visual-only scope).
+
 - [x] Image onError/onLoad handlers (7 imgs: recs card, day-entry card/header/details, lodging picker, Live Now, Nearby)
 - [x] todayLocal() in format.ts; swapped in useTripIsActive + index.tsx (stats, todayDay, nextDay)
 - [x] Remaining todayISO() sites inspected — intentionally unchanged
