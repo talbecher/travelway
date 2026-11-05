@@ -19,3 +19,4 @@
 - Checklist display sorts stay in the browser-only sort helpers; task details reuse BottomSheet without mutation controls. Why: presentation changes must not alter stored task order or completion.
 - Pre-trip light-home layout overrides live under `html:not(.dark) .pretrip-home` in the global stylesheet; retain the existing component tree. Why: dark mode and other home states must keep their original layout and behavior.
 - DayMap must be dynamically imported and rendered behind ClientOnly with Suspense. Why: its Leaflet imports access window and crash server route evaluation.
+- Day-detail location consumers share the pure day-location resolver and attach linked recommendation locations only to read-time entries. Why: pins and arrival endpoints must agree without modifying stored coordinates or using viewport locations.

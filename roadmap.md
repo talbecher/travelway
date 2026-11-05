@@ -1,5 +1,9 @@
 # Phase 1B — done
 
+# Preview-only day location resolution
+- [x] Shared validated stop → explicit Maps URL → linked recommendation resolution; no data writes or location lookups; map pins/sheets/segments share coordsOf. Existing DayMap 0,0 sentinel preserved.
+- [x] Nine tests (38+ assertions) cover URL-only, linked recommendation, precedence, ranges, untrusted/malformed URLs, viewport rejection and immutability; automatic build OK. Authenticated real day 6 checked at 390px: Kaminarimon has NULL coordinates, NULL URL and no linked recommendation, so that segment correctly remains unavailable; separate saved recommendation exists but is not linked and was not matched by name. Arrival sheet and map render with the two existing hotel locations clustered. No publication. Real URL-only/linked fallback UI not available in this day; verified by unit tests instead. External Google Maps navigation not opened.
+
 # Day-detail: arrival-options gap + spacing polish
 - [x] Diagnosed day 6 KOKO HOTEL → Kaminarimon Gate: Kaminarimon entry has NULL lat/lng (read-only DB check); no code hiding bug, no DB changes
 - [x] Subtle hint row when a stop lacks a saved location (no guessed coordinates, no bulky row); segment eligibility logic unchanged
