@@ -1,5 +1,10 @@
 # Project monitoring — 10 findings fix round — done
 
+## Japan location reliability — authorized scoped repair
+- [ ] Verify trip and prepare private recoverable before/after manifest; apply only unique verified local-source coordinates conditionally.
+- [ ] Audit Nearby and selected-place add-to-day; fix confirmed coordinate defects and test.
+- [ ] Verify protected fields/counts, real day map if accessible, report unresolved places and capped external-call plan (no paid calls).
+
 - [x] 1. Rec photos: saved photos (incl. Google) shown again; edit no longer nulls photo_url or wipes linked day stops
 - [x] 2. MarkBookedSheet moved outside the clickable card — no more Maps tab on sheet taps
 - [x] 3. AuthGate preserves the session, selected trip and cache on failed trip reads; actual session changes remain owned by useAuth.
