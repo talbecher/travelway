@@ -14,6 +14,11 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    server: {
+      fs: {
+        deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "**/.lovable/private/**"],
+      },
+    },
     plugins: [
       VitePWA({
         strategies: "generateSW",
