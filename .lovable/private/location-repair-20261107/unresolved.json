@@ -28,13 +28,6 @@
     "location": null
   },
   {
-    "id": "2af08585-a651-41f4-b0ba-0fe5ae5e4214",
-    "day": 15,
-    "type": "attraction",
-    "title": "Tōfuku-ji — Tsūten-kyō והשלכת",
-    "location": "Tōfuku-ji, Kyoto"
-  },
-  {
     "id": "3c137775-4f2a-41cb-b77e-ed42ea8babbe",
     "day": 5,
     "type": "attraction",
@@ -175,6 +168,13 @@
     "location": "Yotsuya-sanchome, Shinjuku, Tokyo"
   },
   {
+    "id": "abd8ce35-441b-4060-a7c8-eb18b55e6b56",
+    "day": 3,
+    "type": "attraction",
+    "title": "Meiji Jingu Gaien — שדרת הגינקו Icho Namiki",
+    "location": "Meiji Jingu Gaien Icho Namiki, Aoyama, Tokyo"
+  },
+  {
     "id": "d80f251d-2bfd-4c37-ae04-5aa7c511efde",
     "day": 3,
     "type": "attraction",
@@ -271,6 +271,13 @@
     "type": "transport",
     "title": "Keio Bus 1109 — Shinjuku → Kawaguchiko (הוזמן)",
     "location": "Shinjuku Expressway Bus Terminal (Busta Shinjuku), Tokyo"
+  },
+  {
+    "id": "636a3c71-274c-4935-b131-ad8ece50d246",
+    "day": 10,
+    "type": "attraction",
+    "title": "Lake Kawaguchi — תצפית קצרה (אופציונלי)",
+    "location": "Lake Kawaguchi, south shore"
   },
   {
     "id": "e683a8f5-a1ea-4889-b1a9-acf6bac02e51",
@@ -455,11 +462,11 @@
     "location": "Kamakura Station, Kanagawa"
   },
   {
-    "id": "caed327e-ce82-4ca7-8d6f-9cc8dd321bfc",
-    "day": 6,
-    "type": "attraction",
-    "title": "Sensō-ji (סנסו-ג'י)",
-    "location": "Sensō-ji Temple, Asakusa, Tokyo"
+    "id": "14885aec-116b-4066-87ae-9f7faa98a38a",
+    "day": 13,
+    "type": "transport",
+    "title": "מעבר ל-Kinkaku-ji",
+    "location": "Arashiyama, Kyoto"
   },
   {
     "id": "c8479fa6-7b7d-4631-92ba-845162d46463",
@@ -474,6 +481,13 @@
     "type": "attraction",
     "title": "Togetsukyo Bridge — נהר ונופי Arashiyama",
     "location": "Togetsukyo Bridge, Arashiyama, Kyoto"
+  },
+  {
+    "id": "da6ca137-8aae-4801-b5d0-87645fd3140d",
+    "day": 13,
+    "type": "food",
+    "title": "ארוחת צהריים ומנוחה ב-Arashiyama",
+    "location": "Arashiyama, Kyoto"
   },
   {
     "id": "4e96cde4-b3e5-45dd-aad1-6a94bcaefd7f",
