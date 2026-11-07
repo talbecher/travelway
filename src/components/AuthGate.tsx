@@ -45,11 +45,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           .select("id")
           .order("created_at", { ascending: true });
 
-        // Permission-denied here means the session is stale/expired — sign out
-        // so the user lands on the sign-in screen instead of an empty app.
+        // A failed trip read does not prove the session is invalid. Keep the
+        // selected trip and cached data available during connectivity failures;
+        // useAuth remains responsible for observing actual session changes.
         if (tripsError) {
-          claimedForUserRef.current = null;
-          await supabase.auth.signOut();
+          setPhase("ready");
           return;
         }
 
