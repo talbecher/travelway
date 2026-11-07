@@ -12,7 +12,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendations";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
-import { resolveDayLocation, type StoredLocation } from "@/lib/day-location";
+import { resolveDayLocation, dayEndpoint, endpointDirectionsUrl, type DayEndpoint, type StoredLocation } from "@/lib/day-location";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
@@ -159,6 +159,10 @@ function sortEntries(list: EntryRow[]): EntryRow[] {
 
 function coordsOf(e: EntryRow): { lat: number; lng: number } | null {
   return resolveDayLocation(e, e.linked_location ?? e.recommendations);
+}
+
+function endpointOf(e: EntryRow): DayEndpoint | null {
+  return dayEndpoint(e, e.linked_location ?? e.recommendations);
 }
 
 function rome2rioUrl(from: string, to: string): string {
@@ -1180,24 +1184,25 @@ function DayDetail() {
               <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-2.5 overscroll-contain">
                   {entries.map((e, idx) => {
-                    const b = coordsOf(e);
+                    const b = endpointOf(e);
                     let prev: typeof e | null = null;
-                    let a: ReturnType<typeof coordsOf> = null;
+                    let a: DayEndpoint | null = null;
                     for (let i = idx - 1; i >= 0; i--) {
-                      const c = coordsOf(entries[i]);
+                      const c = endpointOf(entries[i]);
                       if (c) { prev = entries[i]; a = c; break; }
                     }
+                    const bothCoords = a?.kind === "coords" && b?.kind === "coords";
 
                     return (
                       <div key={e.id} className={"day-stop-group" + (prev && a && b ? " day-stop-with-segment" : "")}>
                         {prev && a && b ? (
                           <SegmentRow
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
-                            onShowOnMap={() => {
+                            onShowOnMap={bothCoords ? () => {
                               setSelectedStopId(null);
                               setSelectedSegment({ fromId: prev!.id, toId: e.id });
                               showMap();
-                            }}
+                            } : undefined}
                           />
                         ) : idx > 0 && !b ? (
                           /* Subtle hint only — no guessed coordinates, no bulky row */
@@ -1261,7 +1266,12 @@ function DayDetail() {
         {segmentEntries?.from && segmentEntries.to && (() => {
           const a = coordsOf(segmentEntries.from!);
           const b = coordsOf(segmentEntries.to!);
-          if (!a || !b) return null;
+          if (!a || !b) {
+            const ea = endpointOf(segmentEntries.from!);
+            const eb = endpointOf(segmentEntries.to!);
+            if (!ea || !eb) return null;
+            return <div className="pb-3" dir="rtl"><TextSegmentOptions a={ea} b={eb} from={segmentEntries.from!} to={segmentEntries.to!} /></div>;
+          }
           return (
             <div className="pb-3" dir="rtl">
 
@@ -1581,7 +1591,7 @@ function SegmentRow({
   onShowOnMap,
 }: {
   onOpen: () => void;
-  onShowOnMap: () => void;
+  onShowOnMap?: () => void;
 }) {
   return (
     <div className="day-segment relative flex items-center min-h-[48px]" dir="rtl">
@@ -1611,7 +1621,7 @@ function SegmentRow({
           <Compass size={16} className="day-directions-icon hidden" aria-hidden="true" />
           אפשרויות הגעה <ChevronRight size={12} className="rotate-180" />
         </button>
-        <button
+        {onShowOnMap && <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
           onPointerDown={(e) => e.stopPropagation()}
@@ -1623,8 +1633,37 @@ function SegmentRow({
           }}
         >
           <MapIcon size={14} />
-        </button>
+        </button>}
       </div>
+    </div>
+  );
+}
+
+/** Directions by saved place name when a stop has no coordinates. Opens Google Maps; no distance estimate. */
+function TextSegmentOptions({ a, b, from, to }: { a: DayEndpoint; b: DayEndpoint; from: EntryRow; to: EntryRow }) {
+  const rowCls = "w-full min-h-11 rounded-xl border border-border bg-card text-[13px] flex items-center gap-2 px-3";
+  return (
+    <div className="flex flex-col gap-2" dir="rtl">
+      <div className="rounded-xl bg-[color:var(--surface-2)] px-3 py-2 text-[12px] leading-tight">
+        <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">מ־</span><span className="min-w-0 break-words font-medium">{from.title}</span></div>
+        <div className="flex gap-1.5 mt-1"><span className="text-muted-foreground shrink-0">אל־</span><span className="min-w-0 break-words font-medium">{to.title}</span></div>
+      </div>
+      <a href={endpointDirectionsUrl(a, b, "walking")} target="_blank" rel="noopener noreferrer" className={rowCls}>
+        <Footprints size={16} className="shrink-0 text-[color:var(--accent)]" />
+        <span className="flex-1 min-w-0 truncate">הליכה ב‑Google Maps</span>
+        <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+      </a>
+      <a href={endpointDirectionsUrl(a, b, "transit")} target="_blank" rel="noopener noreferrer" className={rowCls}>
+        <Bus size={16} className="shrink-0 text-[color:var(--accent)]" />
+        <span className="flex-1 min-w-0 truncate">תחבורה ציבורית ב‑Google Maps</span>
+        <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+      </a>
+      <a href={rome2rioUrl(a.kind === "text" ? a.query : placeName(from), b.kind === "text" ? b.query : placeName(to))} target="_blank" rel="noopener noreferrer" className={rowCls + " !min-h-10 !text-[12px]"}>
+        <MapIcon size={15} className="shrink-0 text-muted-foreground" />
+        <span className="flex-1 min-w-0 truncate">Rome2Rio</span>
+        <ExternalLink size={12} className="shrink-0 text-muted-foreground" />
+      </a>
+      <div className="text-[11px] text-muted-foreground">לפחות לתחנה אחת שמור רק שם מקום, ולכן אין הערכת מרחק; Google Maps יאתר את המקום לפי השם.</div>
     </div>
   );
 }

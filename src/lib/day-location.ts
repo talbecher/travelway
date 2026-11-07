@@ -66,3 +66,21 @@ export function resolveDayLocation(stop: StoredLocation, recommendation?: Stored
     ?? (recommendation ? pair(recommendation.latitude, recommendation.longitude)
       ?? explicitMapsCoordinates(recommendation.google_maps_url) : null);
 }
+export type DayEndpointStop = StoredLocation & { entry_type?: string | null; location_name?: string | null };
+export type DayEndpoint =
+  | { kind: "coords"; lat: number; lng: number; query: string }
+  | { kind: "text"; query: string };
+
+/** Navigation endpoint: resolved coordinates first, otherwise the saved place name (text-only directions, no estimates). */
+export function dayEndpoint(stop: DayEndpointStop, recommendation?: StoredLocation | null): DayEndpoint | null {
+  if (stop.entry_type === "note") return null;
+  const c = resolveDayLocation(stop, recommendation);
+  if (c) return { kind: "coords", lat: c.lat, lng: c.lng, query: `${c.lat},${c.lng}` };
+  const name = stop.location_name?.trim();
+  return name ? { kind: "text", query: name } : null;
+}
+
+export function endpointDirectionsUrl(from: DayEndpoint, to: DayEndpoint, mode: string): string {
+  const p = new URLSearchParams({ api: "1", origin: from.query, destination: to.query, travelmode: mode });
+  return `https://www.google.com/maps/dir/?${p.toString()}`;
+}
