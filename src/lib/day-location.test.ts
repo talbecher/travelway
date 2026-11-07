@@ -44,3 +44,29 @@ describe("day location resolution", () => {
     expect(stop.latitude).toBeNull();
   });
 });
+import { dayEndpoint, endpointDirectionsUrl } from "./day-location";
+describe("arrival endpoints", () => {
+  test("coords without Place ID are usable", () => {
+    expect(dayEndpoint({ latitude: 35.688, longitude: 139.718 })).toEqual({ kind: "coords", lat: 35.688, lng: 139.718, query: "35.688,139.718" });
+  });
+  test("supported saved Maps URL", () => {
+    expect(dayEndpoint({ google_maps_url: "https://www.google.com/maps/search/?api=1&query=35.5,138.77" })?.kind).toBe("coords");
+  });
+  test("text-only place name falls back to text directions", () => {
+    expect(dayEndpoint({ location_name: " Kawaguchiko Station " })).toEqual({ kind: "text", query: "Kawaguchiko Station" });
+  });
+  test("truly missing location and notes", () => {
+    expect(dayEndpoint({})).toBeNull();
+    expect(dayEndpoint({ entry_type: "note", location_name: "x" })).toBeNull();
+  });
+  test("origin/destination order and travel modes", () => {
+    const a = dayEndpoint({ latitude: 35.688, longitude: 139.718 })!;
+    const b = dayEndpoint({ location_name: "Kawaguchiko Station" })!;
+    for (const mode of ["walking", "transit"]) {
+      const u = new URL(endpointDirectionsUrl(a, b, mode));
+      expect(u.searchParams.get("origin")).toBe("35.688,139.718");
+      expect(u.searchParams.get("destination")).toBe("Kawaguchiko Station");
+      expect(u.searchParams.get("travelmode")).toBe(mode);
+    }
+  });
+});
