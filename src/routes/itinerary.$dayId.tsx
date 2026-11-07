@@ -196,6 +196,7 @@ function DayDetail() {
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const { data: trip } = useTrip();
+  const { data: locationHotels = [] } = useHotels();
   const destination = trip?.destination_country?.toLowerCase() ?? "";
   const isJapan = [
     "japan", "יפן", "tokyo", "טוקיו", "kyoto", "קיוטו", "osaka", "אוסקה",
@@ -234,8 +235,9 @@ function DayDetail() {
   }, [linkedRecs]);
   const entries = useMemo(() => sortedEntries.map((entry) => ({
     ...entry,
-    linked_location: entry.linked_recommendation_id ? recById[entry.linked_recommendation_id] : null,
-  })), [sortedEntries, recById]);
+    linked_location: (entry.linked_recommendation_id ? recById[entry.linked_recommendation_id] : null)
+      ?? (entry.linked_hotel_id ? locationHotels.find((hotel) => hotel.id === entry.linked_hotel_id) : null),
+  })), [sortedEntries, recById, locationHotels]);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entryType, setEntryType] = useState<EntryType | null>(null);
@@ -3242,11 +3244,10 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
   const [photoUrl, setPhotoUrl] = useState<string | null>(existing?.photo_url ?? null);
   const mut = useUpsert(dayId, existing?.id);
   const qc = useQueryClient();
-  const initialCoords = existing?.latitude != null && existing?.longitude != null
-    ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
-    : null;
+  const initialCoords = existing ? resolveDayLocation(existing) : null;
   const [resolvedCoords, setResolvedCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
   const [placeCoords, setPlaceCoords] = useState<{ lat: number; lng: number } | null>(initialCoords);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [placeSelected, setPlaceSelected] = useState<{ name: string; address: string } | null>(
     existing ? { name: existing.title, address: existing.location_name ?? "" } : null,
   );
@@ -3258,7 +3259,8 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
     setName(p.name);
     setArea(p.address);
     setMapsUrl(p.google_maps_url);
-    setPlaceCoords({ lat: p.latitude, lng: p.longitude });
+    setPlaceCoords(resolveDayLocation(p));
+    setSelectedPlaceId(p.placeId ?? null);
     setPhotoUrl(p.photo_url);
     setPlaceSelected({ name: p.name, address: p.address });
   }
@@ -3269,6 +3271,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
     setArea("");
     setMapsUrl("");
     setPlaceCoords(null);
+    setSelectedPlaceId(null);
     setPhotoUrl(null);
   }
 
@@ -3277,12 +3280,16 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
       e.preventDefault();
       if (!assertOnline()) return;
       if (!name.trim()) { toast.error(recType === "food" ? "שם המסעדה חסר" : "שם האטרקציה חסר"); return; }
+      const selectedLocation = placeCoords ?? resolveDayLocation({ google_maps_url: mapsUrl });
       let linkedId: string | null = existing?.linked_recommendation_id ?? null;
       if (!existing && saveToRecs) {
         try {
           linkedId = await saveRecommendation({
             type: recType, name: name.trim(), city: area || null,
             google_maps_url: mapsUrl || null, notes: notes || null,
+            address: area || null,
+            latitude: selectedLocation?.lat ?? null, longitude: selectedLocation?.lng ?? null,
+            provider: selectedPlaceId ? "google" : null, provider_place_id: selectedPlaceId,
           });
           // the recommendation now exists even if the day entry below fails
           qc.invalidateQueries({ queryKey: ["recs"] });
@@ -3293,7 +3300,7 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
         : notes;
       let c: { lat: number; lng: number } | null = placeCoords;
       if (!c) {
-        const local = parseLatLngFromMapsUrl(mapsUrl);
+        const local = resolveDayLocation({ google_maps_url: mapsUrl });
         const awaited = mapsUrl && !local && !resolvedCoords
           ? await resolver.tryResolve(mapsUrl)
           : null;

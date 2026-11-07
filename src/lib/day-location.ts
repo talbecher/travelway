@@ -66,6 +66,16 @@ export function resolveDayLocation(stop: StoredLocation, recommendation?: Stored
     ?? (recommendation ? pair(recommendation.latitude, recommendation.longitude)
       ?? explicitMapsCoordinates(recommendation.google_maps_url) : null);
 }
+
+/** Invalid or absent positions never participate in Nearby distance/order. */
+export function locationDistanceKm(origin: StoredLocation, destination: StoredLocation): number | null {
+  const a = resolveDayLocation(origin), b = resolveDayLocation(destination);
+  if (!a || !b) return null;
+  const rad = Math.PI / 180;
+  const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2
+    + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, h))));
+}
 export type DayEndpointStop = StoredLocation & { entry_type?: string | null; location_name?: string | null };
 export type DayEndpoint =
   | { kind: "coords"; lat: number; lng: number; query: string }

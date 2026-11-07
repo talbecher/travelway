@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
-import { parseLatLngFromMapsUrl } from "@/lib/coords";
+import { resolveDayLocation } from "@/lib/day-location";
 
 export type RecType = "food" | "attraction" | "hotel";
 
@@ -35,7 +35,7 @@ export async function saveRecommendation(input: {
   provider?: string | null;
   provider_place_id?: string | null;
 }): Promise<string> {
-  const coords = parseLatLngFromMapsUrl(input.google_maps_url);
+  const coords = resolveDayLocation(input);
   const { data, error } = await supabase
     .from("recommendations")
     .insert({
@@ -46,8 +46,8 @@ export async function saveRecommendation(input: {
       address: input.address || null,
       google_maps_url: input.google_maps_url || null,
       notes: input.notes || null,
-      latitude: input.latitude ?? coords?.lat ?? null,
-      longitude: input.longitude ?? coords?.lng ?? null,
+      latitude: coords?.lat ?? null,
+      longitude: coords?.lng ?? null,
       provider: input.provider ?? null,
       provider_place_id: input.provider_place_id ?? null,
     })
@@ -62,6 +62,7 @@ export async function addRecommendationToDay(rec: {
   type: string;
   name: string;
   city: string | null;
+  address?: string | null;
   google_maps_url: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
@@ -72,14 +73,12 @@ export async function addRecommendationToDay(rec: {
     .from("day_entries")
     .select("id", { count: "exact", head: true })
     .eq("day_id", dayId);
-  const coords = rec.latitude != null && rec.longitude != null
-    ? { lat: Number(rec.latitude), lng: Number(rec.longitude) }
-    : parseLatLngFromMapsUrl(rec.google_maps_url);
+  const coords = resolveDayLocation(rec);
   const { error } = await supabase.from("day_entries").insert({
     day_id: dayId,
     entry_type: entryType,
     title: rec.name,
-    location_name: rec.city,
+    location_name: rec.address || [rec.name, rec.city].filter(Boolean).join(", "),
     google_maps_url: rec.google_maps_url,
     icon_emoji: recTypeIcon(rec.type),
     linked_recommendation_id: rec.id,
