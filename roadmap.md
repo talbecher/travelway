@@ -14,4 +14,4 @@
 
 ## Offline / weak-connection AuthGate regression
 - [x] Confirm and remove sign-out on trip-query errors; transition to ready without clearing saved data.
-- [ ] Run focused regression tests and authenticated preview checks with failed trip reads; no publication.
+- [x] Five focused regression tests pass (23 assertions); authenticated Japan preview survives an aborted trip-list read with session/selection preserved, zero logout requests, and home + itinerary visible. Build OK; no publication. Fully offline published startup not checked (preview service worker is disabled).
