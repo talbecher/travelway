@@ -1,9 +1,10 @@
 # Project monitoring — 10 findings fix round — done
 
 ## Japan location reliability — authorized scoped repair
-- [ ] Verify trip and prepare private recoverable before/after manifest; apply only unique verified local-source coordinates conditionally.
-- [ ] Audit Nearby and selected-place add-to-day; fix confirmed coordinate defects and test.
-- [ ] Verify protected fields/counts, real day map if accessible, report unresolved places and capped external-call plan (no paid calls).
+- [x] Verified Japan trip; backed up and applied 66 coordinate-only local-source repairs in two targeted transactions. Protected fields and all rec/hotel/day rows unchanged.
+- [x] Shared resolver for Nearby GPS/distance, recommendation add/save and linked hotel display; selected Google place retains coords and identity. 22 tests passed, 264 assertions; automatic build OK.
+- [x] Real signed-in day 3 list/map and 390px arrival sheet checked; three restored attraction pins visible plus hotel cluster. GPS unavailable state checked. Physical-device GPS and Google live lookups not tested.
+- [ ] Remaining 69 stops / 63 destination strings: 42 named candidates need approved paid lookups (cap 42, batches of 10), 21 broad/alternate endpoints need an exact destination. Full grouped list in private repair report and user Files.
 
 - [x] 1. Rec photos: saved photos (incl. Google) shown again; edit no longer nulls photo_url or wipes linked day stops
 - [x] 2. MarkBookedSheet moved outside the clickable card — no more Maps tab on sheet taps
