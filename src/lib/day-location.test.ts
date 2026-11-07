@@ -60,13 +60,31 @@ describe("arrival endpoints", () => {
     expect(dayEndpoint({ entry_type: "note", location_name: "x" })).toBeNull();
   });
   test("origin/destination order and travel modes", () => {
-    const a = dayEndpoint({ latitude: 35.688, longitude: 139.718 })!;
-    const b = dayEndpoint({ location_name: "Kawaguchiko Station" })!;
-    for (const mode of ["walking", "transit"]) {
+    const a = dayEndpoint({ latitude: 35.688, longitude: 139.718 });
+    const b = dayEndpoint({ location_name: "Kawaguchiko Station" });
+    if (!a || !b) throw new Error("Missing endpoints");
+    for (const mode of ["walking", "transit", "driving", "bicycling"]) {
       const u = new URL(endpointDirectionsUrl(a, b, mode));
       expect(u.searchParams.get("origin")).toBe("35.688,139.718");
       expect(u.searchParams.get("destination")).toBe("Kawaguchiko Station");
       expect(u.searchParams.get("travelmode")).toBe(mode);
     }
+  });
+});
+
+import { locationDistanceKm } from "./day-location";
+describe("Nearby uses actual validated locations", () => {
+  test("null never becomes zero; finite/range validation", () => {
+    const origin = { latitude: 35, longitude: 139 };
+    for (const destination of [{ latitude: null, longitude: null }, { latitude: 91, longitude: 139 }, { latitude: Infinity, longitude: 139 }, { latitude: " ", longitude: 139 }]) {
+      expect(locationDistanceKm(origin, destination)).toBeNull();
+    }
+    expect(locationDistanceKm({ latitude: 0, longitude: 139 }, { latitude: 0, longitude: 140 })).toBeCloseTo(111.195, 2);
+  });
+  test("known positions sort by real distance; missing stays last", () => {
+    const origin = { latitude: 35, longitude: 139 };
+    const places = [{ id: "missing" }, { id: "far", latitude: 35.02, longitude: 139 }, { id: "near", latitude: 35.001, longitude: 139 }];
+    places.sort((a,b) => (locationDistanceKm(origin,a) ?? Infinity) - (locationDistanceKm(origin,b) ?? Infinity));
+    expect(places.map(p=>p.id)).toEqual(["near", "far", "missing"]);
   });
 });
