@@ -10,8 +10,10 @@ const signOut = mock(async () => ({}));
 let result: { data: Array<{ id: string }> | null; error: unknown };
 let thrown: Error | null = null;
 const originalWindow = globalThis.window;
+const actualReact = await import("react");
 
 mock.module("react", () => ({
+  ...actualReact,
   useEffect: (effect: () => void) => effects.push(effect),
   useRef: () => ({ current: null }),
   useState: (initial: string) => [initial, (phase: string) => phases.push(phase)],
