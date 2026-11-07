@@ -43,7 +43,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.9676945,
-    "longitude": 135.7791876
+    "longitude": 135.7791876,
+    "fingerprint": "5beb072fb2f38f51550944b7fc2cf906",
+    "source_fingerprint": "06994dc57880e5b553dd98297c085ed8"
   },
   {
     "id": "71c9b232-79d3-4631-b288-b44458746ba9",
@@ -89,7 +91,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6770251,
-    "longitude": 139.6992186
+    "longitude": 139.6992186,
+    "fingerprint": "4adaa24acface6a8a0852484c2dddd95",
+    "source_fingerprint": "e6af40ebbe6f59a254b6a3fdcb08373a"
   },
   {
     "id": "b2133541-f60f-4d53-b09f-fc4370132d20",
@@ -135,7 +139,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.9676945,
-    "longitude": 135.7791876
+    "longitude": 135.7791876,
+    "fingerprint": "4652aab016862f858261e6df927accb9",
+    "source_fingerprint": "06994dc57880e5b553dd98297c085ed8"
   },
   {
     "id": "e02bb71b-bb95-49d9-99d5-2ad566b03543",
@@ -181,7 +187,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "2432e0b870302ce1bac18407b4c98ab3",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "b537702a-956a-4339-a55b-e195e3c58286",
@@ -227,7 +235,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "2f205b2780606774382bc369d16bf0ea",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "e2a7a97f-8168-4cb8-b7b6-b9229fc0c90d",
@@ -273,7 +283,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.667639,
-    "longitude": 139.706773
+    "longitude": 139.706773,
+    "fingerprint": "457ea058949f86c56ef6e13aac3fd9e5",
+    "source_fingerprint": "ccc88fc8fb2dc1271cb885d3f2c4884b"
   },
   {
     "id": "f4f71d55-3965-4dbc-b7f4-07e578c80907",
@@ -319,7 +331,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6586719,
-    "longitude": 139.7019848
+    "longitude": 139.7019848,
+    "fingerprint": "e969d1275effcd264909496361aaee73",
+    "source_fingerprint": "9323e3e039d1f08c05cd0bbfe685cc0a"
   },
   {
     "id": "c8ff3ebb-a560-4434-b361-bd1e3656a0da",
@@ -365,7 +379,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6562405,
-    "longitude": 139.7010932
+    "longitude": 139.7010932,
+    "fingerprint": "b4067c9f5689511142e0e0f311717833",
+    "source_fingerprint": "23ddee43faf7143ac47817288f2e836b"
   },
   {
     "id": "13acf6f5-e702-4ede-a3b5-835b8f1a4e28",
@@ -411,7 +427,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "a0c1d09c243455c28c28631acc37f7c6",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "3ce6f2ff-a098-452b-9e4e-fa583bb9be3f",
@@ -457,7 +475,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6880976,
-    "longitude": 139.7184246
+    "longitude": 139.7184246,
+    "fingerprint": "14e7f048c3276597cced6097f58c4ddc",
+    "source_fingerprint": "761fcb05411ce391a8bbc281784094a0"
   },
   {
     "id": "c9eeedf5-2fd6-41f9-9bdd-1694eb10854b",
@@ -503,7 +523,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.661646,
-    "longitude": 139.666775
+    "longitude": 139.666775,
+    "fingerprint": "1d33902a84a1ef4aa4e4755ca6f2a9bf",
+    "source_fingerprint": "5f21fffad5beb124e89b841102b3ba77"
   },
   {
     "id": "4b72c3b8-dc08-4105-85cf-ff1ee27bb374",
@@ -549,7 +571,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.0050258,
-    "longitude": 135.764723
+    "longitude": 135.764723,
+    "fingerprint": "3fa1f6ad50cad9777b5156dd035160d5",
+    "source_fingerprint": "d22dfcf05beb8f55cf6c040ccce2d139"
   },
   {
     "id": "7f03ba63-e81d-471c-afac-f4d89c8c0f88",
@@ -595,7 +619,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.007396799999995,
-    "longitude": 135.7584218
+    "longitude": 135.7584218,
+    "fingerprint": "30e8dd8ec19b3e7188af977111b84b1b",
+    "source_fingerprint": "1d7f54f9460e2dc43c1700a09f65bb5f"
   },
   {
     "id": "6f0f0010-4379-47ff-bb54-bcee1b0afdeb",
@@ -641,7 +667,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "93a55d513bbf2a7f0247382df0626a55",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "f2fbb767-4ec1-4ece-bf4d-799f8300003c",
@@ -687,7 +715,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.0044131,
-    "longitude": 135.7641669
+    "longitude": 135.7641669,
+    "fingerprint": "78dc361e3af861b0eeed55d12579c54c",
+    "source_fingerprint": "374210ea6426117f5fed3b74f15c462c"
   },
   {
     "id": "a14026e5-26c7-4a52-99f7-e53cd563fe5e",
@@ -733,7 +763,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "cec40ee395062362defe33378183f016",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "815e47a1-2d0c-4b41-b997-fbc4e71ee3cc",
@@ -779,7 +811,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6880976,
-    "longitude": 139.7184246
+    "longitude": 139.7184246,
+    "fingerprint": "32f4258c9b29721bb7fe14ce6af46e57",
+    "source_fingerprint": "761fcb05411ce391a8bbc281784094a0"
   },
   {
     "id": "8e72cc48-bbb9-43c6-a806-650d659f7172",
@@ -825,7 +859,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.0039339,
-    "longitude": 135.7710439
+    "longitude": 135.7710439,
+    "fingerprint": "71d0e17931365bfba6daa614fc86b2f4",
+    "source_fingerprint": "db0f0ee40624e11777ab117670334b63"
   },
   {
     "id": "4ec91820-01be-4cc6-9929-4645a8e5c5c8",
@@ -871,7 +907,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.0008496,
-    "longitude": 135.769274
+    "longitude": 135.769274,
+    "fingerprint": "7e747763cd09d6cf69e2bbd32be41408",
+    "source_fingerprint": "055d40aab1c26c6c69651865acf2cbc2"
   },
   {
     "id": "dd66e9e2-afac-4d1d-b51b-a989459dced3",
@@ -917,7 +955,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6851763,
-    "longitude": 139.7100517
+    "longitude": 139.7100517,
+    "fingerprint": "0433154ffed91b02576dc598c3e395a1",
+    "source_fingerprint": "2c64bd2736e1246dde47359815cbf557"
   },
   {
     "id": "af1ebc51-05d6-4780-8dfd-e8b96df8975c",
@@ -963,7 +1003,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6876335,
-    "longitude": 139.7022399
+    "longitude": 139.7022399,
+    "fingerprint": "b5e24cb579296d153006536dcfe775f5",
+    "source_fingerprint": "738a8869e5e05d060dc6859e619ea23c"
   },
   {
     "id": "cdb57045-b381-4aed-9786-714421a0fe6b",
@@ -1009,7 +1051,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.691638,
-    "longitude": 139.704616
+    "longitude": 139.704616,
+    "fingerprint": "d3556b479cda93c4b79352e9560d7b15",
+    "source_fingerprint": "e43bae4cbea2e2e9f9072da2dd081052"
   },
   {
     "id": "ee30e33a-2538-4c8b-863f-c94826ee0ade",
@@ -1055,7 +1099,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.501390799999996,
-    "longitude": 138.8016313
+    "longitude": 138.8016313,
+    "fingerprint": "a64a3ad15b5d5f351a7130da3522d9bc",
+    "source_fingerprint": "9bea67e92caff9dc544d826743813303"
   },
   {
     "id": "9159994a-5be7-4b69-90c7-067a15460255",
@@ -1101,7 +1147,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.527324,
-    "longitude": 138.7598324
+    "longitude": 138.7598324,
+    "fingerprint": "952033fd71d6d0732a38e8283311aa78",
+    "source_fingerprint": "c980d864db942878a24eab15ff5b0341"
   },
   {
     "id": "559c402d-ec8a-4ce7-bba6-801b5248dfda",
@@ -1147,7 +1195,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.5032609,
-    "longitude": 138.77191879999998
+    "longitude": 138.77191879999998,
+    "fingerprint": "feddd85d77d6db4806d4b9166d99b1d6",
+    "source_fingerprint": "4a072d9a870165e683a867fc054b2d93"
   },
   {
     "id": "e779fbc9-abea-4ee9-a347-78e8cb5833ed",
@@ -1193,7 +1243,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.5032609,
-    "longitude": 138.77191879999998
+    "longitude": 138.77191879999998,
+    "fingerprint": "ff3fc535f19a85feca8ca5198c512e7b",
+    "source_fingerprint": "4a072d9a870165e683a867fc054b2d93"
   },
   {
     "id": "24f6fd66-6e7e-4b56-9f2f-d7e776be9041",
@@ -1239,7 +1291,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.7111163,
-    "longitude": 139.7963656
+    "longitude": 139.7963656,
+    "fingerprint": "1b198ef8f0af8f3e9fb87e4525ec08d7",
+    "source_fingerprint": "55155c8bf91c0b0704ca5f93d322b93a"
   },
   {
     "id": "13559c74-b640-454f-9dc2-a5b351f917c5",
@@ -1285,7 +1339,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "b376e0cb63928753af030b710ebda072",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "a5eff103-9896-43e8-bb0e-44e757ec22c2",
@@ -1331,7 +1387,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.0014922,
-    "longitude": 135.7746403
+    "longitude": 135.7746403,
+    "fingerprint": "1e67e5a5dee3b7d80d2ce5a97ebff3dd",
+    "source_fingerprint": "0753d8afed133b47b20c6e95d8f33736"
   },
   {
     "id": "fee8c054-e87c-4fd6-a465-e9c92f787bbd",
@@ -1377,7 +1435,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6741732,
-    "longitude": 135.5031184
+    "longitude": 135.5031184,
+    "fingerprint": "a92571f47de453fd584960f218d205d3",
+    "source_fingerprint": "f270cfac39f01e346c339136a2e69210"
   },
   {
     "id": "516ad120-f07f-4e25-af90-74ecd6388324",
@@ -1423,7 +1483,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.7052872,
-    "longitude": 135.4896527
+    "longitude": 135.4896527,
+    "fingerprint": "d8d888ec81a6d8a6d60c5f4b7e1c3af8",
+    "source_fingerprint": "0412a9bba113434ca6c7331590abb8c6"
   },
   {
     "id": "7faa464d-fb90-43f5-8ac1-6702e90bfb13",
@@ -1469,7 +1531,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6741732,
-    "longitude": 135.5031184
+    "longitude": 135.5031184,
+    "fingerprint": "c3c3df955cc632c6fd3f488a9cf67907",
+    "source_fingerprint": "f270cfac39f01e346c339136a2e69210"
   },
   {
     "id": "c4831674-0380-4913-85c0-b49ab42b52c4",
@@ -1515,7 +1579,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6774215,
-    "longitude": 135.5052157
+    "longitude": 135.5052157,
+    "fingerprint": "f739041acba43623ef3ae6dad19f1d4d",
+    "source_fingerprint": "40884f13a7e308e459f362e0d91c802d"
   },
   {
     "id": "28dab864-bbdf-438d-b4b2-e71c2b8abb7f",
@@ -1561,7 +1627,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.9946662,
-    "longitude": 135.784661
+    "longitude": 135.784661,
+    "fingerprint": "cc1f8096d80c41acebafa13555037f2e",
+    "source_fingerprint": "15cff97c71a58410129b3d12b456e70c"
   },
   {
     "id": "400ca128-d3d8-464f-89f4-25646418ea1a",
@@ -1607,7 +1675,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.3894008,
-    "longitude": 132.4552309
+    "longitude": 132.4552309,
+    "fingerprint": "466087c239df3d6cd1ed7230b2694340",
+    "source_fingerprint": "496156f151b96bc10eb782de7125a80a"
   },
   {
     "id": "a26332f6-3efb-4aef-8cfa-d5a6400d6712",
@@ -1653,7 +1723,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.3894008,
-    "longitude": 132.4552309
+    "longitude": 132.4552309,
+    "fingerprint": "921b0a77d64aa240ec68a1fe83cf68ba",
+    "source_fingerprint": "496156f151b96bc10eb782de7125a80a"
   },
   {
     "id": "c0bccc00-9d5b-4e6c-a3fb-7e0f0362a514",
@@ -1699,7 +1771,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6713511,
-    "longitude": 135.4885255
+    "longitude": 135.4885255,
+    "fingerprint": "4571bcebc682878e15f23a612736320d",
+    "source_fingerprint": "9f053a4fd4551b16183956bcd6990530"
   },
   {
     "id": "d834c859-66dc-4801-943b-2b542689f933",
@@ -1745,7 +1819,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.3894008,
-    "longitude": 132.4552309
+    "longitude": 132.4552309,
+    "fingerprint": "51d9624207a4ced97b4b1e374c3b6659",
+    "source_fingerprint": "496156f151b96bc10eb782de7125a80a"
   },
   {
     "id": "baacf503-fba2-49b0-80d3-190e1025e332",
@@ -1791,7 +1867,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.3894008,
-    "longitude": 132.4552309
+    "longitude": 132.4552309,
+    "fingerprint": "25c42197121d9a5cdb623743f858b158",
+    "source_fingerprint": "496156f151b96bc10eb782de7125a80a"
   },
   {
     "id": "f488c10f-9d5e-46cd-9000-78176f5ca069",
@@ -1837,7 +1915,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6741732,
-    "longitude": 135.5031184
+    "longitude": 135.5031184,
+    "fingerprint": "17652a3c4f1113e7823b8a6b0a4dc44b",
+    "source_fingerprint": "f270cfac39f01e346c339136a2e69210"
   },
   {
     "id": "64375131-fe70-4e84-8cb5-d5dc90cff671",
@@ -1883,7 +1963,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6686471,
-    "longitude": 135.5030983
+    "longitude": 135.5030983,
+    "fingerprint": "bfd504757a7cbc531ef35134a66d9bc1",
+    "source_fingerprint": "a70105ad031f2488183135137a9b0fb0"
   },
   {
     "id": "87de2f75-061c-450d-989e-bd4b81486c94",
@@ -1929,7 +2011,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6741732,
-    "longitude": 135.5031184
+    "longitude": 135.5031184,
+    "fingerprint": "7813bc9ad8ac004335597d05da06610b",
+    "source_fingerprint": "f270cfac39f01e346c339136a2e69210"
   },
   {
     "id": "fb0e9f0e-afc9-446f-85cb-601748a1f861",
@@ -1975,7 +2059,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.3168145,
-    "longitude": 139.53574419999998
+    "longitude": 139.53574419999998,
+    "fingerprint": "cfcb632c312aefff856affcb9e4b77bc",
+    "source_fingerprint": "5793e72858cd81e54cae54510c53662d"
   },
   {
     "id": "7f02355a-1069-4c4a-be0e-a34a1af81788",
@@ -2021,7 +2107,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.3124645,
-    "longitude": 139.5330634
+    "longitude": 139.5330634,
+    "fingerprint": "413e41b2815b75e61677d5e4b5a4664e",
+    "source_fingerprint": "60adc9721d56227782b527c464ddb40c"
   },
   {
     "id": "c430729a-3b6a-4c17-a472-0cf7aee9ca45",
@@ -2067,7 +2155,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.3222668,
-    "longitude": 139.5526999
+    "longitude": 139.5526999,
+    "fingerprint": "3ad15c5821e8e17f5916dea223fa7d35",
+    "source_fingerprint": "a509fc31cba5fee83d549ad1ba3be808"
   },
   {
     "id": "7ea7226a-8abf-43e1-8df1-eb7b78c8b459",
@@ -2113,7 +2203,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.325985599999996,
-    "longitude": 139.5563462
+    "longitude": 139.5563462,
+    "fingerprint": "241145247c52f999f72107377e3c2ce4",
+    "source_fingerprint": "5a38f0baeefa7e7e7eda0ace7c12e9c3"
   },
   {
     "id": "b7f95b60-f246-40d0-b3c4-51d29d3308da",
@@ -2159,7 +2251,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.665351099999995,
-    "longitude": 135.5062417
+    "longitude": 135.5062417,
+    "fingerprint": "2d5da1150cfe177dbc0c9128ba5e1b3d",
+    "source_fingerprint": "1820441fbf12b68f88d730ff6b532fae"
   },
   {
     "id": "283b67d0-cce2-4762-9773-59524f6efc37",
@@ -2205,7 +2299,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.714392,
-    "longitude": 139.793891
+    "longitude": 139.793891,
+    "fingerprint": "7ce321c327fd75730f677cc096f33805",
+    "source_fingerprint": "19fafdc4205d964ae8fdc0357c24dfd4"
   },
   {
     "id": "32ecdb8b-8252-4d65-a595-d7eaae81516b",
@@ -2251,7 +2347,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.711841299999996,
-    "longitude": 139.7964542
+    "longitude": 139.7964542,
+    "fingerprint": "a6d3bceb4c0e2a7d495fa9d303125258",
+    "source_fingerprint": "bf4539f6c383f8d6389ad77a291edaef"
   },
   {
     "id": "6a649ebd-a88f-4022-aa28-92902214cfac",
@@ -2297,7 +2395,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.712762,
-    "longitude": 139.796809
+    "longitude": 139.796809,
+    "fingerprint": "c9ba19b16ea44add903fd59e7f22cb43",
+    "source_fingerprint": "ea28972f21fd861a2ba881181215e6d2"
   },
   {
     "id": "e7464870-b865-4538-9022-3a97567cbda1",
@@ -2343,7 +2443,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.699647299999995,
-    "longitude": 139.7713703
+    "longitude": 139.7713703,
+    "fingerprint": "8c367d4982a87c6e4ecbfdc7561bb650",
+    "source_fingerprint": "bb9e81da1a75b81e32b76e7431f8ea77"
   },
   {
     "id": "9b635b5b-96ce-4c9b-958f-62a7e84881c2",
@@ -2389,7 +2491,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.710281,
-    "longitude": 139.773965
+    "longitude": 139.773965,
+    "fingerprint": "13b943f6a7d81967d493ca5d75af4e6c",
+    "source_fingerprint": "768b9711c941110ecac384dff4fd322d"
   },
   {
     "id": "1f8b465c-897c-4d16-bce4-f0a4fa541f8f",
@@ -2435,7 +2539,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.014133699999995,
-    "longitude": 135.67095559999998
+    "longitude": 135.67095559999998,
+    "fingerprint": "b599002df6a61351a33e85a74c120ef8",
+    "source_fingerprint": "4852e1237e99ccf96896d1dcdf61dfb7"
   },
   {
     "id": "d9e5b60a-f043-414a-a555-18a999a3c2d3",
@@ -2481,7 +2587,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.000629499999995,
-    "longitude": 135.7578639
+    "longitude": 135.7578639,
+    "fingerprint": "f5553e88e8db59ffa3558f20f47508f2",
+    "source_fingerprint": "f08aa8c62de0e7a8fc0c2ebbe05dd1da"
   },
   {
     "id": "4669aee9-84e6-4f55-b6c1-6d66ca3037f8",
@@ -2527,7 +2635,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6723658,
-    "longitude": 139.7647762
+    "longitude": 139.7647762,
+    "fingerprint": "304ff80bf6e346019da1b0cf1967533c",
+    "source_fingerprint": "7be18f7aa7d3ae3f245d33b5de64be42"
   },
   {
     "id": "524119af-a74d-48b2-ba41-40f71f9f6324",
@@ -2573,7 +2683,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.6880976,
-    "longitude": 139.7184246
+    "longitude": 139.7184246,
+    "fingerprint": "22b68e6365fb01dc55b8268f9c3645f4",
+    "source_fingerprint": "761fcb05411ce391a8bbc281784094a0"
   },
   {
     "id": "0417f0ec-1388-450c-88e6-0c8cd339b3f6",
@@ -2619,7 +2731,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.6741732,
-    "longitude": 135.5031184
+    "longitude": 135.5031184,
+    "fingerprint": "be75680ccbbf70e14388344cb03994a2",
+    "source_fingerprint": "f270cfac39f01e346c339136a2e69210"
   },
   {
     "id": "4b397f2a-9468-4cde-b063-4b6350f5908d",
@@ -2665,7 +2779,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.9878845,
-    "longitude": 135.7717126
+    "longitude": 135.7717126,
+    "fingerprint": "34c0eabf92c4b272d895be1b7780a937",
+    "source_fingerprint": "11246fb1e0af389f3845f7387390dbaa"
   },
   {
     "id": "6cea1d9e-93d7-488b-96af-b89395dbd6e2",
@@ -2711,7 +2827,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.9980068,
-    "longitude": 135.7807956
+    "longitude": 135.7807956,
+    "fingerprint": "0c435db47ceea6e57122a20155bbf649",
+    "source_fingerprint": "7e9272af15160ee95885e5cb7079b93d"
   },
   {
     "id": "ddfa2024-b6b3-4a29-a4fd-d258fce35074",
@@ -2757,7 +2875,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.997639899999996,
-    "longitude": 135.77970539999998
+    "longitude": 135.77970539999998,
+    "fingerprint": "63e26c495132fb9f941bfad80efb4ec1",
+    "source_fingerprint": "8a0e02a9db97f2cbf36574cd9668ee61"
   },
   {
     "id": "caed327e-ce82-4ca7-8d6f-9cc8dd321bfc",
@@ -2803,7 +2923,9 @@
       "linked_recommendation_id": null
     },
     "latitude": 35.7147651,
-    "longitude": 139.7966553
+    "longitude": 139.7966553,
+    "fingerprint": "fc7ec37f19794ca489aa4859896d537f",
+    "source_fingerprint": "4c711ba0531e7ee9b900ebccfac00669"
   },
   {
     "id": "2af08585-a651-41f4-b0ba-0fe5ae5e4214",
@@ -2849,6 +2971,8 @@
       "linked_recommendation_id": null
     },
     "latitude": 34.976025,
-    "longitude": 135.7737627
+    "longitude": 135.7737627,
+    "fingerprint": "ae072dfa3f8bd455fabcb8d49e736e03",
+    "source_fingerprint": "67e63f061954461627679fadfced77ab"
   }
 ]

@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { matchNewRecommendation } from "@/lib/place-identity.functions";
 import { RecommendationBusiness, RecommendationIdentityReview } from "@/components/RecommendationBusiness";
-import { resolveDayLocation } from "@/lib/day-location";
+import { resolveDayLocation, locationDistanceKm } from "@/lib/day-location";
 import { useServerFn } from "@tanstack/react-start";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
 import { markRecommendationBooked, invalidateBookingQueries } from "@/lib/booking";
@@ -271,7 +271,7 @@ function Recs() {
     if (typeof navigator === "undefined" || !navigator.geolocation) { setNearStatus("error"); return; }
     let cancelled = false;
     navigator.geolocation.getCurrentPosition(
-      (p) => { if (cancelled) return; setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }); setNearStatus("ok"); },
+      (p) => { if (cancelled) return; const point = resolveDayLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setUserPos(point); setNearStatus(point ? "ok" : "error"); },
       () => { if (!cancelled) setNearStatus("error"); },
       { timeout: 10000, maximumAge: 60_000 },
     );
@@ -287,12 +287,11 @@ function Recs() {
     if (nearMode && (nearStatus !== "ok" || !userPos)) return [];
     const maxKm = nearRadius / 1000;
     return (recs as Rec[])
-      .filter((r) => r.latitude != null && r.longitude != null)
+      .flatMap((r) => { const point = resolveDayLocation(r); return point ? [{ ...r, latitude: point.lat, longitude: point.lng }] : []; })
       .filter((r) => {
         if (!nearMode || !userPos) return true;
-        const lat = Number(r.latitude), lng = Number(r.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-        return haversine({ lat: userPos.lat, lon: userPos.lng }, { lat, lon: lng }) <= maxKm;
+        const distance = locationDistanceKm({ latitude: userPos.lat, longitude: userPos.lng }, r);
+        return distance != null && distance <= maxKm;
       })
       .filter(typeFilter)
       .filter((r) => city === "all" || r.city === city)
@@ -318,7 +317,7 @@ function Recs() {
   useEffect(() => {
     if (nearMode || view !== "map" || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (p) => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      (p) => setUserPos(resolveDayLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude })),
       () => {},
       { timeout: 5000, maximumAge: 60_000 },
     );
@@ -927,7 +926,7 @@ function PlacesList({
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (p) => setPos({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      (p) => { const point = resolveDayLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setPos(point ? { lat: point.lat, lon: point.lng } : null); },
       () => {},
       { timeout: 5000, maximumAge: 60_000 },
     );
@@ -945,8 +944,9 @@ function PlacesList({
       items = [...items].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     } else if (pos) {
       items = [...items].sort((a, b) => {
-        const da = a.latitude && a.longitude ? haversine(pos, { lat: Number(a.latitude), lon: Number(a.longitude) }) : Infinity;
-        const db = b.latitude && b.longitude ? haversine(pos, { lat: Number(b.latitude), lon: Number(b.longitude) }) : Infinity;
+        const origin = { latitude: pos.lat, longitude: pos.lon };
+        const da = locationDistanceKm(origin, a) ?? Infinity;
+        const db = locationDistanceKm(origin, b) ?? Infinity;
         if (da !== db) return da - db;
         return a.name.localeCompare(b.name);
       });
@@ -1001,7 +1001,7 @@ function PlacesList({
           key={r.id}
           rec={r}
           onEdit={() => onEdit(r)}
-          distance={type !== "all" && pos && r.latitude && r.longitude ? haversine(pos, { lat: Number(r.latitude), lon: Number(r.longitude) }) : null}
+          distance={type !== "all" && pos ? locationDistanceKm({ latitude: pos.lat, longitude: pos.lon }, r) : null}
           selectionMode={selectionMode}
           selected={selectedIds.has(r.id)}
           onToggleSelect={() => onToggleSelect(r.id)}
@@ -1344,9 +1344,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     existing?.google_rating_count ?? null,
   );
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
-    existing?.latitude != null && existing?.longitude != null
-      ? { lat: Number(existing.latitude), lng: Number(existing.longitude) }
-      : null,
+    existing ? resolveDayLocation(existing) : null,
   );
   const [placeSelected, setPlaceSelected] = useState<{ name: string; address: string } | null>(
     existing ? { name: existing.name, address: existing.address ?? "" } : null,
@@ -1357,7 +1355,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     setName(p.name);
     setAddress(p.address);
     setUrl(p.google_maps_url);
-    setSelectedCoords({ lat: p.latitude, lng: p.longitude });
+    setSelectedCoords(resolveDayLocation(p));
     setPlaceId(p.placeId ?? null);
     // Google media is fetched on demand, never stored over user photos.
     if (p.city) setCity(p.city);

@@ -1,5 +1,6 @@
 import { haversine } from "@/lib/geo";
-import { parseLatLngFromMapsUrl, type LatLng } from "@/lib/coords";
+import { type LatLng } from "@/lib/coords";
+import { resolveDayLocation } from "@/lib/day-location";
 
 export const SUGGEST_MAX_KM = 3.5;
 
@@ -19,17 +20,13 @@ export type SuggestDay = { id: string; day_number: number; date: string };
 export type DaySuggestion = { dayId: string; dayNumber: number; km: number; stopTitle: string };
 
 function validPoint(lat: unknown, lng: unknown): LatLng | null {
-  if (lat == null || lng == null || lat === "" || lng === "") return null;
-  const a = Number(lat), b = Number(lng);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-  if (a < -90 || a > 90 || b < -180 || b > 180) return null;
-  if (a === 0 && b === 0) return null;
-  return { lat: a, lng: b };
+  return resolveDayLocation({ latitude: typeof lat === "number" || typeof lat === "string" ? lat : null,
+    longitude: typeof lng === "number" || typeof lng === "string" ? lng : null });
 }
 
 /** Same coordinate source as addRecommendationToDay: stored lat/lng, else the Maps URL. */
 export function recLatLng(rec: { latitude?: unknown; longitude?: unknown; google_maps_url?: string | null }): LatLng | null {
-  return validPoint(rec.latitude, rec.longitude) ?? parseLatLngFromMapsUrl(rec.google_maps_url);
+  return validPoint(rec.latitude, rec.longitude) ?? resolveDayLocation({ google_maps_url: rec.google_maps_url });
 }
 
 function entryCmp(a: GeoEntry, b: GeoEntry) {
