@@ -50,6 +50,13 @@
       "when": 1793638237484,
       "tag": "0006_fix_trip_files_staging_path_depth",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794139862592,
+      "tag": "0007_day_proposal_locations",
+      "breakpoints": true
     }
   ]
 }
