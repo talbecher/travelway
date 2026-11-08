@@ -29,3 +29,8 @@
 - [ ] Paid lookup for exact-named group — waits on user approval of cap.
 
 - [x] Chat day proposals keep locations (explicit pair/Maps URL or exact title+location_name match), with source shown on review
+
+## UX fixes: proposal missing locations + document file in edit (Nov 8)
+- [x] revise_day_proposal_locations RPC + guard location-only exception (migrations 0009/0010); review screen: clickable missing banner, saved-place picker sheet, explicit leave-without-location
+- [x] Document edit shows attached file (name/type/size, פתח/החלף/הסר with confirm); private detach via detach_document_file RPC (migration 0011); no physical delete
+- [x] E2E on temp trip (created + deleted): pick→save→approve→coords verified in day entries; doc detach verified; 390px no overflow; 29 bun tests, tsgo clean. No publish.
