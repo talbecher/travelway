@@ -553,6 +553,12 @@ function DocumentFormSheet({
       amount_ils: amount ? Number(amount) : null,
       is_paid: isPaid,
     };
+    // Detach or replace: unlink the previous private file from the record (the stored object is kept).
+    if (editing && (detached || (fileUrl && editing.file_path))) {
+      payload.file_path = null;
+      payload.file_mime = null;
+      payload.file_size = null;
+    }
     try {
       if (editing) {
         await update.mutateAsync({ id: editing.id, patch: payload, prevIsPaid: editing.is_paid });
@@ -566,6 +572,34 @@ function DocumentFormSheet({
   }
 
   const busy = add.isPending || update.isPending || uploading;
+
+  const hasFile = !detached && !!(fileUrl || editing?.file_path);
+  const displayName = fileDisplayName(editing, fileName);
+  const metaLabel = [
+    fileName ? mimeLabel(uploadMeta.mime) : mimeLabel(editing?.file_mime),
+    fileName ? fmtSize(uploadMeta.size) : fmtSize(editing?.file_size),
+  ].filter(Boolean).join(" · ");
+
+  async function openFile() {
+    try {
+      if (editing?.file_path && !fileUrl) {
+        const r = await getDocumentFileUrl({ data: { documentId: editing.id } });
+        window.open(r.url, "_blank", "noopener,noreferrer");
+      } else if (fileUrl) {
+        window.open(fileUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      toast.error("פתיחת הקובץ נכשלה");
+    }
+  }
+
+  function onDetach() {
+    if (!window.confirm("להסיר את הקובץ מהמסמך? הקובץ ינותק מהרשומה רק אחרי שמירת הטופס.")) return;
+    setDetached(true);
+    setFileUrl(null);
+    setFileName(null);
+    setUploadMeta({ mime: null, size: null });
+  }
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={editing ? "עריכת מסמך" : "מסמך חדש"}>
