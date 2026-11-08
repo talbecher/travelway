@@ -1,2 +1,10 @@
--- Restores NULL coordinates only for the 9 rows if their coordinates still equal the applied values (see after.json).
--- update day_entries set latitude=null, longitude=null where (id, latitude, longitude) in (<rows from after.json>);
+-- Guarded: clears coords only if still equal to applied values
+update day_entries set latitude=null, longitude=null where id='6ec18185-6d2d-45d7-8e94-f7b10f50d6c4' and latitude=35.6686601 and longitude=139.7058348;
+update day_entries set latitude=null, longitude=null where id='ef11e966-e3be-40ab-8e92-0ca880c3a826' and latitude=35.007396799999995 and longitude=135.7584218;
+update day_entries set latitude=null, longitude=null where id='a5dce03a-48f9-47ce-b756-b24e7da44aa1' and latitude=35.000629499999995 and longitude=135.7578639;
+update day_entries set latitude=null, longitude=null where id='2e26fc96-7779-4a59-bdf8-0a706e2f2c86' and latitude=35.0050258 and longitude=135.764723;
+update day_entries set latitude=null, longitude=null where id='372defaa-8bcb-44d5-9960-98e45d3053e8' and latitude=35.0044131 and longitude=135.7641669;
+update day_entries set latitude=null, longitude=null where id='f0bf71d0-c690-48d4-8d8b-ae4fe9307d98' and latitude=35.014133699999995 and longitude=135.67095559999998;
+update day_entries set latitude=null, longitude=null where id='62e36868-be9d-48ba-8232-e640002458d0' and latitude=35.0039339 and longitude=135.7710439;
+update day_entries set latitude=null, longitude=null where id='f4e99803-83b8-40ec-b115-8f0e4d192695' and latitude=35.5032609 and longitude=138.77191879999998;
+update day_entries set latitude=null, longitude=null where id='c982605d-ea2d-43b3-b166-ae9cfffcd5db' and latitude=35.0014922 and longitude=135.7746403;
