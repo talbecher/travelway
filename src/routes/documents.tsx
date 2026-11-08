@@ -553,13 +553,12 @@ function DocumentFormSheet({
       amount_ils: amount ? Number(amount) : null,
       is_paid: isPaid,
     };
-    // Detach or replace: unlink the previous private file from the record (the stored object is kept).
-    if (editing && (detached || (fileUrl && editing.file_path))) {
-      payload.file_path = null;
-      payload.file_mime = null;
-      payload.file_size = null;
-    }
     try {
+      // Detach or replace: unlink the previous private file via the secure path (the stored object is kept).
+      if (editing?.file_path && (detached || fileUrl)) {
+        const { data: det, error: detErr } = await supabase.rpc("detach_document_file", { _document_id: editing.id } as never);
+        if (detErr || (det as { status?: string } | null)?.status !== "ok") throw new Error("ניתוק הקובץ הקודם נכשל");
+      }
       if (editing) {
         await update.mutateAsync({ id: editing.id, patch: payload, prevIsPaid: editing.is_paid });
       } else {
