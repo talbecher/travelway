@@ -1,11 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { AlertTriangle, CheckCircle2, ChevronDown, Lock, MapPin, MessageSquare } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock, MapPin, MessageSquare, Search, X } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { BottomSheet } from "@/components/BottomSheet";
+import {
+  buildLocationRevisions,
+  filterSavedPlaces,
+  missingIndexes,
+  type SavedPlace,
+} from "@/lib/proposal-location-fix";
 
 export const Route = createFileRoute("/day-proposals/$id")({
   head: () => ({
@@ -23,7 +30,7 @@ export const Route = createFileRoute("/day-proposals/$id")({
 
 type Row = { title: string; time_of_day: string | null; entry_type?: string; location_name?: string | null; description?: string | null; is_protected?: boolean; latitude?: number | null; longitude?: number | null; google_maps_url?: string | null; location_source?: string };
 type View = {
-  id: string; day_id: string; state: "pending" | "applied" | "rejected" | "expired" | "token_revoked";
+  id: string; trip_id: string; day_id: string; state: "pending" | "applied" | "rejected" | "expired" | "token_revoked";
   result: { removed: number; kept: number; added: number } | null;
   date: string; day_number: number; city_label: string | null; note: string | null;
   entries: Row[]; location_sources?: string[]; entry_count: number; fingerprint: string; expires_at: string;
