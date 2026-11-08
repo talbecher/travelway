@@ -22,7 +22,7 @@ const spec = {
       post: {
         operationId: "proposeDayReplacement",
         summary: "Save a proposal to replace one day's plan (nothing changes until the user approves in TravelWay)",
-        description: "Requires a trip-scoped token with the 'submit day proposals' permission. Hotel check-ins and booked stops are always kept. Return review_url to the user; they must open it and approve. Max 40 entries. Proposals expire after 72 hours.",
+        description: "Requires a trip-scoped token with the 'submit day proposals' permission. Hotel check-ins and booked stops are always kept. Return review_url to the user; they must open it and approve. Max 40 entries. Proposals expire after 72 hours. כשתחנה מבוססת על תחנה קיימת (גם אם שינית את שמה) או על מקום שמור, העתק את latitude, longitude ו-google_maps_url שלה מ-trip-context. אל תמציא קואורדינטות.",
         requestBody: {
           required: true,
           content: { "application/json": { schema: {
@@ -38,6 +38,9 @@ const spec = {
                   entry_type: { type: "string", enum: ["attraction", "food", "transport", "note", "flight", "hotel_checkin"] },
                   time_of_day: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
                   location_name: { type: "string" }, description: { type: "string" }, icon_emoji: { type: "string" },
+                  latitude: { type: "number", minimum: -90, maximum: 90, description: "Send together with longitude only. Copy from trip-context; never invent." },
+                  longitude: { type: "number", minimum: -180, maximum: 180, description: "Send together with latitude only. Copy from trip-context; never invent." },
+                  google_maps_url: { type: "string", format: "uri", description: "Copy from trip-context. Only Google Maps links with explicit destination coordinates are kept." },
                 },
               } },
             },

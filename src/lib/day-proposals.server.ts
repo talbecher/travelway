@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { hashToken } from "./trip-context.server";
 import { parseAIResponse } from "./ai-import";
+import { explicitMapsCoordinates } from "./day-location";
 
 const TOKEN_RE = /^twpat_[A-Za-z0-9_-]{43}$/;
 const MAX_BODY = 64 * 1024;
@@ -25,15 +26,47 @@ const bodySchema = z.object({
 export type ProposalEntry = {
   entry_type: string; title: string; time_of_day: string | null;
   location_name: string | null; description: string | null; icon_emoji: string | null;
+  latitude?: number; longitude?: number; google_maps_url?: string;
 };
+
+type ProposalLocation = { latitude?: number; longitude?: number; google_maps_url?: string };
+
+/**
+ * Optional explicit location from the chat. Coordinates must be a complete finite in-range pair
+ * (otherwise the proposal is rejected); a Maps URL is kept only when it names explicit destination
+ * coordinates (otherwise it is dropped and the stop shows as missing).
+ */
+export function proposalLocation(raw: unknown): ProposalLocation | null {
+  if (!raw || typeof raw !== "object") return {};
+  const r = raw as Record<string, unknown>;
+  const out: ProposalLocation = {};
+  const hasLat = r.latitude !== undefined && r.latitude !== null;
+  const hasLng = r.longitude !== undefined && r.longitude !== null;
+  if (hasLat || hasLng) {
+    const lat = r.latitude, lng = r.longitude;
+    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)
+      || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) return null;
+    out.latitude = lat; out.longitude = lng;
+  }
+  const url = r.google_maps_url;
+  if (typeof url === "string" && url.trim().startsWith("https://") && url.length <= 2000 && explicitMapsCoordinates(url)) {
+    out.google_maps_url = url.trim();
+  }
+  return out;
+}
 
 /** Reuses the existing day-mode parser; returns only fields of the existing entry contract. */
 export function normalizeProposalEntries(entries: unknown[]): { entries: ProposalEntry[]; skipped: number } {
   const parsed = parseAIResponse(JSON.stringify({ version: 1, itinerary: [{ day_number: 1, entries }] }), [1]);
+  const locations = entries.map(proposalLocation);
+  if (locations.some((l) => l === null) || parsed.entries.length !== entries.length) {
+    return { entries: [], skipped: Math.max(1, parsed.skipped) };
+  }
   return {
-    entries: parsed.entries.map((e) => ({
+    entries: parsed.entries.map((e, i) => ({
       entry_type: e.entry_type, title: e.title, time_of_day: e.time_of_day,
       location_name: e.location_name, description: e.description, icon_emoji: e.icon_emoji,
+      ...locations[i],
     })),
     skipped: parsed.skipped,
   };
