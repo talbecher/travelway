@@ -689,29 +689,40 @@ function DocumentFormSheet({
             className="hidden"
             onChange={onFile}
           />
-          {fileUrl ? (
-            <div className="flex items-center gap-2">
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 h-11 rounded-lg border border-input bg-background px-3 text-sm inline-flex items-center gap-1.5 truncate"
-              >
-                <Paperclip size={14} />
-                <span className="truncate">{fileName ?? "קובץ מצורף"}</span>
-                <ExternalLink size={12} className="mr-auto shrink-0" />
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  setFileUrl(null);
-                  setFileName(null);
-                }}
-                className="h-11 w-11 rounded-lg border border-input inline-flex items-center justify-center text-[color:var(--accent-2)]"
-                aria-label="הסר קובץ"
-              >
-                <X size={16} />
-              </button>
+          {hasFile ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2">
+                <Paperclip size={14} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p dir="auto" className="truncate text-start text-sm font-medium">{displayName}</p>
+                  {metaLabel && <p className="text-[11px] text-muted-foreground">{metaLabel}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={openFile}
+                  className="h-11 flex-1 rounded-lg border border-input text-sm font-medium inline-flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink size={14} /> פתח קובץ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  disabled={uploading}
+                  className="h-11 flex-1 rounded-lg border border-input text-sm font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                  החלף
+                </button>
+                <button
+                  type="button"
+                  onClick={onDetach}
+                  className="h-11 flex-1 rounded-lg border border-input text-sm font-medium text-[color:var(--accent-2)] inline-flex items-center justify-center gap-1.5"
+                >
+                  <X size={14} /> הסר
+                </button>
+              </div>
             </div>
           ) : (
             <button
