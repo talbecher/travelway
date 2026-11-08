@@ -21,3 +21,9 @@
 ## Offline / weak-connection AuthGate regression
 - [x] Confirm and remove sign-out on trip-query errors; transition to ready without clearing saved data.
 - [x] Five focused regression tests pass (23 assertions); authenticated Japan preview survives an aborted trip-list read with session/selection preserved, zero logout requests, and home + itinerary visible. Build OK; no publication. Fully offline published startup not checked (preview service worker is disabled).
+
+## Japan location follow-up (Nov 8)
+- [x] Apply 9 approved same-trip coordinate fills (coords only; backup/rollback in private 20261108 folder).
+- [x] AI import: stops no longer auto-assigned to first Google result; recommendation matching kept; checkbox text updated.
+- [x] Classify 70 remaining missing stops (exact / area / transport) — report only.
+- [ ] Paid lookup for exact-named group — waits on user approval of cap.
