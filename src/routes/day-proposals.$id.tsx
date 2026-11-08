@@ -224,7 +224,7 @@ function RowCard({ r }: { r: Row }) {
       {r.location_name && <p dir="auto" className="mt-1 flex items-center gap-1 text-start text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" /><span className="truncate">{r.location_name}</span></p>}
       {r.location_source && (
         <p className="mt-1 text-xs text-muted-foreground">
-          {r.location_source === "existing" ? "מיקום נשמר מהיום הקיים" : r.location_source === "ai" ? (r.latitude != null ? "מיקום מהצ׳אט" : "מיקום מהצ׳אט (קישור מפות)") : "ללא מיקום"}
+          {r.location_source === "existing" ? "מיקום שמור בטיול" : r.location_source === "ai" ? (r.latitude != null ? "מיקום מהצ׳אט" : "מיקום מהצ׳אט (קישור מפות)") : "ללא מיקום"}
         </p>
       )}
       {r.description && (
