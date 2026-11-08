@@ -21,12 +21,12 @@ export const Route = createFileRoute("/day-proposals/$id")({
   component: ProposalPage,
 });
 
-type Row = { title: string; time_of_day: string | null; entry_type?: string; location_name?: string | null; description?: string | null; is_protected?: boolean };
+type Row = { title: string; time_of_day: string | null; entry_type?: string; location_name?: string | null; description?: string | null; is_protected?: boolean; latitude?: number | null; longitude?: number | null; google_maps_url?: string | null; location_source?: string };
 type View = {
   id: string; day_id: string; state: "pending" | "applied" | "rejected" | "expired" | "token_revoked";
   result: { removed: number; kept: number; added: number } | null;
   date: string; day_number: number; city_label: string | null; note: string | null;
-  entries: Row[]; entry_count: number; fingerprint: string; expires_at: string;
+  entries: Row[]; location_sources?: string[]; entry_count: number; fingerprint: string; expires_at: string;
   current: { fingerprint: string; remove_count: number; keep_count: number; protected: Array<{ title: string; time_of_day: string | null; reason: "hotel" | "booked" }> };
   current_rows: Row[];
 };
@@ -143,7 +143,8 @@ function ProposalPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">התכנון המוצע <span className="text-muted-foreground">({v.entry_count})</span></h2>
-        <Timeline rows={v.entries} />
+        <Timeline rows={v.entries.map((e, i) => ({ ...e, location_source: v.location_sources?.[i] ?? "missing" }))} />
+        {(() => { const n = (v.location_sources ?? v.entries.map(() => "missing")).filter((x) => x === "missing").length; return n ? <p className="text-xs text-muted-foreground">{n} תחנות ללא מיקום שמור</p> : null; })()}
       </section>
 
       <details className="group rounded-2xl border border-border bg-card">
@@ -221,6 +222,11 @@ function RowCard({ r }: { r: Row }) {
         {r.is_protected && <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs"><Lock className="size-3" />נשמרת</span>}
       </div>
       {r.location_name && <p dir="auto" className="mt-1 flex items-center gap-1 text-start text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" /><span className="truncate">{r.location_name}</span></p>}
+      {r.location_source && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {r.location_source === "existing" ? "מיקום נשמר מהיום הקיים" : r.location_source === "ai" ? (r.latitude != null ? "מיקום מהצ׳אט" : "מיקום מהצ׳אט (קישור מפות)") : "ללא מיקום"}
+        </p>
+      )}
       {r.description && (
         <>
           <p dir="auto" className={`mt-2 whitespace-pre-wrap text-start text-sm text-muted-foreground ${open ? "" : "line-clamp-2"}`}>{r.description}</p>
