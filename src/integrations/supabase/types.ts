@@ -1435,6 +1435,10 @@ export type Database = {
         Args: { _pre_restore_name: string; _snapshot_id: string }
         Returns: number
       }
+      revise_day_proposal_locations: {
+        Args: { _id: string; _locations: Json; _seen_fingerprint: string }
+        Returns: Json
+      }
       server_document_cleanup_candidates: {
         Args: { _limit: number }
         Returns: {
