@@ -42,7 +42,7 @@
       "post": {
         "operationId": "proposeDayReplacement",
         "summary": "Save a proposal to replace one day's plan (nothing changes until the user approves in TravelWay)",
-        "description": "Trip-scoped token with day-proposal permission. Booked stops and hotel check-ins are kept. Max 40 entries, expires in 72h. Return review_url for approval. If a stop is based on a saved place send its source_saved_place_id. כשתחנה מבוססת על תחנה קיימת (גם אם שינית את שמה) או על מקום שמור, העתק את latitude, longitude ו-google_maps_url שלה מ-trip-context. אל תמציא קואורדינטות.",
+        "description": "Booked stops and check-ins are kept. Max 40 entries. Return review_url for approval. For a saved place prefer source_saved_place_id. כשתחנה מבוססת על תחנה קיימת (גם אם שינית את שמה) או על מקום שמור, העתק את latitude, longitude ו-google_maps_url שלה מ-trip-context. אל תמציא קואורדינטות.",
         "requestBody": {
           "required": true,
           "content": {
@@ -251,7 +251,7 @@
       "post": {
         "operationId": "proposeChecklistChanges",
         "summary": "Save a proposal to add, update or mark checklist tasks done (nothing changes until the user approves in TravelWay)",
-        "description": "Requires a trip-scoped token with the 'propose checklist changes' permission. Use task ids from getTripContext section=checklist for update/mark_done. Tasks not listed are never touched. Duplicate titles are flagged for the user. Return review_url to the user. Max 50 operations. Proposals expire after 72 hours.",
+        "description": "Trip-scoped token with checklist-proposal permission. Use task ids from getTripContext section=checklist for update/mark_done. Unlisted tasks are never touched. Duplicates are flagged. Max 50 operations, expires in 72h. Return review_url for approval.",
         "requestBody": {
           "required": true,
           "content": {
