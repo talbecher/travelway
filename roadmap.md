@@ -27,3 +27,5 @@
 - [x] AI import: stops no longer auto-assigned to first Google result; recommendation matching kept; checkbox text updated.
 - [x] Classify 70 remaining missing stops (exact / area / transport) — report only.
 - [ ] Paid lookup for exact-named group — waits on user approval of cap.
+
+- [x] Chat day proposals keep locations (explicit pair/Maps URL or exact title+location_name match), with source shown on review
