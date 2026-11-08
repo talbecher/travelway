@@ -57,6 +57,13 @@
       "when": 1794139862592,
       "tag": "0007_day_proposal_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794139977957,
+      "tag": "0008_day_proposal_locations_fix_record",
+      "breakpoints": true
     }
   ]
 }
