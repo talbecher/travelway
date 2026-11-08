@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+// @ts-nocheck -- run with `bun test`; bun:test types are not installed for tsc
+import { describe, expect, it } from "bun:test";
 import {
   buildLocationRevisions,
   filterSavedPlaces,
