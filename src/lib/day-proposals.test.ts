@@ -27,3 +27,21 @@ describe("proposal locations", () => {
     expect(e.google_maps_url).toBeUndefined();
   });
 });
+
+describe("saved place source id", () => {
+  const id = "0f8fad5b-d9cb-469f-a165-70867728950e";
+  test("valid id is passed through and supplied coordinates are dropped (server copies the saved location)", () => {
+    const [e] = normalizeProposalEntries([{ ...base, title: "Renamed", source_saved_place_id: id, latitude: 1, longitude: 2, google_maps_url: "https://www.google.com/maps/search/?api=1&query=1,2" }]).entries;
+    expect(e.source_saved_place_id).toBe(id);
+    expect(e.latitude).toBeUndefined();
+    expect(e.google_maps_url).toBeUndefined();
+  });
+  test("malformed id rejects the proposal instead of falling back to supplied coordinates", () => {
+    for (const bad of ["nope", "", 5, null]) {
+      expect(normalizeProposalEntries([{ ...base, source_saved_place_id: bad, latitude: 35.7, longitude: 139.8 }]).entries).toEqual([]);
+    }
+  });
+  test("no id keeps the old behavior", () => {
+    expect(proposalLocation({ ...base, latitude: 35.71, longitude: 139.79 })).toEqual({ latitude: 35.71, longitude: 139.79 });
+  });
+});
