@@ -58,6 +58,7 @@ function ProposalPage() {
   });
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [fixOpen, setFixOpen] = useState(false);
 
   async function call(fn: string, args: Record<string, unknown>) {
     if (busy) return;
@@ -151,8 +152,26 @@ function ProposalPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold">התכנון המוצע <span className="text-muted-foreground">({v.entry_count})</span></h2>
         <Timeline rows={v.entries.map((e, i) => ({ ...e, location_source: v.location_sources?.[i] ?? "missing" }))} />
-        {(() => { const n = (v.location_sources ?? v.entries.map(() => "missing")).filter((x) => x === "missing").length; return n ? <p className="text-xs text-muted-foreground">{n} תחנות ללא מיקום שמור</p> : null; })()}
+        {(() => {
+          const n = (v.location_sources ?? v.entries.map(() => "missing")).filter((x) => x === "missing").length;
+          if (!n) return null;
+          if (actionable && !changed) return (
+            <button type="button" onClick={() => setFixOpen(true)}
+              className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-start text-sm font-semibold text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="size-5 shrink-0" />
+              ל־{n} {n === 1 ? "תחנה חסר" : "תחנות חסר"} מיקום — הצג וטפל
+            </button>
+          );
+          return <p className="text-xs text-muted-foreground">{n} תחנות ללא מיקום שמור</p>;
+        })()}
       </section>
+
+      <MissingLocationsSheet
+        open={fixOpen}
+        onOpenChange={setFixOpen}
+        view={v}
+        onSaved={async () => { setFixOpen(false); await qc.invalidateQueries({ queryKey: key }); }}
+      />
 
       <details className="group rounded-2xl border border-border bg-card">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between p-4 font-semibold">
