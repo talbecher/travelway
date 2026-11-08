@@ -270,6 +270,7 @@ export type Database = {
           expires_at: string
           fingerprint: string
           id: string
+          location_source_names: string[] | null
           location_sources: string[]
           note: string | null
           request_id: string
@@ -288,6 +289,7 @@ export type Database = {
           expires_at?: string
           fingerprint: string
           id?: string
+          location_source_names?: string[] | null
           location_sources?: string[]
           note?: string | null
           request_id?: string
@@ -306,6 +308,7 @@ export type Database = {
           expires_at?: string
           fingerprint?: string
           id?: string
+          location_source_names?: string[] | null
           location_sources?: string[]
           note?: string | null
           request_id?: string

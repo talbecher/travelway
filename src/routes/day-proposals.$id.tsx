@@ -28,12 +28,12 @@ export const Route = createFileRoute("/day-proposals/$id")({
   component: ProposalPage,
 });
 
-type Row = { title: string; time_of_day: string | null; entry_type?: string; location_name?: string | null; description?: string | null; is_protected?: boolean; latitude?: number | null; longitude?: number | null; google_maps_url?: string | null; location_source?: string };
+type Row = { title: string; time_of_day: string | null; entry_type?: string; location_name?: string | null; description?: string | null; is_protected?: boolean; latitude?: number | null; longitude?: number | null; google_maps_url?: string | null; location_source?: string; location_source_name?: string | null };
 type View = {
   id: string; trip_id: string; day_id: string; state: "pending" | "applied" | "rejected" | "expired" | "token_revoked";
   result: { removed: number; kept: number; added: number } | null;
   date: string; day_number: number; city_label: string | null; note: string | null;
-  entries: Row[]; location_sources?: string[]; entry_count: number; fingerprint: string; expires_at: string;
+  entries: Row[]; location_sources?: string[]; location_source_names?: (string | null)[] | null; entry_count: number; fingerprint: string; expires_at: string;
   current: { fingerprint: string; remove_count: number; keep_count: number; protected: Array<{ title: string; time_of_day: string | null; reason: "hotel" | "booked" }> };
   current_rows: Row[];
 };
@@ -151,7 +151,7 @@ function ProposalPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">התכנון המוצע <span className="text-muted-foreground">({v.entry_count})</span></h2>
-        <Timeline rows={v.entries.map((e, i) => ({ ...e, location_source: v.location_sources?.[i] ?? "missing" }))} />
+        <Timeline rows={v.entries.map((e, i) => ({ ...e, location_source: v.location_sources?.[i] ?? "missing", location_source_name: v.location_source_names?.[i] ?? null }))} />
         {(() => {
           const n = (v.location_sources ?? v.entries.map(() => "missing")).filter((x) => x === "missing").length;
           if (!n) return null;
@@ -437,7 +437,7 @@ function RowCard({ r }: { r: Row }) {
       {r.location_name && <p dir="auto" className="mt-1 flex items-center gap-1 text-start text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" /><span className="truncate">{r.location_name}</span></p>}
       {r.location_source && (
         <p className="mt-1 text-xs text-muted-foreground">
-          {r.location_source === "existing" ? "מיקום שמור בטיול" : r.location_source === "ai" ? (r.latitude != null ? "מיקום מהצ׳אט" : "מיקום מהצ׳אט (קישור מפות)") : "ללא מיקום"}
+          {r.location_source === "existing" ? (r.location_source_name ? <>מיקום מההמלצה: <bdi>{r.location_source_name}</bdi></> : "מיקום שמור בטיול") : r.location_source === "ai" ? (r.latitude != null ? "מיקום מהצ׳אט" : "מיקום מהצ׳אט (קישור מפות)") : "ללא מיקום"}
         </p>
       )}
       {r.description && (

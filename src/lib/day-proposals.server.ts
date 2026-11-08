@@ -26,10 +26,11 @@ const bodySchema = z.object({
 export type ProposalEntry = {
   entry_type: string; title: string; time_of_day: string | null;
   location_name: string | null; description: string | null; icon_emoji: string | null;
-  latitude?: number; longitude?: number; google_maps_url?: string;
+  latitude?: number; longitude?: number; google_maps_url?: string; source_saved_place_id?: string;
 };
 
-type ProposalLocation = { latitude?: number; longitude?: number; google_maps_url?: string };
+type ProposalLocation = { latitude?: number; longitude?: number; google_maps_url?: string; source_saved_place_id?: string };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Optional explicit location from the chat. Coordinates must be a complete finite in-range pair
@@ -39,6 +40,12 @@ type ProposalLocation = { latitude?: number; longitude?: number; google_maps_url
 export function proposalLocation(raw: unknown): ProposalLocation | null {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
+  // Saved place id: the server resolves it in the token's trip and its location is authoritative,
+  // so any supplied location is dropped. A malformed id rejects the proposal (never falls back).
+  if (r.source_saved_place_id !== undefined) {
+    const sid = r.source_saved_place_id;
+    return typeof sid === "string" && UUID_RE.test(sid) ? { source_saved_place_id: sid.toLowerCase() } : null;
+  }
   const out: ProposalLocation = {};
   const hasLat = r.latitude !== undefined && r.latitude !== null;
   const hasLng = r.longitude !== undefined && r.longitude !== null;
