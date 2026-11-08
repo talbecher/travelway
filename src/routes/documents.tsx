@@ -520,6 +520,8 @@ function DocumentFormSheet({
       if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Failed to sign URL");
       setFileUrl(signed.signedUrl);
       setFileName(file.name);
+      setUploadMeta({ mime: file.type || null, size: file.size });
+      setDetached(false);
       toast.success("✅ הקובץ הועלה");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "שגיאה בהעלאה");
