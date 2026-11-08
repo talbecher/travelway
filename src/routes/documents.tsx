@@ -422,6 +422,32 @@ function safeExternalUrl(raw: string | null | undefined): string | null {
   }
 }
 
+/** Human label for an attached file: fresh upload name, else a derived basename (opaque storage ids stay generic). */
+function fileDisplayName(editing: TripDocument | null, fileName: string | null): string {
+  if (fileName) return fileName;
+  const raw = editing?.file_path ?? editing?.file_url ?? "";
+  const base = raw.split("?")[0].split("/").pop() ?? "";
+  if (!base || /^[0-9a-f-]{20,}\.[a-z0-9]+$/i.test(base)) return "קובץ מצורף";
+  try {
+    return decodeURIComponent(base);
+  } catch {
+    return base;
+  }
+}
+
+function mimeLabel(mime: string | null | undefined): string | null {
+  if (!mime) return null;
+  if (mime === "application/pdf") return "PDF";
+  if (mime.startsWith("image/")) return "תמונה";
+  return mime;
+}
+
+function fmtSize(bytes: number | null | undefined): string | null {
+  if (!bytes || bytes <= 0) return null;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function DocumentFormSheet({
   open,
   onOpenChange,
