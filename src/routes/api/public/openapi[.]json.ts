@@ -22,7 +22,7 @@ const spec = {
       post: {
         operationId: "proposeDayReplacement",
         summary: "Save a proposal to replace one day's plan (nothing changes until the user approves in TravelWay)",
-        description: "Requires a trip-scoped token with the 'submit day proposals' permission. Hotel check-ins and booked stops are always kept. Return review_url to the user; they must open it and approve. Max 40 entries. Proposals expire after 72 hours.",
+        description: "Requires a trip-scoped token with the 'submit day proposals' permission. Hotel check-ins and booked stops are always kept. Return review_url to the user; they must open it and approve. Max 40 entries. Proposals expire after 72 hours. כשתחנה מבוססת על תחנה קיימת (גם אם שינית את שמה) או על מקום שמור, העתק את latitude, longitude ו-google_maps_url שלה מ-trip-context. אל תמציא קואורדינטות.",
         requestBody: {
           required: true,
           content: { "application/json": { schema: {
