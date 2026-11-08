@@ -71,6 +71,13 @@
       "when": 1794147552197,
       "tag": "0009_revise_day_proposal_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794147880702,
+      "tag": "0010_revise_guard_branch_fix",
+      "breakpoints": true
     }
   ]
 }
