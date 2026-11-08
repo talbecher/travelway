@@ -474,6 +474,8 @@ function DocumentFormSheet({
   const [externalUrl, setExternalUrl] = useState<string>(editing?.external_url ?? "");
   const [externalUrlError, setExternalUrlError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadMeta, setUploadMeta] = useState<{ mime: string | null; size: number | null }>({ mime: null, size: null });
+  const [detached, setDetached] = useState(false);
   const [amount, setAmount] = useState<string>(editing?.amount_ils != null ? String(editing.amount_ils) : "");
   const [isPaid, setIsPaid] = useState(editing?.is_paid ?? false);
 
@@ -490,6 +492,8 @@ function DocumentFormSheet({
     setExternalUrl(editing?.external_url ?? "");
     setExternalUrlError(null);
     setFileName(null);
+    setUploadMeta({ mime: null, size: null });
+    setDetached(false);
     setAmount(editing?.amount_ils != null ? String(editing.amount_ils) : "");
     setIsPaid(editing?.is_paid ?? false);
   }, [open, editing?.id]);
