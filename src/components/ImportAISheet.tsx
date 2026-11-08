@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
-import { searchPlaces, getPlacePhotoUrl } from "@/lib/places.functions";
 import { matchNewRecommendation } from '@/lib/place-identity.functions';
 import {
   applyEntries,
@@ -59,8 +58,6 @@ export function ImportAISheet({
   existingRecNames?: string[];
 }) {
   const qc = useQueryClient();
-  const search = useServerFn(searchPlaces);
-  const getPhoto = useServerFn(getPlacePhotoUrl);
   const matchRec = useServerFn(matchNewRecommendation);
 
   const [text, setText] = useState("");
@@ -188,30 +185,7 @@ export function ImportAISheet({
     setTab(parsedEntries.length ? "itinerary" : "recs");
   }
 
-  const lookup: PlaceLookup = async (query) => {
-    try {
-      const res = await search({ data: { query } });
-      const p = res.results?.[0];
-      if (!p) return null;
-      let photo_url: string | null = null;
-      if (p.photoName) {
-        const ph = await getPhoto({ data: { photoName: p.photoName, maxWidthPx: 600 } });
-        photo_url = ph.url ?? null;
-      }
-      return {
-        latitude: p.latitude,
-        longitude: p.longitude,
-        address: p.address ?? null,
-        city: p.city ?? null,
-        google_maps_url: p.google_maps_url ?? null,
-        photo_url,
-        rating: p.rating ?? null,
-        ratingCount: p.userRatingCount ?? null,
-      };
-    } catch {
-      return null;
-    }
-  };
+  // Stops are never auto-assigned to a Google search result; missing locations stay visible.
 
   // Recommendation matching requires an explicit saved pin; no free-text geocoding.
   // Per import at most five sequential searches; all other rows remain pin-only.
@@ -337,7 +311,7 @@ export function ImportAISheet({
     setApplyNotice(null);
     try {
       if (!pendingRef.current) {
-        const rows = await prepareReplaceRows(selectedEntries, enrich ? lookup : undefined);
+        const rows = await prepareReplaceRows(selectedEntries);
         if (req !== reqRef.current) return;
         pendingRef.current = { requestId: crypto.randomUUID(), fingerprint: confirm.prep.fingerprint, rows };
       }
@@ -425,7 +399,6 @@ export function ImportAISheet({
         setDupInfo(fresh);
       }
       setApplyNotice(null);
-      const l = enrich ? lookup : undefined;
 
       // Restore point per affected day, before anything is written.
       const affectedDayIds = Array.from(
@@ -441,7 +414,7 @@ export function ImportAISheet({
         }
       }
 
-      const addedEntries = await applyEntries(selectedEntries, dayIdByNumber, l);
+      const addedEntries = await applyEntries(selectedEntries, dayIdByNumber);
       const addedRecs = await applyRecs(tripId, selectedRecs, enrich ? recommendationLookup : undefined);
 
       qc.invalidateQueries({ queryKey: ["day-entries"] });
@@ -761,9 +734,9 @@ export function ImportAISheet({
                   className="mt-1 w-4 h-4 shrink-0"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-[14px]">השלמת פרטי מקומות מ־Google</span>
+                  <span className="block font-medium text-[14px]">התאמת המלצות לעסק ב־Google</span>
                   <span className="mt-0.5 block text-[12px] text-muted-foreground">
-                    הוספת מיקום, תמונה ודירוג כשניתן — עשוי להאריך את הייבוא.
+                    רק להמלצות עם מיקום מצורף, ורק בהתאמה ודאית. תחנות ביום לא משויכות אוטומטית.
                   </span>
                 </span>
               </label>
@@ -775,7 +748,7 @@ export function ImportAISheet({
                   onChange={(e) => setEnrich(e.target.checked)}
                   className="w-4 h-4"
                 />
-                השלם מיקום, תמונה ודירוג מ-Google (איטי יותר)
+                התאמת המלצות עם מיקום מצורף לעסק ב־Google (רק בהתאמה ודאית)
               </label>
             )}
 
