@@ -1375,6 +1375,7 @@ export type Database = {
         Returns: Json
       }
       claim_share: { Args: { _token: string }; Returns: string }
+      detach_document_file: { Args: { _document_id: string }; Returns: Json }
       document_proposal_staged_path: {
         Args: { _proposal_id: string }
         Returns: string
