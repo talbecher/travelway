@@ -1,0 +1,2 @@
+-- Restores NULL coordinates only for the 9 rows if their coordinates still equal the applied values (see after.json).
+-- update day_entries set latitude=null, longitude=null where (id, latitude, longitude) in (<rows from after.json>);
