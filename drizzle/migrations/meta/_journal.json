@@ -64,6 +64,27 @@
       "when": 1794139977957,
       "tag": "0008_day_proposal_locations_fix_record",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794147552197,
+      "tag": "0009_revise_day_proposal_locations",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794147880702,
+      "tag": "0010_revise_guard_branch_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794148020963,
+      "tag": "0011_detach_document_file",
+      "breakpoints": true
     }
   ]
 }

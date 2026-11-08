@@ -1,11 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { AlertTriangle, CheckCircle2, ChevronDown, Lock, MapPin, MessageSquare } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock, MapPin, MessageSquare, Search, X } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { BottomSheet } from "@/components/BottomSheet";
+import {
+  buildLocationRevisions,
+  filterSavedPlaces,
+  missingIndexes,
+  type SavedPlace,
+} from "@/lib/proposal-location-fix";
 
 export const Route = createFileRoute("/day-proposals/$id")({
   head: () => ({
@@ -23,7 +30,7 @@ export const Route = createFileRoute("/day-proposals/$id")({
 
 type Row = { title: string; time_of_day: string | null; entry_type?: string; location_name?: string | null; description?: string | null; is_protected?: boolean; latitude?: number | null; longitude?: number | null; google_maps_url?: string | null; location_source?: string };
 type View = {
-  id: string; day_id: string; state: "pending" | "applied" | "rejected" | "expired" | "token_revoked";
+  id: string; trip_id: string; day_id: string; state: "pending" | "applied" | "rejected" | "expired" | "token_revoked";
   result: { removed: number; kept: number; added: number } | null;
   date: string; day_number: number; city_label: string | null; note: string | null;
   entries: Row[]; location_sources?: string[]; entry_count: number; fingerprint: string; expires_at: string;
@@ -51,6 +58,7 @@ function ProposalPage() {
   });
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [fixOpen, setFixOpen] = useState(false);
 
   async function call(fn: string, args: Record<string, unknown>) {
     if (busy) return;
@@ -144,8 +152,26 @@ function ProposalPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold">התכנון המוצע <span className="text-muted-foreground">({v.entry_count})</span></h2>
         <Timeline rows={v.entries.map((e, i) => ({ ...e, location_source: v.location_sources?.[i] ?? "missing" }))} />
-        {(() => { const n = (v.location_sources ?? v.entries.map(() => "missing")).filter((x) => x === "missing").length; return n ? <p className="text-xs text-muted-foreground">{n} תחנות ללא מיקום שמור</p> : null; })()}
+        {(() => {
+          const n = (v.location_sources ?? v.entries.map(() => "missing")).filter((x) => x === "missing").length;
+          if (!n) return null;
+          if (actionable && !changed) return (
+            <button type="button" onClick={() => setFixOpen(true)}
+              className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-start text-sm font-semibold text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="size-5 shrink-0" />
+              ל־{n} {n === 1 ? "תחנה חסר" : "תחנות חסר"} מיקום — הצג וטפל
+            </button>
+          );
+          return <p className="text-xs text-muted-foreground">{n} תחנות ללא מיקום שמור</p>;
+        })()}
       </section>
+
+      <MissingLocationsSheet
+        open={fixOpen}
+        onOpenChange={setFixOpen}
+        view={v}
+        onSaved={async () => { setFixOpen(false); await qc.invalidateQueries({ queryKey: key }); }}
+      />
 
       <details className="group rounded-2xl border border-border bg-card">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between p-4 font-semibold">
@@ -173,6 +199,193 @@ function ProposalPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Lets the user attach saved trip places to proposal stops that have no location. */
+function MissingLocationsSheet({
+  open,
+  onOpenChange,
+  view,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  view: View;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [picks, setPicks] = useState<Record<number, SavedPlace>>({});
+  const [pickingFor, setPickingFor] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const sources = view.location_sources ?? view.entries.map(() => "missing");
+  const missing = useMemo(() => missingIndexes(view.entries, sources), [view.entries, sources]);
+
+  const placesQuery = useQuery({
+    queryKey: ["proposal-saved-places", view.trip_id],
+    enabled: open,
+    queryFn: async (): Promise<SavedPlace[]> => {
+      const [recs, hotels] = await Promise.all([
+        supabase.from("recommendations").select("id,name,address,latitude,longitude,google_maps_url").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(500),
+        supabase.from("hotels").select("id,hotel_name,address,latitude,longitude,google_maps_url").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(100),
+      ]);
+      if (recs.error) throw recs.error;
+      if (hotels.error) throw hotels.error;
+      const out: SavedPlace[] = [];
+      for (const r of recs.data ?? []) {
+        if (r.latitude == null || r.longitude == null) continue;
+        out.push({ key: `rec:${r.id}`, name: r.name, address: r.address, latitude: r.latitude, longitude: r.longitude, google_maps_url: r.google_maps_url, source: "recommendation" });
+      }
+      for (const h of hotels.data ?? []) {
+        if (h.latitude == null || h.longitude == null) continue;
+        out.push({ key: `hotel:${h.id}`, name: h.hotel_name, address: h.address, latitude: h.latitude, longitude: h.longitude, google_maps_url: h.google_maps_url, source: "hotel" });
+      }
+      return out;
+    },
+  });
+
+  const filtered = useMemo(
+    () => filterSavedPlaces(placesQuery.data ?? [], search),
+    [placesQuery.data, search],
+  );
+
+  function close() {
+    setPicks({});
+    setPickingFor(null);
+    setSearch("");
+    onOpenChange(false);
+  }
+
+  async function save() {
+    const revisions = buildLocationRevisions(view.entries, sources, picks);
+    if (!revisions.length) { close(); return; }
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.rpc("revise_day_proposal_locations", {
+        _id: view.id,
+        _seen_fingerprint: view.current.fingerprint,
+        _locations: revisions,
+      } as never);
+      if (error) throw error;
+      const st = (data as { status?: string })?.status;
+      if (st === "ok") {
+        toast.success("המיקומים נשמרו בהצעה — בדקו את הסקירה המעודכנת");
+        await onSaved();
+        return;
+      }
+      if (st === "day_changed") toast.error("היום השתנה. ההשוואה עודכנה — בדקו ואשרו מחדש.");
+      else if (st === "expired") toast.error("תוקף ההצעה פג.");
+      else if (st === "token_revoked") toast.error("הטוקן שהגיש את ההצעה בוטל.");
+      else toast.error("שמירת המיקומים נכשלה");
+      await onSaved();
+    } catch {
+      toast.error("שמירת המיקומים נכשלה");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const pickCount = Object.keys(picks).length;
+
+  return (
+    <BottomSheet open={open} onOpenChange={(o) => { if (!o) close(); }} title="תחנות ללא מיקום">
+      {pickingFor === null ? (
+        <div className="flex flex-col gap-3 pb-24">
+          <p className="text-xs text-muted-foreground">
+            בחרו מקום שמור מהטיול לכל תחנה, או השאירו אותה במפורש ללא מיקום — לא נמציא נקודה לאזור כללי.
+          </p>
+          <ul className="space-y-2">
+            {missing.map((i) => {
+              const e = view.entries[i];
+              const pick = picks[i];
+              return (
+                <li key={i} className="rounded-2xl border border-border bg-card p-3">
+                  <div className="flex items-center gap-2">
+                    <span dir="ltr" className="text-xs font-semibold tabular-nums text-muted-foreground">{e.time_of_day ?? "—"}</span>
+                    <p dir="auto" className="min-w-0 flex-1 truncate text-start text-sm font-semibold">{e.title}</p>
+                  </div>
+                  {pick ? (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="size-3.5 shrink-0" />
+                        <span dir="auto" className="truncate">{pick.name}{pick.address ? ` · ${pick.address}` : ""}</span>
+                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5">{pick.source === "hotel" ? "מלון" : "מקום שמור"}</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button type="button" className="min-h-11 flex-1 rounded-lg border border-border text-xs font-semibold"
+                          onClick={() => { setPickingFor(i); setSearch(""); }}>
+                          החלף בחירה
+                        </button>
+                        <button type="button" className="min-h-11 flex-1 rounded-lg border border-border text-xs font-semibold text-muted-foreground"
+                          onClick={() => setPicks((p) => { const n = { ...p }; delete n[i]; return n; })}>
+                          השאר ללא מיקום
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground"
+                      onClick={() => { setPickingFor(i); setSearch(""); }}>
+                      <MapPin className="size-4" /> בחר מיקום
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="sticky bottom-0 -mx-5 mt-1 border-t border-border bg-card px-5 pt-3 pb-4">
+            <button type="button" disabled={saving || pickCount === 0} onClick={save}
+              className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-60">
+              {saving ? "שומר…" : pickCount ? `שמור ${pickCount === 1 ? "מיקום אחד" : `${pickCount} מיקומים`}` : "לא נבחרו מיקומים"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 pb-24">
+          <div className="flex items-center gap-2">
+            <button type="button" aria-label="חזרה" className="flex size-11 items-center justify-center rounded-lg border border-border"
+              onClick={() => setPickingFor(null)}>
+              <X className="size-4" />
+            </button>
+            <p dir="auto" className="min-w-0 flex-1 truncate text-start text-sm font-semibold">{view.entries[pickingFor]?.title}</p>
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="חפש במקומות השמורים…"
+              className="h-11 w-full rounded-lg border border-input bg-background ps-9 pe-3 text-sm"
+            />
+          </div>
+          {placesQuery.isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">טוען מקומות שמורים…</p>
+          ) : placesQuery.isError ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">טעינת המקומות נכשלה</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">לא נמצאו מקומות שמורים מתאימים</p>
+          ) : (
+            <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+              {filtered.map((p) => (
+                <li key={p.key}>
+                  <button type="button"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border bg-card p-3 text-start"
+                    onClick={() => { setPicks((prev) => ({ ...prev, [pickingFor]: p })); setPickingFor(null); setSearch(""); }}>
+                    <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1">
+                      <span dir="auto" className="block truncate text-sm font-semibold">{p.name}</span>
+                      {p.address && <span dir="auto" className="block truncate text-xs text-muted-foreground">{p.address}</span>}
+                    </span>
+                    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs">{p.source === "hotel" ? "מלון" : "מקום שמור"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </BottomSheet>
   );
 }
 

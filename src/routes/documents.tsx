@@ -422,6 +422,32 @@ function safeExternalUrl(raw: string | null | undefined): string | null {
   }
 }
 
+/** Human label for an attached file: fresh upload name, else a derived basename (opaque storage ids stay generic). */
+function fileDisplayName(editing: TripDocument | null, fileName: string | null): string {
+  if (fileName) return fileName;
+  const raw = editing?.file_path ?? editing?.file_url ?? "";
+  const base = raw.split("?")[0].split("/").pop() ?? "";
+  if (!base || /^[0-9a-f-]{20,}\.[a-z0-9]+$/i.test(base)) return "קובץ מצורף";
+  try {
+    return decodeURIComponent(base);
+  } catch {
+    return base;
+  }
+}
+
+function mimeLabel(mime: string | null | undefined): string | null {
+  if (!mime) return null;
+  if (mime === "application/pdf") return "PDF";
+  if (mime.startsWith("image/")) return "תמונה";
+  return mime;
+}
+
+function fmtSize(bytes: number | null | undefined): string | null {
+  if (!bytes || bytes <= 0) return null;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function DocumentFormSheet({
   open,
   onOpenChange,
@@ -448,6 +474,8 @@ function DocumentFormSheet({
   const [externalUrl, setExternalUrl] = useState<string>(editing?.external_url ?? "");
   const [externalUrlError, setExternalUrlError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadMeta, setUploadMeta] = useState<{ mime: string | null; size: number | null }>({ mime: null, size: null });
+  const [detached, setDetached] = useState(false);
   const [amount, setAmount] = useState<string>(editing?.amount_ils != null ? String(editing.amount_ils) : "");
   const [isPaid, setIsPaid] = useState(editing?.is_paid ?? false);
 
@@ -464,6 +492,8 @@ function DocumentFormSheet({
     setExternalUrl(editing?.external_url ?? "");
     setExternalUrlError(null);
     setFileName(null);
+    setUploadMeta({ mime: null, size: null });
+    setDetached(false);
     setAmount(editing?.amount_ils != null ? String(editing.amount_ils) : "");
     setIsPaid(editing?.is_paid ?? false);
   }, [open, editing?.id]);
@@ -490,6 +520,8 @@ function DocumentFormSheet({
       if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Failed to sign URL");
       setFileUrl(signed.signedUrl);
       setFileName(file.name);
+      setUploadMeta({ mime: file.type || null, size: file.size });
+      setDetached(false);
       toast.success("✅ הקובץ הועלה");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "שגיאה בהעלאה");
@@ -522,6 +554,11 @@ function DocumentFormSheet({
       is_paid: isPaid,
     };
     try {
+      // Detach or replace: unlink the previous private file via the secure path (the stored object is kept).
+      if (editing?.file_path && (detached || fileUrl)) {
+        const { data: det, error: detErr } = await supabase.rpc("detach_document_file", { _document_id: editing.id } as never);
+        if (detErr || (det as { status?: string } | null)?.status !== "ok") throw new Error("ניתוק הקובץ הקודם נכשל");
+      }
       if (editing) {
         await update.mutateAsync({ id: editing.id, patch: payload, prevIsPaid: editing.is_paid });
       } else {
@@ -534,6 +571,34 @@ function DocumentFormSheet({
   }
 
   const busy = add.isPending || update.isPending || uploading;
+
+  const hasFile = !detached && !!(fileUrl || editing?.file_path);
+  const displayName = fileDisplayName(editing, fileName);
+  const metaLabel = [
+    fileName ? mimeLabel(uploadMeta.mime) : mimeLabel(editing?.file_mime),
+    fileName ? fmtSize(uploadMeta.size) : fmtSize(editing?.file_size),
+  ].filter(Boolean).join(" · ");
+
+  async function openFile() {
+    try {
+      if (editing?.file_path && !fileUrl) {
+        const r = await getDocumentFileUrl({ data: { documentId: editing.id } });
+        window.open(r.url, "_blank", "noopener,noreferrer");
+      } else if (fileUrl) {
+        window.open(fileUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      toast.error("פתיחת הקובץ נכשלה");
+    }
+  }
+
+  function onDetach() {
+    if (!window.confirm("להסיר את הקובץ מהמסמך? הקובץ ינותק מהרשומה רק אחרי שמירת הטופס.")) return;
+    setDetached(true);
+    setFileUrl(null);
+    setFileName(null);
+    setUploadMeta({ mime: null, size: null });
+  }
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={editing ? "עריכת מסמך" : "מסמך חדש"}>
@@ -623,29 +688,40 @@ function DocumentFormSheet({
             className="hidden"
             onChange={onFile}
           />
-          {fileUrl ? (
-            <div className="flex items-center gap-2">
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 h-11 rounded-lg border border-input bg-background px-3 text-sm inline-flex items-center gap-1.5 truncate"
-              >
-                <Paperclip size={14} />
-                <span className="truncate">{fileName ?? "קובץ מצורף"}</span>
-                <ExternalLink size={12} className="mr-auto shrink-0" />
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  setFileUrl(null);
-                  setFileName(null);
-                }}
-                className="h-11 w-11 rounded-lg border border-input inline-flex items-center justify-center text-[color:var(--accent-2)]"
-                aria-label="הסר קובץ"
-              >
-                <X size={16} />
-              </button>
+          {hasFile ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2">
+                <Paperclip size={14} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p dir="auto" className="truncate text-start text-sm font-medium">{displayName}</p>
+                  {metaLabel && <p className="text-[11px] text-muted-foreground">{metaLabel}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={openFile}
+                  className="h-11 flex-1 rounded-lg border border-input text-sm font-medium inline-flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink size={14} /> פתח קובץ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  disabled={uploading}
+                  className="h-11 flex-1 rounded-lg border border-input text-sm font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                  החלף
+                </button>
+                <button
+                  type="button"
+                  onClick={onDetach}
+                  className="h-11 flex-1 rounded-lg border border-input text-sm font-medium text-[color:var(--accent-2)] inline-flex items-center justify-center gap-1.5"
+                >
+                  <X size={14} /> הסר
+                </button>
+              </div>
             </div>
           ) : (
             <button

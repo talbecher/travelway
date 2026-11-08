@@ -1375,6 +1375,7 @@ export type Database = {
         Returns: Json
       }
       claim_share: { Args: { _token: string }; Returns: string }
+      detach_document_file: { Args: { _document_id: string }; Returns: Json }
       document_proposal_staged_path: {
         Args: { _proposal_id: string }
         Returns: string
@@ -1434,6 +1435,10 @@ export type Database = {
       restore_day_snapshot: {
         Args: { _pre_restore_name: string; _snapshot_id: string }
         Returns: number
+      }
+      revise_day_proposal_locations: {
+        Args: { _id: string; _locations: Json; _seen_fingerprint: string }
+        Returns: Json
       }
       server_document_cleanup_candidates: {
         Args: { _limit: number }
