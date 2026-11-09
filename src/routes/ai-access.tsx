@@ -41,6 +41,8 @@ function AiAccessPage() {
   const [canPropose, setCanPropose] = useState(false);
   const [canProposeChecklist, setCanProposeChecklist] = useState(false);
   const [canUploadDocuments, setCanUploadDocuments] = useState(false);
+  const [canProposeItinerary, setCanProposeItinerary] = useState(false);
+  const [canProposeExpenses, setCanProposeExpenses] = useState(false);
   const [readMode, setReadMode] = useState<"all" | "checklist">("all");
   const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
@@ -57,6 +59,8 @@ function AiAccessPage() {
         canPropose: canPropose && one && readMode === "all",
         canProposeChecklist: canProposeChecklist && one,
         canUploadDocuments: canUploadDocuments && one,
+        canProposeItinerary: canProposeItinerary && one && readMode === "all",
+        canProposeExpenses: canProposeExpenses && one && readMode === "all",
         readMode: one ? readMode : "all",
       } });
       setShown(r.token);
@@ -158,6 +162,22 @@ function AiAccessPage() {
             <span className="block text-xs text-muted-foreground">הוספה או עדכון של מסמך — רק אחרי אישור שלכם באפליקציה. את הקובץ עצמו מצרפים באפליקציה, לא בצ׳אט.</span>
           </span>
         </label>
+        <label className="flex min-h-11 items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={canProposeItinerary && scope !== "all" && readMode === "all"} disabled={scope === "all" || readMode !== "all"}
+            onChange={(e) => setCanProposeItinerary(e.target.checked)} />
+          <span>
+            מותר להציע הוספה ועדכון של תחנות במסלול
+            <span className="block text-xs text-muted-foreground">עד 10 תחנות בהצעה, בלי מחיקה ובלי לגעת בתחנות מוזמנות או במלונות — רק אחרי אישור שלכם.</span>
+          </span>
+        </label>
+        <label className="flex min-h-11 items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={canProposeExpenses && scope !== "all" && readMode === "all"} disabled={scope === "all" || readMode !== "all"}
+            onChange={(e) => setCanProposeExpenses(e.target.checked)} />
+          <span>
+            מותר להציע הוצאות
+            <span className="block text-xs text-muted-foreground">הוספה ועדכון של הוצאות, בלי מחיקה ובלי שינוי תקציב — רק אחרי אישור שלכם.</span>
+          </span>
+        </label>
         <button type="submit" disabled={busy || !scope}
           className="h-11 w-full rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
           {busy ? "יוצר…" : "צור טוקן"}
@@ -177,6 +197,8 @@ function AiAccessPage() {
               t.scopes?.includes("propose_day") ? "הצעות יום" : null,
               t.scopes?.includes("propose_checklist") ? "הצעות צ׳ק־ליסט" : null,
               t.scopes?.includes("upload_documents") ? "הצעות מסמכים" : null,
+              t.scopes?.includes("propose_itinerary") ? "הצעות מסלול" : null,
+              t.scopes?.includes("propose_expenses") ? "הצעות הוצאות" : null,
             ].filter(Boolean).join(" + ");
             return (
               <li key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-3 text-sm">
