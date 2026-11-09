@@ -909,6 +909,78 @@ export type Database = {
           },
         ]
       }
+      item_proposals: {
+        Row: {
+          base: Json
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          expires_at: string
+          id: string
+          kind: string
+          note: string | null
+          op_count: number
+          ops: Json
+          payload_hash: string
+          request_id: string
+          result: Json | null
+          status: string
+          token_id: string | null
+          trip_id: string
+        }
+        Insert: {
+          base: Json
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          expires_at?: string
+          id?: string
+          kind: string
+          note?: string | null
+          op_count: number
+          ops: Json
+          payload_hash: string
+          request_id: string
+          result?: Json | null
+          status?: string
+          token_id?: string | null
+          trip_id: string
+        }
+        Update: {
+          base?: Json
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          expires_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          op_count?: number
+          ops?: Json
+          payload_hash?: string
+          request_id?: string
+          result?: Json | null
+          status?: string
+          token_id?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_proposals_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "api_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_proposals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itinerary_days: {
         Row: {
           city_label: string | null
@@ -1277,6 +1349,31 @@ export type Database = {
         Args: { _p: Database["public"]["Tables"]["document_proposals"]["Row"] }
         Returns: string
       }
+      _expense_sig: {
+        Args: { _e: Database["public"]["Tables"]["expenses"]["Row"] }
+        Returns: string
+      }
+      _is_google_maps_url: { Args: { _u: string }; Returns: boolean }
+      _item_analyze: {
+        Args: { _p: Database["public"]["Tables"]["item_proposals"]["Row"] }
+        Returns: Json
+      }
+      _item_money_ctx: { Args: { _trip_id: string }; Returns: Json }
+      _item_text_ok: {
+        Args: { _k: string; _max: number; _o: Json }
+        Returns: boolean
+      }
+      _item_token_live: {
+        Args: { _scope: string; _token_id: string; _trip_id: string }
+        Returns: boolean
+      }
+      _item_view_hash: {
+        Args: {
+          _a: Json
+          _p: Database["public"]["Tables"]["item_proposals"]["Row"]
+        }
+        Returns: string
+      }
       _proposal_claim: {
         Args: { _id: string; _seen_fingerprint: string }
         Returns: Json
@@ -1320,6 +1417,26 @@ export type Database = {
           _target: string
           _trip_id: string
           _wants_file: boolean
+        }
+        Returns: Json
+      }
+      api_create_expense_proposal: {
+        Args: {
+          _hash: string
+          _note: string
+          _ops: Json
+          _request_id: string
+          _trip_id: string
+        }
+        Returns: Json
+      }
+      api_create_itinerary_proposal: {
+        Args: {
+          _hash: string
+          _note: string
+          _ops: Json
+          _request_id: string
+          _trip_id: string
         }
         Returns: Json
       }
@@ -1368,6 +1485,10 @@ export type Database = {
         Args: { _id: string; _seen_fingerprint: string }
         Returns: Json
       }
+      apply_item_proposal: {
+        Args: { _accept_duplicates: number[]; _id: string; _seen_hash: string }
+        Returns: Json
+      }
       booking_notes_block: {
         Args: { _note: string; _time: string; _url: string }
         Returns: string
@@ -1390,6 +1511,7 @@ export type Database = {
       get_checklist_proposal_view: { Args: { _id: string }; Returns: Json }
       get_day_proposal_view: { Args: { _id: string }; Returns: Json }
       get_document_proposal_view: { Args: { _id: string }; Returns: Json }
+      get_item_proposal_view: { Args: { _id: string }; Returns: Json }
       import_my_map: {
         Args: {
           _city: string
@@ -1421,6 +1543,7 @@ export type Database = {
       reject_checklist_proposal: { Args: { _id: string }; Returns: Json }
       reject_day_proposal: { Args: { _id: string }; Returns: Json }
       reject_document_proposal: { Args: { _id: string }; Returns: Json }
+      reject_item_proposal: { Args: { _id: string }; Returns: Json }
       replace_day_entries: {
         Args: {
           _day_id: string

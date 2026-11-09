@@ -21,12 +21,15 @@ import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ChecklistProposalsIdRouteImport } from './routes/checklist-proposals.$id'
 import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
 import { Route as DocumentProposalsIdRouteImport } from './routes/document-proposals.$id'
+import { Route as ItemProposalsIdRouteImport } from './routes/item-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as ApiPublicChecklistProposalsRouteImport } from './routes/api/public/checklist-proposals'
 import { Route as ApiPublicDayProposalsRouteImport } from './routes/api/public/day-proposals'
 import { Route as ApiPublicDocumentProposalsRouteImport } from './routes/api/public/document-proposals'
+import { Route as ApiPublicExpenseProposalsRouteImport } from './routes/api/public/expense-proposals'
+import { Route as ApiPublicItineraryProposalsRouteImport } from './routes/api/public/itinerary-proposals'
 import { Route as ApiPublicOpenapiDotjsonRouteImport } from './routes/api/public/openapi[.]json'
 import { Route as ApiPublicTripContextRouteImport } from './routes/api/public/trip-context'
 import { Route as ApiPublicHooksDocumentCleanupRouteImport } from './routes/api/public/hooks/document-cleanup'
@@ -91,6 +94,11 @@ const DocumentProposalsIdRoute = DocumentProposalsIdRouteImport.update({
   path: '/document-proposals/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ItemProposalsIdRoute = ItemProposalsIdRouteImport.update({
+  id: '/item-proposals/$id',
+  path: '/item-proposals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -123,6 +131,18 @@ const ApiPublicDocumentProposalsRoute =
     path: '/api/public/document-proposals',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicExpenseProposalsRoute =
+  ApiPublicExpenseProposalsRouteImport.update({
+    id: '/api/public/expense-proposals',
+    path: '/api/public/expense-proposals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicItineraryProposalsRoute =
+  ApiPublicItineraryProposalsRouteImport.update({
+    id: '/api/public/itinerary-proposals',
+    path: '/api/public/itinerary-proposals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicOpenapiDotjsonRoute = ApiPublicOpenapiDotjsonRouteImport.update({
   id: '/api/public/openapi.json',
   path: '/api/public/openapi.json',
@@ -153,12 +173,15 @@ export interface FileRoutesByFullPath {
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/document-proposals/$id': typeof DocumentProposalsIdRoute
+  '/item-proposals/$id': typeof ItemProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
   '/api/public/checklist-proposals': typeof ApiPublicChecklistProposalsRoute
   '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/document-proposals': typeof ApiPublicDocumentProposalsRoute
+  '/api/public/expense-proposals': typeof ApiPublicExpenseProposalsRoute
+  '/api/public/itinerary-proposals': typeof ApiPublicItineraryProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
   '/api/public/hooks/document-cleanup': typeof ApiPublicHooksDocumentCleanupRoute
@@ -175,12 +198,15 @@ export interface FileRoutesByTo {
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/document-proposals/$id': typeof DocumentProposalsIdRoute
+  '/item-proposals/$id': typeof ItemProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
   '/api/public/checklist-proposals': typeof ApiPublicChecklistProposalsRoute
   '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/document-proposals': typeof ApiPublicDocumentProposalsRoute
+  '/api/public/expense-proposals': typeof ApiPublicExpenseProposalsRoute
+  '/api/public/itinerary-proposals': typeof ApiPublicItineraryProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
   '/api/public/hooks/document-cleanup': typeof ApiPublicHooksDocumentCleanupRoute
@@ -199,12 +225,15 @@ export interface FileRoutesById {
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/document-proposals/$id': typeof DocumentProposalsIdRoute
+  '/item-proposals/$id': typeof ItemProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
   '/api/public/checklist-proposals': typeof ApiPublicChecklistProposalsRoute
   '/api/public/day-proposals': typeof ApiPublicDayProposalsRoute
   '/api/public/document-proposals': typeof ApiPublicDocumentProposalsRoute
+  '/api/public/expense-proposals': typeof ApiPublicExpenseProposalsRoute
+  '/api/public/itinerary-proposals': typeof ApiPublicItineraryProposalsRoute
   '/api/public/openapi.json': typeof ApiPublicOpenapiDotjsonRoute
   '/api/public/trip-context': typeof ApiPublicTripContextRoute
   '/api/public/hooks/document-cleanup': typeof ApiPublicHooksDocumentCleanupRoute
@@ -224,12 +253,15 @@ export interface FileRouteTypes {
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/document-proposals/$id'
+    | '/item-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
     | '/api/public/checklist-proposals'
     | '/api/public/day-proposals'
     | '/api/public/document-proposals'
+    | '/api/public/expense-proposals'
+    | '/api/public/itinerary-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
     | '/api/public/hooks/document-cleanup'
@@ -246,12 +278,15 @@ export interface FileRouteTypes {
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/document-proposals/$id'
+    | '/item-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
     | '/api/public/checklist-proposals'
     | '/api/public/day-proposals'
     | '/api/public/document-proposals'
+    | '/api/public/expense-proposals'
+    | '/api/public/itinerary-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
     | '/api/public/hooks/document-cleanup'
@@ -269,12 +304,15 @@ export interface FileRouteTypes {
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/document-proposals/$id'
+    | '/item-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
     | '/api/public/checklist-proposals'
     | '/api/public/day-proposals'
     | '/api/public/document-proposals'
+    | '/api/public/expense-proposals'
+    | '/api/public/itinerary-proposals'
     | '/api/public/openapi.json'
     | '/api/public/trip-context'
     | '/api/public/hooks/document-cleanup'
@@ -293,10 +331,13 @@ export interface RootRouteChildren {
   ChecklistProposalsIdRoute: typeof ChecklistProposalsIdRoute
   DayProposalsIdRoute: typeof DayProposalsIdRoute
   DocumentProposalsIdRoute: typeof DocumentProposalsIdRoute
+  ItemProposalsIdRoute: typeof ItemProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   ApiPublicChecklistProposalsRoute: typeof ApiPublicChecklistProposalsRoute
   ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
   ApiPublicDocumentProposalsRoute: typeof ApiPublicDocumentProposalsRoute
+  ApiPublicExpenseProposalsRoute: typeof ApiPublicExpenseProposalsRoute
+  ApiPublicItineraryProposalsRoute: typeof ApiPublicItineraryProposalsRoute
   ApiPublicOpenapiDotjsonRoute: typeof ApiPublicOpenapiDotjsonRoute
   ApiPublicTripContextRoute: typeof ApiPublicTripContextRoute
   ApiPublicHooksDocumentCleanupRoute: typeof ApiPublicHooksDocumentCleanupRoute
@@ -388,6 +429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentProposalsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/item-proposals/$id': {
+      id: '/item-proposals/$id'
+      path: '/item-proposals/$id'
+      fullPath: '/item-proposals/$id'
+      preLoaderRoute: typeof ItemProposalsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/itinerary/': {
       id: '/itinerary/'
       path: '/'
@@ -428,6 +476,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/document-proposals'
       fullPath: '/api/public/document-proposals'
       preLoaderRoute: typeof ApiPublicDocumentProposalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/expense-proposals': {
+      id: '/api/public/expense-proposals'
+      path: '/api/public/expense-proposals'
+      fullPath: '/api/public/expense-proposals'
+      preLoaderRoute: typeof ApiPublicExpenseProposalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/itinerary-proposals': {
+      id: '/api/public/itinerary-proposals'
+      path: '/api/public/itinerary-proposals'
+      fullPath: '/api/public/itinerary-proposals'
+      preLoaderRoute: typeof ApiPublicItineraryProposalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/openapi.json': {
@@ -481,10 +543,13 @@ const rootRouteChildren: RootRouteChildren = {
   ChecklistProposalsIdRoute: ChecklistProposalsIdRoute,
   DayProposalsIdRoute: DayProposalsIdRoute,
   DocumentProposalsIdRoute: DocumentProposalsIdRoute,
+  ItemProposalsIdRoute: ItemProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   ApiPublicChecklistProposalsRoute: ApiPublicChecklistProposalsRoute,
   ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
   ApiPublicDocumentProposalsRoute: ApiPublicDocumentProposalsRoute,
+  ApiPublicExpenseProposalsRoute: ApiPublicExpenseProposalsRoute,
+  ApiPublicItineraryProposalsRoute: ApiPublicItineraryProposalsRoute,
   ApiPublicOpenapiDotjsonRoute: ApiPublicOpenapiDotjsonRoute,
   ApiPublicTripContextRoute: ApiPublicTripContextRoute,
   ApiPublicHooksDocumentCleanupRoute: ApiPublicHooksDocumentCleanupRoute,

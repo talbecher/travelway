@@ -4,7 +4,7 @@
 import { createHash, createHmac, timingSafeEqual } from "crypto";
 
 export const SCHEMA_VERSION = "1.0";
-const SECTIONS = ["itinerary", "saved_places", "reservations", "hotels", "expenses", "checklist", "documents"] as const;
+const SECTIONS = ["itinerary", "saved_places", "reservations", "hotels", "expenses", "expense_items", "checklist", "documents"] as const;
 type Section = (typeof SECTIONS)[number];
 const ALLOWED_PARAMS = new Set(["trip_id", "section", "date", "city", "limit", "cursor"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -79,6 +79,12 @@ const itemDto = (e: Rec) => ({
   google_maps_url: e.google_maps_url, linked_saved_place_id: e.linked_recommendation_id, linked_hotel_id: e.linked_hotel_id,
 });
 const checklistDto = (c: Rec) => ({ id: c.id, title: c.title, category: c.category, priority: c.priority, due_date: c.due_date, is_done: c.is_done, notes: c.notes });
+const expenseDto = (e: Rec) => ({
+  id: e.id, date: e.expense_date, category: e.category, description: e.description, location_name: e.location_name,
+  amount_base: e.amount_ils == null ? null : Number(e.amount_ils),
+  original_amount: e.amount_foreign == null ? null : Number(e.amount_foreign), original_currency: e.foreign_currency,
+  linked_saved_place_id: e.linked_recommendation_id, linked_hotel_id: e.linked_hotel_id,
+});
 const docDto = (d: Rec) => ({ id: d.id, title: d.title, type: d.type, valid_date: d.valid_date, linked_saved_place_id: d.linked_recommendation_id, created_at: d.created_at });
 
 function escLike(s: string) { return s.replace(/[\\%_]/g, (m) => `\\${m}`); }
@@ -370,6 +376,29 @@ async function sectionPage(
       const q = db.from("documents").select("id,title,type,valid_date,linked_recommendation_id,created_at").eq("trip_id", tripId);
       const { page, nextKeys } = await keysetPage(q, o.limit, o.after);
       return { body: { items: page.map(docDto) }, nextKeys };
+    }
+    case "expense_items": {
+      const q = db.from("expenses")
+        .select("id,expense_date,category,description,location_name,amount_ils,amount_foreign,foreign_currency,linked_recommendation_id,linked_hotel_id,created_at")
+        .eq("trip_id", tripId);
+      const { page, nextKeys } = await keysetPage(q, o.limit, o.after);
+      const [{ data: st }, { data: tr }] = await Promise.all([
+        db.from("settings").select("base_currency,foreign_currency,manual_exchange_rate").eq("trip_id", tripId).order("id").limit(1).maybeSingle(),
+        db.from("trips").select("currency_code").eq("id", tripId).maybeSingle(),
+      ]);
+      const manual = Number(st?.manual_exchange_rate ?? 0);
+      return {
+        body: {
+          currency: {
+            base_currency: String(st?.base_currency || "ILS").toUpperCase(),
+            target_currency: String(tr?.currency_code || st?.foreign_currency || "ILS").toUpperCase(),
+            manual_rate: manual > 0 ? manual : null,
+            note: "amount_base is in base_currency. manual_rate = target units per 1 base unit.",
+          },
+          items: page.map(expenseDto),
+        },
+        nextKeys,
+      };
     }
     case "expenses":
       return { body: { expenses_summary: await expensesSummary(db, tripId) }, nextKeys: null };

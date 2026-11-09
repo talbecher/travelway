@@ -24,10 +24,12 @@ export const createApiToken = createServerFn({ method: "POST" })
       canPropose: z.boolean().default(false),
       canProposeChecklist: z.boolean().default(false),
       canUploadDocuments: z.boolean().default(false),
+      canProposeItinerary: z.boolean().default(false),
+      canProposeExpenses: z.boolean().default(false),
       readMode: z.enum(["all", "checklist"]).default("all"),
     })
-      .refine((v) => (!v.canPropose && !v.canProposeChecklist && !v.canUploadDocuments && v.readMode === "all") || !!v.tripId, { message: "הרשאה זו מחייבת טיול אחד" })
-      .refine((v) => !(v.canPropose && v.readMode === "checklist"), { message: "הצעות ליום מחייבות קריאת הטיול המלא" })
+      .refine((v) => (!v.canPropose && !v.canProposeChecklist && !v.canUploadDocuments && !v.canProposeItinerary && !v.canProposeExpenses && v.readMode === "all") || !!v.tripId, { message: "הרשאה זו מחייבת טיול אחד" })
+      .refine((v) => !((v.canPropose || v.canProposeItinerary || v.canProposeExpenses) && v.readMode === "checklist"), { message: "הרשאה זו מחייבת קריאת הטיול המלא" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -50,6 +52,8 @@ export const createApiToken = createServerFn({ method: "POST" })
         ...(data.canPropose ? ["propose_day"] : []),
         ...(data.canProposeChecklist ? ["propose_checklist"] : []),
         ...(data.canUploadDocuments ? ["upload_documents"] : []),
+        ...(data.canProposeItinerary ? ["propose_itinerary"] : []),
+        ...(data.canProposeExpenses ? ["propose_expenses"] : []),
       ],
       expires_at: new Date(Date.now() + data.days * 86400000).toISOString(),
     });
