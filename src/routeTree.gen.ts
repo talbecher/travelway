@@ -21,6 +21,7 @@ import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ChecklistProposalsIdRouteImport } from './routes/checklist-proposals.$id'
 import { Route as DayProposalsIdRouteImport } from './routes/day-proposals.$id'
 import { Route as DocumentProposalsIdRouteImport } from './routes/document-proposals.$id'
+import { Route as ItemProposalsIdRouteImport } from './routes/item-proposals.$id'
 import { Route as ItineraryIndexRouteImport } from './routes/itinerary.index'
 import { Route as ItineraryDayIdRouteImport } from './routes/itinerary.$dayId'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
@@ -91,6 +92,11 @@ const DayProposalsIdRoute = DayProposalsIdRouteImport.update({
 const DocumentProposalsIdRoute = DocumentProposalsIdRouteImport.update({
   id: '/document-proposals/$id',
   path: '/document-proposals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ItemProposalsIdRoute = ItemProposalsIdRouteImport.update({
+  id: '/item-proposals/$id',
+  path: '/item-proposals/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ItineraryIndexRoute = ItineraryIndexRouteImport.update({
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/document-proposals/$id': typeof DocumentProposalsIdRoute
+  '/item-proposals/$id': typeof ItemProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/document-proposals/$id': typeof DocumentProposalsIdRoute
+  '/item-proposals/$id': typeof ItemProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary': typeof ItineraryIndexRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/checklist-proposals/$id': typeof ChecklistProposalsIdRoute
   '/day-proposals/$id': typeof DayProposalsIdRoute
   '/document-proposals/$id': typeof DocumentProposalsIdRoute
+  '/item-proposals/$id': typeof ItemProposalsIdRoute
   '/itinerary/$dayId': typeof ItineraryDayIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/itinerary/': typeof ItineraryIndexRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/document-proposals/$id'
+    | '/item-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/document-proposals/$id'
+    | '/item-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/checklist-proposals/$id'
     | '/day-proposals/$id'
     | '/document-proposals/$id'
+    | '/item-proposals/$id'
     | '/itinerary/$dayId'
     | '/join/$token'
     | '/itinerary/'
@@ -319,6 +331,7 @@ export interface RootRouteChildren {
   ChecklistProposalsIdRoute: typeof ChecklistProposalsIdRoute
   DayProposalsIdRoute: typeof DayProposalsIdRoute
   DocumentProposalsIdRoute: typeof DocumentProposalsIdRoute
+  ItemProposalsIdRoute: typeof ItemProposalsIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   ApiPublicChecklistProposalsRoute: typeof ApiPublicChecklistProposalsRoute
   ApiPublicDayProposalsRoute: typeof ApiPublicDayProposalsRoute
@@ -414,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/document-proposals/$id'
       fullPath: '/document-proposals/$id'
       preLoaderRoute: typeof DocumentProposalsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/item-proposals/$id': {
+      id: '/item-proposals/$id'
+      path: '/item-proposals/$id'
+      fullPath: '/item-proposals/$id'
+      preLoaderRoute: typeof ItemProposalsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/itinerary/': {
@@ -523,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChecklistProposalsIdRoute: ChecklistProposalsIdRoute,
   DayProposalsIdRoute: DayProposalsIdRoute,
   DocumentProposalsIdRoute: DocumentProposalsIdRoute,
+  ItemProposalsIdRoute: ItemProposalsIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   ApiPublicChecklistProposalsRoute: ApiPublicChecklistProposalsRoute,
   ApiPublicDayProposalsRoute: ApiPublicDayProposalsRoute,
