@@ -53,6 +53,7 @@ export function buildDeadlines(
     // Only hotels whose stay hasn't ended yet
     if (h.checkout_date && h.checkout_date < today) continue;
     const daysLeft = daysBetween(today, h.cancellation_deadline);
+    if (daysLeft < 0) continue;
     items.push({
       id: `hotel-${h.id}`,
       name: h.hotel_name,

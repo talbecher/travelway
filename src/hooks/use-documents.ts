@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { todayISO } from "@/lib/format";
 
 export type DocumentType =
   | "flight"
@@ -49,16 +48,6 @@ export type DocumentInput = {
   display_order?: number;
 };
 
-const EXPENSE_CATEGORY: Record<DocumentType, "food" | "attraction" | "transport" | "shopping" | "accommodation" | "other"> = {
-  flight: "transport",
-  transport: "transport",
-  hotel: "accommodation",
-  attraction: "attraction",
-  insurance: "other",
-  visa: "other",
-  other: "other",
-};
-
 export function useDocuments(tripId: string | undefined) {
   return useQuery({
     queryKey: ["documents", tripId ?? "none"],
@@ -76,18 +65,6 @@ export function useDocuments(tripId: string | undefined) {
   });
 }
 
-async function maybeCreateExpense(tripId: string, doc: TripDocument) {
-  if (!doc.is_paid || !doc.amount_ils || Number(doc.amount_ils) <= 0) return;
-  const { error } = await supabase.from("expenses").insert({
-    trip_id: tripId,
-    amount_ils: Number(doc.amount_ils),
-    category: EXPENSE_CATEGORY[doc.type],
-    description: doc.title,
-    expense_date: doc.valid_date ?? todayISO(),
-  });
-  if (error) throw error;
-}
-
 export function useAddDocument(tripId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
@@ -100,17 +77,11 @@ export function useAddDocument(tripId: string | undefined) {
         .single();
       if (error) throw error;
       const doc = data as unknown as TripDocument;
-      await maybeCreateExpense(tripId, doc);
       return doc;
     },
-    onSuccess: (doc) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents", tripId] });
-      if (doc.is_paid && doc.amount_ils && Number(doc.amount_ils) > 0) {
-        qc.invalidateQueries({ queryKey: ["expenses", tripId] });
-        toast.success("✅ הוצאה נוספה לתקציב");
-      } else {
-        toast.success("המסמך נוסף");
-      }
+      toast.success("המסמך נוסף");
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "שגיאה בשמירת המסמך");
@@ -121,7 +92,7 @@ export function useAddDocument(tripId: string | undefined) {
 export function useUpdateDocument(tripId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, patch, prevIsPaid }: { id: string; patch: Partial<DocumentInput>; prevIsPaid: boolean }) => {
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<DocumentInput>; prevIsPaid: boolean }) => {
       const { data, error } = await supabase
         .from("documents")
         .update(patch)
@@ -130,20 +101,11 @@ export function useUpdateDocument(tripId: string | undefined) {
         .single();
       if (error) throw error;
       const doc = data as unknown as TripDocument;
-      // If transition unpaid -> paid, auto-create expense
-      if (!prevIsPaid && doc.is_paid && tripId) {
-        await maybeCreateExpense(tripId, doc);
-      }
-      return { doc, transitionedToPaid: !prevIsPaid && doc.is_paid };
+      return { doc };
     },
-    onSuccess: ({ transitionedToPaid, doc }) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents", tripId] });
-      if (transitionedToPaid && doc.amount_ils && Number(doc.amount_ils) > 0) {
-        qc.invalidateQueries({ queryKey: ["expenses", tripId] });
-        toast.success("✅ הוצאה נוספה לתקציב");
-      } else {
-        toast.success("המסמך עודכן");
-      }
+      toast.success("המסמך עודכן");
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "שגיאה בעדכון");
