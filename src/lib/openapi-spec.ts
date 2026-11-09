@@ -1,5 +1,5 @@
 // Single source for the GPT Actions OpenAPI document (served by /api/public/openapi.json and exported to docs/).
-const sections = ["itinerary", "saved_places", "reservations", "hotels", "expenses", "checklist", "documents"];
+const sections = ["itinerary", "saved_places", "reservations", "hotels", "expenses", "expense_items", "checklist", "documents"];
 const err = (d: string) => ({ description: d, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });
 
 export const openApiSpec = {
@@ -12,7 +12,13 @@ export const openApiSpec = {
   servers: [{ url: "https://travelway.lovable.app" }],
   components: {
     securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "Personal access token (twpat_…)" } },
-    schemas: { Error: { type: "object", properties: { error: { type: "string" } }, required: ["error"] } },
+    schemas: {
+      Error: { type: "object", properties: { error: { type: "string" }, reason: { type: "string" } }, required: ["error"] },
+      ProposalCreated: { type: "object", properties: {
+        id: { type: "string" }, status: { type: "string" }, replayed: { type: "boolean" }, expires_at: { type: "string" },
+        operation_count: { type: "integer" }, review_url: { type: "string" }, message: { type: "string" },
+      } },
+    },
   },
   security: [{ bearer: [] }],
   paths: {
@@ -158,13 +164,105 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/public/itinerary-proposals": {
+      post: {
+        operationId: "proposeItineraryChanges",
+        summary: "Save a proposal to add or update individual itinerary stops (nothing changes until the user approves in TravelWay)",
+        description: "Max 10 ops. add needs date; update needs an item id from section=itinerary and patches only sent fields. No delete/move; booked and hotel stops are rejected. Prefer source_saved_place_id. Renaming a located stop needs a location or location_decision. Return review_url.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object", additionalProperties: false, required: ["request_id", "operations"],
+            properties: {
+              request_id: { type: "string", format: "uuid", description: "Unique id you generate. Same id + same payload returns the existing proposal; a different payload is rejected." },
+              trip_id: { type: "string", format: "uuid" },
+              note: { type: "string", maxLength: 2000 },
+              operations: { type: "array", minItems: 1, maxItems: 10, items: {
+                type: "object", required: ["op"],
+                properties: {
+                  op: { type: "string", enum: ["add", "update"] },
+                  id: { type: "string", format: "uuid", description: "update only: item id from getTripContext section=itinerary." },
+                  date: { type: "string", format: "date", description: "add only: a day in the active itinerary." },
+                  entry_type: { type: "string", enum: ["attraction", "food", "transport", "note", "flight"], description: "Required for add." },
+                  title: { type: "string", maxLength: 200, description: "Required for add." },
+                  description: { type: ["string", "null"], maxLength: 2000 },
+                  time_of_day: { type: ["string", "null"], pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+                  location_name: { type: ["string", "null"], maxLength: 300 },
+                  source_saved_place_id: { type: "string", format: "uuid", description: "Preferred. Saved place id (section=saved_places); TravelWay copies its saved location. Unknown ids reject the proposal." },
+                  latitude: { type: "number", minimum: -90, maximum: 90, description: "With longitude only. Copy from trip-context; never invent." },
+                  longitude: { type: "number", minimum: -180, maximum: 180, description: "With latitude only. Copy from trip-context; never invent." },
+                  google_maps_url: { type: ["string", "null"], format: "uri", description: "Google Maps links only." },
+                  location_decision: { type: "string", enum: ["keep", "clear"], description: "update only, when changing title/location_name without a new location: keep the old location or clear it." },
+                },
+              } },
+            },
+          } } },
+        },
+        responses: {
+          "201": { description: "Proposal saved (pending).", content: { "application/json": { schema: { $ref: "#/components/schemas/ProposalCreated" } } } },
+          "200": { description: "Replay of an existing proposal (same request_id and payload).", content: { "application/json": { schema: { $ref: "#/components/schemas/ProposalCreated" } } } },
+          "400": err("Invalid body or operations (reason explains)"),
+          "401": err("Missing, invalid, revoked or expired token"),
+          "403": err("Token lacks the itinerary proposal permission or trip scope"),
+          "404": err("Trip, day, item or active itinerary not available"),
+          "409": err("Protected stop, or request_id reused with a different payload"),
+          "413": err("Body too large"),
+          "429": err("Too many pending proposals for this trip"),
+          "500": err("Unexpected error"),
+        },
+      },
+    },
+    "/api/public/expense-proposals": {
+      post: {
+        operationId: "proposeExpenseChanges",
+        summary: "Save a proposal to add or update expenses (nothing changes until the user approves in TravelWay)",
+        description: "Max 10 ops. update needs an id from section=expense_items and patches only sent fields. Send amount with currency as paid; never convert yourself. TravelWay converts with the trip's manual rate or rejects (422). No delete or budget changes. Return review_url.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object", additionalProperties: false, required: ["request_id", "operations"],
+            properties: {
+              request_id: { type: "string", format: "uuid", description: "Unique id you generate. Same id + same payload returns the existing proposal; a different payload is rejected." },
+              trip_id: { type: "string", format: "uuid" },
+              note: { type: "string", maxLength: 2000 },
+              operations: { type: "array", minItems: 1, maxItems: 10, items: {
+                type: "object", required: ["op"],
+                properties: {
+                  op: { type: "string", enum: ["add", "update"] },
+                  id: { type: "string", format: "uuid", description: "update only: expense id from section=expense_items." },
+                  date: { type: "string", format: "date", description: "Required for add." },
+                  category: { type: "string", enum: ["food", "attraction", "transport", "shopping", "accommodation", "other"], description: "Required for add." },
+                  description: { type: ["string", "null"], maxLength: 500 },
+                  location_name: { type: ["string", "null"], maxLength: 300 },
+                  amount: { type: "number", exclusiveMinimum: 0, description: "Amount as paid. Send with currency. Required for add." },
+                  currency: { type: "string", pattern: "^[A-Za-z]{3}$", description: "ISO code of amount: the trip base or target currency." },
+                },
+              } },
+            },
+          } } },
+        },
+        responses: {
+          "201": { description: "Proposal saved (pending).", content: { "application/json": { schema: { $ref: "#/components/schemas/ProposalCreated" } } } },
+          "200": { description: "Replay of an existing proposal (same request_id and payload).", content: { "application/json": { schema: { $ref: "#/components/schemas/ProposalCreated" } } } },
+          "400": err("Invalid body or operations (reason explains)"),
+          "401": err("Missing, invalid, revoked or expired token"),
+          "403": err("Token lacks the expense proposal permission or trip scope"),
+          "404": err("Trip or expense not available"),
+          "409": err("request_id reused with a different payload"),
+          "413": err("Body too large"),
+          "422": err("No valid exchange rate for this currency"),
+          "429": err("Too many pending proposals for this trip"),
+          "500": err("Unexpected error"),
+        },
+      },
+    },
     "/api/public/trip-context": {
       get: {
         operationId: "getTripContext",
         summary: "Get the current state of a trip",
         parameters: [
           { name: "trip_id", in: "query", schema: { type: "string", format: "uuid" }, description: "Required unless the token is scoped to one trip." },
-          { name: "section", in: "query", schema: { type: "string", enum: sections }, description: "Return one paginated section instead of the full trip." },
+          { name: "section", in: "query", schema: { type: "string", enum: sections }, description: "Return one paginated section instead of the full trip. expense_items lists expenses with ids, amount_base (in currency.base_currency) and original amount/currency." },
           { name: "date", in: "query", schema: { type: "string", format: "date" }, description: "Only with section=itinerary." },
           { name: "city", in: "query", schema: { type: "string", maxLength: 100 }, description: "Exact, case-insensitive. Only with section=saved_places or hotels." },
           { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 200, default: 100 }, description: "Only with section (not expenses)." },
