@@ -92,6 +92,13 @@
       "when": 1794150017747,
       "tag": "0012_day_proposal_saved_place_source",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794210706480,
+      "tag": "0013_item_proposals_itinerary_expenses",
+      "breakpoints": true
     }
   ]
 }
