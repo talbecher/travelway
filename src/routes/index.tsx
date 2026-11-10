@@ -896,15 +896,7 @@ function Home() {
           <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} />
         )}
 
-        <section className="grid grid-cols-3 gap-2" aria-label="פעולות שימושיות">
-          <Button variant="outline"
-            type="button"
-            onClick={() => setHayinuOpen(true)}
-            className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5"
-          >
-            <MapPin size={20} className="text-action-visited" />
-            <span className="whitespace-normal break-words text-[12px] font-medium">היינו כאן</span>
-          </Button>
+        <section className="grid grid-cols-2 gap-3" aria-label="פעולות שימושיות">
           <Button variant="outline"
             type="button"
             disabled={!isOnline}
@@ -915,37 +907,58 @@ function Home() {
               }
               openQuickExpense();
             }}
-            className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5"
+            className="h-auto min-h-[96px] min-w-0 flex-col gap-1.5 rounded-2xl border-border bg-card px-1.5 text-center shadow-sm"
           >
-            <ReceiptText size={20} className="text-action-expense" />
-            <span className="whitespace-normal break-words text-[12px] font-medium">הוצאה מהירה</span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "color-mix(in oklab, var(--action-expense) 14%, transparent)" }}>
+              <ReceiptText size={20} className="text-action-expense" />
+            </span>
+            <span className="whitespace-normal break-words text-[14px] font-medium">הוצאה מהירה</span>
+          </Button>
+          <Button variant="outline"
+            type="button"
+            onClick={() => setHayinuOpen(true)}
+            className="h-auto min-h-[96px] min-w-0 flex-col gap-1.5 rounded-2xl border-border bg-card px-1.5 text-center shadow-sm"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "color-mix(in oklab, var(--action-visited) 14%, transparent)" }}>
+              <MapPin size={20} className="text-action-visited" />
+            </span>
+            <span className="whitespace-normal break-words text-[14px] font-medium">היינו כאן</span>
           </Button>
           <Button asChild variant="outline"
-            className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5"
+            className="h-auto min-h-[96px] min-w-0 flex-col gap-1.5 rounded-2xl border-border bg-card px-1.5 text-center shadow-sm"
           >
             <Link to="/documents">
-              <FileText size={20} className="text-action-documents" />
-              <span className="whitespace-normal break-words text-[12px] font-medium">מסמכים</span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "color-mix(in oklab, var(--action-documents) 14%, transparent)" }}>
+                <FileText size={20} className="text-action-documents" />
+              </span>
+              <span className="whitespace-normal break-words text-[14px] font-medium">מסמכים</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5">
-            <Link to="/recommendations">
-              <Star size={20} className="text-action-recommendations" />
-              <span className="whitespace-normal break-words text-[12px] font-medium">המלצות</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5">
-            <Link to="/budget">
-              <Wallet size={20} className="text-action-budget" />
-              <span className="whitespace-normal break-words text-[12px] font-medium">תקציב</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5">
-            <Link to="/itinerary">
-              <Calendar size={20} className="text-action-itinerary" />
-              <span className="whitespace-normal break-words text-[12px] font-medium">מסלול</span>
-            </Link>
-          </Button>
+          {hotelHref ? (
+            <Button asChild variant="outline"
+              className="h-auto min-h-[96px] min-w-0 flex-col gap-1.5 rounded-2xl border-border bg-card px-1.5 text-center shadow-sm"
+            >
+              <a href={hotelHref} target="_blank" rel="noreferrer">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "color-mix(in oklab, var(--action-hotel) 14%, transparent)" }}>
+                  <Hotel size={20} className="text-action-hotel" />
+                </span>
+                <span className="whitespace-normal break-words text-[14px] font-medium">חזרה למלון</span>
+                <span className="max-w-full truncate text-[11px] text-muted-foreground">{tonightHotel!.hotel_name}</span>
+              </a>
+            </Button>
+          ) : (
+            <Button variant="outline"
+              type="button"
+              disabled
+              className="h-auto min-h-[96px] min-w-0 flex-col gap-1.5 rounded-2xl border-border bg-card px-1.5 text-center shadow-sm"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "color-mix(in oklab, var(--action-hotel) 14%, transparent)" }}>
+                <Hotel size={20} className="text-action-hotel" />
+              </span>
+              <span className="whitespace-normal break-words text-[14px] font-medium">חזרה למלון</span>
+              <span className="text-[11px] text-muted-foreground">אין מלון להלילה</span>
+            </Button>
+          )}
         </section>
 
         <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} variant="activeHome" />
