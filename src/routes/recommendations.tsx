@@ -813,15 +813,17 @@ function recNavHref(rec: Rec) {
 }
 
 function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
-  const navHref = recNavHref(rec);
+  const { data: liveRecs } = useRecs();
+  const current = liveRecs?.find((r) => r.id === rec.id) ?? rec;
+  const navHref = recNavHref(current);
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
-  const typeChipColor = rec.type === "food" ? "var(--accent-2)" : rec.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
-  const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+  const typeChipColor = current.type === "food" ? "var(--accent-2)" : current.type === "hotel" ? "var(--accent-3)" : "var(--accent)";
+  const typeLabel = current.type === "food" ? "אוכל" : current.type === "hotel" ? "לינה" : "אטרקציה";
   const mapAddingRef = useRef(false);
   const addToDay = useMutation({
-    mutationFn: async (dayId: string) => addRecommendationToDay(rec, dayId),
+    mutationFn: async (dayId: string) => addRecommendationToDay(current, dayId),
     onSettled: () => { mapAddingRef.current = false; },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
@@ -837,10 +839,10 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
       <div className="flex items-center gap-2">
         <span className="text-[10px] px-2 py-0.5 rounded-full"
           style={{ background: `color-mix(in oklab, ${typeChipColor} 20%, transparent)`, color: typeChipColor }}>{typeLabel}</span>
-        {rec.city && <span className="text-xs text-muted-foreground" dir="ltr">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>}
+        {current.city && <span className="text-xs text-muted-foreground" dir="ltr">{current.city}{current.address ? ` · ${current.address}` : ""}</span>}
       </div>
-      {rec.notes && <div className="text-sm text-muted-foreground whitespace-pre-line">{rec.notes}</div>}
-      <RecommendationBusiness id={rec.id} placeId={rec.provider_place_id} name={rec.name} tripId={getActiveTripId()} onPhoto={() => {}} />
+      {current.notes && <div className="text-sm text-muted-foreground whitespace-pre-line">{current.notes}</div>}
+      <RecommendationBusiness id={current.id} placeId={current.provider_place_id} name={current.name} tripId={getActiveTripId()} onPhoto={() => {}} />
       <div className="flex gap-2">
         {navHref && (
           <a href={navHref} target="_blank" rel="noreferrer"
@@ -853,8 +855,8 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
           + הוסף ליום
         </button>
       </div>
-      <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${rec.name} ליום`}>
-        <DaySuggestionPicker rec={rec} days={days} disabled={addToDay.isPending}
+      <BottomSheet open={dayPickerOpen} onOpenChange={setDayPickerOpen} title={`הוסף את ${current.name} ליום`}>
+        <DaySuggestionPicker rec={current} days={days} disabled={addToDay.isPending}
           onPick={(dayId) => {
             if (mapAddingRef.current) return;
             mapAddingRef.current = true;

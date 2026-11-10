@@ -74,10 +74,22 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-action-visited: var(--action-visited);
+  --color-action-expense: var(--action-expense);
+  --color-action-documents: var(--action-documents);
+  --color-action-recommendations: var(--action-recommendations);
+  --color-action-budget: var(--action-budget);
+  --color-action-itinerary: var(--action-itinerary);
 }
 
 /* Light is default */
 :root {
+  --action-visited: #16a34a;
+  --action-expense: #ea580c;
+  --action-documents: #2563eb;
+  --action-recommendations: #7c3aed;
+  --action-budget: #ca8a04;
+  --action-itinerary: #db2777;
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 24px;
