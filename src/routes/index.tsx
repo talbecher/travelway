@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText } from "lucide-react";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText, Hotel } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
 import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { Button } from "@/components/ui/button";
@@ -653,6 +653,24 @@ function Home() {
     () => buildDeadlines(hotels as never, recs as never, todayLocal()),
     [hotels, recs],
   );
+
+  // Tonight's hotel: checked in already, not yet checked out; latest check-in wins.
+  const tonightHotel = useMemo(() => {
+    const t = todayLocal();
+    const matches = hotels.filter((h) => h.checkin_date && h.checkout_date && h.checkin_date <= t && h.checkout_date > t);
+    matches.sort((a, b) => (b.checkin_date ?? "").localeCompare(a.checkin_date ?? ""));
+    return matches[0] ?? null;
+  }, [hotels]);
+
+  const hotelHref = tonightHotel
+    ? tonightHotel.latitude != null && tonightHotel.longitude != null
+      ? `https://www.google.com/maps/dir/?api=1&destination=${tonightHotel.latitude},${tonightHotel.longitude}`
+      : tonightHotel.google_maps_url
+        ? tonightHotel.google_maps_url
+        : tonightHotel.address
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tonightHotel.address)}`
+          : null
+    : null;
 
   if (isLoading) return <HomeSkeleton />;
 
