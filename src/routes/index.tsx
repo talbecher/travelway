@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
 import { HayinuKanSheet } from "@/components/HayinuKanSheet";
+import { Button } from "@/components/ui/button";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
@@ -878,15 +879,15 @@ function Home() {
         )}
 
         <section className="grid grid-cols-3 gap-2" aria-label="פעולות שימושיות">
-          <button
+          <Button variant="outline"
             type="button"
             onClick={() => setHayinuOpen(true)}
-            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card px-1.5 text-center shadow-sm"
+            className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5"
           >
-            <MapPin size={20} className="text-[color:var(--accent)]" />
-            <span className="break-words text-[11px] font-medium">היינו כאן</span>
-          </button>
-          <button
+            <MapPin size={20} className="text-action-visited" />
+            <span className="whitespace-normal break-words text-[12px] font-medium">היינו כאן</span>
+          </Button>
+          <Button variant="outline"
             type="button"
             disabled={!isOnline}
             onClick={() => {
@@ -896,18 +897,37 @@ function Home() {
               }
               openQuickExpense();
             }}
-            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card px-1.5 text-center shadow-sm disabled:opacity-50"
+            className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5"
           >
-            <ReceiptText size={20} className="text-[color:var(--accent)]" />
-            <span className="break-words text-[11px] font-medium">הוצאה מהירה</span>
-          </button>
-          <Link
-            to="/documents"
-            className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card px-1.5 text-center shadow-sm"
+            <ReceiptText size={20} className="text-action-expense" />
+            <span className="whitespace-normal break-words text-[12px] font-medium">הוצאה מהירה</span>
+          </Button>
+          <Button asChild variant="outline"
+            className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5"
           >
-            <FileText size={20} className="text-[color:var(--accent)]" />
-            <span className="break-words text-[11px] font-medium">מסמכים</span>
-          </Link>
+            <Link to="/documents">
+              <FileText size={20} className="text-action-documents" />
+              <span className="whitespace-normal break-words text-[12px] font-medium">מסמכים</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5">
+            <Link to="/recommendations">
+              <Star size={20} className="text-action-recommendations" />
+              <span className="whitespace-normal break-words text-[12px] font-medium">המלצות</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5">
+            <Link to="/budget">
+              <Wallet size={20} className="text-action-budget" />
+              <span className="whitespace-normal break-words text-[12px] font-medium">תקציב</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto min-h-[88px] min-w-0 flex-col gap-1.5 rounded-xl border-border bg-card px-1.5 text-center shadow-sm [&_svg]:size-5">
+            <Link to="/itinerary">
+              <Calendar size={20} className="text-action-itinerary" />
+              <span className="whitespace-normal break-words text-[12px] font-medium">מסלול</span>
+            </Link>
+          </Button>
         </section>
 
         <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} variant="activeHome" />

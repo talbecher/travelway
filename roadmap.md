@@ -1,5 +1,11 @@
 # Project monitoring — 10 findings fix round — done
 
+## Focused navigation, home actions and map-card refresh
+- [x] Five bottom tabs with an Other drawer for phrasebook, checklist and documents.
+- [x] Six enlarged active-home action tiles with semantic icon colors.
+- [x] MapPickCard reads its current recommendation from the live query.
+- [ ] Verify automatic checks and authenticated desktop/mobile behavior; no publication.
+
 ## Japan location reliability — authorized scoped repair
 - [x] Verified Japan trip; backed up and applied 66 coordinate-only local-source repairs in two targeted transactions. Protected fields and all rec/hotel/day rows unchanged.
 - [x] Shared resolver for Nearby GPS/distance, recommendation add/save and linked hotel display; selected Google place retains coords and identity. 22 tests passed, 264 assertions; automatic build OK.
