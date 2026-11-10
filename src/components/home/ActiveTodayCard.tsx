@@ -35,11 +35,15 @@ function iconFor(type: string) {
 }
 
 function navigationHref(entry: ActiveTodayEntry) {
-  if (entry.google_maps_url) return entry.google_maps_url;
   if (entry.latitude != null && entry.longitude != null) {
     return `https://www.google.com/maps/dir/?api=1&destination=${entry.latitude},${entry.longitude}`;
   }
+  if (entry.google_maps_url) return entry.google_maps_url;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(entry.title)}`;
+}
+
+function canNavigate(entry: ActiveTodayEntry) {
+  return (entry.latitude != null && entry.longitude != null) || !!entry.google_maps_url;
 }
 
 function EntryImage({ entry }: { entry: ActiveTodayEntry }) {
@@ -83,6 +87,17 @@ function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boole
           </div>
         )}
       </div>
+      {canNavigate(entry) && (
+        <a
+          href={navigationHref(entry)}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="ניווט"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[color:var(--accent)]"
+        >
+          <Navigation size={18} />
+        </a>
+      )}
     </div>
   );
 }
@@ -141,7 +156,9 @@ export function ActiveTodayCard({ dayId, entries }: { dayId: string; entries: Ac
   const currentTime = `${String(clock.getHours()).padStart(2, "0")}:${String(clock.getMinutes()).padStart(2, "0")}`;
   const reached = [...timed].reverse().find((item) => (item.entry.time_of_day ?? "").slice(0, 5) <= currentTime) ?? null;
   const next = timed.find((item) => (item.entry.time_of_day ?? "").slice(0, 5) > currentTime) ?? null;
-  const navigationTarget = next?.entry ?? reached?.entry ?? null;
+  const navigationTarget = timed.length > 0
+    ? next?.entry ?? reached?.entry ?? null
+    : indexedEntries.find((item) => canNavigate(item.entry))?.entry ?? null;
 
   if (entries.length === 0) {
     return (

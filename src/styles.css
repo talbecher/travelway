@@ -80,6 +80,7 @@
   --color-action-recommendations: var(--action-recommendations);
   --color-action-budget: var(--action-budget);
   --color-action-itinerary: var(--action-itinerary);
+  --color-action-hotel: var(--action-hotel);
 }
 
 /* Light is default */
@@ -90,6 +91,7 @@
   --action-recommendations: #7c3aed;
   --action-budget: #ca8a04;
   --action-itinerary: #db2777;
+  --action-hotel: #0891b2;
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 24px;

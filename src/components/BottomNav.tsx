@@ -35,7 +35,7 @@ export function BottomNav() {
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
-          className={`relative h-auto min-h-[56px] min-w-11 flex-col gap-1 rounded-none px-0.5 py-2 text-[10px] [&_svg]:size-5 ${moreActive ? "font-medium text-primary after:absolute after:top-0 after:h-0.5 after:w-5 after:rounded-full after:bg-primary" : "font-normal text-muted-foreground"}`}
+          className={`relative h-auto min-h-[56px] min-w-11 flex-col gap-1 rounded-none px-0.5 py-2 text-[12px] [&_svg]:size-5 ${moreActive ? "font-medium text-primary after:absolute after:top-0 after:h-0.5 after:w-5 after:rounded-full after:bg-primary" : "font-normal text-muted-foreground"}`}
         >
           <Menu size={20} strokeWidth={1.6} />
           <span>אחר</span>
@@ -43,11 +43,29 @@ export function BottomNav() {
         {tabs.map((t) => {
           const active = t.to === "/" ? pathname === "/" : pathname.startsWith(t.to);
           const Icon = t.icon;
+          if (t.to === "/") {
+            return (
+              <Link
+                key={t.to}
+                to={t.to}
+                className="relative flex min-h-[56px] min-w-11 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <span
+                  className={`flex h-[52px] w-[52px] -translate-y-3 items-center justify-center rounded-full shadow-md ${
+                    active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <Icon size={26} strokeWidth={1.8} />
+                </span>
+                <span className={`-mt-2 ${active ? "font-medium text-primary" : "font-normal text-muted-foreground"}`}>{t.label}</span>
+              </Link>
+            );
+          }
           return (
             <Link
               key={t.to}
               to={t.to}
-              className={`relative flex min-h-[56px] min-w-11 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${active ? "font-medium text-primary after:absolute after:top-0 after:h-0.5 after:w-5 after:rounded-full after:bg-primary" : "font-normal text-muted-foreground"}`}
+              className={`relative flex min-h-[56px] min-w-11 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${active ? "font-medium text-primary after:absolute after:top-0 after:h-0.5 after:w-5 after:rounded-full after:bg-primary" : "font-normal text-muted-foreground"}`}
             >
               <Icon size={20} strokeWidth={1.6} />
               <span>{t.label}</span>

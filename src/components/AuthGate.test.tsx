@@ -24,6 +24,8 @@ mock.module("@/components/SignInScreen", () => ({ SignInScreen: () => null }));
 mock.module("@/components/TripPicker", () => ({ TripPicker: () => null }));
 mock.module("@/lib/constants", () => ({
   ACTIVE_TRIP_KEY: "active_trip_id", setActiveTripId: selectTrip, clearActiveTripId: clearTrip,
+  // Other test files sharing the module registry import this export.
+  getActiveTripId: () => "trip",
 }));
 mock.module("@/integrations/supabase/client", () => ({
   supabase: {
