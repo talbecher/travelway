@@ -28,6 +28,7 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useAuth } from "@/hooks/use-auth";
 import { useRecentDiscoverIds } from "@/lib/discover-recent";
 import { matchNewRecommendation } from "@/lib/place-identity.functions";
+import { businessMapsLink } from "@/lib/place-identity";
 import { RecommendationBusiness, RecommendationIdentityReview } from "@/components/RecommendationBusiness";
 import { resolveDayLocation, locationDistanceKm } from "@/lib/day-location";
 import { useServerFn } from "@tanstack/react-start";
@@ -807,7 +808,12 @@ function Recs() {
 }
 
 
+function recNavHref(rec: Rec) {
+  return (rec.provider_place_id ? businessMapsLink(rec.provider_place_id, rec.name) : null) ?? rec.google_maps_url ?? null;
+}
+
 function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
+  const navHref = recNavHref(rec);
   const qc = useQueryClient();
   const { data: days = [] } = useDays();
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
@@ -834,9 +840,10 @@ function MapPickCard({ rec, onDone }: { rec: Rec; onDone: () => void }) {
         {rec.city && <span className="text-xs text-muted-foreground" dir="ltr">{rec.city}{rec.address ? ` · ${rec.address}` : ""}</span>}
       </div>
       {rec.notes && <div className="text-sm text-muted-foreground whitespace-pre-line">{rec.notes}</div>}
+      <RecommendationBusiness id={rec.id} placeId={rec.provider_place_id} name={rec.name} tripId={getActiveTripId()} onPhoto={() => {}} />
       <div className="flex gap-2">
-        {rec.google_maps_url && (
-          <a href={rec.google_maps_url} target="_blank" rel="noreferrer"
+        {navHref && (
+          <a href={navHref} target="_blank" rel="noreferrer"
             className="flex-1 h-10 rounded-md border border-border flex items-center justify-center gap-1 text-sm">
             <Navigation size={14} /> ניווט
           </a>
@@ -1238,14 +1245,14 @@ function PlaceCard({
         {!selectionMode && (
           <>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              {rec.google_maps_url && (
-                <a href={rec.google_maps_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+              {recNavHref(rec) && (
+                <a href={recNavHref(rec) ?? undefined} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
                   className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-background text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Navigation size={14} /> ניווט
                 </a>
               )}
               <button onClick={(e) => { stop(e); onAddToDay(); }}
-                className={`rec-add-day ${rec.google_maps_url ? "" : "col-span-2"} inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>
+                className={`rec-add-day ${recNavHref(rec) ? "" : "col-span-2"} inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>
                 <Plus size={15} /> הוסף ליום
               </button>
             </div>
@@ -1279,18 +1286,18 @@ function PlaceCard({
         >
           {cardInner}
         </div>
-      ) : rec.google_maps_url ? (
+      ) : recNavHref(rec) ? (
         <div
           role="link"
           tabIndex={0}
           aria-label={`פתח את ${rec.name} ב-Google Maps`}
           className="cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          onClick={() => window.open(rec.google_maps_url ?? "", "_blank", "noopener,noreferrer")}
+          onClick={() => window.open(recNavHref(rec) ?? "", "_blank", "noopener,noreferrer")}
           onKeyDown={(e) => {
             if (e.target !== e.currentTarget) return;
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              window.open(rec.google_maps_url ?? "", "_blank", "noopener,noreferrer");
+              window.open(recNavHref(rec) ?? "", "_blank", "noopener,noreferrer");
             }
           }}
         >

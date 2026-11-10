@@ -46,8 +46,12 @@ export const reviewRecommendationIdentities = createServerFn({ method: 'POST' })
       if (match.status === 'api_failure') {
         return { results, requests, next: results.at(-1)?.id ?? data.after ?? null, stopped: true, deferred: row.id };
       }
-      const review = match.proposed && secret ? await signReview({ userId: context.userId, tripId: data.tripId, row, placeId: match.proposed.id, expires: Date.now() + 30 * 60 * 1000 }, secret) : null;
-      results.push({ id: row.id, name: row.name, status: match.status, candidates: match.candidates, proposed: match.proposed, review, missingPhoto, error: match.error });
+      const expires = Date.now() + 30 * 60 * 1000;
+      const review = match.proposed && secret ? await signReview({ userId: context.userId, tripId: data.tripId, row, placeId: match.proposed.id, expires }, secret) : null;
+      const candidates = match.status === 'ambiguous' && secret
+        ? await Promise.all(match.candidates.slice(0, 5).map(async candidate => ({ ...candidate, review: await signReview({ userId: context.userId, tripId: data.tripId, row, placeId: candidate.id, expires }, secret) })))
+        : match.candidates.map(candidate => ({ ...candidate, review: null as Awaited<ReturnType<typeof signReview>> | null }));
+      results.push({ id: row.id, name: row.name, status: match.status, candidates, proposed: match.proposed, review, missingPhoto, error: match.error });
     }
     const last = results.at(-1);
     return { results, requests, next: !data.ids && last && rows?.length === data.limit + 1 ? last.id : null, stopped: false, deferred: null };
@@ -81,19 +85,19 @@ export const recommendationBusinessMedia = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     setResponseHeader('Cache-Control', 'private, no-store');
     const { data: row } = await context.supabase.from('recommendations').select('provider_place_id,photo_url').eq('id', data.id).eq('trip_id', data.tripId).maybeSingle();
-    if (!row?.provider_place_id || !/^[A-Za-z0-9_-]{5,300}$/.test(row.provider_place_id)) return { photo: null, rating: null, count: null, authors: [], error: null };
+    if (!row?.provider_place_id || !/^[A-Za-z0-9_-]{5,300}$/.test(row.provider_place_id)) return { photo: null, rating: null, count: null, openNow: null, authors: [], error: null };
     const key = process.env['GOOGLE_MAPS_API_KEY'] ?? process.env['GOOGLE_PLACES_KEY'];
-    if (!key) return { photo: null, rating: null, count: null, authors: [], error: 'Google Places אינו מוגדר' };
+    if (!key) return { photo: null, rating: null, count: null, openNow: null, authors: [], error: 'Google Places אינו מוגדר' };
     const credentials = { key, gatewayKey: process.env['GOOGLE_MAPS_API_KEY'] ? process.env['LOVABLE_API_KEY'] : undefined };
     try {
       const ownPhoto = row.photo_url && !isGooglePhoto(row.photo_url);
-      const place = await placesRequest(credentials, `places/${encodeURIComponent(row.provider_place_id)}`, ownPhoto ? 'rating,userRatingCount' : 'photos,rating,userRatingCount');
+      const place = await placesRequest(credentials, `places/${encodeURIComponent(row.provider_place_id)}`, ownPhoto ? 'rating,userRatingCount,currentOpeningHours.openNow' : 'photos,rating,userRatingCount,currentOpeningHours.openNow');
       const first = place.photos?.[0];
       let photo: string | null = null;
       if (first?.name && new RegExp(`^places/${row.provider_place_id}/photos/[A-Za-z0-9_-]+$`).test(first.name)) {
         const media = await placesRequest(credentials, `${first.name}/media?maxWidthPx=400&skipHttpRedirect=true`, '');
         photo = media.photoUri ?? null;
       }
-      return { photo, rating: place.rating ?? null, count: place.userRatingCount ?? null, authors: (first?.authorAttributions ?? []).map((a: { displayName?: string; uri?: string }) => ({ name: a.displayName ?? '', uri: a.uri ?? null })), error: null };
-    } catch { return { photo: null, rating: null, count: null, authors: [], error: 'פרטי Google לא זמינים כרגע' }; }
+      return { photo, rating: place.rating ?? null, count: place.userRatingCount ?? null, openNow: typeof place.currentOpeningHours?.openNow === 'boolean' ? place.currentOpeningHours.openNow : null, authors: (first?.authorAttributions ?? []).map((a: { displayName?: string; uri?: string }) => ({ name: a.displayName ?? '', uri: a.uri ?? null })), error: null };
+    } catch { return { photo: null, rating: null, count: null, openNow: null, authors: [], error: 'פרטי Google לא זמינים כרגע' }; }
   });
