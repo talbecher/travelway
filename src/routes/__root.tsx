@@ -36,16 +36,15 @@ import { startOfflinePersistence } from "@/lib/offline-persist";
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(!t){localStorage.setItem('theme','light');t='light';}if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`;
 
-
-
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen min-h-dvh items-center justify-center bg-background px-6" dir="rtl">
       <div className="max-w-sm text-center space-y-3">
         <h1 className="text-5xl font-medium">404</h1>
         <p className="text-muted-foreground">הדף לא נמצא.</p>
-        <a href="/" className="inline-block px-4 py-2 rounded-lg bg-[color:var(--terracotta)] text-white text-sm">חזרה הביתה</a>
+        <a href="/" className="inline-block px-4 py-2 rounded-lg bg-[color:var(--terracotta)] text-white text-sm">
+          חזרה הביתה
+        </a>
       </div>
     </div>
   );
@@ -53,16 +52,27 @@ function NotFoundComponent() {
 
 function ErrorComponentBase({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
-  useEffect(() => { reportLovableError(error, { boundary: "root" }); }, [error]);
+  useEffect(() => {
+    reportLovableError(error, { boundary: "root" });
+  }, [error]);
   return (
     <div className="flex min-h-screen min-h-dvh items-center justify-center bg-background px-6" dir="rtl">
       <div className="max-w-sm text-center space-y-3">
         <h1 className="text-xl font-medium">משהו השתבש</h1>
         <p className="text-sm text-muted-foreground">נסה שוב או חזור לדף הבית.</p>
         <div className="flex gap-2 justify-center">
-          <button onClick={() => { router.invalidate(); reset(); }}
-            className="px-4 py-2 rounded-lg bg-[color:var(--terracotta)] text-white text-sm">נסה שוב</button>
-          <a href="/" className="px-4 py-2 rounded-lg border border-border text-sm">דף הבית</a>
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="px-4 py-2 rounded-lg bg-[color:var(--terracotta)] text-white text-sm"
+          >
+            נסה שוב
+          </button>
+          <a href="/" className="px-4 py-2 rounded-lg border border-border text-sm">
+            דף הבית
+          </a>
         </div>
       </div>
     </div>
@@ -89,8 +99,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "TravelWay" },
       { name: "twitter:description", content: "TravelWay — your all-in-one travel planner" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e40f87d4-81b7-49ec-ae27-f94fd610d900/id-preview-37c53afa--779c2280-6d33-4962-bbc5-72ed8503f7b4.lovable.app-1783622674887.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e40f87d4-81b7-49ec-ae27-f94fd610d900/id-preview-37c53afa--779c2280-6d33-4962-bbc5-72ed8503f7b4.lovable.app-1783622674887.png" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e40f87d4-81b7-49ec-ae27-f94fd610d900/id-preview-37c53afa--779c2280-6d33-4962-bbc5-72ed8503f7b4.lovable.app-1783622674887.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e40f87d4-81b7-49ec-ae27-f94fd610d900/id-preview-37c53afa--779c2280-6d33-4962-bbc5-72ed8503f7b4.lovable.app-1783622674887.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -159,7 +177,10 @@ function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   return (
     <div className="min-h-screen min-h-dvh bg-background text-foreground">
-      <header className="sticky top-0 z-30 pt-[env(safe-area-inset-top)] border-b border-border bg-background backdrop-blur-xl" style={{ background: "color-mix(in oklab, var(--background) 92%, transparent)" }}>
+      <header
+        className="sticky top-0 z-30 pt-[env(safe-area-inset-top)] border-b border-border bg-background backdrop-blur-xl"
+        style={{ background: "color-mix(in oklab, var(--background) 92%, transparent)" }}
+      >
         <div className="mx-auto flex min-h-[52px] max-w-md items-center justify-between gap-1 px-3 py-1">
           <div className="flex min-w-0 items-center gap-1">
             {showTripSwitcher && <SwitchTripButton />}
@@ -182,7 +203,7 @@ function AppShell() {
       </header>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
-       <main className="max-w-md mx-auto px-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
+      <main className="max-w-md mx-auto px-4 pb-[calc(74px+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
       {!isOnboarding && <GlobalFab />}
@@ -190,8 +211,6 @@ function AppShell() {
     </div>
   );
 }
-
-
 
 function HeaderTitle() {
   const { data: trip } = useTrip();
@@ -328,6 +347,3 @@ function SwitchTripButton() {
     </>
   );
 }
-
-
-
