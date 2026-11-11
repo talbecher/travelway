@@ -113,6 +113,14 @@ END $$;
 REVOKE ALL ON FUNCTION public.api_create_expense_proposal(text, uuid, uuid, jsonb, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.api_create_expense_proposal(text, uuid, uuid, jsonb, text) TO service_role;
 
+-- Safety: SECURITY DEFINER runs as the owner. Production's owner is postgres; if this script runs as
+-- any other role the owner would silently change, so abort and roll everything back instead.
+DO $guard$ BEGIN
+  IF (SELECT p.proowner::regrole::text FROM pg_proc p WHERE p.oid = 'public.api_create_expense_proposal(text, uuid, uuid, jsonb, text)'::regprocedure) <> 'postgres' THEN
+    RAISE EXCEPTION 'api_create_expense_proposal would not be owned by postgres; nothing changed';
+  END IF;
+END $guard$;
+
 COMMIT;
 
 NOTIFY pgrst, 'reload schema';

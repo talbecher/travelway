@@ -23,6 +23,10 @@ DO $$ BEGIN
   ASSERT has_function_privilege('service_role','public.api_create_expense_proposal(text,uuid,uuid,jsonb,text,jsonb)','EXECUTE');
   ASSERT NOT has_function_privilege('anon','public.api_create_expense_proposal(text,uuid,uuid,jsonb,text,jsonb)','EXECUTE'), 'anon';
   ASSERT NOT has_function_privilege('authenticated','public.api_create_expense_proposal(text,uuid,uuid,jsonb,text,jsonb)','EXECUTE'), 'authenticated';
+  -- Same ACL and owner as production had before the change: {postgres=X/postgres,service_role=X/postgres}
+  ASSERT (SELECT proacl::text FROM pg_proc WHERE proname='api_create_expense_proposal') = '{postgres=X/postgres,service_role=X/postgres}',
+    (SELECT proacl::text FROM pg_proc WHERE proname='api_create_expense_proposal');
+  ASSERT (SELECT proowner::regrole::text FROM pg_proc WHERE proname='api_create_expense_proposal') = 'postgres', 'owner';
   RAISE NOTICE 'ok';
 END $$;
 
