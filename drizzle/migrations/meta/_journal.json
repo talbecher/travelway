@@ -99,6 +99,13 @@
       "when": 1794210706480,
       "tag": "0013_item_proposals_itinerary_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794387631829,
+      "tag": "0014_recommendations_visited_at",
+      "breakpoints": true
     }
   ]
 }

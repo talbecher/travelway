@@ -1127,6 +1127,7 @@ export type Database = {
           status: Database["public"]["Enums"]["rec_status"]
           trip_id: string
           type: Database["public"]["Enums"]["rec_type"]
+          visited_at: string | null
         }
         Insert: {
           address?: string | null
@@ -1154,6 +1155,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["rec_status"]
           trip_id: string
           type: Database["public"]["Enums"]["rec_type"]
+          visited_at?: string | null
         }
         Update: {
           address?: string | null
@@ -1181,6 +1183,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["rec_status"]
           trip_id?: string
           type?: Database["public"]["Enums"]["rec_type"]
+          visited_at?: string | null
         }
         Relationships: [
           {
