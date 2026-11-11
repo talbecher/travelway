@@ -15,8 +15,8 @@ $P -f drizzle/pending/tests/01_seed.sql
 check drizzle/pending/0015_expense_proposal_live_rate.precheck.sql
 echo "before fix (expect no_valid_rate):"
 $P -At -c "SET ROLE service_role; SELECT public.api_create_expense_proposal(_hash=>'H1', _trip_id=>NULL, _request_id=>'eeeeeeee-0000-4000-8000-000000000001', _ops=>'[{\"op\":\"add\",\"date\":\"2026-11-11\",\"category\":\"food\",\"amount\":1,\"currency\":\"JPY\"}]', _note=>NULL);"
-$P -f drizzle/pending/0015_expense_proposal_live_rate.sql 2>/dev/null
-$P -f drizzle/pending/0015_expense_proposal_live_rate.sql 2>/dev/null   # re-runnable
+$P --single-transaction -f drizzle/migrations/0015_expense_proposal_live_rate.sql 2>/dev/null
+$P --single-transaction -f drizzle/migrations/0015_expense_proposal_live_rate.sql 2>/dev/null   # re-runnable
 check drizzle/pending/0015_expense_proposal_live_rate.postcheck.sql
 $P -f drizzle/pending/tests/02_tests.sql
 # Simulate the risk in AGENTS.md: someone recreates the old 5-argument version next to the new one.

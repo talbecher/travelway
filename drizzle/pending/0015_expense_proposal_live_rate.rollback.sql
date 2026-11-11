@@ -3,6 +3,25 @@
 -- Run only AFTER the application code that passes _live_fx has been reverted (the old code never
 -- passes it, and the new code falls back to the old 422 answer if the call fails).
 -- Proposals already created with rate_source 'live' stay valid: apply_item_proposal is unchanged.
+--
+-- TWO SEPARATE THINGS — undoing one does not undo the other:
+--   (A) the function in the database      -> this file restores it.
+--   (B) the Drizzle registration of 0015  -> drizzle/migrations/0015_expense_proposal_live_rate.sql,
+--       its entry in meta/_journal.json, meta/0015_snapshot.json, and one row in
+--       drizzle.__drizzle_migrations (hash of that file, created_at = the journal's "when").
+-- Drizzle runs every journal entry whose "when" is newer than the newest created_at row. So:
+--   * Deleting the tracking row does NOT change the function. While 0015 is still in the journal on main,
+--     the next migrate would run 0015 again (re-installing the new function and re-adding the row).
+--   * Running this file does NOT remove the registration. While 0015 stays in the journal and its row
+--     exists, Drizzle believes 0015 is applied although the old function is back (repo and DB disagree).
+-- Full, consistent rollback, in this order:
+--   1. Revert the application code and the Drizzle registration files on main (git revert), then Publish.
+--      Now no journal entry can re-apply 0015.
+--   2. Run this file (function back to the 0013 version), then the precheck: it must be all true.
+--   3. Delete the tracking row:  DELETE FROM drizzle.__drizzle_migrations
+--        WHERE hash = '<sha256 of the registered 0015 file>' AND created_at = <0015 journal when>;
+--      (Harmless to leave, but deleting restores the exact original state.)
+-- Never delete the row while 0015 is still in the journal on main unless re-applying 0015 is intended.
 
 BEGIN;
 

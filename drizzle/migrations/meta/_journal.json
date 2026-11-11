@@ -106,6 +106,13 @@
       "when": 1794387631829,
       "tag": "0014_recommendations_visited_at",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794425416676,
+      "tag": "0015_expense_proposal_live_rate",
+      "breakpoints": true
     }
   ]
 }

@@ -18,8 +18,10 @@
 -- api_create_expense_proposal exists afterwards (no overload ambiguity). The 6th parameter has a
 -- default, so existing callers that pass 5 named arguments keep working.
 -- Safe to run more than once. Rollback: drizzle/pending/0015_expense_proposal_live_rate.rollback.sql
+--
+-- Registered in Drizzle after it was applied to production by hand on 2026-11-11 (same function, verified by
+-- md5 b631b5538a8847fbe63702f4d43bbd02). Drizzle wraps this file in its own transaction, so it has no BEGIN/COMMIT.
 
-BEGIN;
 
 DROP FUNCTION IF EXISTS public.api_create_expense_proposal(text, uuid, uuid, jsonb, text);
 
@@ -167,6 +169,5 @@ DO $guard$ BEGIN
   END IF;
 END $guard$;
 
-COMMIT;
 
 NOTIFY pgrst, 'reload schema';
