@@ -1248,7 +1248,7 @@ function DayDetail() {
                           <SegmentRow
                             fromTime={prev!.time_of_day}
                             toTime={e.time_of_day}
-                            km={bothCoords && a?.kind === "coords" && b?.kind === "coords" ? haversine(a, b) : null}
+                            km={bothCoords && a?.kind === "coords" && b?.kind === "coords" ? haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng }) : null}
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
                             onShowOnMap={bothCoords ? () => {
                               setSelectedStopId(null);
