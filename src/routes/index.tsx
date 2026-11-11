@@ -1001,7 +1001,7 @@ function Home() {
           </details>
         )}
 
-        <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} />
+        <HayinuKanSheet open={hayinuOpen} onClose={() => setHayinuOpen(false)} plannedStops={todayEntries} />
       </div>
     );
   }
