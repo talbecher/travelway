@@ -763,7 +763,7 @@ function DayDetail() {
         .day-visual-preview .day-stop .entry-title {
           font-size: 15px; font-weight: 700; line-height: 1.35;
           overflow-wrap: anywhere; min-width: 0; max-width: 100%;
-          display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+          display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
         }
         .day-visual-preview .day-stop-meta {
           margin-top: 1px; font-size: 12px; line-height: 1.4;
@@ -788,6 +788,7 @@ function DayDetail() {
           padding: 0 4px !important; border-radius: 8px; min-height: 26px;
           background: var(--day-rail-soft) !important; flex-wrap: wrap; gap: 0;
         }
+        .day-visual-preview .day-segment > div > button:first-of-type { min-height: 26px; height: 26px; }
         .day-visual-preview .day-segment button {
           background: transparent !important; color: var(--day-rail) !important;
           font-weight: 600; font-size: 12px; padding-inline: 8px;
