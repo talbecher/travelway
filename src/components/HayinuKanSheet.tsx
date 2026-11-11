@@ -16,8 +16,8 @@ export type PlannedStop = {
   location_name?: string | null;
   time_of_day?: string | null;
   photo_url?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   google_maps_url?: string | null;
   linked_recommendation_id?: string | null;
 };
@@ -98,8 +98,8 @@ export function HayinuKanSheet({
     setSelectedPlace({
       name: s.title,
       address: s.location_name ?? "",
-      latitude: s.latitude ?? undefined,
-      longitude: s.longitude ?? undefined,
+      latitude: s.latitude == null ? null : Number(s.latitude),
+      longitude: s.longitude == null ? null : Number(s.longitude),
       google_maps_url: s.google_maps_url ?? undefined,
       photo_url: s.photo_url ?? undefined,
       primaryType: s.entry_type === "food" ? "restaurant" : "tourist_attraction",
