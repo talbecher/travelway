@@ -7,6 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useDays, useRecs } from "@/hooks/use-trip";
 import { todayLocal } from "@/lib/format";
+import { useOnline } from "@/hooks/use-online";
+
+export type PlannedStop = {
+  id: string;
+  entry_type: string;
+  title: string;
+  location_name: string | null;
+  time_of_day: string | null;
+  photo_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  google_maps_url: string | null;
+  linked_recommendation_id: string | null;
+};
 
 type Step = "search" | "confirm" | "rate" | "done";
 
@@ -46,7 +60,16 @@ const TYPE_LABEL: Record<string, string> = {
   attraction: "⛩ אטרקציה",
 };
 
-export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function HayinuKanSheet({
+  open,
+  onClose,
+  plannedStops,
+}: {
+  open: boolean;
+  onClose: () => void;
+  plannedStops?: PlannedStop[];
+}) {
+  const online = useOnline();
   const qc = useQueryClient();
   const tripId = useActiveTripId();
   const { data: recs } = useRecs();
@@ -60,6 +83,32 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
   const [rating, setRating] = useState<number | undefined>(undefined);
   const [review, setReview] = useState("");
   const [busy, setBusy] = useState(false);
+  const [plannedRecId, setPlannedRecId] = useState<string | null>(null);
+  const [fromPlanned, setFromPlanned] = useState(false);
+
+  const visitedIds = new Set((recs ?? []).filter((r) => r.status === "visited").map((r) => r.id));
+  const isStopVisited = (s: PlannedStop) =>
+    !!s.linked_recommendation_id && visitedIds.has(s.linked_recommendation_id);
+  const stops = (plannedStops ?? []).filter(
+    (s) => s.entry_type === "attraction" || s.entry_type === "food",
+  );
+  const orderedStops = [...stops.filter((s) => !isStopVisited(s)), ...stops.filter(isStopVisited)];
+
+  function pickStop(s: PlannedStop) {
+    setSelectedPlace({
+      name: s.title,
+      address: s.location_name ?? "",
+      latitude: s.latitude ?? undefined,
+      longitude: s.longitude ?? undefined,
+      google_maps_url: s.google_maps_url ?? undefined,
+      photo_url: s.photo_url ?? undefined,
+      primaryType: s.entry_type === "food" ? "restaurant" : "tourist_attraction",
+    } as unknown as SelectedPlace);
+    setManualName("");
+    setPlannedRecId(s.linked_recommendation_id);
+    setFromPlanned(true);
+    setStep("confirm");
+  }
 
   const name = selectedPlace?.name ?? manualName;
   const today = todayLocal();
@@ -74,6 +123,8 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
     setRating(undefined);
     setReview("");
     setBusy(false);
+    setPlannedRecId(null);
+    setFromPlanned(false);
   }
 
   function close() {
@@ -85,7 +136,8 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
     if (!name.trim()) return;
     setBusy(true);
     try {
-      const existing = (recs ?? []).find(
+      const planned = plannedRecId ? (recs ?? []).find((r) => r.id === plannedRecId) : undefined;
+      const existing = planned ?? (recs ?? []).find(
         (r) =>
           (selectedPlace?.google_maps_url && r.google_maps_url === selectedPlace.google_maps_url) ||
           r.name === name,
@@ -94,7 +146,10 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
       if (existing) {
         const { error } = await supabase
           .from("recommendations")
-          .update({ status: "visited" })
+          .update({
+            status: "visited",
+            visited_at: existing.visited_at ?? new Date().toISOString(),
+          })
           .eq("id", existing.id);
         if (error) throw error;
         recId = existing.id;
@@ -114,6 +169,7 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
             google_maps_url: selectedPlace?.google_maps_url ?? null,
             photo_url: selectedPlace?.photo_url ?? null,
             status: "visited" as const,
+            visited_at: new Date().toISOString(),
           })
           .select("id")
           .single();
@@ -194,10 +250,56 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
         {step === "search" && (
           <>
             <h2 className="text-[18px] font-bold text-foreground text-center">איפה הייתם?</h2>
+            {orderedStops.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[13px] font-semibold text-muted-foreground">התחנות של היום</div>
+                <ul className="space-y-1.5">
+                  {orderedStops.map((s) => {
+                    const visited = isStopVisited(s);
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => pickStop(s)}
+                          className={
+                            "w-full min-h-[56px] flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-right " +
+                            (visited ? "opacity-50" : "")
+                          }
+                        >
+                          {s.photo_url ? (
+                            <img src={s.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <span className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-[20px] shrink-0">
+                              {s.entry_type === "food" ? "🍜" : "⛩"}
+                            </span>
+                          )}
+                          <span className="flex-1 min-w-0 text-[15px] font-medium text-foreground truncate">
+                            {s.title}
+                          </span>
+                          {s.time_of_day && (
+                            <span className="text-[12px] text-muted-foreground shrink-0" dir="ltr">
+                              {s.time_of_day}
+                            </span>
+                          )}
+                          {visited && <span className="text-[16px] text-foreground shrink-0">✓</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="flex items-center gap-3 text-[12px] text-muted-foreground pt-1">
+                  <div className="h-px flex-1 bg-border" />
+                  או חפשו מקום אחר
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+              </div>
+            )}
             <PlacesSearch
               placeholder="חפשו מסעדה, קפה, אטרקציה..."
               onSelect={(p) => {
                 setSelectedPlace(p);
+                setPlannedRecId(null);
+                setFromPlanned(false);
                 setManualName("");
                 setStep("confirm");
               }}
@@ -220,6 +322,8 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
                 onClick={() => {
                   setManualName(manualInput.trim());
                   setSelectedPlace(null);
+                  setPlannedRecId(null);
+                  setFromPlanned(false);
                   setStep("confirm");
                 }}
                 className="px-4 h-11 rounded-lg bg-[color:var(--accent)] text-white font-medium disabled:opacity-50"
@@ -252,15 +356,24 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !online}
                 onClick={() => void handleSaveVisit()}
                 className="w-full h-12 rounded-xl bg-[color:var(--accent)] text-white font-semibold text-[15px] disabled:opacity-60"
               >
                 ✅ אישור — היינו כאן!
               </button>
+              {!online && (
+                <p className="text-[12px] text-muted-foreground text-center">
+                  אין חיבור · אפשר לשמור כשהחיבור יחזור
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => setStep("search")}
+                onClick={() => {
+                  setPlannedRecId(null);
+                  setFromPlanned(false);
+                  setStep("search");
+                }}
                 className="w-full h-11 rounded-xl border border-border bg-card text-foreground text-[15px] font-medium"
               >
                 ← חזור
@@ -358,7 +471,7 @@ export function HayinuKanSheet({ open, onClose }: { open: boolean; onClose: () =
               <h2 className="text-[18px] font-bold text-foreground">נשמר!</h2>
               <p className="text-[13px] text-muted-foreground">{name} נוסף למקומות שביקרתם</p>
             </div>
-            {todayDay ? (
+            {todayDay && !fromPlanned ? (
               <div className="flex flex-col gap-2">
                 <p className="text-[13px] text-muted-foreground text-center">
                   רוצים להוסיף גם למסלול של היום?
