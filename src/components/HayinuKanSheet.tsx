@@ -13,13 +13,13 @@ export type PlannedStop = {
   id: string;
   entry_type: string;
   title: string;
-  location_name: string | null;
-  time_of_day: string | null;
-  photo_url: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  google_maps_url: string | null;
-  linked_recommendation_id: string | null;
+  location_name?: string | null;
+  time_of_day?: string | null;
+  photo_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  google_maps_url?: string | null;
+  linked_recommendation_id?: string | null;
 };
 
 type Step = "search" | "confirm" | "rate" | "done";
@@ -105,7 +105,7 @@ export function HayinuKanSheet({
       primaryType: s.entry_type === "food" ? "restaurant" : "tourist_attraction",
     } as unknown as SelectedPlace);
     setManualName("");
-    setPlannedRecId(s.linked_recommendation_id);
+    setPlannedRecId(s.linked_recommendation_id ?? null);
     setFromPlanned(true);
     setStep("confirm");
   }
