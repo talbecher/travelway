@@ -33,6 +33,7 @@ import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { useBaseCurrency } from "@/lib/currency";
 import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
+import { DayShareSheet } from "@/components/itinerary/DayShareSheet";
 import { DiscoverSheet, useDiscoverAccess, type AddToDayResult } from "@/components/discover/DiscoverSheet";
 
 /** Discover is on unless the flag explicitly turns it off. */
@@ -251,6 +252,7 @@ function DayDetail() {
   const [importOpen, setImportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [discoverOpen, setDiscoverOpen] = useState(false);
   // hidden from non-pilot users — same shared check as the recommendations screen
   const discoverAllowed = useDiscoverAccess();
@@ -655,23 +657,26 @@ function DayDetail() {
         }
         .day-visual-preview .day-header { padding-block: 4px; }
         .day-visual-preview .day-header-list {
-          display: grid;
-          grid-template-columns: 44px minmax(0, 1fr) 44px;
-          align-items: start;
-          gap: 2px 4px;
+          display: flex; flex-wrap: nowrap; align-items: center; gap: 0;
         }
-        .day-visual-preview .day-header-copy {
-          grid-column: 2; grid-row: 1; text-align: center;
-        }
+        .day-visual-preview .day-header-list > button { flex-shrink: 0; width: 44px; height: 44px; }
+        .day-visual-preview .day-header-copy { text-align: center; padding-inline: 2px; }
         .day-visual-preview .day-header-copy h1 {
-          font-size: 26px; font-weight: 800; line-height: 1.25; letter-spacing: 0;
+          font-size: 17px; font-weight: 800; line-height: 1.2; letter-spacing: 0;
         }
-        .day-visual-preview .day-header-copy p { line-height: 1.5; margin-top: 2px; }
-        .day-visual-preview .day-header-extras { display: contents; }
-        .day-visual-preview .day-header-list > button:first-child { grid-column: 1; grid-row: 1; }
-        .day-visual-preview .day-header-extras > button { grid-column: 3; grid-row: 1; }
-        .day-visual-preview .day-header-extras > div {
-          grid-column: 2; grid-row: 2; align-items: center; padding-bottom: 2px;
+        .day-visual-preview .day-header-sub {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          flex-wrap: nowrap; white-space: nowrap; overflow: hidden; margin-top: 1px;
+        }
+        @media (max-width: 360px) {
+          .day-visual-preview .day-header-list { padding-inline: 4px; }
+          .day-visual-preview .day-header-sub { gap: 4px; }
+          .day-visual-preview .day-city { padding-inline: 10px; }
+        }
+        .day-visual-preview .day-city-chip {
+          display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 0;
+          max-width: 100%; padding-inline: 10px; border-radius: 999px;
+          border: 1px solid var(--border); background: var(--card);
         }
         .day-visual-preview nav[aria-label="מעבר בין ימי המסלול"] button { min-height: 44px; }
         html:not(.dark) .day-visual-preview .day-city {
@@ -680,14 +685,11 @@ function DayDetail() {
         html:not(.dark) .day-visual-preview .day-tabs-wrap {
           padding-top: 2px;
         }
-        html:not(.dark) .day-visual-preview .day-city-row {
+        html:not(.dark) .day-visual-preview .day-city-row:not(.day-city-row-compact) {
           flex-wrap: wrap;
         }
         html:not(.dark) .day-visual-preview .day-city-card {
           padding-block: 2px;
-        }
-        html:not(.dark) .day-visual-preview .day-inspiration-btn {
-          min-height: 44px;
         }
         html:not(.dark) .day-visual-preview .day-view-tabs {
           background: var(--card);
@@ -731,52 +733,48 @@ function DayDetail() {
         }
         .day-visual-preview .day-stop-group { position: relative; isolation: isolate; }
         .day-visual-preview .day-stop-group::before {
-          content: ""; position: absolute; inset-inline-start: 14px;
-          top: -10px; bottom: -10px; width: 2px;
+          content: ""; position: absolute; inset-inline-start: 12px;
+          top: -8px; bottom: -8px; width: 2px;
           background: var(--day-rail); pointer-events: none;
         }
-        .day-visual-preview .day-stop-group:first-child::before { top: 24px; }
-        .day-visual-preview .day-stop-group:last-child::before { bottom: auto; height: 34px; }
-        .day-visual-preview .day-stop-group:last-child.day-stop-with-segment::before { height: 88px; }
+        .day-visual-preview .day-stop-group:first-child::before { top: 20px; }
+        .day-visual-preview .day-stop-group:last-child::before { bottom: auto; height: 28px; }
+        .day-visual-preview .day-stop-group:last-child.day-stop-with-segment::before { height: 60px; }
         .day-visual-preview .day-stop-group:only-child::before { display: none; }
         .day-visual-preview .day-stop { width: 100%; isolation: isolate; }
         .day-visual-preview .day-stop-rail {
-          position: absolute; inset-inline-start: 0; top: 10px; width: 30px;
+          position: absolute; inset-inline-start: 0; top: 8px; width: 26px;
           padding: 0; z-index: 1;
         }
         .day-visual-preview .day-stop-rail > div { display: none; }
         .day-visual-preview .day-stop-rail > span {
-          width: 28px; height: 28px; margin: 0;
+          width: 24px; height: 24px; margin: 0;
           background: var(--day-stop-surface); color: var(--day-rail);
-          border: 2px solid var(--day-rail); font-size: 12px; font-weight: 800;
+          border: 2px solid var(--day-rail); font-size: 11px; font-weight: 800;
         }
         .day-visual-preview .day-stop-card {
-          margin-inline-start: 38px; width: calc(100% - 38px); padding: 12px;
+          margin-inline-start: 32px; width: calc(100% - 32px); padding: 6px 10px;
           background: var(--day-stop-surface); border-radius: 8px;
           scroll-margin-block: 8px;
         }
         .day-visual-preview .day-stop-card button { min-height: 44px; min-width: 44px; }
-        .day-visual-preview .day-stop-card img { width: 56px; height: 64px; border-radius: 8px; }
-        .day-visual-preview .day-stop-icon { border-radius: 8px; }
+        .day-visual-preview .day-stop-card img { width: 34px; height: 34px; border-radius: 8px; }
+        .day-visual-preview .day-stop-icon { border-radius: 8px; width: 34px !important; height: 34px !important; }
         .day-visual-preview .day-stop .entry-title {
-          font-size: 16px; font-weight: 750; line-height: 1.5;
+          font-size: 15px; font-weight: 700; line-height: 1.35;
           overflow-wrap: anywhere; min-width: 0; max-width: 100%;
-          display: block; -webkit-line-clamp: unset; overflow: visible;
+          display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
         }
         .day-visual-preview .day-stop-meta {
-          margin-top: 4px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere;
+          margin-top: 1px; font-size: 12px; line-height: 1.4;
+          flex-wrap: nowrap; white-space: nowrap; overflow: hidden;
         }
         .day-visual-preview .day-stop-meta > span[dir="ltr"] {
-          font-size: 16px; font-weight: 800; color: var(--foreground);
+          font-size: 13px; font-weight: 800; color: var(--foreground);
         }
-        .day-visual-preview .day-stop-notes {
-          margin-top: 4px; font-size: 12px; line-height: 1.6;
-          font-style: normal; color: var(--muted-foreground); overflow-wrap: anywhere;
-        }
-        .day-visual-preview .day-stop-actions { gap: 4px; flex-wrap: wrap; }
-        .day-visual-preview .day-segment { padding-inline-start: 38px; }
+        .day-visual-preview .day-segment { padding-inline-start: 32px; min-height: 26px; }
         .day-visual-preview .day-segment-hint {
-          padding-inline-start: 38px;
+          padding-inline-start: 32px;
           min-height: 24px;
           display: flex; align-items: center;
           font-size: 11px; line-height: 1.5;
@@ -784,18 +782,17 @@ function DayDetail() {
           overflow-wrap: anywhere;
         }
         .day-visual-preview .day-segment > span {
-          inset-inline-start: 14px; width: 24px; border-color: var(--day-rail) !important;
+          inset-inline-start: 12px; width: 20px; border-color: var(--day-rail) !important;
         }
         .day-visual-preview .day-segment > div {
-          padding: 4px !important; border-radius: 8px;
+          padding: 0 4px !important; border-radius: 8px; min-height: 26px;
           background: var(--day-rail-soft) !important; flex-wrap: wrap; gap: 0;
         }
         .day-visual-preview .day-segment button {
           background: transparent !important; color: var(--day-rail) !important;
           font-weight: 600; font-size: 12px; padding-inline: 8px;
         }
-        .day-visual-preview .day-directions-icon { display: block; flex-shrink: 0; }
-        .day-visual-preview .day-list-actions { flex-wrap: wrap; flex-shrink: 0; }
+                .day-visual-preview .day-list-actions { flex-wrap: wrap; flex-shrink: 0; }
         .day-visual-preview .day-list-actions button { min-height: 44px; }
         .day-visual-preview .day-list-pane { min-height: 0; scroll-padding-block: 8px; }
         .day-visual-preview .day-quick-add { flex-shrink: 0; }
@@ -836,11 +833,11 @@ function DayDetail() {
             ref={headerRef}
             className={
               "day-header relative w-full bg-background border-b border-border " +
-              (view === "list" ? "pt-2 pb-2.5" : "py-1.5")
+              (view === "list" ? "py-1" : "py-1.5")
             }
             dir="rtl"
           >
-            <div className={"px-3 " + (view === "list" ? "day-header-list flex items-start gap-1" : "flex items-center gap-1")}>
+            <div className={"px-3 " + (view === "list" ? "day-header-list" : "flex items-center gap-1")}>
               {/* Back — always first in RTL, 44×44 hit area */}
               <button
                 onClick={() => navigate({ to: "/itinerary" })}
@@ -852,30 +849,44 @@ function DayDetail() {
 
               {view === "list" ? (
                 <>
-                  <div className="day-header-copy min-w-0 flex-1 pt-0.5">
-                    <h1 className="text-[28px] font-bold leading-none text-foreground">
-                      יום {day.day_number}
-                    </h1>
-                    <p className="text-[12px] text-muted-foreground leading-snug mt-1">
-                      {hebWeekday(day.date)}, {hebDate(day.date)}
-                    </p>
+                  <button
+                    type="button"
+                    disabled={!previousDay}
+                    aria-label={previousDay ? `יום קודם — יום ${previousDay.day_number}` : "יום קודם"}
+                    onClick={() => { if (previousDay) navigate({ to: "/itinerary/$dayId", params: { dayId: previousDay.id } }); }}
+                    className="rounded-full flex items-center justify-center text-muted-foreground active:bg-[color:var(--surface-2)] disabled:opacity-30"
+                  >
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </button>
+                  <div className="day-header-copy min-w-0 flex-1">
+                    <h1 className="truncate text-foreground">יום {day.day_number}</h1>
+                    <div className="day-header-sub text-[11px] text-muted-foreground">
+                      <span className="truncate">{hebWeekday(day.date)}, {hebDate(day.date)}</span>
+                      <DayWeatherLine city={day.city_label ?? null} date={day.date} />
+                    </div>
                     {totalLinked > 0 && (
-                      <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      <p className="truncate text-[11px] text-muted-foreground/80">
                         ביקרתם ב-{visitedCount} מתוך {totalLinked} מקומות
                       </p>
                     )}
                   </div>
-                  <div className="day-header-extras flex shrink-0 flex-col items-end gap-1 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setMoreOpen(true)}
-                      aria-label="פעולות נוספות"
-                      className="w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground active:bg-[color:var(--surface-2)] transition-colors"
-                    >
-                      <MoreHorizontal size={18} />
-                    </button>
-                    <DayWeatherLine city={day.city_label ?? null} date={day.date} />
-                  </div>
+                  <button
+                    type="button"
+                    disabled={!nextDay}
+                    aria-label={nextDay ? `יום הבא — יום ${nextDay.day_number}` : "יום הבא"}
+                    onClick={() => { if (nextDay) navigate({ to: "/itinerary/$dayId", params: { dayId: nextDay.id } }); }}
+                    className="rounded-full flex items-center justify-center text-muted-foreground active:bg-[color:var(--surface-2)] disabled:opacity-30"
+                  >
+                    <ChevronRight size={18} className="rotate-180" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen(true)}
+                    aria-label="פעולות נוספות"
+                    className="rounded-full flex items-center justify-center text-muted-foreground active:bg-[color:var(--surface-2)] transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
                 </>
               ) : (
                 <>
@@ -899,7 +910,7 @@ function DayDetail() {
                 </>
               )}
             </div>
-            <nav aria-label="מעבר בין ימי המסלול" className="flex items-center justify-between gap-2 px-3 pt-1">
+            {view === "map" && <nav aria-label="מעבר בין ימי המסלול" className="flex items-center justify-between gap-2 px-3 pt-1">
               <Button
                 type="button"
                 variant="ghost"
@@ -928,11 +939,52 @@ function DayDetail() {
                 יום הבא
                 <ChevronRight className="rotate-180" aria-hidden="true" />
               </Button>
-            </nav>
+            </nav>}
           </div>
         );
       })()}
 
+      {view === "list" && !editingCity ? (
+        <div className="day-city px-4 pt-1" dir="rtl">
+          <div className="day-city-row day-city-row-compact flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setCityValue(day.city_label ?? ""); setEditingCity(true); }}
+              className="day-city-chip flex-1 text-right"
+              aria-label={day.city_label ? "עריכת עיר ואזור היום" : "הוספת עיר או אזור היום"}
+            >
+              <MapPin size={15} className="shrink-0 text-[color:var(--accent)]" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground" dir="auto">{day.city_label?.trim() || "הוסיפו עיר או אזור"}</span>
+              <Pencil size={13} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+            </button>
+            <div className="shrink-0 w-[150px]">
+        <div className="day-view-tabs inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full" role="tablist">
+          {([
+            { key: "list", label: "מסלול" },
+            { key: "map", label: "מפה" },
+          ] as const).map((t) => {
+            const active = view === t.key;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active}
+                type="button"
+                onClick={() => (t.key === "map" ? showMap() : showList())}
+                className={
+                  "min-h-10 rounded-full text-[13px] font-medium transition-colors " +
+                  (active ? "bg-[color:var(--accent)] text-white shadow-sm" : "text-muted-foreground")
+                }
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="day-city px-4 pt-1.5" dir="rtl">
         <div className="day-city-row flex items-center gap-2">
         <div className="day-city-card min-w-0 flex-1 rounded-2xl border border-border bg-card px-3 py-1.5">
@@ -977,19 +1029,12 @@ function DayDetail() {
           </button>
         )}
         </div>
-        {discoverVisible && view === "list" && hasAnyEntries && (
-          <button
-            type="button"
-            onClick={() => setDiscoverOpen(true)}
-            className="day-inspiration-btn shrink-0 min-h-11 px-3 rounded-2xl text-[12px] border border-border bg-card inline-flex items-center gap-1.5"
-          >
-            <Compass size={14} className="text-[color:var(--accent)]" /> השראה למקומות
-          </button>
-        )}
         </div>
       </div>
 
-      {/* View switch — same day, two modes */}
+      )}
+
+      {!(view === "list" && !editingCity) && (
       <div className="day-tabs-wrap px-4 pt-1.5" dir="rtl">
         <div className="day-view-tabs inline-grid grid-cols-2 gap-0.5 p-0.5 rounded-full bg-[color:var(--surface-2)] border border-border w-full max-w-[240px]" role="tablist">
           {([
@@ -1015,6 +1060,8 @@ function DayDetail() {
           })}
         </div>
       </div>
+
+      )}
 
       {view === "list" && optimize.isSuboptimal && !zigzagDismissed && (
         <div className="mx-4 mt-2 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 px-3.5 py-3">
@@ -1199,6 +1246,9 @@ function DayDetail() {
                       <div key={e.id} className={"day-stop-group" + (prev && a && b ? " day-stop-with-segment" : "")}>
                         {prev && a && b ? (
                           <SegmentRow
+                            fromTime={prev!.time_of_day}
+                            toTime={e.time_of_day}
+                            km={bothCoords && a?.kind === "coords" && b?.kind === "coords" ? haversine(a, b) : null}
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
                             onShowOnMap={bothCoords ? () => {
                               setSelectedStopId(null);
@@ -1498,6 +1548,8 @@ function DayDetail() {
       <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="פעולות נוספות">
         <div className="flex flex-col gap-2 pb-2">
           {[
+            { icon: <span className="text-base">🔗</span>, label: "שיתוף היום", onClick: () => setShareOpen(true) },
+            ...(discoverVisible && hasAnyEntries ? [{ icon: <Compass size={16} />, label: "השראה למקומות", onClick: () => setDiscoverOpen(true) }] : []),
             { icon: <span className="text-base">📝</span>, label: "הערה מהירה", onClick: () => setNoteOpen(true) },
             { icon: <span className="text-base">🧭</span>, label: "נווט אל", onClick: () => setNavigateOpen(true) },
             { icon: <Sparkles size={16} />, label: "ייצא ל-AI", onClick: () => setExportOpen(true) },
@@ -1517,6 +1569,8 @@ function DayDetail() {
           ))}
         </div>
       </BottomSheet>
+
+      <DayShareSheet open={shareOpen} onOpenChange={setShareOpen} day={day} entries={entries} />
 
       {ratingTarget && (
         <RatingSheet
@@ -1591,12 +1645,24 @@ function DayDetail() {
 function SegmentRow({
   onOpen,
   onShowOnMap,
+  fromTime,
+  toTime,
+  km,
 }: {
   onOpen: () => void;
   onShowOnMap?: () => void;
+  fromTime?: string | null;
+  toTime?: string | null;
+  km?: number | null;
 }) {
+  const gap = fromTime && toTime ? parseTime(toTime) - parseTime(fromTime) : 0;
+  const label = gap > 0
+    ? <>⏱ <span className="tabular-nums">{gap}</span> דק׳ עד התחנה הבאה</>
+    : km != null
+      ? <>מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span></>
+      : <>אפשרויות הגעה ›</>;
   return (
-    <div className="day-segment relative flex items-center min-h-[48px]" dir="rtl">
+    <div className="day-segment relative flex items-center" dir="rtl">
       {/* Bridge tie — visually connects the bridge to the timeline rail (display only) */}
       <span
         aria-hidden
@@ -1604,33 +1670,32 @@ function SegmentRow({
         style={{ borderTop: "2px solid var(--terracotta-soft)" }}
       />
       <div
-        className="flex-1 flex items-center gap-2 flex-nowrap min-w-0 rounded-2xl py-2 pe-2"
+        className="flex-1 flex items-center justify-between gap-2 flex-nowrap min-w-0 rounded-2xl pe-1"
         style={{
           background: "color-mix(in oklab, var(--accent) 8%, var(--background))",
-          paddingInlineStart: 52,
+          paddingInlineStart: 8,
         }}
       >
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpen(); }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="shrink-0 min-h-11 px-3 rounded-full text-[12px] font-medium inline-flex items-center gap-1 transition-colors"
+          className="min-w-0 h-[26px] px-2 rounded-full text-[12px] font-medium inline-flex items-center gap-1 transition-colors truncate"
           style={{
             background: "color-mix(in oklab, var(--accent) 14%, var(--card))",
             color: "var(--accent)",
           }}
         >
-          <Compass size={16} className="day-directions-icon hidden" aria-hidden="true" />
-          אפשרויות הגעה <ChevronRight size={12} className="rotate-180" />
+          {label}
         </button>
         {onShowOnMap && <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
           onPointerDown={(e) => e.stopPropagation()}
           aria-label="הצג מעבר במפה"
-          className="shrink-0 w-11 h-11 rounded-full inline-flex items-center justify-center transition-colors"
+          className="shrink-0 w-11 h-11 -my-[9px] rounded-full inline-flex items-center justify-center transition-colors"
           style={{
-            background: "color-mix(in oklab, var(--accent) 14%, var(--card))",
+            background: "transparent",
             color: "var(--accent)",
           }}
         >
@@ -1768,7 +1833,7 @@ function SegmentOptions({
 
 
 function SortableEntry({
-  entry, nextTime, pinIndex, sequenceNumber, highlighted, setRef, onOpenDetails, onEdit, sortMode, hintHandle, recById, isLast,
+  entry, pinIndex, sequenceNumber, highlighted, setRef, onOpenDetails, sortMode, hintHandle, recById, isLast,
 }: {
   entry: EntryRow;
   isLast?: boolean;
@@ -1796,8 +1861,8 @@ function SortableEntry({
   const pinColor = TYPE_PIN_COLOR[entry.entry_type] ?? "#6C63FF";
   const defaultIcon = TYPE_ICON[entry.entry_type];
   const icon = defaultIcon && isDefaultCategoryEmoji(entry.icon_emoji, [defaultIcon, "📍"])
-    ? <CategoryIcon category={entry.entry_type} size={36} className="day-stop-icon" />
-    : entryIcon(entry, 36);
+    ? <CategoryIcon category={entry.entry_type} size={34} className="day-stop-icon" />
+    : entryIcon(entry, 34);
   const typeLabel = ENTRY_TYPES.find((t) => t.type === entry.entry_type)?.label ?? null;
   const hasCoords = pinIndex != null;
   const isLinked = !!entry.linked_recommendation_id;
@@ -1806,17 +1871,6 @@ function SortableEntry({
   const [photoFailed, setPhotoFailed] = useState(false);
   const showThumb = !!entry.photo_url && !photoFailed;
 
-  // Duration until next stop — only when BOTH times exist and result is positive.
-  const duration = (() => {
-    if (!entry.time_of_day || !nextTime) return null;
-    const mins = parseTime(nextTime) - parseTime(entry.time_of_day);
-    if (mins <= 0) return null;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `⏱ ${h}h${m > 0 ? ` ${m}m` : ""}` : `⏱ ${m} דקות`;
-  })();
-
-  const notesSnippet = entry.description || null;
 
   const [pulse, setPulse] = useState(!!hintHandle);
   useEffect(() => {
@@ -1854,7 +1908,7 @@ function SortableEntry({
         className="day-stop-card relative flex-1 min-w-0 bg-card rounded-2xl cursor-pointer p-2.5"
         style={{ border: "1px solid var(--border)" }}
       >
-        <div className="flex items-start gap-2.5">
+        <div className="flex items-center gap-2.5">
           {/* Drag handle — only in sort mode */}
           {sortMode && (
             <button
@@ -1880,11 +1934,11 @@ function SortableEntry({
               alt=""
               loading="lazy"
               onError={() => setPhotoFailed(true)}
-              className="w-[72px] h-[72px] rounded-xl object-cover shrink-0"
+              className="w-[34px] h-[34px] rounded-lg object-cover shrink-0"
             />
           ) : typeof icon === "string" ? (
             <div
-              className="day-stop-icon w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0"
+              className="day-stop-icon w-[34px] h-[34px] rounded-lg flex items-center justify-center text-[18px] shrink-0"
               style={{ background: `color-mix(in oklab, ${tint} 14%, var(--surface-2))` }}
             >
               {icon}
@@ -1913,44 +1967,18 @@ function SortableEntry({
 
             {/* Meta — may wrap to two lines */}
             <div className="day-stop-meta mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
-              <span className={entry.time_of_day ? "font-medium text-foreground tabular-nums" : ""} dir={entry.time_of_day ? "ltr" : undefined}>
+              <span className={"shrink-0 " + (entry.time_of_day ? "font-bold text-foreground tabular-nums" : "")} dir={entry.time_of_day ? "ltr" : undefined}>
                 {entry.time_of_day || "ללא שעה"}
               </span>
-              {typeLabel && <><span aria-hidden>·</span><span>{typeLabel}</span></>}
-              {duration && <><span aria-hidden>·</span><span>{duration}</span></>}
+              {typeLabel && <><span aria-hidden>·</span><span className="shrink-0">{typeLabel}</span></>}
               {entry.location_name && (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="min-w-0 break-words">📍 <bdi>{entry.location_name}</bdi></span>
+                  <span className="min-w-0 truncate"><bdi>{entry.location_name}</bdi></span>
                 </>
               )}
             </div>
 
-            {notesSnippet && (
-              <div className="day-stop-notes text-[11px] text-muted-foreground/90 italic mt-0.5 break-words line-clamp-2"><bdi>{notesSnippet}</bdi></div>
-            )}
-
-            {/* Actions */}
-            <div className="day-stop-actions mt-1 flex items-center gap-2">
-              <Button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                onPointerDown={(e) => e.stopPropagation()}
-                aria-label={`עריכת ${entry.title}`}
-                variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground"
-              >
-                <Pencil size={16} />
-              </Button>
-              <Button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
-                onPointerDown={(e) => e.stopPropagation()}
-                aria-label={`פרטים ופעולות נוספות עבור ${entry.title}`}
-                variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground"
-              >
-                <MoreHorizontal size={14} />
-              </Button>
-            </div>
           </div>
         </div>
       </motion.div>
