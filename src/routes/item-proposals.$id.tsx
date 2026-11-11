@@ -188,7 +188,9 @@ function Page() {
               {money && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   סכום שהוזן: <bdi>{formatMoney(money.input_amount, money.input_currency)}</bdi> → <bdi>{formatMoney(money.amount_ils, money.base_currency)}</bdi>
-                  {" "}({money.rate_source === "same" ? "מטבע הבסיס, ללא המרה" : <>שער ידני <bdi>1 {money.base_currency} = {money.rate} {money.input_currency}</bdi></>})
+                  {" "}({money.rate_source === "same" ? "מטבע הבסיס, ללא המרה"
+                    : money.rate_source === "live" ? <>שער שוק אוטומטי <bdi>1 {money.base_currency} = {money.rate} {money.input_currency}</bdi> · <bdi>{money.rate_provider}</bdi> · {fmtDate(money.rate_date)}{money.rate_stale ? " · שער מגיבוי (השירות לא היה זמין)" : ""}</>
+                    : <>שער ידני <bdi>1 {money.base_currency} = {money.rate} {money.input_currency}</bdi></>})
                 </p>
               )}
               {o.duplicate_of.length > 0 && pending && (

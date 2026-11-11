@@ -3,6 +3,7 @@
 // in api_create_itinerary_proposal / api_create_expense_proposal. Nothing is applied here.
 import { z } from "zod";
 import { hashToken } from "./trip-context.server";
+import { getServerFx } from "./fx.server";
 
 const TOKEN_RE = /^twpat_[A-Za-z0-9_-]{43}$/;
 const MAX_BODY = 64 * 1024;
@@ -89,13 +90,28 @@ async function handle(request: Request, kind: "itinerary" | "expenses"): Promise
     });
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const fn = kind === "itinerary" ? "api_create_itinerary_proposal" : "api_create_expense_proposal";
-    const { data, error } = await db.rpc(fn, {
+    const args = {
       _hash: hashToken(raw),
       _trip_id: (b.data.trip_id ?? null) as never,
       _request_id: b.data.request_id,
       _ops: ops as never,
       _note: (b.data.note ?? null) as never,
-    });
+    };
+    const first = await db.rpc(fn, args);
+    const error = first.error;
+    let data = first.data;
+    // Same currency and manual rate are decided inside the RPC without any network call. Only when it
+    // answers no_valid_rate do we fetch the live table on the server and ask once more. The caller can
+    // never supply a rate: the body schema is strict and the RPC whitelists operation keys.
+    if (!error && kind === "expenses" && (data as { status?: string } | null)?.status === "no_valid_rate") {
+      const fx = await getServerFx();
+      if (fx) {
+        const retry = await db.rpc("api_create_expense_proposal", { ...args, _live_fx: fx as never });
+        // If the retry itself fails (for example the database function is older), keep the first answer.
+        if (retry.error) console.error("[expenses-proposals] live_rate_retry_failed");
+        else data = retry.data;
+      }
+    }
     if (error) {
       console.error(`[${kind}-proposals] server_error`);
       return json(500, { error: "server_error" });
