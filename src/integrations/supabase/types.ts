@@ -1426,6 +1426,7 @@ export type Database = {
       api_create_expense_proposal: {
         Args: {
           _hash: string
+          _live_fx?: Json
           _note: string
           _ops: Json
           _request_id: string
