@@ -59,7 +59,7 @@ const TYPE_TERMS: Record<DocumentType, string> = {
   attraction: "אטרקציה אטרקציות attraction",
   insurance: "ביטוח insurance",
   visa: "ויזה visa",
-  transport: "תחבורה רכבת transport",
+  transport: "תחבורה transport",
   other: "אחר other",
 };
 
@@ -131,7 +131,7 @@ function DocumentsPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="חפש מסמך, הערה או שם קובץ"
+          placeholder="חיפוש במסמכים"
           dir="rtl"
           aria-label="חיפוש מסמכים"
           className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-11 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/20"

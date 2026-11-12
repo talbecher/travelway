@@ -19,6 +19,11 @@ describe("normalizeText", () => {
     expect(normalizeText("שָׁלוֹם")).toBe(normalizeText("שלום"));
     expect(normalizeText("Café")).toBe("cafe");
   });
+  test("treats both hyphen kinds as word separators, without gluing the words", () => {
+    expect(normalizeText("תל־אביב")).toBe("תל אביב");
+    expect(normalizeText("תל-אביב")).toBe("תל אביב");
+    expect(normalizeText("Hotel-Confirmation")).toBe("hotel confirmation");
+  });
 });
 
 describe("docMatchesQuery", () => {
@@ -62,6 +67,18 @@ describe("docMatchesQuery", () => {
     expect(docMatchesQuery(doc({ title: "ביטוח" }), "ביטוח")).toBe(true);
   });
 
+  test("a hyphen matches a space in both directions", () => {
+    const spaced = doc({ title: "מלון תל אביב" });
+    const maqaf = doc({ title: "מלון תל־אביב" });
+    const hyphen = doc({ title: "מלון תל-אביב" });
+    for (const q of ["תל אביב", "תל־אביב", "תל-אביב"]) {
+      expect(docMatchesQuery(spaced, q)).toBe(true);
+      expect(docMatchesQuery(maqaf, q)).toBe(true);
+      expect(docMatchesQuery(hyphen, q)).toBe(true);
+    }
+    expect(docMatchesQuery(maqaf, "תל ירושלים")).toBe(false);
+  });
+
   test("words do not bleed across field boundaries", () => {
     const d = doc({ title: "ביטוח", notes: "יפן" });
     expect(docMatchesQuery(d, "ביטוחיפן")).toBe(false);
@@ -73,6 +90,20 @@ describe("docMatchesQuery", () => {
     expect(docMatchesQuery(d, "insurance", "ביטוח insurance")).toBe(true);
     expect(docMatchesQuery(d, "ביטוח")).toBe(false);
     expect(docMatchesQuery(d, "ביטוח AIG", "ביטוח insurance")).toBe(true);
+  });
+
+  // The page passes `${DOC_TYPE_META[type].label} ${TYPE_TERMS[type]}` as extraTerms.
+  // "רכבת" is deliberately NOT a transport synonym, so the category alone must not match it.
+  test("a specific vehicle word matches only documents that actually say it", () => {
+    const transportTerms = "תחבורה תחבורה transport";
+    const train = doc({ title: "כרטיס רכבת שינקנסן" });
+    const trainInNotes = doc({ title: "JR Pass", notes: "כולל נסיעות רכבת" });
+    const bus = doc({ title: "כרטיס אוטובוס לשדה התעופה" });
+    expect(docMatchesQuery(train, "רכבת", transportTerms)).toBe(true);
+    expect(docMatchesQuery(trainInNotes, "רכבת", transportTerms)).toBe(true);
+    expect(docMatchesQuery(bus, "רכבת", transportTerms)).toBe(false);
+    // The category word itself still finds every transport document.
+    expect(docMatchesQuery(bus, "תחבורה", transportTerms)).toBe(true);
   });
 
   test("the attached file name is searchable, but opaque storage ids are not", () => {

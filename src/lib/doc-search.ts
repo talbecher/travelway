@@ -21,11 +21,17 @@ export type DocSearchFields = {
 };
 
 /**
- * Lowercase, drop combining marks (Hebrew niqqud, Latin accents), fold final Hebrew letters,
- * collapse whitespace. Applied to both the query and the text, so both sides match in the same shape.
+ * Treat hyphens as word separators, drop combining marks (Hebrew niqqud, Latin accents), lowercase,
+ * fold final Hebrew letters, collapse whitespace. Applied to both the query and the text, so both
+ * sides match in the same shape and "תל־אביב" and "תל אביב" find each other either way round.
+ *
+ * Hyphens are replaced first, on purpose: the Hebrew maqaf (U+05BE) sits inside the U+0591-U+05C7
+ * Hebrew block, so a mark-stripping rule written as that range would otherwise delete it and glue
+ * the two words together.
  */
 export function normalizeText(s: string | null | undefined): string {
   return (s ?? "")
+    .replace(/[-־]/g, " ")
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .toLowerCase()
