@@ -10,6 +10,7 @@ import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useActiveVersion } from "@/hooks/use-versions";
 import { supabase } from "@/integrations/supabase/client";
 import { todayLocal, daysBetween, hebDate, hebWeekday } from "@/lib/format";
+import { useTodayKey } from "@/hooks/use-today-key";
 import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
@@ -555,6 +556,8 @@ function Home() {
   const { data: hotels = [] } = useHotels();
   const tripIsActive = useTripIsActive();
   const isOnline = useOnline();
+  // Changes at local midnight (minute tick + visibilitychange) so the memos below roll over to the new day.
+  const todayKey = useTodayKey();
   const [hayinuOpen, setHayinuOpen] = useState(false);
   const [planSelection, setPlanSelection] = useState<{ tripId: string; dayId: string | null; manual: boolean }>({
     tripId,
@@ -592,7 +595,7 @@ function Home() {
     const budget = Number(trip.total_budget_ils);
     const remaining = budget - spent;
     const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-    const today = todayLocal();
+    const today = todayKey;
     const beforeTrip = today < trip.start_date;
     const afterTrip = today > trip.end_date;
     // Derive progress from the trip's real dates — itinerary day rows may be
@@ -610,20 +613,19 @@ function Home() {
     const daysToStart = daysBetween(today, trip.start_date);
     const tripProgressPct = daysTotal > 0 ? Math.round((daysPassed / daysTotal) * 100) : 0;
     return { spent, budget, remaining, pct, daysTotal, daysPassed, daily, beforeTrip, afterTrip, daysToStart, tripProgressPct };
-  }, [trip, expenses, days]);
+  }, [trip, expenses, days, todayKey]);
 
   const todayDay = useMemo(() => {
-    const t = todayLocal();
-    return days.find((d) => d.date === t) ?? null;
-  }, [days]);
+    return days.find((d) => d.date === todayKey) ?? null;
+  }, [days, todayKey]);
 
   const nextDay = useMemo(() => {
-    const t = todayLocal();
+    const t = todayKey;
     for (const d of days) {
       if (d.date >= t && (entriesByDay[d.id]?.length ?? 0) > 0) return d;
     }
     return null;
-  }, [days, entriesByDay]);
+  }, [days, entriesByDay, todayKey]);
 
   const stats2 = useMemo(() => {
     const saved = recs.length;
@@ -650,17 +652,17 @@ function Home() {
   }, [days, firstEmptyDay?.id, planSelection, tripId]);
 
   const deadlines = useMemo(
-    () => buildDeadlines(hotels as never, recs as never, todayLocal()),
-    [hotels, recs],
+    () => buildDeadlines(hotels as never, recs as never, todayKey),
+    [hotels, recs, todayKey],
   );
 
   // Tonight's hotel: checked in already, not yet checked out; latest check-in wins.
   const tonightHotel = useMemo(() => {
-    const t = todayLocal();
+    const t = todayKey;
     const matches = hotels.filter((h) => h.checkin_date && h.checkout_date && h.checkin_date <= t && h.checkout_date > t);
     matches.sort((a, b) => (b.checkin_date ?? "").localeCompare(a.checkin_date ?? ""));
     return matches[0] ?? null;
-  }, [hotels]);
+  }, [hotels, todayKey]);
 
   const hotelHref = tonightHotel
     ? tonightHotel.latitude != null && tonightHotel.longitude != null

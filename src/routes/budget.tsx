@@ -401,7 +401,7 @@ function BudgetSettings({ onDone }: { onDone: () => void }) {
             onChange={(e) => setRate(e.target.value)}
             className="w-full mt-1 rounded-lg bg-background border border-input px-3 h-11" />
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {conv.rate ? conversionLabel(conv) : NO_RATE_MESSAGE}
+            {conv.rate || conv.stale ? conversionLabel(conv) : NO_RATE_MESSAGE}
           </p>
         </div>
       )}

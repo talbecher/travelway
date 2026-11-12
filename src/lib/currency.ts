@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSettings, useTrip } from "@/hooks/use-trip";
-import { getRates } from "@/lib/fx";
+import { getRates, staleRateLabel } from "@/lib/fx";
 
 /**
  * Currency model:
@@ -42,12 +42,19 @@ export function useTargetCurrency(): string {
 const PAIR_TTL = 6 * 60 * 60 * 1000;
 const PAIR_PREFIX = "fx-pair-v1:";
 
-export type PairRate = { rate: number; date: string; provider: string };
+export type PairRate = {
+  rate: number;
+  date: string;
+  provider: string;
+  /** true when computed from the last good table because the live request failed. */
+  stale?: boolean;
+};
 
 /**
  * Cross rate for an arbitrary pair: 1 {base} = X {target}.
  * The provider answer has its own base currency; any currency equal to that
- * base is treated as 1. Cached per pair.
+ * base is treated as 1. Cached per pair; a stale pair is never cached, so it
+ * cannot hide a live rate once the network is back.
  */
 export async function getPairRate(base: string, target: string): Promise<PairRate | null> {
   const b = base.toUpperCase();
@@ -59,7 +66,7 @@ export async function getPairRate(base: string, target: string): Promise<PairRat
       const raw = sessionStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw) as { at: number; data: PairRate };
-        if (Date.now() - parsed.at < PAIR_TTL) return parsed.data;
+        if (Date.now() - parsed.at < PAIR_TTL && !parsed.data?.stale) return parsed.data;
       }
     } catch {
       /* ignore cache errors */
@@ -77,6 +84,7 @@ export async function getPairRate(base: string, target: string): Promise<PairRat
   const tv = valueOf(t);
   if (!bv || !tv) return null;
   const data: PairRate = { rate: tv / bv, date: rates.date, provider: "exchangerate-api.com" };
+  if (rates.stale) return { ...data, stale: true };
   if (typeof window !== "undefined") {
     try {
       sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data }));
@@ -97,6 +105,11 @@ export type Conversion = {
   updatedAt: string | null;
   /** true when base === target, so no conversion is needed at all. */
   sameCurrency: boolean;
+  /**
+   * Last good market rate, set only when there is no manual or live rate (rate is null).
+   * Display only: saving still requires `rate`, so a stale rate never reaches the database.
+   */
+  stale: { rate: number; date: string } | null;
 };
 
 /**
@@ -125,13 +138,44 @@ export function useConversion(targetOverride?: string | null): Conversion {
     };
   }, [base, target]);
 
+  return resolveConversion(base, target, manual, live);
+}
+
+/**
+ * Pure rate resolution: same currency, then manual, then live. A stale rate never becomes `rate`
+ * (it only fills `stale` for display), so every save gate that checks `conv.rate` keeps blocking.
+ */
+export function resolveConversion(
+  base: string,
+  target: string,
+  manual: number,
+  live: PairRate | null,
+): Conversion {
   if (base === target) {
-    return { base, target, rate: 1, source: "same", provider: null, updatedAt: null, sameCurrency: true };
+    return {
+      base,
+      target,
+      rate: 1,
+      source: "same",
+      provider: null,
+      updatedAt: null,
+      sameCurrency: true,
+      stale: null,
+    };
   }
   if (Number.isFinite(manual) && manual > 0) {
-    return { base, target, rate: manual, source: "manual", provider: null, updatedAt: null, sameCurrency: false };
+    return {
+      base,
+      target,
+      rate: manual,
+      source: "manual",
+      provider: null,
+      updatedAt: null,
+      sameCurrency: false,
+      stale: null,
+    };
   }
-  if (live && Number.isFinite(live.rate) && live.rate > 0) {
+  if (live && !live.stale && Number.isFinite(live.rate) && live.rate > 0) {
     return {
       base,
       target,
@@ -140,18 +184,40 @@ export function useConversion(targetOverride?: string | null): Conversion {
       provider: live.provider,
       updatedAt: live.date || null,
       sameCurrency: false,
+      stale: null,
     };
   }
-  return { base, target, rate: null, source: null, provider: null, updatedAt: null, sameCurrency: false };
+  const stale =
+    live && live.stale && Number.isFinite(live.rate) && live.rate > 0
+      ? { rate: live.rate, date: live.date }
+      : null;
+  return {
+    base,
+    target,
+    rate: null,
+    source: null,
+    provider: null,
+    updatedAt: null,
+    sameCurrency: false,
+    stale,
+  };
 }
 
 function trimRate(rate: number): string {
   return rate.toLocaleString("he-IL", { maximumFractionDigits: rate >= 100 ? 2 : 4 });
 }
 
-/** "1 ILS = 38 JPY (שער שוק יומי · exchangerate-api.com · 2026-09-23)" */
+/**
+ * "1 ILS = 38 JPY (שער שוק יומי · exchangerate-api.com · 2026-09-23)"
+ * Only a stale rate: "1 ILS = 38 JPY (שער מ-23.09 · אין חיבור)".
+ */
 export function conversionLabel(c: Conversion): string {
-  if (c.sameCurrency || c.rate == null) return "";
+  if (c.sameCurrency) return "";
+  if (c.rate == null) {
+    return c.stale
+      ? `1 ${c.base} = ${trimRate(c.stale.rate)} ${c.target} (${staleRateLabel(c.stale.date)})`
+      : "";
+  }
   const dir = `1 ${c.base} = ${trimRate(c.rate)} ${c.target}`;
   if (c.source === "manual") return `${dir} (שער ידני)`;
   const parts = ["שער שוק יומי", c.provider, c.updatedAt].filter(Boolean);
