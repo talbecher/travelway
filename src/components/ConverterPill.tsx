@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { useSettings } from "@/hooks/use-trip";
 import { useBaseCurrency, useTargetCurrency } from "@/lib/currency";
-import { getRates, convert } from "@/lib/fx";
+import { getRates, convert, staleRateLabel } from "@/lib/fx";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "./BottomSheet";
@@ -116,7 +116,13 @@ function Converter() {
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        {loading ? "טוען שערים..." : rates ? `שער שוק יומי · exchangerate-api.com · עודכן ${rates.date}` : "אין חיבור — נדרש שער ידני"}
+        {loading
+          ? "טוען שערים..."
+          : rates?.stale
+            ? staleRateLabel(rates.date)
+            : rates
+              ? `שער שוק יומי · exchangerate-api.com · עודכן ${rates.date}`
+              : "אין חיבור — נדרש שער ידני"}
       </p>
     </div>
   );
