@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, QrCode, Paperclip, ExternalLink, Loader2, Upload, X } from "lucide-react";
+import { Plus, Trash2, QrCode, Paperclip, ExternalLink, Loader2, Upload, X, Search } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Barcode from "react-barcode";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { getDocumentFileUrl } from "@/lib/document-files.functions";
 import { hebDate, ils } from "@/lib/format";
+import { docMatchesQuery, fileBasename } from "@/lib/doc-search";
 
 export const Route = createFileRoute("/documents")({
   head: () => ({
@@ -51,19 +52,35 @@ const FILTER_TYPES: Array<DocumentType | "all"> = [
   "other",
 ];
 
+/** Searchable synonyms per type, so a singular or English word still finds the plural Hebrew label. */
+const TYPE_TERMS: Record<DocumentType, string> = {
+  flight: "טיסה טיסות flight",
+  hotel: "מלון מלונות hotel",
+  attraction: "אטרקציה אטרקציות attraction",
+  insurance: "ביטוח insurance",
+  visa: "ויזה visa",
+  transport: "תחבורה רכבת transport",
+  other: "אחר other",
+};
+
 function DocumentsPage() {
   const tripId = useActiveTripId();
   const { data: docs = [], isLoading } = useDocuments(tripId);
   const [filter, setFilter] = useState<DocumentType | "all">("all");
+  const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TripDocument | null>(null);
   const [barcodeDoc, setBarcodeDoc] = useState<TripDocument | null>(null);
   const deleteDoc = useDeleteDocument(tripId);
 
-  const filtered = useMemo(
-    () => (filter === "all" ? docs : docs.filter((d) => d.type === filter)),
-    [docs, filter],
-  );
+  const searching = query.trim().length > 0;
+  const filtered = useMemo(() => {
+    const byType = filter === "all" ? docs : docs.filter((d: TripDocument) => d.type === filter);
+    if (!query.trim()) return byType;
+    return byType.filter((d: TripDocument) =>
+      docMatchesQuery(d, query, `${DOC_TYPE_META[d.type]?.label ?? ""} ${TYPE_TERMS[d.type] ?? ""}`),
+    );
+  }, [docs, filter, query]);
 
   return (
     <div className="documents-wallet pt-4 pb-8 flex flex-col gap-4">
@@ -105,6 +122,32 @@ function DocumentsPage() {
         </button>
       </header>
 
+      <div className="relative">
+        <Search
+          size={16}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="חפש מסמך, הערה או שם קובץ"
+          dir="rtl"
+          aria-label="חיפוש מסמכים"
+          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-11 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/20"
+        />
+        {searching && (
+          <button
+            type="button"
+            aria-label="נקה חיפוש"
+            onClick={() => setQuery("")}
+            className="absolute left-0.5 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
       <div className="-mx-4 px-4 overflow-x-auto">
         <div className="flex gap-2 min-w-max">
           {FILTER_TYPES.map((t) => {
@@ -131,10 +174,22 @@ function DocumentsPage() {
         <div className="py-10 text-center text-muted-foreground text-sm">טוען מסמכים...</div>
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center space-y-3">
-          <div className="text-5xl">📄</div>
+          <div className="text-5xl">{docs.length > 0 && searching ? "🔍" : "📄"}</div>
           <div className="text-sm text-muted-foreground">
-            {docs.length === 0 ? "אין מסמכים עדיין" : "אין מסמכים בקטגוריה הזו"}
+            {docs.length === 0
+              ? "אין מסמכים עדיין"
+              : searching
+                ? "לא נמצאו מסמכים התואמים לחיפוש"
+                : "אין מסמכים בקטגוריה הזו"}
           </div>
+          {docs.length > 0 && searching && (
+            <button
+              onClick={() => setQuery("")}
+              className="inline-flex items-center gap-1.5 text-sm text-[color:var(--accent)]"
+            >
+              <X size={16} /> נקה חיפוש
+            </button>
+          )}
           {docs.length === 0 && (
             <button
               onClick={() => {
@@ -424,15 +479,7 @@ function safeExternalUrl(raw: string | null | undefined): string | null {
 
 /** Human label for an attached file: fresh upload name, else a derived basename (opaque storage ids stay generic). */
 function fileDisplayName(editing: TripDocument | null, fileName: string | null): string {
-  if (fileName) return fileName;
-  const raw = editing?.file_path ?? editing?.file_url ?? "";
-  const base = raw.split("?")[0].split("/").pop() ?? "";
-  if (!base || /^[0-9a-f-]{20,}\.[a-z0-9]+$/i.test(base)) return "קובץ מצורף";
-  try {
-    return decodeURIComponent(base);
-  } catch {
-    return base;
-  }
+  return fileName || fileBasename(editing?.file_path, editing?.file_url) || "קובץ מצורף";
 }
 
 function mimeLabel(mime: string | null | undefined): string | null {
