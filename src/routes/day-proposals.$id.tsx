@@ -289,9 +289,9 @@ function MissingLocationsSheet({
   const pickCount = Object.keys(picks).length;
 
   return (
-    <BottomSheet open={open} onOpenChange={(o) => { if (!o) close(); }} title="תחנות ללא מיקום">
+    <BottomSheet open={open} onOpenChange={(o) => { if (!o) close(); }} title="תחנות ללא מיקום" repositionInputs={false}>
       {pickingFor === null ? (
-        <div className="flex flex-col gap-3 pb-24">
+        <div className="flex flex-col gap-3 pb-[env(safe-area-inset-bottom)]">
           <p className="text-xs text-muted-foreground">
             בחרו מקום שמור מהטיול לכל תחנה, או השאירו אותה במפורש ללא מיקום — לא נמציא נקודה לאזור כללי.
           </p>
@@ -341,7 +341,7 @@ function MissingLocationsSheet({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 pb-24">
+        <div className="flex flex-col gap-3 pb-[env(safe-area-inset-bottom)]">
           <div className="flex items-center gap-2">
             <button type="button" aria-label="חזרה" className="flex size-11 items-center justify-center rounded-lg border border-border"
               onClick={() => setPickingFor(null)}>
