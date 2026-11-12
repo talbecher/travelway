@@ -8,8 +8,74 @@ export type SavedPlace = {
   latitude: number;
   longitude: number;
   google_maps_url: string | null;
-  source: "recommendation" | "hotel";
+  source: "recommendation" | "hotel" | "google";
+  /** Google place id of a saved recommendation (or of a Google pick); used only to hide duplicates. */
+  provider_place_id?: string | null;
 };
+
+/** One Google autocomplete suggestion (same shape as PlaceSuggestion from places.functions). */
+export type GoogleSuggestion = { placeId: string; main: string; secondary: string };
+
+export type PlaceOption =
+  | { kind: "saved"; place: SavedPlace }
+  | { kind: "google"; suggestion: GoogleSuggestion };
+
+export const MAX_GOOGLE_RESULTS = 5;
+const PLACE_ID_RE = /^[A-Za-z0-9_-]{5,300}$/;
+
+/**
+ * Saved places first (order kept), then up to MAX_GOOGLE_RESULTS Google suggestions.
+ * A Google suggestion is hidden only when its placeId equals a saved place's provider_place_id
+ * (no name matching). `google` is null when Google failed or did not run: saved places still show.
+ */
+export function mergePlaceResults(
+  saved: SavedPlace[],
+  google: GoogleSuggestion[] | null,
+): PlaceOption[] {
+  const out: PlaceOption[] = saved.map((place) => ({ kind: "saved", place }));
+  const taken = new Set(saved.map((p) => p.provider_place_id).filter((id): id is string => !!id));
+  let added = 0;
+  for (const s of google ?? []) {
+    if (added >= MAX_GOOGLE_RESULTS) break;
+    if (!s.placeId || taken.has(s.placeId)) continue;
+    taken.add(s.placeId);
+    out.push({ kind: "google", suggestion: s });
+    added++;
+  }
+  return out;
+}
+
+/** Initial search text for a stop: its location_name, otherwise its title. */
+export function prefillQuery(entry: { title: string; location_name?: string | null }): string {
+  return (entry.location_name ?? "").trim() || entry.title.trim();
+}
+
+/** Google Maps link to the exact place: explicit destination coordinates plus the Google place id. */
+export function googleMapsPlaceUrl(lat: number, lng: number, placeId: string): string {
+  const base = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  return PLACE_ID_RE.test(placeId) ? `${base}&query_place_id=${encodeURIComponent(placeId)}` : base;
+}
+
+/** Converts a Google Place Details result into a pick; null when its coordinates are unusable. */
+export function savedFromGooglePlace(p: {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}): SavedPlace | null {
+  if (!validCoords(p.latitude, p.longitude) || !PLACE_ID_RE.test(p.id)) return null;
+  return {
+    key: `google:${p.id}`,
+    name: p.name,
+    address: p.address || null,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    google_maps_url: googleMapsPlaceUrl(p.latitude, p.longitude, p.id),
+    source: "google",
+    provider_place_id: p.id,
+  };
+}
 
 export type ProposalEntryLike = {
   title: string;
