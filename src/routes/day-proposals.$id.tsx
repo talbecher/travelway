@@ -478,7 +478,8 @@ function MissingLocationsSheet({
           <div className="relative">
             <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              autoFocus
+              // Prefilled: no auto-focus, so the keyboard does not cover the ready results.
+              autoFocus={!search.trim()}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="חפש במקומות השמורים או ב-Google…"
