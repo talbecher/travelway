@@ -66,6 +66,16 @@ describe("subscribeTodayKey", () => {
     stop();
   });
 
+  it("does not call onChange (so no re-render) on any tick within the same day", () => {
+    fakeDocument();
+    jest.useFakeTimers({ now: new Date("2026-11-17T15:30:00Z") }); // 00:30 JST on 18.11
+    let calls = 0;
+    const stop = subscribeTodayKey("2026-11-18", () => calls++);
+    jest.advanceTimersByTime(23 * 60 * 60_000); // 23 hours of minute ticks, still 18.11 until 00:00 JST
+    expect(calls).toBe(0);
+    stop();
+  });
+
   it("corrects a stale initial key right away", () => {
     fakeDocument();
     jest.useFakeTimers({ now: JST_0001 });

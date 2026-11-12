@@ -37,7 +37,7 @@ const liveFetch = async () => {
 setGlobal("fetch", liveFetch);
 
 const { getRates, convert, staleRateLabel } = await import("./fx");
-const { getPairRate } = await import("./currency");
+const { getPairRate, resolveConversion, conversionLabel } = await import("./currency");
 
 /** Simulates the app being closed and reopened: sessionStorage is gone, localStorage stays. */
 function restartApp() {
@@ -141,5 +141,52 @@ describe("getPairRate", () => {
 describe("staleRateLabel", () => {
   it("formats DD.MM", () => {
     expect(staleRateLabel("2026-11-12")).toBe("שער מ-12.11 · אין חיבור");
+  });
+});
+
+describe("resolveConversion: a stale rate never counts as a usable rate", () => {
+  // The three foreign-currency save gates (GlobalFab, EditExpenseForm) throw when
+  // `!conv.rate || conv.rate <= 0`. This is that exact predicate.
+  const blocksSave = (c: { rate: number | null }) => !c.rate || c.rate <= 0;
+  const stalePair = { rate: 41.5, date: "2026-11-12", provider: "exchangerate-api.com", stale: true };
+  const livePair = { rate: 42, date: "2026-11-18", provider: "exchangerate-api.com" };
+
+  it("only a stale rate (no manual, no live): rate is null, so saving stays blocked; stale is kept for display", () => {
+    const c = resolveConversion("ILS", "JPY", 0, stalePair);
+    expect(c.rate).toBeNull();
+    expect(c.source).toBeNull();
+    expect(c.stale).toEqual({ rate: 41.5, date: "2026-11-12" });
+    expect(blocksSave(c)).toBe(true);
+    expect(conversionLabel(c)).toBe("1 ILS = 41.5 JPY (שער מ-12.11 · אין חיבור)");
+  });
+
+  it("nothing at all: rate null, no stale", () => {
+    const c = resolveConversion("ILS", "JPY", 0, null);
+    expect(c.rate).toBeNull();
+    expect(c.stale).toBeNull();
+    expect(blocksSave(c)).toBe(true);
+    expect(conversionLabel(c)).toBe("");
+  });
+
+  it("manual rate wins over a stale rate and saving is allowed", () => {
+    const c = resolveConversion("ILS", "JPY", 40, stalePair);
+    expect(c.rate).toBe(40);
+    expect(c.source).toBe("manual");
+    expect(c.stale).toBeNull();
+    expect(blocksSave(c)).toBe(false);
+  });
+
+  it("a live rate is used as live, never as stale", () => {
+    const c = resolveConversion("ILS", "JPY", 0, livePair);
+    expect(c.rate).toBe(42);
+    expect(c.source).toBe("live");
+    expect(c.stale).toBeNull();
+    expect(blocksSave(c)).toBe(false);
+  });
+
+  it("same currency needs no rate", () => {
+    const c = resolveConversion("ILS", "ILS", 0, null);
+    expect(c.rate).toBe(1);
+    expect(c.sameCurrency).toBe(true);
   });
 });

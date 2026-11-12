@@ -138,6 +138,19 @@ export function useConversion(targetOverride?: string | null): Conversion {
     };
   }, [base, target]);
 
+  return resolveConversion(base, target, manual, live);
+}
+
+/**
+ * Pure rate resolution: same currency, then manual, then live. A stale rate never becomes `rate`
+ * (it only fills `stale` for display), so every save gate that checks `conv.rate` keeps blocking.
+ */
+export function resolveConversion(
+  base: string,
+  target: string,
+  manual: number,
+  live: PairRate | null,
+): Conversion {
   if (base === target) {
     return {
       base,

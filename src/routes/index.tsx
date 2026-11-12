@@ -620,12 +620,12 @@ function Home() {
   }, [days, todayKey]);
 
   const nextDay = useMemo(() => {
-    const t = todayLocal();
+    const t = todayKey;
     for (const d of days) {
       if (d.date >= t && (entriesByDay[d.id]?.length ?? 0) > 0) return d;
     }
     return null;
-  }, [days, entriesByDay]);
+  }, [days, entriesByDay, todayKey]);
 
   const stats2 = useMemo(() => {
     const saved = recs.length;
