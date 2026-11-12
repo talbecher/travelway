@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,9 +11,14 @@ import { BottomSheet } from "@/components/BottomSheet";
 import {
   buildLocationRevisions,
   filterSavedPlaces,
+  mergePlaceResults,
   missingIndexes,
+  prefillQuery,
+  savedFromGooglePlace,
+  type GoogleSuggestion,
   type SavedPlace,
 } from "@/lib/proposal-location-fix";
+import { autocompletePlaces, getPlaceDetails } from "@/lib/places.functions";
 
 export const Route = createFileRoute("/day-proposals/$id")({
   head: () => ({
@@ -203,6 +209,78 @@ function ProposalPage() {
 }
 
 /** Lets the user attach saved trip places to proposal stops that have no location. */
+const newSessionToken = () => crypto.randomUUID().replace(/-/g, "");
+
+/**
+ * Google autocomplete for the missing-locations picker: 400ms debounce, at least 2 characters,
+ * one session token until a Details call, and a cache per sheet opening so the same text (e.g. a
+ * stop's prefilled name) is searched at most once. `results` is null when Google failed.
+ */
+function useGoogleSuggestions(query: string, sheetOpen: boolean, picking: boolean) {
+  const autocomplete = useServerFn(autocompletePlaces);
+  const [results, setResults] = useState<GoogleSuggestion[] | null>([]);
+  const [loading, setLoading] = useState(false);
+  const cacheRef = useRef(new Map<string, GoogleSuggestion[]>());
+  const tokenRef = useRef<string | null>(null);
+  const seqRef = useRef(0);
+  const active = sheetOpen && picking;
+
+  // Each sheet opening starts fresh: no cached results, no session, no late responses.
+  useEffect(() => {
+    if (sheetOpen) return;
+    seqRef.current++;
+    cacheRef.current.clear();
+    tokenRef.current = null;
+  }, [sheetOpen]);
+
+  useEffect(() => {
+    const q = query.trim();
+    const my = ++seqRef.current; // any newer query invalidates in-flight responses
+    if (!q) tokenRef.current = null; // abandoned session
+    if (!active || q.length < 2) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    const hit = cacheRef.current.get(q);
+    if (hit) {
+      setResults(hit);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      tokenRef.current ??= newSessionToken();
+      try {
+        const r = await autocomplete({ data: { input: q, sessionToken: tokenRef.current } });
+        if (my !== seqRef.current) return;
+        if (r.error) {
+          setResults(null);
+          return;
+        }
+        cacheRef.current.set(q, r.suggestions);
+        setResults(r.suggestions);
+      } catch {
+        if (my === seqRef.current) setResults(null);
+      } finally {
+        if (my === seqRef.current) setLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query, active, autocomplete]);
+
+  return {
+    results,
+    loading,
+    /** Token for the Details call that ends the session; never reused afterwards. */
+    takeToken: () => {
+      const t = tokenRef.current ?? newSessionToken();
+      tokenRef.current = null;
+      return t;
+    },
+  };
+}
+
 function MissingLocationsSheet({
   open,
   onOpenChange,
@@ -218,6 +296,18 @@ function MissingLocationsSheet({
   const [pickingFor, setPickingFor] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const pickSeqRef = useRef(0);
+  const google = useGoogleSuggestions(search, open, pickingFor !== null);
+  const details = useServerFn(getPlaceDetails);
+
+  // The page may close the sheet directly (after a save), so reset the picker on any close.
+  useEffect(() => {
+    if (open) return;
+    pickSeqRef.current++;
+    setPickingFor(null);
+    setSearch("");
+  }, [open]);
 
   const sources = view.location_sources ?? view.entries.map(() => "missing");
   const missing = useMemo(() => missingIndexes(view.entries, sources), [view.entries, sources]);
@@ -227,7 +317,7 @@ function MissingLocationsSheet({
     enabled: open,
     queryFn: async (): Promise<SavedPlace[]> => {
       const [recs, hotels] = await Promise.all([
-        supabase.from("recommendations").select("id,name,address,latitude,longitude,google_maps_url").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(500),
+        supabase.from("recommendations").select("id,name,address,latitude,longitude,google_maps_url,provider_place_id").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(500),
         supabase.from("hotels").select("id,hotel_name,address,latitude,longitude,google_maps_url").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(100),
       ]);
       if (recs.error) throw recs.error;
@@ -235,7 +325,7 @@ function MissingLocationsSheet({
       const out: SavedPlace[] = [];
       for (const r of recs.data ?? []) {
         if (r.latitude == null || r.longitude == null) continue;
-        out.push({ key: `rec:${r.id}`, name: r.name, address: r.address, latitude: r.latitude, longitude: r.longitude, google_maps_url: r.google_maps_url, source: "recommendation" });
+        out.push({ key: `rec:${r.id}`, name: r.name, address: r.address, latitude: r.latitude, longitude: r.longitude, google_maps_url: r.google_maps_url, source: "recommendation", provider_place_id: r.provider_place_id });
       }
       for (const h of hotels.data ?? []) {
         if (h.latitude == null || h.longitude == null) continue;
@@ -249,6 +339,42 @@ function MissingLocationsSheet({
     () => filterSavedPlaces(placesQuery.data ?? [], search),
     [placesQuery.data, search],
   );
+  const options = useMemo(() => mergePlaceResults(filtered, google.results), [filtered, google.results]);
+
+  function openPicker(i: number) {
+    pickSeqRef.current++;
+    setPickingFor(i);
+    // Prefilled so results show without typing; the per-opening cache keeps it to one search per text.
+    setSearch(prefillQuery(view.entries[i]));
+  }
+
+  function backToList() {
+    pickSeqRef.current++;
+    setPickingFor(null);
+    setSearch("");
+  }
+
+  async function pickGoogle(s: GoogleSuggestion) {
+    if (pickingFor === null || resolvingId) return;
+    const forIndex = pickingFor;
+    const my = pickSeqRef.current;
+    setResolvingId(s.placeId);
+    try {
+      const r = await details({ data: { placeId: s.placeId, sessionToken: google.takeToken(), profile: "expense" } });
+      if (my !== pickSeqRef.current) return;
+      const pick = r.place ? savedFromGooglePlace(r.place) : null;
+      if (!pick) {
+        toast.error("לא הצלחנו לטעון את המקום מ-Google. נסו שוב או בחרו מקום שמור.");
+        return;
+      }
+      setPicks((prev) => ({ ...prev, [forIndex]: pick }));
+      backToList();
+    } catch {
+      if (my === pickSeqRef.current) toast.error("לא הצלחנו לטעון את המקום מ-Google. נסו שוב או בחרו מקום שמור.");
+    } finally {
+      setResolvingId(null);
+    }
+  }
 
   function close() {
     setPicks({});
@@ -310,11 +436,11 @@ function MissingLocationsSheet({
                       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MapPin className="size-3.5 shrink-0" />
                         <span dir="auto" className="truncate">{pick.name}{pick.address ? ` · ${pick.address}` : ""}</span>
-                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5">{pick.source === "hotel" ? "מלון" : "מקום שמור"}</span>
+                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5">{pick.source === "hotel" ? "מלון" : pick.source === "google" ? "Google" : "מקום שמור"}</span>
                       </p>
                       <div className="flex gap-2">
                         <button type="button" className="min-h-11 flex-1 rounded-lg border border-border text-xs font-semibold"
-                          onClick={() => { setPickingFor(i); setSearch(""); }}>
+                          onClick={() => openPicker(i)}>
                           החלף בחירה
                         </button>
                         <button type="button" className="min-h-11 flex-1 rounded-lg border border-border text-xs font-semibold text-muted-foreground"
@@ -325,7 +451,7 @@ function MissingLocationsSheet({
                     </div>
                   ) : (
                     <button type="button" className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground"
-                      onClick={() => { setPickingFor(i); setSearch(""); }}>
+                      onClick={() => openPicker(i)}>
                       <MapPin className="size-4" /> בחר מיקום
                     </button>
                   )}
@@ -344,7 +470,7 @@ function MissingLocationsSheet({
         <div className="flex flex-col gap-3 pb-[env(safe-area-inset-bottom)]">
           <div className="flex items-center gap-2">
             <button type="button" aria-label="חזרה" className="flex size-11 items-center justify-center rounded-lg border border-border"
-              onClick={() => setPickingFor(null)}>
+              onClick={backToList}>
               <X className="size-4" />
             </button>
             <p dir="auto" className="min-w-0 flex-1 truncate text-start text-sm font-semibold">{view.entries[pickingFor]?.title}</p>
@@ -355,32 +481,58 @@ function MissingLocationsSheet({
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="חפש במקומות השמורים…"
+              placeholder="חפש במקומות השמורים או ב-Google…"
               className="h-11 w-full rounded-lg border border-input bg-background ps-9 pe-3 text-sm"
             />
           </div>
-          {placesQuery.isLoading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">טוען מקומות שמורים…</p>
-          ) : placesQuery.isError ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">טעינת המקומות נכשלה</p>
-          ) : filtered.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">לא נמצאו מקומות שמורים מתאימים</p>
+          {placesQuery.isLoading && <p className="text-xs text-muted-foreground">טוען מקומות שמורים…</p>}
+          {placesQuery.isError && <p className="text-xs text-muted-foreground">טעינת המקומות השמורים נכשלה</p>}
+          {google.loading ? (
+            <p className="text-xs text-muted-foreground">מחפש ב-Google…</p>
+          ) : google.results === null ? (
+            <p role="status" className="text-xs text-muted-foreground">חיפוש Google לא זמין כרגע. אפשר לבחור מהמקומות השמורים.</p>
+          ) : null}
+          {options.length === 0 ? (
+            !placesQuery.isLoading && !google.loading && (
+              <p className="py-6 text-center text-sm text-muted-foreground">לא נמצאו מקומות מתאימים</p>
+            )
           ) : (
             <ul className="max-h-80 space-y-1.5 overflow-y-auto">
-              {filtered.map((p) => (
-                <li key={p.key}>
-                  <button type="button"
-                    className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border bg-card p-3 text-start"
-                    onClick={() => { setPicks((prev) => ({ ...prev, [pickingFor]: p })); setPickingFor(null); setSearch(""); }}>
-                    <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1">
-                      <span dir="auto" className="block truncate text-sm font-semibold">{p.name}</span>
-                      {p.address && <span dir="auto" className="block truncate text-xs text-muted-foreground">{p.address}</span>}
-                    </span>
-                    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs">{p.source === "hotel" ? "מלון" : "מקום שמור"}</span>
-                  </button>
-                </li>
-              ))}
+              {options.map((o) => {
+                if (o.kind === "saved") {
+                  const p = o.place;
+                  return (
+                    <li key={p.key}>
+                      <button type="button"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border bg-card p-3 text-start"
+                        onClick={() => { setPicks((prev) => ({ ...prev, [pickingFor]: p })); backToList(); }}>
+                        <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1">
+                          <span dir="auto" className="block truncate text-sm font-semibold">{p.name}</span>
+                          {p.address && <span dir="auto" className="block truncate text-xs text-muted-foreground">{p.address}</span>}
+                        </span>
+                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs">{p.source === "hotel" ? "מלון" : "מקום שמור"}</span>
+                      </button>
+                    </li>
+                  );
+                }
+                const g = o.suggestion;
+                const busy = resolvingId === g.placeId;
+                return (
+                  <li key={`google:${g.placeId}`}>
+                    <button type="button" disabled={resolvingId !== null}
+                      className={`flex min-h-11 w-full items-center gap-2 rounded-xl border border-border bg-card p-3 text-start disabled:cursor-default ${resolvingId && !busy ? "opacity-50" : ""}`}
+                      onClick={() => void pickGoogle(g)}>
+                      <MapPin className={`size-4 shrink-0 text-muted-foreground ${busy ? "animate-pulse" : ""}`} />
+                      <span className="min-w-0 flex-1">
+                        <span dir="auto" className="block truncate text-sm font-semibold">{g.main}</span>
+                        {g.secondary && <span dir="auto" className="block truncate text-xs text-muted-foreground">{g.secondary}</span>}
+                      </span>
+                      <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs">{busy ? "טוען…" : "Google"}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
