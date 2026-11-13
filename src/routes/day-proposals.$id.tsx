@@ -14,11 +14,14 @@ import {
   filterSavedPlaces,
   mergePlaceResults,
   missingIndexes,
+  nearbySaved,
   prefillQuery,
   savedFromGooglePlace,
+  stopAreaCenter,
   type GoogleSuggestion,
   type SavedPlace,
 } from "@/lib/proposal-location-fix";
+import { fmtDistance } from "@/lib/geo";
 import { autocompletePlaces, getPlaceDetails } from "@/lib/places.functions";
 
 export const Route = createFileRoute("/day-proposals/$id")({
@@ -325,7 +328,7 @@ function MissingLocationsSheet({
     queryFn: async (): Promise<SavedPlace[]> => {
       const [recs, hotels] = await Promise.all([
         supabase.from("recommendations").select("id,name,address,latitude,longitude,google_maps_url,provider_place_id").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(500),
-        supabase.from("hotels").select("id,hotel_name,address,latitude,longitude,google_maps_url").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(100),
+        supabase.from("hotels").select("id,hotel_name,address,latitude,longitude,google_maps_url,checkin_date,checkout_date").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(100),
       ]);
       if (recs.error) throw recs.error;
       if (hotels.error) throw hotels.error;
@@ -336,7 +339,7 @@ function MissingLocationsSheet({
       }
       for (const h of hotels.data ?? []) {
         if (h.latitude == null || h.longitude == null) continue;
-        out.push({ key: `hotel:${h.id}`, name: h.hotel_name, address: h.address, latitude: h.latitude, longitude: h.longitude, google_maps_url: h.google_maps_url, source: "hotel" });
+        out.push({ key: `hotel:${h.id}`, name: h.hotel_name, address: h.address, latitude: h.latitude, longitude: h.longitude, google_maps_url: h.google_maps_url, source: "hotel", checkin_date: h.checkin_date, checkout_date: h.checkout_date });
       }
       return out;
     },
@@ -434,6 +437,25 @@ function MissingLocationsSheet({
   const isAuto = (i: number) => picks[i] !== undefined && autoPicks[i] === picks[i].key;
   const autoCount = missing.filter(isAuto).length;
 
+  // "Saved near the area": only for a stop without an automatic match, and only while the search
+  // still holds the prefilled text. Any edit falls back to the usual text filter + Google.
+  const pickingAuto = pickingFor !== null && isAuto(pickingFor);
+  const showNearby =
+    pickingFor !== null && !pickingAuto && search === prefillQuery(view.entries[pickingFor]);
+  const nearby = useMemo(() => {
+    if (!showNearby || pickingFor === null || !placesQuery.data) return [];
+    const center = stopAreaCenter(view.entries, picks, pickingFor, placesQuery.data, view.date);
+    const shownKeys = filtered.map((p) => p.key);
+    return nearbySaved(center, placesQuery.data, undefined, undefined, shownKeys);
+  }, [showNearby, pickingFor, placesQuery.data, view.entries, view.date, picks, filtered]);
+
+  function choose(p: SavedPlace) {
+    if (pickingFor === null) return;
+    const i = pickingFor;
+    setPicks((prev) => ({ ...prev, [i]: p }));
+    backToList();
+  }
+
   return (
     <BottomSheet open={open} onOpenChange={(o) => { if (!o) close(); }} title="תחנות ללא מיקום" repositionInputs={false}>
       {pickingFor === null ? (
@@ -527,6 +549,21 @@ function MissingLocationsSheet({
           ) : google.results === null ? (
             <p role="status" className="text-xs text-muted-foreground">חיפוש Google לא זמין כרגע. אפשר לבחור מהמקומות השמורים.</p>
           ) : null}
+          {nearby.length > 0 && (
+            <section aria-labelledby="nearby-saved-title" className="space-y-1.5">
+              <h3 id="nearby-saved-title" className="text-xs font-semibold text-muted-foreground">שמורים קרובים לאזור</h3>
+              <ul className="space-y-1.5">
+                {nearby.map(({ place, km }) => (
+                  <li key={`near:${place.key}`}>
+                    <SavedOptionButton place={place} km={km} onPick={() => choose(place)} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {nearby.length > 0 && options.length > 0 && (
+            <h3 className="text-xs font-semibold text-muted-foreground">לפי החיפוש</h3>
+          )}
           {options.length === 0 ? (
             !placesQuery.isLoading && !google.loading && (
               <p className="py-6 text-center text-sm text-muted-foreground">לא נמצאו מקומות מתאימים</p>
@@ -538,16 +575,7 @@ function MissingLocationsSheet({
                   const p = o.place;
                   return (
                     <li key={p.key}>
-                      <button type="button"
-                        className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border bg-card p-3 text-start"
-                        onClick={() => { setPicks((prev) => ({ ...prev, [pickingFor]: p })); backToList(); }}>
-                        <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 flex-1">
-                          <span dir="auto" className="block truncate text-sm font-semibold">{p.name}</span>
-                          {p.address && <span dir="auto" className="block truncate text-xs text-muted-foreground">{p.address}</span>}
-                        </span>
-                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs">{p.source === "hotel" ? "מלון" : "מקום שמור"}</span>
-                      </button>
+                      <SavedOptionButton place={p} onPick={() => choose(p)} />
                     </li>
                   );
                 }
@@ -573,6 +601,44 @@ function MissingLocationsSheet({
         </div>
       )}
     </BottomSheet>
+  );
+}
+
+function SavedOptionButton({
+  place: p,
+  km,
+  onPick,
+}: {
+  place: SavedPlace;
+  km?: number;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border bg-card p-3 text-start"
+      onClick={onPick}
+    >
+      <MapPin className="size-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1">
+        <span dir="auto" className="block truncate text-sm font-semibold">
+          {p.name}
+        </span>
+        {p.address && (
+          <span dir="auto" className="block truncate text-xs text-muted-foreground">
+            {p.address}
+          </span>
+        )}
+      </span>
+      {km !== undefined && (
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          {fmtDistance(km)}
+        </span>
+      )}
+      <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs">
+        {p.source === "hotel" ? "מלון" : "מקום שמור"}
+      </span>
+    </button>
   );
 }
 
