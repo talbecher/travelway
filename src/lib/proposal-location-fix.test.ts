@@ -149,20 +149,36 @@ describe("autoMatchSaved", () => {
     expect(r[0].source).toBe("hotel");
     expect(r[1].source).toBe("recommendation");
   });
-  it("does not pick when two saved places match", () => {
-    const twin: SavedPlace = { ...station, key: "rec:9" };
+  it("does not pick when two saved places with different coordinates match", () => {
+    const twin: SavedPlace = { ...station, key: "rec:9", latitude: 35.5, longitude: 138.7 };
     expect(run([{ title: "x", location_name: "Kawaguchiko Station" }], [station, twin])).toEqual(
       {},
     );
   });
-  it("does not pick when a hotel and a recommendation share the name", () => {
-    const recCopy: SavedPlace = { ...hotel, key: "rec:7", source: "recommendation" };
+  it("does not pick when a hotel and a recommendation share the name but not the coordinates", () => {
+    const recOther: SavedPlace = {
+      ...hotel,
+      key: "rec:7",
+      source: "recommendation",
+      latitude: 35.01,
+    };
     expect(
       run(
         [{ title: "x", location_name: "Hotel Resol Kyoto Shijo Muromachi, Kyoto" }],
-        [hotel, recCopy],
+        [hotel, recOther],
       ),
     ).toEqual({});
+  });
+  it("treats saved places at identical coordinates as one place", () => {
+    const hotelTwice: SavedPlace = { ...hotel, key: "hotel:2" };
+    const loc = [{ title: "x", location_name: "Hotel Resol Kyoto Shijo Muromachi, Kyoto" }];
+    expect(run(loc, [hotel, hotelTwice])).toEqual({ 0: hotel });
+    const recCopy: SavedPlace = { ...hotel, key: "rec:7", source: "recommendation" };
+    expect(run(loc, [recCopy, hotel])).toEqual({ 0: hotel });
+    const stationTwice: SavedPlace = { ...station, key: "rec:9" };
+    expect(
+      run([{ title: "x", location_name: "Kawaguchiko Station" }], [station, stationTwice]),
+    ).toEqual({ 0: station });
   });
   it("does not use the suffix rule or the title for short or generic names", () => {
     const generic: SavedPlace = { ...place, key: "rec:5", name: "Station", address: null };

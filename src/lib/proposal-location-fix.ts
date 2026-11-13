@@ -148,7 +148,8 @@ function distinctiveName(norm: string): boolean {
  *  (a) its location_name equals the saved name, or its title equals a distinctive saved name; or
  *  (b) its location_name is the saved name followed by a comma and a suffix (", Kyoto"), and the
  *      saved name is distinctive (8+ characters or 2+ words).
- * Exactly one saved place (with valid coordinates) must match; otherwise the stop is left alone.
+ * Exactly one saved place (with valid coordinates) must match; saved places with identical
+ * coordinates count as one. Otherwise the stop is left alone.
  * Stops not in `missing` and stops that already have a pick are never touched.
  * Returns stop index -> saved place. Nothing is written: the caller only shows these as picks.
  */
@@ -179,7 +180,12 @@ export function autoMatchSaved(
         (locNorm !== "" && locNorm === norm) ||
         (distinctiveName(norm) && (titleNorm === norm || heads.includes(norm))),
     );
-    if (hits.length === 1) out[i] = hits[0].place;
+    // Saved places at exactly the same coordinates count as one place (e.g. a hotel saved twice,
+    // or as both a hotel and a recommendation); a hotel record is preferred as the pick.
+    const distinct = new Set(hits.map(({ place: p }) => `${p.latitude},${p.longitude}`));
+    if (distinct.size === 1) {
+      out[i] = (hits.find(({ place: p }) => p.source === "hotel") ?? hits[0]).place;
+    }
   }
   return out;
 }
