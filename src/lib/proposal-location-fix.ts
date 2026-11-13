@@ -105,13 +105,83 @@ export function validCoords(lat: unknown, lng: unknown): boolean {
   );
 }
 
-/** Case-insensitive filter over saved place name/address. */
+/**
+ * Text normalisation for comparing place names: NFKC, lower case, punctuation and symbols
+ * replaced by spaces, runs of spaces collapsed, trimmed. No transliteration and no fuzziness.
+ */
+export function normalizePlaceText(s: string | null | undefined): string {
+  return (s ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const MIN_FILTER_NAME = 3;
+
+/**
+ * Filter over saved place name/address, compared after normalisation. A place also shows when
+ * the query contains its whole name (e.g. "Hotel X, Kyoto" finds the saved "Hotel X").
+ */
 export function filterSavedPlaces(places: SavedPlace[], query: string): SavedPlace[] {
-  const q = query.trim().toLowerCase();
+  const q = normalizePlaceText(query);
   if (!q) return places;
-  return places.filter(
-    (p) => p.name.toLowerCase().includes(q) || (p.address ?? "").toLowerCase().includes(q),
-  );
+  return places.filter((p) => {
+    const name = normalizePlaceText(p.name);
+    return (
+      name.includes(q) ||
+      normalizePlaceText(p.address).includes(q) ||
+      (name.length >= MIN_FILTER_NAME && q.includes(name))
+    );
+  });
+}
+
+/** A saved name distinctive enough to match on its own: at least 8 characters or 2 words. */
+function distinctiveName(norm: string): boolean {
+  return norm.length >= 8 || norm.split(" ").length >= 2;
+}
+
+/**
+ * Pre-selects a saved place for stops that are still missing a location, only when the match is
+ * unambiguous. A stop matches a saved place when, after normalisation:
+ *  (a) its location_name equals the saved name, or its title equals a distinctive saved name; or
+ *  (b) its location_name is the saved name followed by a comma and a suffix (", Kyoto"), and the
+ *      saved name is distinctive (8+ characters or 2+ words).
+ * Exactly one saved place (with valid coordinates) must match; otherwise the stop is left alone.
+ * Stops not in `missing` and stops that already have a pick are never touched.
+ * Returns stop index -> saved place. Nothing is written: the caller only shows these as picks.
+ */
+export function autoMatchSaved(
+  entries: Array<{ title: string; location_name?: string | null }>,
+  missing: number[],
+  saved: SavedPlace[],
+  existingPicks: Record<number, unknown> = {},
+): Record<number, SavedPlace> {
+  const usable = saved
+    .filter((p) => p.source !== "google" && validCoords(p.latitude, p.longitude))
+    .map((p) => ({ place: p, norm: normalizePlaceText(p.name) }))
+    .filter((p) => p.norm.length > 0);
+  const out: Record<number, SavedPlace> = {};
+  for (const i of missing) {
+    const e = entries[i];
+    if (!e || existingPicks[i] !== undefined) continue;
+    const loc = (e.location_name ?? "").trim();
+    const locNorm = normalizePlaceText(loc);
+    const titleNorm = normalizePlaceText(e.title);
+    // Every "name, suffix" split of the raw location_name (comma positions only).
+    const heads: string[] = [];
+    for (let k = loc.indexOf(","); k > 0; k = loc.indexOf(",", k + 1)) {
+      if (normalizePlaceText(loc.slice(k + 1))) heads.push(normalizePlaceText(loc.slice(0, k)));
+    }
+    const hits = usable.filter(
+      ({ norm }) =>
+        (locNorm !== "" && locNorm === norm) ||
+        (distinctiveName(norm) && (titleNorm === norm || heads.includes(norm))),
+    );
+    if (hits.length === 1) out[i] = hits[0].place;
+  }
+  return out;
 }
 
 /** Indexes of entries that still have no stored location. */

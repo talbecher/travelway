@@ -9,6 +9,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Lock, MapPin, MessageSquare, 
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomSheet } from "@/components/BottomSheet";
 import {
+  autoMatchSaved,
   buildLocationRevisions,
   filterSavedPlaces,
   mergePlaceResults,
@@ -293,6 +294,9 @@ function MissingLocationsSheet({
   onSaved: () => void | Promise<void>;
 }) {
   const [picks, setPicks] = useState<Record<number, SavedPlace>>({});
+  // Stop index -> key of the saved place pre-selected automatically in this opening.
+  const [autoPicks, setAutoPicks] = useState<Record<number, string>>({});
+  const autoDoneRef = useRef(false);
   const [pickingFor, setPickingFor] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -307,6 +311,9 @@ function MissingLocationsSheet({
     pickSeqRef.current++;
     setPickingFor(null);
     setSearch("");
+    setPicks({});
+    setAutoPicks({});
+    autoDoneRef.current = false;
   }, [open]);
 
   const sources = view.location_sources ?? view.entries.map(() => "missing");
@@ -334,6 +341,17 @@ function MissingLocationsSheet({
       return out;
     },
   });
+
+  // Once per opening, after saved places load: pre-select unambiguous saved matches as visible
+  // picks. Nothing is written until the user taps save.
+  useEffect(() => {
+    if (!open || autoDoneRef.current || !placesQuery.data) return;
+    autoDoneRef.current = true;
+    const matched = autoMatchSaved(view.entries, missing, placesQuery.data, picks);
+    if (!Object.keys(matched).length) return;
+    setPicks((prev) => ({ ...matched, ...prev }));
+    setAutoPicks(Object.fromEntries(Object.entries(matched).map(([i, p]) => [i, p.key])));
+  }, [open, placesQuery.data, view.entries, missing, picks]);
 
   const filtered = useMemo(
     () => filterSavedPlaces(placesQuery.data ?? [], search),
@@ -413,6 +431,8 @@ function MissingLocationsSheet({
   }
 
   const pickCount = Object.keys(picks).length;
+  const isAuto = (i: number) => picks[i] !== undefined && autoPicks[i] === picks[i].key;
+  const autoCount = missing.filter(isAuto).length;
 
   return (
     <BottomSheet open={open} onOpenChange={(o) => { if (!o) close(); }} title="תחנות ללא מיקום" repositionInputs={false}>
@@ -421,6 +441,15 @@ function MissingLocationsSheet({
           <p className="text-xs text-muted-foreground">
             בחרו מקום שמור מהטיול לכל תחנה, או השאירו אותה במפורש ללא מיקום — לא נמציא נקודה לאזור כללי.
           </p>
+          {autoCount > 0 && (
+            <p
+              role="status"
+              className="rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-text"
+            >
+              {autoCount === 1 ? "תחנה אחת הותאמה" : `${autoCount} הותאמו`} אוטומטית למקום שמור,
+              בדקו לפני שמירה
+            </p>
+          )}
           <ul className="space-y-2">
             {missing.map((i) => {
               const e = view.entries[i];
@@ -433,6 +462,11 @@ function MissingLocationsSheet({
                   </div>
                   {pick ? (
                     <div className="mt-2 space-y-1.5">
+                      {isAuto(i) && (
+                        <span className="inline-block rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-semibold text-accent-text">
+                          הותאם אוטומטית · {pick.source === "hotel" ? "מלון" : "מקום שמור"}
+                        </span>
+                      )}
                       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MapPin className="size-3.5 shrink-0" />
                         <span dir="auto" className="truncate">{pick.name}{pick.address ? ` · ${pick.address}` : ""}</span>
