@@ -8,8 +8,10 @@ import {
   MAX_GOOGLE_RESULTS,
   mergePlaceResults,
   missingIndexes,
+  nearbySaved,
   prefillQuery,
   savedFromGooglePlace,
+  stopAreaCenter,
   validCoords,
   type GoogleSuggestion,
   type SavedPlace,
@@ -392,5 +394,113 @@ describe("googleMapsPlaceUrl / savedFromGooglePlace", () => {
     expect(
       savedFromGooglePlace({ id: "x", name: "X", address: "", latitude: 35, longitude: 139 }),
     ).toBeNull();
+  });
+});
+
+describe("nearbySaved", () => {
+  // Arashiyama area, Kyoto.
+  const center = { lat: 35.0094, lng: 135.6668 };
+  const mk = (
+    key: string,
+    name: string,
+    lat: number,
+    lng: number,
+    source: SavedPlace["source"] = "recommendation",
+  ): SavedPlace => ({
+    key,
+    name,
+    address: null,
+    latitude: lat,
+    longitude: lng,
+    google_maps_url: null,
+    source,
+  });
+  const bamboo = mk("rec:bamboo", "Bamboo Grove", 35.017, 135.6713); // ~0.9 km
+  const tenryuji = mk("rec:tenryuji", "Tenryu-ji", 35.0158, 135.6737); // ~0.9 km
+  const togetsu = mk("rec:togetsu", "Togetsukyo Bridge", 35.0129, 135.6777); // ~1.1 km
+  const kinkaku = mk("rec:kinkaku", "Kinkaku-ji", 35.0394, 135.7292); // ~6.5 km
+  const tokyo = mk("rec:tokyo", "Shibuya Sky", 35.6585, 139.7022);
+
+  it("orders nearest first and keeps only places within maxKm", () => {
+    const r = nearbySaved(center, [kinkaku, togetsu, tokyo, bamboo], 5, 5);
+    expect(r.map((x) => x.place.key)).toEqual(["rec:bamboo", "rec:togetsu"]);
+    expect(r[0].km).toBeLessThan(r[1].km);
+    expect(r.every((x) => x.km <= 5)).toBe(true);
+  });
+  it("respects the limit", () => {
+    const r = nearbySaved(center, [togetsu, tenryuji, bamboo], 2, 5);
+    expect(r).toHaveLength(2);
+    expect(r.map((x) => x.place.key)).not.toContain("rec:togetsu");
+  });
+  it("returns nothing without a center or when nothing is in range", () => {
+    expect(nearbySaved(null, [bamboo], 5, 5)).toEqual([]);
+    expect(nearbySaved({ lat: 0, lng: 0 }, [bamboo], 5, 5)).toEqual([]);
+    expect(nearbySaved(center, [kinkaku, tokyo], 5, 5)).toEqual([]);
+  });
+  it("shows a key once and leaves out places already in the filtered list", () => {
+    const r = nearbySaved(center, [bamboo, { ...bamboo }, tenryuji, togetsu], 5, 5, [
+      "rec:tenryuji",
+    ]);
+    expect(r.map((x) => x.place.key)).toEqual(["rec:bamboo", "rec:togetsu"]);
+  });
+  it("skips Google picks and invalid coordinates", () => {
+    const g = mk("google:x", "G", 35.0095, 135.6669, "google");
+    const bad = mk("rec:bad", "Bad", 0, 0);
+    expect(nearbySaved(center, [g, bad, bamboo], 5, 5).map((x) => x.place.key)).toEqual([
+      "rec:bamboo",
+    ]);
+  });
+});
+
+describe("stopAreaCenter", () => {
+  const hotel = (key: string, lat: number, lng: number, ci: string, co: string): SavedPlace => ({
+    key,
+    name: key,
+    address: null,
+    latitude: lat,
+    longitude: lng,
+    google_maps_url: null,
+    source: "hotel",
+    checkin_date: ci,
+    checkout_date: co,
+  });
+  const rows = [
+    { latitude: 35.0, longitude: 135.6 },
+    { latitude: null, longitude: null },
+    { latitude: null, longitude: null },
+  ];
+  it("averages the other stops' stored and picked locations, not the stop itself", () => {
+    const c = stopAreaCenter(
+      rows,
+      { 2: { latitude: 35.2, longitude: 135.8 } },
+      1,
+      [],
+      "2026-11-20",
+    );
+    expect(c!.lat).toBeCloseTo(35.1, 6);
+    expect(c!.lng).toBeCloseTo(135.7, 6);
+    expect(stopAreaCenter(rows, { 1: { latitude: 10, longitude: 10 } }, 1, [], null)).toEqual({
+      lat: 35.0,
+      lng: 135.6,
+    });
+  });
+  it("falls back to the hotel of that night, checkout day excluded", () => {
+    const none = [
+      { latitude: null, longitude: null },
+      { latitude: null, longitude: null },
+    ];
+    const h = [hotel("hotel:k", 35.01, 135.67, "2026-11-19", "2026-11-21")];
+    expect(stopAreaCenter(none, {}, 0, h, "2026-11-20")).toEqual({ lat: 35.01, lng: 135.67 });
+    expect(stopAreaCenter(none, {}, 0, h, "2026-11-21")).toBeNull();
+    expect(stopAreaCenter(none, {}, 0, h, null)).toBeNull();
+  });
+  it("is null with two different hotels that night or no reference at all", () => {
+    const none = [{ latitude: null, longitude: null }];
+    const h = [
+      hotel("hotel:a", 35.01, 135.67, "2026-11-19", "2026-11-21"),
+      hotel("hotel:b", 34.99, 135.75, "2026-11-20", "2026-11-22"),
+    ];
+    expect(stopAreaCenter(none, {}, 0, h, "2026-11-20")).toBeNull();
+    expect(stopAreaCenter(none, {}, 0, [], "2026-11-20")).toBeNull();
   });
 });

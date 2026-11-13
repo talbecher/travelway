@@ -1,5 +1,6 @@
 // Pure helpers for filling missing stop locations on a pending day-replace proposal.
 // The server (revise_day_proposal_locations) re-validates everything; these only shape the payload.
+import { haversine } from "./geo";
 
 export type SavedPlace = {
   key: string;
@@ -11,6 +12,9 @@ export type SavedPlace = {
   source: "recommendation" | "hotel" | "google";
   /** Google place id of a saved recommendation (or of a Google pick); used only to hide duplicates. */
   provider_place_id?: string | null;
+  /** Hotels only: stay dates (YYYY-MM-DD), used to find the hotel of a given night. */
+  checkin_date?: string | null;
+  checkout_date?: string | null;
 };
 
 /** One Google autocomplete suggestion (same shape as PlaceSuggestion from places.functions). */
@@ -188,6 +192,84 @@ export function autoMatchSaved(
     }
   }
   return out;
+}
+
+export type AreaCenter = { lat: number; lng: number };
+
+/**
+ * Reference point for a stop being picked: the mean of the coordinates of the proposal's other
+ * stops that already have a location (stored or picked in this opening). Without any, the hotel
+ * of that night (checkin_date <= date < checkout_date) when all such hotels share one point.
+ * Null when there is no reference point. Read-only; nothing here is written.
+ */
+export function stopAreaCenter(
+  entries: Array<{ latitude?: number | null; longitude?: number | null }>,
+  picks: Record<number, { latitude: number; longitude: number }>,
+  forIndex: number,
+  hotels: SavedPlace[],
+  date: string | null | undefined,
+): AreaCenter | null {
+  let lat = 0;
+  let lng = 0;
+  let n = 0;
+  entries.forEach((e, i) => {
+    if (i === forIndex) return;
+    const p = validCoords(e.latitude, e.longitude)
+      ? { latitude: e.latitude as number, longitude: e.longitude as number }
+      : picks[i];
+    if (!p || !validCoords(p.latitude, p.longitude)) return;
+    lat += p.latitude;
+    lng += p.longitude;
+    n++;
+  });
+  if (n > 0) return { lat: lat / n, lng: lng / n };
+  if (!date) return null;
+  const night = hotels.filter(
+    (h) =>
+      h.source === "hotel" &&
+      validCoords(h.latitude, h.longitude) &&
+      !!h.checkin_date &&
+      !!h.checkout_date &&
+      h.checkin_date <= date &&
+      date < h.checkout_date,
+  );
+  const points = new Set(night.map((h) => `${h.latitude},${h.longitude}`));
+  if (points.size !== 1) return null;
+  return { lat: night[0].latitude, lng: night[0].longitude };
+}
+
+export const NEARBY_SAVED_LIMIT = 5;
+export const NEARBY_SAVED_MAX_KM = 5;
+
+/**
+ * Saved places (recommendations and hotels, not Google picks) within maxKm of center, nearest
+ * first (ties by name), at most `limit`. Each key appears once; keys in `excludeKeys` (places
+ * already shown in the filtered list) are left out. Empty when there is no center.
+ */
+export function nearbySaved(
+  center: AreaCenter | null,
+  saved: SavedPlace[],
+  limit: number = NEARBY_SAVED_LIMIT,
+  maxKm: number = NEARBY_SAVED_MAX_KM,
+  excludeKeys: Iterable<string> = [],
+): Array<{ place: SavedPlace; km: number }> {
+  if (!center || !validCoords(center.lat, center.lng) || limit <= 0) return [];
+  const seen = new Set(excludeKeys);
+  const out: Array<{ place: SavedPlace; km: number }> = [];
+  for (const place of saved) {
+    if (place.source === "google" || seen.has(place.key)) continue;
+    if (!validCoords(place.latitude, place.longitude)) continue;
+    const km = haversine(
+      { lat: center.lat, lon: center.lng },
+      { lat: place.latitude, lon: place.longitude },
+    );
+    if (!(km <= maxKm)) continue;
+    seen.add(place.key);
+    out.push({ place, km });
+  }
+  return out
+    .sort((a, b) => a.km - b.km || a.place.name.localeCompare(b.place.name))
+    .slice(0, limit);
 }
 
 /** Indexes of entries that still have no stored location. */
