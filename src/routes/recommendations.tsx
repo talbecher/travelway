@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw, ArrowRight, SlidersHorizontal } from "lucide-react";
+import { ExternalLink, Plus, Navigation, Pencil, Trash2, List, Map as MapIcon, Download, CheckSquare, Square, X, MapPin, Star, Search, Compass, Sparkles, RotateCcw, ArrowRight, SlidersHorizontal, Locate } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecs, useHotels, useDays, useTrip, useRecSources, useDayEntriesGeo } from "@/hooks/use-trip";
 import { suggestDayForRec, recLatLng, fmtApproxDistance } from "@/lib/day-suggest";
 import { DiscoverSheet, useDiscoverAccess } from "@/components/discover/DiscoverSheet";
 import { getActiveTripId } from "@/lib/constants";
-import { haversine, fmtDistance } from "@/lib/geo";
+import { haversine, fmtDistance, geoFailureKind } from "@/lib/geo";
 import { hebDate, ils, daysBetween, todayLocal } from "@/lib/format";
 import { BottomSheet, BottomSheetFooter } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
@@ -41,6 +41,8 @@ import { DateField } from "@/components/DateField";
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
 const NEAR_FROM_HOME_KEY = "near-from-home";
+/** Stable empty list while recommendations load, so memos/effects keyed on `recs` stay quiet. */
+const NO_RECS: never[] = [];
 
 /** Fixed map-screen shell for near mode: fills the space between app header and bottom nav, locks page scroll. */
 function NearShell({ children }: { children: React.ReactNode }) {
@@ -170,7 +172,8 @@ function Recs() {
   const [q, setQ] = useState("");
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [nestedOverlayOpen, setNestedOverlayOpen] = useState(false);
-  const { data: recs = [], isError: recsError, isLoading: recsLoading } = useRecs();
+  const { data: recsData, isError: recsError, isLoading: recsLoading, refetch: refetchRecs, isFetching: recsFetching } = useRecs();
+  const recs = recsData ?? NO_RECS;
   const recsEmpty = tab !== "hotels" && !recsLoading && !recsError && recs.length === 0;
   const { data: trip } = useTrip();
   const { user } = useAuth();
@@ -264,20 +267,58 @@ function Recs() {
   // "Near me" mode (entered from the home card with ?near=1).
   const nearMode = !!search.near;
   const [nearRadius, setNearRadius] = useState<500 | 1000 | 3000 | 5000>(1000);
-  const [nearStatus, setNearStatus] = useState<"locating" | "ok" | "error">("locating");
+  const [nearStatus, setNearStatus] = useState<"locating" | "ok" | "denied" | "unavailable">("locating");
+  // A position request is in flight (first locate, retry or refresh): taps while busy are ignored.
+  const [nearLocating, setNearLocating] = useState(false);
+  const nearLocatingRef = useRef(false);
+  // Bumped when near mode starts or ends, so a late answer from an older request is dropped.
+  const nearGenRef = useRef(0);
+  /**
+   * Ask for the position once. "first" may reuse a recent fix (as before); "retry" and "refresh"
+   * ask for a fresh one. "refresh" keeps the current map while asking and, on failure, keeps the
+   * last position (with a toast) instead of replacing the map with an error.
+   */
+  const locateNear = (mode: "first" | "retry" | "refresh") => {
+    const refresh = mode === "refresh";
+    if (nearLocatingRef.current) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) { setNearStatus("unavailable"); return; }
+    const gen = nearGenRef.current;
+    nearLocatingRef.current = true;
+    setNearLocating(true);
+    if (!refresh) setNearStatus("locating");
+    const done = () => { nearLocatingRef.current = false; setNearLocating(false); };
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        if (gen !== nearGenRef.current) return;
+        done();
+        const point = resolveDayLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude });
+        if (point) { setUserPos(point); setNearStatus("ok"); }
+        else if (refresh) toast.error("לא הצלחנו לרענן את המיקום");
+        else setNearStatus("unavailable");
+      },
+      (err) => {
+        if (gen !== nearGenRef.current) return;
+        done();
+        const kind = geoFailureKind(err);
+        if (refresh) toast.error(kind === "denied" ? "אין הרשאת מיקום. אפשר לאשר אותה בהגדרות." : "לא הצלחנו לרענן את המיקום");
+        else setNearStatus(kind);
+      },
+      { timeout: 10000, maximumAge: mode === "first" ? 60_000 : 0 },
+    );
+  };
+  // Drops any answer still on its way and frees the "one request at a time" guard.
+  const cancelNearLocate = () => { nearGenRef.current++; nearLocatingRef.current = false; };
   useEffect(() => {
     if (!nearMode) return;
     setTab("all"); setCity("all"); setSource("all"); setQ(""); setRecentOnly(false);
     setView("map"); setNearRadius(1000); setNearStatus("locating"); setUserPos(null);
-    if (typeof navigator === "undefined" || !navigator.geolocation) { setNearStatus("error"); return; }
-    let cancelled = false;
-    navigator.geolocation.getCurrentPosition(
-      (p) => { if (cancelled) return; const point = resolveDayLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setUserPos(point); setNearStatus(point ? "ok" : "error"); },
-      () => { if (!cancelled) setNearStatus("error"); },
-      { timeout: 10000, maximumAge: 60_000 },
-    );
-    return () => { cancelled = true; };
+    cancelNearLocate();
+    setNearLocating(false);
+    locateNear("first");
+    return cancelNearLocate;
   }, [nearMode]);
+  // Recommendations failed and nothing was loaded before (a failed refetch keeps showing old data).
+  const nearRecsFailed = recsError && recsData === undefined;
   const exitNear = () => {
     setNearRadius(1000);
     navigate({ to: "/recommendations", search: {}, replace: true });
@@ -399,7 +440,15 @@ function Recs() {
                 ))}
               </div>
               {nearStatus === "ok" && (
-                <p className="text-xs text-muted-foreground" aria-live="polite">{mapPins.length} מקומות · מרחק אווירי</p>
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-xs text-muted-foreground" aria-live="polite">
+                    {recsLoading ? "טוען מקומות שמורים…" : nearRecsFailed ? "המקומות השמורים לא נטענו" : `${mapPins.length} מקומות · מרחק אווירי`}
+                  </p>
+                  <button type="button" onClick={() => locateNear("refresh")} disabled={nearLocating} aria-busy={nearLocating}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-2 text-xs font-medium text-accent disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Locate size={14} className={nearLocating ? "animate-pulse" : ""} /> {nearLocating ? "מאתר…" : "רענן מיקום"}
+                  </button>
+                </div>
               )}
             </div>
             <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -409,11 +458,24 @@ function Recs() {
                     <p className="text-sm text-muted-foreground">מאתרים את המיקום שלך…</p>
                   ) : (
                     <>
-                      <p className="text-sm text-foreground">אין גישה למיקום, או שהמיקום לא זמין כרגע.</p>
-                      <button type="button" onClick={exitNear}
-                        className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        למפת ההמלצות הרגילה
-                      </button>
+                      {nearStatus === "denied" ? (
+                        <>
+                          <p className="text-sm text-foreground">אין הרשאת מיקום לאתר.</p>
+                          <p className="text-xs text-muted-foreground">כדי לראות מה קרוב, אשרו גישה למיקום בהגדרות הדפדפן או הטלפון, ואז נסו שוב.</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-foreground">לא הצלחנו לאתר את המיקום כרגע. נסו שוב בעוד רגע.</p>
+                      )}
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button type="button" onClick={() => locateNear("retry")} disabled={nearLocating}
+                          className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          נסו שוב
+                        </button>
+                        <button type="button" onClick={exitNear}
+                          className="min-h-11 rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          למפת ההמלצות הרגילה
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -433,7 +495,22 @@ function Recs() {
                       />
                     </Suspense>
                   </ClientOnly>
-                  {mapPins.length === 0 && (
+                  {(recsLoading || nearRecsFailed) && (
+                    <div className="absolute inset-x-3 top-3 z-[600] space-y-2 rounded-xl border border-border bg-card p-4 text-center shadow-lg" role="status">
+                      {recsLoading ? (
+                        <p className="text-sm text-muted-foreground">טוען מקומות שמורים…</p>
+                      ) : (
+                        <>
+                          <p className="text-sm text-foreground">לא הצלחנו לטעון את המקומות השמורים.</p>
+                          <button type="button" onClick={() => void refetchRecs()} disabled={recsFetching}
+                            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            {recsFetching ? "טוען…" : "נסו שוב"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {!recsLoading && !nearRecsFailed && mapPins.length === 0 && (
                     <div className="absolute inset-x-3 top-3 z-[600] space-y-2 rounded-xl border border-border bg-card p-4 text-center shadow-lg" role="status">
                       <p className="text-sm text-foreground">
                         אין מקומות שמורים בטווח {nearRadius === 500 ? "500 מ׳" : `${nearRadius / 1000} ק״מ`}{hasActiveFilters ? " עם המסננים שנבחרו" : ""}.
