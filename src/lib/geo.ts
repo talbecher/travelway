@@ -1,3 +1,6 @@
+import type { LatLng } from "./coords";
+import { locationDistanceKm, resolveDayLocation, type StoredLocation } from "./day-location";
+
 export function haversine(
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
@@ -13,8 +16,44 @@ export function haversine(
 }
 
 export function fmtDistance(km: number) {
-  if (km < 1) return `${Math.round(km * 1000)} מ׳`;
+  // Rounding 999.5–999.99 m gives 1000: show it as kilometres, not "1000 מ׳".
+  const m = Math.round(km * 1000);
+  if (m < 1000) return `${m} מ׳`;
   return `${km.toFixed(1)} ק״מ`;
+}
+
+/**
+ * Why a geolocation request failed. "denied" is the permission error (code 1);
+ * position unavailable (2), timeout (3), anything else, or no geolocation API is "unavailable".
+ */
+export type GeoFailure = "denied" | "unavailable";
+export function geoFailureKind(err: { code?: number } | null | undefined): GeoFailure {
+  return err?.code === 1 ? "denied" : "unavailable";
+}
+
+/**
+ * Nearest saved places to `origin`, through the shared day-location resolver: invalid, 0,0 and
+ * out-of-range pairs are skipped, and a place with only an explicit Google Maps coordinate link
+ * is included. Ties keep the input order. `filter` "all" keeps every type.
+ */
+export function nearestSavedPlaces<T extends StoredLocation & { type: string }>(
+  places: T[],
+  origin: LatLng,
+  filter: string,
+  limit: number,
+): Array<{ rec: T; distance: number; point: LatLng }> {
+  const from = { latitude: origin.lat, longitude: origin.lng };
+  const out: Array<{ rec: T; distance: number; point: LatLng }> = [];
+  for (const rec of places) {
+    if (filter !== "all" && rec.type !== filter) continue;
+    const point = resolveDayLocation(rec);
+    const distance = point
+      ? locationDistanceKm(from, { latitude: point.lat, longitude: point.lng })
+      : null;
+    if (!point || distance == null) continue;
+    out.push({ rec, distance, point });
+  }
+  return out.sort((a, b) => a.distance - b.distance).slice(0, limit);
 }
 
 export type DayLoad = {

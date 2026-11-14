@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText, Hotel } from "lucide-react";
@@ -15,7 +15,7 @@ import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
-import { haversine } from "@/lib/geo";
+import { fmtDistance, geoFailureKind, nearestSavedPlaces, type GeoFailure } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
 import { NowNextCard } from "@/components/NowNextCard";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
@@ -34,6 +34,7 @@ import { formatMoney, useBaseCurrency } from "@/lib/currency";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ActiveTripHero } from "@/components/home/ActiveTripHero";
+import { NearMeTile } from "@/components/home/NearMeTile";
 import {
   ActiveTodayCard,
   ActiveTodayErrorCard,
@@ -800,6 +801,8 @@ function Home() {
           />
         )}
 
+        <NearMeTile />
+
         {deadlines.length > 0 && (
           <>
             <h2 className="mt-1 text-[18px] font-semibold">לקראת היציאה</h2>
@@ -897,6 +900,8 @@ function Home() {
         ) : (
           <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} />
         )}
+
+        <NearMeTile />
 
         <section className="grid grid-cols-2 gap-3" aria-label="פעולות שימושיות">
           <Button variant="outline"
@@ -1171,6 +1176,9 @@ function Home() {
 
   // 5b. CHECKLIST
   sections.push({ key: "checklist", node: <ChecklistCard /> });
+
+  // 5c. NEAR ME shortcut
+  sections.push({ key: "near-me", node: <NearMeTile /> });
 
   // 6. QUICK ACTIONS
   sections.push({
@@ -1563,9 +1571,10 @@ type NearbyRec = {
   photo_url: string | null;
 };
 
-function fmtDistKm(km: number) {
-  if (km < 1) return `${Math.round(km * 1000)} מ׳`;
-  return `${km.toFixed(1)} ק״מ`;
+function geoErrorText(kind: GeoFailure | null) {
+  return kind === "denied"
+    ? "אין הרשאת מיקום. אפשר לאשר גישה למיקום בהגדרות הדפדפן או הטלפון."
+    : "לא הצלחנו לאתר את המיקום כרגע.";
 }
 
 function typeEmoji(t: string) {
@@ -1589,38 +1598,46 @@ function NearbyImage({ rec }: { rec: NearbyRec }) {
 function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]; onSeeAll: () => void; variant?: "default" | "activeHome" }) {
   const [filter, setFilter] = useState<"all" | "food" | "attraction">("all");
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoError, setGeoError] = useState(false);
-
+  const [geoError, setGeoError] = useState<GeoFailure | null>(null);
+  // One request at a time; a retry tap while locating is ignored.
+  const locatingRef = useRef(false);
+  const mountedRef = useRef(true);
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const locate = useCallback(() => {
+    if (locatingRef.current) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setGeoError(true);
+      setGeoError("unavailable");
       return;
     }
+    locatingRef.current = true;
+    setGeoError(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setGeoError(true),
+      (pos) => {
+        locatingRef.current = false;
+        if (mountedRef.current) setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        locatingRef.current = false;
+        if (mountedRef.current) setGeoError(geoFailureKind(err));
+      },
       { timeout: 8000 },
     );
   }, []);
 
-  const nearby = useMemo(() => {
-    if (!userPos || !recs) return [];
-    return recs
-      .filter((r) => {
-        if (r.latitude == null || r.longitude == null) return false;
-        if (filter === "all") return true;
-        return r.type === filter;
-      })
-      .map((r) => ({
-        rec: r,
-        distance: haversine(
-          { lat: userPos.lat, lon: userPos.lng },
-          { lat: Number(r.latitude), lon: Number(r.longitude) },
-        ),
-      }))
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 3);
-  }, [recs, userPos, filter]);
+  useEffect(() => {
+    locate();
+  }, [locate]);
+
+  const nearby = useMemo(
+    () => (userPos && recs ? nearestSavedPlaces(recs, userPos, filter, 3) : []),
+    [recs, userPos, filter],
+  );
 
   const filters: Array<{ key: "food" | "attraction" | "all"; label: string }> = [
     { key: "food", label: "🍜 אוכל" },
@@ -1635,7 +1652,14 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
           <MapPin size={18} className="shrink-0 text-[color:var(--accent)]" />
           <div className="min-w-0 flex-1">
             <h2 className="text-[14px] font-semibold">מהמקומות ששמרתם, לידכם</h2>
-            <p className="text-[11px] text-muted-foreground">אין כרגע גישה למיקום.</p>
+            <p className="text-[11px] text-muted-foreground">{geoErrorText(geoError)}</p>
+            <button
+              type="button"
+              onClick={locate}
+              className="min-h-11 px-0 text-[12px] font-medium text-[color:var(--accent)]"
+            >
+              נסו שוב
+            </button>
           </div>
           <button type="button" onClick={onSeeAll} className="min-h-11 shrink-0 px-1 text-[12px] font-medium text-[color:var(--accent)]">ראו מה קרוב על המפה</button>
         </div>
@@ -1679,7 +1703,14 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
         {geoError ? (
           <div className="text-center py-4 text-[12px] text-muted-foreground flex flex-col items-center gap-1.5">
             <MapPin size={16} />
-            <div>אפשר גישה למיקום כדי לראות מה קרוב אליך</div>
+            <div>{geoErrorText(geoError)}</div>
+            <button
+              type="button"
+              onClick={locate}
+              className="min-h-11 px-3 text-[12px] font-medium text-[color:var(--accent)]"
+            >
+              נסו שוב
+            </button>
           </div>
         ) : !userPos ? (
           [0, 1, 2].map((i) => (
@@ -1690,10 +1721,10 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
             לא נמצאו מקומות שמורים בקטגוריה זו
           </div>
         ) : (
-          nearby.map(({ rec, distance }) => {
+          nearby.map(({ rec, distance, point }) => {
             const mapsHref =
               rec.google_maps_url ||
-              `https://www.google.com/maps/search/?api=1&query=${rec.latitude},${rec.longitude}`;
+              `https://www.google.com/maps/search/?api=1&query=${point.lat},${point.lng}`;
             return (
               <div
                 key={rec.id}
@@ -1703,7 +1734,7 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-semibold truncate">{rec.name}</div>
                   <div className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">
-                    מרחק בקו אווירי · {fmtDistKm(distance)}
+                    מרחק בקו אווירי · {fmtDistance(distance)}
                   </div>
                 </div>
                 <a
