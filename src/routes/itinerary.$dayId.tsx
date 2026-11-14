@@ -7,10 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { hebDate, hebWeekday, hebWeekdayShort, daysBetween } from "@/lib/format";
-import { ENTRY_TYPES } from "@/lib/constants";
+import { ENTRY_TYPES, getActiveTripId } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendations";
+import { findRecByPlaceId, isRecPlaceDuplicateError, recDuplicateMessage } from "@/lib/rec-duplicate";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveDayLocation, dayEndpoint, endpointDirectionsUrl, type DayEndpoint, type StoredLocation } from "@/lib/day-location";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
@@ -3322,7 +3323,12 @@ function PlaceForm({ dayId, defaultOrder, existing, onDone, recType }: BaseFormP
           });
           // the recommendation now exists even if the day entry below fails
           qc.invalidateQueries({ queryKey: ["recs"] });
-        } catch (err) { toast.error((err as Error).message); }
+        } catch (err) {
+          if (isRecPlaceDuplicateError(err)) {
+            const saved = await findRecByPlaceId(getActiveTripId(), selectedPlaceId);
+            toast.error(recDuplicateMessage(saved));
+          } else toast.error((err as Error).message);
+        }
       }
       const description = recType === "food"
         ? [foodType && `סוג: ${foodType}`, notes && `הערות: ${notes}`].filter(Boolean).join("\n")
