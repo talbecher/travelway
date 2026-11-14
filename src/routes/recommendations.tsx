@@ -37,6 +37,7 @@ import { markRecommendationBooked, invalidateBookingQueries } from "@/lib/bookin
 import { HotelForm, type Hotel } from "@/components/HotelForm";
 import { bookingChip } from "@/lib/deadlines";
 import { DateField } from "@/components/DateField";
+import { RecDuplicateError, rethrowRecDuplicate, type ExistingRecRef } from "@/lib/rec-duplicate";
 
 const RecsMap = lazy(() => import("@/components/RecsMap"));
 
@@ -174,6 +175,13 @@ function Recs() {
   const [nestedOverlayOpen, setNestedOverlayOpen] = useState(false);
   const { data: recsData, isError: recsError, isLoading: recsLoading, refetch: refetchRecs, isFetching: recsFetching } = useRecs();
   const recs = recsData ?? NO_RECS;
+  // Duplicate-place save: close the form and open the recommendation that is already saved.
+  const showExistingRec = (ref: ExistingRecRef) => {
+    setAddOpen(false);
+    const rec = (recs as Rec[]).find((r) => r.id === ref.id);
+    if (rec) { setEditRec(rec); return; }
+    setEditRec(null); setTab("all"); setQ(ref.name);
+  };
   const recsEmpty = tab !== "hotels" && !recsLoading && !recsError && recs.length === 0;
   const { data: trip } = useTrip();
   const { user } = useAuth();
@@ -869,11 +877,11 @@ function Recs() {
       />
 
       <BottomSheet open={addOpen} onOpenChange={setAddOpen} title={tab === "hotels" ? "הוסף מלון" : "הוסף המלצה"} repositionInputs={false}>
-        <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} />
+        <RecForm defaultType={defaultFormType} onDone={() => setAddOpen(false)} onShowExisting={showExistingRec} />
       </BottomSheet>
 
       <BottomSheet open={!!editRec} onOpenChange={(o) => !o && setEditRec(null)} title="ערוך המלצה" repositionInputs={false}>
-        {editRec && <RecForm defaultType={editRec.type as RecType} existing={editRec} onDone={() => setEditRec(null)} />}
+        {editRec && <RecForm key={editRec.id} defaultType={editRec.type as RecType} existing={editRec} onDone={() => setEditRec(null)} onShowExisting={showExistingRec} />}
       </BottomSheet>
 
       <BottomSheet open={!!mapPickRec} onOpenChange={(o) => !o && setMapPickRec(null)} title={mapPickRec?.name}>
@@ -1404,7 +1412,7 @@ function PlaceCard({
 // Add / Edit form (food / attraction / hotel base fields)
 // ─────────────────────────────────────────────────────────────────
 
-function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; existing?: Rec; onDone: () => void }) {
+function RecForm({ defaultType, existing, onDone, onShowExisting }: { defaultType: RecType; existing?: Rec; onDone: () => void; onShowExisting?: (rec: ExistingRecRef) => void }) {
   const qc = useQueryClient();
   const match = useServerFn(matchNewRecommendation);
   const [placeId, setPlaceId] = useState<string | null>(existing?.provider_place_id ?? null);
@@ -1436,8 +1444,10 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     existing ? { name: existing.name, address: existing.address ?? "" } : null,
   );
   const [manualMode, setManualMode] = useState(!!existing);
+  const [duplicateOf, setDuplicateOf] = useState<ExistingRecRef | null>(null);
 
   function handlePlace(p: SelectedPlace) {
+    setDuplicateOf(null);
     setName(p.name);
     setAddress(p.address);
     setUrl(p.google_maps_url);
@@ -1451,6 +1461,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   }
 
   function clearPlace() {
+    setDuplicateOf(null);
     setManualMode(false);
     setPlaceId(null);
     setPlaceSelected(null);
@@ -1500,7 +1511,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
           };
       if (existing) {
         const { error } = await supabase.from("recommendations").update(payload).eq("id", existing.id);
-        if (error) throw error;
+        if (error) await rethrowRecDuplicate(error, getActiveTripId(), identity);
         if (isBooked) await markRecommendationBooked(existing.id, bookingDetails);
         // Two-way sync: propagate to any linked day_entries
         const { data: linkedEntries } = await supabase
@@ -1531,7 +1542,8 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
           .insert({ trip_id: getActiveTripId(), ...payload })
           .select("id")
           .single();
-        if (error) throw error;
+        if (error) await rethrowRecDuplicate(error, getActiveTripId(), identity);
+        if (!inserted) throw new Error("השמירה נכשלה");
         if (isBooked) await markRecommendationBooked(inserted.id, bookingDetails);
         return { syncedDays: [] as string[] };
       }
@@ -1552,6 +1564,12 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
     onError: (e: Error) => {
       // a partial write (row saved, booking RPC failed) must still show up
       qc.invalidateQueries({ queryKey: ["recs"] });
+      if (e instanceof RecDuplicateError) {
+        // The sheet overlay covers toasts, so the link to the saved place lives inside the form.
+        setDuplicateOf(e.existing && e.existing.id !== existing?.id ? e.existing : null);
+        toast.error(e.message);
+        return;
+      }
       toast.error(e.message);
     },
   });
@@ -1580,7 +1598,7 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
   return (
     <form
       id="recommendation-form"
-      onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); if (!assertOnline()) return; setDuplicateOf(null); save.mutate(); }}
       className="flex min-w-0 max-w-full flex-col pt-1 pb-2"
     >
       <div className="sticky top-0 z-10 min-w-0 max-w-full pt-1 pb-2 bg-card">
@@ -1592,6 +1610,17 @@ function RecForm({ defaultType, existing, onDone }: { defaultType: RecType; exis
       </div>
 
       <div className="min-w-0 max-w-full space-y-3 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
+        {duplicateOf && (
+          <div role="alert" className="rounded-lg border border-border bg-muted px-3 py-2.5 text-sm flex items-center gap-3">
+            <span className="flex-1 min-w-0">המקום כבר שמור בהמלצות בשם <bdi className="font-medium">{duplicateOf.name}</bdi></span>
+            {onShowExisting && (
+              <button type="button" onClick={() => onShowExisting(duplicateOf)}
+                className="shrink-0 min-h-11 px-3 rounded-lg border border-border text-[color:var(--accent)] font-medium">
+                הצג
+              </button>
+            )}
+          </div>
+        )}
         {!manualMode && !placeSelected && (
           <>
             <PlacesSearch onSelect={handlePlace} fieldProfile="expense" />

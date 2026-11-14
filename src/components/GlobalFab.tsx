@@ -21,6 +21,7 @@ import {
 import { BottomSheet, BottomSheetFooter } from "./BottomSheet";
 import { DateField } from "./DateField";
 import { categoryToRecType, saveRecommendation } from "@/lib/recommendations";
+import { isRecPlaceDuplicateError, RecDuplicateError } from "@/lib/rec-duplicate";
 import { parseLatLngFromMapsUrl } from "@/lib/coords";
 import { toast } from "sonner";
 import { assertOnline } from "@/hooks/use-online";
@@ -67,6 +68,8 @@ async function findOrCreateGoogleRec(input: {
       const again = await find();
       if (again) return again;
     }
+    // never surface the raw database error for an already-saved place
+    if (isRecPlaceDuplicateError(e)) throw new RecDuplicateError(null);
     throw e;
   }
 }

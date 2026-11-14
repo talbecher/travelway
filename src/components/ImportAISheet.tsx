@@ -27,6 +27,7 @@ import {
 import { createDaySnapshot, defaultSnapshotName, pruneSnapshots } from "@/hooks/use-day-snapshots";
 import { generateRecsPrompt } from "@/lib/export-to-ai";
 import { supabase } from "@/integrations/supabase/client";
+import { isRecPlaceDuplicateError, REC_DUPLICATE_MESSAGE } from "@/lib/rec-duplicate";
 
 async function fetchDayEntries(dayId: string) {
   const { data, error } = await supabase
@@ -375,6 +376,7 @@ export function ImportAISheet({
   async function handleApply() {
     if (!totalSelected || busy) return;
     setBusy(true);
+    let entriesSaved = 0;
     try {
       // Day mode: re-read the target day right before writing (UI guard only).
       if (isDayMode && targetDayId) {
@@ -415,6 +417,7 @@ export function ImportAISheet({
       }
 
       const addedEntries = await applyEntries(selectedEntries, dayIdByNumber);
+      entriesSaved = addedEntries;
       const addedRecs = await applyRecs(tripId, selectedRecs, enrich ? recommendationLookup : undefined);
 
       qc.invalidateQueries({ queryKey: ["day-entries"] });
@@ -430,6 +433,18 @@ export function ImportAISheet({
       onOpenChange(false);
     } catch (e) {
       console.error("[ImportAISheet] apply failed", e);
+      if (isRecPlaceDuplicateError(e)) {
+        // The recommendations insert is one statement: none of them were added.
+        qc.invalidateQueries({ queryKey: ["day-entries"] });
+        qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+        qc.invalidateQueries({ queryKey: ["recs"] });
+        toast.error(`${REC_DUPLICATE_MESSAGE} — ההמלצות לא נוספו`, {
+          description: entriesSaved > 0
+            ? `${entriesSaved} פעילויות כבר נשמרו. הסירו את המקום שכבר שמור מהבחירה ונסו שוב רק עם ההמלצות.`
+            : "הסירו מהבחירה את המקום שכבר שמור ונסו שוב.",
+        });
+        return;
+      }
       toast.error("השמירה נכשלה");
     } finally {
       setBusy(false);
