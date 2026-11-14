@@ -34,6 +34,7 @@ import { formatMoney, useBaseCurrency } from "@/lib/currency";
 import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ActiveTripHero } from "@/components/home/ActiveTripHero";
+import { NearMeTile } from "@/components/home/NearMeTile";
 import {
   ActiveTodayCard,
   ActiveTodayErrorCard,
@@ -800,6 +801,8 @@ function Home() {
           />
         )}
 
+        <NearMeTile />
+
         {deadlines.length > 0 && (
           <>
             <h2 className="mt-1 text-[18px] font-semibold">לקראת היציאה</h2>
@@ -897,6 +900,8 @@ function Home() {
         ) : (
           <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} />
         )}
+
+        <NearMeTile />
 
         <section className="grid grid-cols-2 gap-3" aria-label="פעולות שימושיות">
           <Button variant="outline"
@@ -1171,6 +1176,9 @@ function Home() {
 
   // 5b. CHECKLIST
   sections.push({ key: "checklist", node: <ChecklistCard /> });
+
+  // 5c. NEAR ME shortcut
+  sections.push({ key: "near-me", node: <NearMeTile /> });
 
   // 6. QUICK ACTIONS
   sections.push({
