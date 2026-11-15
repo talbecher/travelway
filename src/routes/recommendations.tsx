@@ -605,6 +605,12 @@ function Recs() {
                 <Compass size={17} /> Discover
               </button>
             )}
+            {!recsEmpty && (
+              <button type="button" onClick={() => setAiImportOpen(true)}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Sparkles size={16} className="shrink-0" /> ייבוא AI
+              </button>
+            )}
           {tab !== "hotels" && !selectionMode && !nearMode && (
             <div className="flex shrink-0 gap-1 rounded-xl bg-muted p-1" aria-label="בחירת תצוגה">
               <button onClick={() => setView("list")} aria-label="תצוגת רשימה"
