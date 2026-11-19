@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, MapPin, Link2, GripVertical, Footprints, Bus, TrainFront } from "lucide-react";
+import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, MapPin, Link2, GripVertical, Footprints, Bus, TrainFront, Navigation } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
@@ -15,6 +15,7 @@ import { findRecByPlaceId, isRecPlaceDuplicateError, recDuplicateMessage } from 
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveDayLocation, dayEndpoint, endpointDirectionsUrl, type DayEndpoint, type StoredLocation } from "@/lib/day-location";
 import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
+import { navigationHref } from "@/lib/stop-navigation";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
 import { computeOptimalOrder } from "@/lib/day-route-order";
@@ -2037,6 +2038,16 @@ function EntryDetails({
 
   const linkedRec = entry.linked_recommendation_id ? recById?.[entry.linked_recommendation_id] : undefined;
   const isVisited = linkedRec?.status === "visited";
+  // Always available (not tied to the time of day). Same link as the home Live Now card:
+  // resolved coordinates first, else the saved Maps link, else a search by the place name.
+  const navigateHref = entry.entry_type !== "note"
+    ? navigationHref({
+        title: entry.location_name?.trim() || entry.title,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
+        google_maps_url: entry.google_maps_url,
+      })
+    : null;
 
   return (
     <div className="pt-1 pb-4 space-y-4" dir="rtl">
@@ -2196,6 +2207,17 @@ function EntryDetails({
               📍 היינו כאן!
             </button>
           )
+        )}
+        {navigateHref && (
+          <a
+            href={navigateHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={onClose}
+            className="col-span-2 h-11 rounded-lg border border-[color:var(--accent)]/40 bg-[color:var(--accent)]/10 text-[color:var(--accent)] font-medium flex items-center justify-center gap-2 text-sm min-h-0"
+          >
+            <Navigation size={15} /> נווט ליעד
+          </a>
         )}
         <button
           onClick={onEdit}
