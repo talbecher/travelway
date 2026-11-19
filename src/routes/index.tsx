@@ -35,6 +35,7 @@ import { ToolsRow, type ToolAction } from "@/components/home/ToolsRow";
 import { getDestinationTheme } from "@/lib/destination-theme";
 import { ActiveTripHero } from "@/components/home/ActiveTripHero";
 import { NearMeTile } from "@/components/home/NearMeTile";
+import { TodayStopsList } from "@/components/home/TodayStopsList";
 import {
   ActiveTodayCard,
   ActiveTodayErrorCard,
@@ -337,6 +338,7 @@ type EntrySlim = {
   title: string;
   location_name?: string | null;
   time_of_day: string | null;
+  display_order?: number | null;
   photo_url?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
@@ -899,6 +901,10 @@ function Home() {
           <ActiveTodayMissingCard />
         ) : (
           <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} />
+        )}
+
+        {!todayDataFailed && !todayDataPending && todayDay && todayEntries.length > 0 && (
+          <TodayStopsList dayId={todayDay.id} entries={todayEntries} />
         )}
 
         <NearMeTile />
