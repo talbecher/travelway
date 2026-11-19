@@ -197,7 +197,7 @@ export function dayEntriesGeoQuery(tripId: string, versionId?: string | null) {
       for (let from = 0; ; from += PAGE) {
         const { data, error } = await supabase
           .from("day_entries")
-          .select("id, day_id, title, latitude, longitude, linked_recommendation_id, display_order, created_at, itinerary_days!inner(trip_id, version_id)")
+          .select("id, day_id, title, entry_type, latitude, longitude, google_maps_url, linked_recommendation_id, display_order, created_at, itinerary_days!inner(trip_id, version_id)")
           .eq("itinerary_days.trip_id", tripId)
           .eq("itinerary_days.version_id", versionId!)
           .order("display_order")
@@ -213,8 +213,9 @@ export function dayEntriesGeoQuery(tripId: string, versionId?: string | null) {
     },
   });
 }
-export function useDayEntriesGeo() {
+export function useDayEntriesGeo(enabled = true) {
   const tripId = useActiveTripId();
   const { version } = useActiveVersion(tripId);
-  return useQuery(dayEntriesGeoQuery(tripId, version?.id));
+  const query = dayEntriesGeoQuery(tripId, version?.id);
+  return useQuery({ ...query, enabled: enabled && query.enabled });
 }
