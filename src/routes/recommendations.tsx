@@ -31,6 +31,8 @@ import { matchNewRecommendation } from "@/lib/place-identity.functions";
 import { businessMapsLink } from "@/lib/place-identity";
 import { RecommendationBusiness, RecommendationIdentityReview } from "@/components/RecommendationBusiness";
 import { resolveDayLocation, locationDistanceKm } from "@/lib/day-location";
+import { collectRouteStops, routeDaysLabel, type RouteStopPoint } from "@/lib/nearby-route-stops";
+import { navigationHref } from "@/lib/stop-navigation";
 import { useServerFn } from "@tanstack/react-start";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
 import { markRecommendationBooked, invalidateBookingQueries } from "@/lib/booking";
@@ -275,6 +277,14 @@ function Recs() {
   // "Near me" mode (entered from the home card with ?near=1).
   const nearMode = !!search.near;
   const [nearRadius, setNearRadius] = useState<500 | 1000 | 3000 | 5000>(1000);
+  // Near mode also shows itinerary stops (all days of the active version, any time).
+  const { data: routeDays = [] } = useDays();
+  const { data: routeEntries } = useDayEntriesGeo(nearMode);
+  const routeStops = useMemo(
+    () => (nearMode && routeEntries ? collectRouteStops(routeEntries, routeDays, recs as Rec[]) : null),
+    [nearMode, routeEntries, routeDays, recs],
+  );
+  const [stopPick, setStopPick] = useState<RouteStopPoint | null>(null);
   const [nearStatus, setNearStatus] = useState<"locating" | "ok" | "denied" | "unavailable">("locating");
   // A position request is in flight (first locate, retry or refresh): taps while busy are ignored.
   const [nearLocating, setNearLocating] = useState(false);
@@ -336,7 +346,7 @@ function Recs() {
     if (view !== "map") return [];
     if (nearMode && (nearStatus !== "ok" || !userPos)) return [];
     const maxKm = nearRadius / 1000;
-    return (recs as Rec[])
+    const recPins = (recs as Rec[])
       .flatMap((r) => { const point = resolveDayLocation(r); return point ? [{ ...r, latitude: point.lat, longitude: point.lng }] : []; })
       .filter((r) => {
         if (!nearMode || !userPos) return true;
@@ -360,9 +370,31 @@ function Recs() {
         google_maps_url: r.google_maps_url,
         notes: r.notes,
         photo_url: r.photo_url ?? null,
+        routeLabel: nearMode && routeStops?.recDays.has(r.id) ? routeDaysLabel(routeStops.recDays.get(r.id)!) : null,
       }));
+    // Route stops have no category/city/source, so they show only without those filters; same radius rule.
+    if (!nearMode || !userPos || !routeStops || tab !== "all" || city !== "all" || source !== "all") return recPins;
+    const stopPins = routeStops.stops
+      .filter((st) => {
+        const distance = locationDistanceKm({ latitude: userPos.lat, longitude: userPos.lng }, { latitude: st.point.lat, longitude: st.point.lng });
+        return distance != null && distance <= maxKm && matchesQuery([st.title], q);
+      })
+      .map((st) => ({
+        id: st.id,
+        lat: st.point.lat,
+        lng: st.point.lng,
+        type: "stop",
+        name: st.title,
+        city: null,
+        address: null,
+        status: "",
+        rating: null,
+        google_maps_url: null,
+        routeLabel: routeDaysLabel(st.dayNumbers),
+      }));
+    return [...recPins, ...stopPins];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recs, tab, city, q, view, source, recSources, nearMode, nearStatus, userPos, nearRadius]);
+  }, [recs, tab, city, q, view, source, recSources, nearMode, nearStatus, userPos, nearRadius, routeStops]);
 
   useEffect(() => {
     if (nearMode || view !== "map" || !navigator.geolocation) return;
@@ -388,7 +420,7 @@ function Recs() {
     if (tab !== "hotels") setTab("all");
   };
 
-  const mainOverlayOpen = discoverOpen || addOpen || importOpen || aiImportOpen || !!editRec || !!mapPickRec || nestedOverlayOpen;
+  const mainOverlayOpen = discoverOpen || addOpen || importOpen || aiImportOpen || !!editRec || !!mapPickRec || !!stopPick || nestedOverlayOpen;
 
   const [nearFiltersOpen, setNearFiltersOpen] = useState(false);
   const nearExtraActive = city !== "all" || source !== "all";
@@ -396,7 +428,8 @@ function Recs() {
   // Close the place card if its pin leaves the near results (radius/filter change).
   useEffect(() => {
     if (nearMode && nearStatus === "ok" && mapPickRec && !mapPins.some((p) => p.id === mapPickRec.id)) setMapPickRec(null);
-  }, [nearMode, nearStatus, mapPins, mapPickRec]);
+    if (stopPick && (!nearMode || (nearStatus === "ok" && !mapPins.some((p) => p.id === stopPick.id)))) setStopPick(null);
+  }, [nearMode, nearStatus, mapPins, mapPickRec, stopPick]);
   const goBackNear = () => {
     let fromHome = false;
     try { fromHome = sessionStorage.getItem(NEAR_FROM_HOME_KEY) === "1"; sessionStorage.removeItem(NEAR_FROM_HOME_KEY); } catch { /* ignore */ }
@@ -497,6 +530,8 @@ function Recs() {
                         radiusM={nearRadius}
                         focusMode="radius"
                         onAddToDay={(id: string) => {
+                          const stop = id.startsWith("stop:") ? routeStops?.stops.find((st) => st.id === id) : undefined;
+                          if (stop) { setStopPick(stop); return; }
                           const found = (recs as Rec[]).find((r) => r.id === id);
                           if (found) setMapPickRec(found);
                         }}
@@ -892,6 +927,10 @@ function Recs() {
 
       <BottomSheet open={!!mapPickRec} onOpenChange={(o) => !o && setMapPickRec(null)} title={mapPickRec?.name}>
         {mapPickRec && <MapPickCard rec={mapPickRec} onDone={() => setMapPickRec(null)} />}
+      </BottomSheet>
+
+      <BottomSheet open={!!stopPick} onOpenChange={(o) => !o && setStopPick(null)} title={stopPick?.title}>
+        {stopPick && <RouteStopCard stop={stopPick} days={routeDays} onDone={() => setStopPick(null)} />}
       </BottomSheet>
       </div>
     </div>
@@ -1792,6 +1831,40 @@ function HotelsList({ onEdit: _onEdit, query, onResetFilters, onAdd, onOverlayOp
         {editHotel && <HotelForm existing={editHotel} onDone={() => { setEditHotel(null); onOverlayOpenChange(false); }} />}
       </BottomSheet>
     </>
+  );
+}
+
+/** Near-me map: an itinerary stop (not a saved recommendation). Navigate, or open its day. */
+function RouteStopCard({ stop, days, onDone }: { stop: RouteStopPoint; days: Array<{ id: string; day_number: number }>; onDone: () => void }) {
+  const navigate = Route.useNavigate();
+  const dayById = new Map(days.map((d) => [d.id, d]));
+  return (
+    <div className="space-y-3 pb-2" dir="rtl">
+      <p className="inline-flex items-center gap-1.5 rounded-full bg-[#0E9F8E]/15 px-2.5 py-1 text-xs font-semibold text-[#0B7F72] dark:text-[#5FD3C4]">
+        📍 {routeDaysLabel(stop.dayNumbers)}
+      </p>
+      <a
+        href={navigationHref({ title: stop.title, latitude: stop.point.lat, longitude: stop.point.lng })}
+        target="_blank"
+        rel="noreferrer"
+        onClick={onDone}
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Navigation size={16} /> נווט ליעד
+      </a>
+      <div className="flex flex-wrap gap-2">
+        {stop.dayIds.map((dayId) => (
+          <button
+            key={dayId}
+            type="button"
+            onClick={() => { onDone(); void navigate({ to: "/itinerary/$dayId", params: { dayId } }); }}
+            className="min-h-11 flex-1 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            פתח את יום {dayById.get(dayId)?.day_number ?? ""}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

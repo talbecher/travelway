@@ -20,18 +20,22 @@ export type RecPin = {
   google_maps_url: string | null;
   notes?: string | null;
   photo_url?: string | null;
+  /** Near-me map only: "במסלול · יום X" under the name. */
+  routeLabel?: string | null;
 };
 
 const TYPE_COLOR: Record<string, { bg: string; fg: string; ring: string }> = {
   food: { bg: "#FF6B6B", fg: "#fff", ring: "#B23A3A" },
   attraction: { bg: "#6C63FF", fg: "#fff", ring: "#3E39A8" },
   hotel: { bg: "#F5B301", fg: "#1a1a1a", ring: "#8A6400" },
+  stop: { bg: "#0E9F8E", fg: "#fff", ring: "#08665B" },
 };
 
 const TYPE_EMOJI: Record<string, string> = {
   food: "🍜",
   attraction: "⛩",
   hotel: "🏨",
+  stop: "📍",
 };
 
 function escapeHtml(s: string): string {
@@ -48,7 +52,7 @@ function truncate(s: string, n = 18): string {
   return s.slice(0, n - 1) + "…";
 }
 
-function pinIcon(type: string, name: string, status: string): L.DivIcon {
+function pinIcon(type: string, name: string, status: string, routeLabel?: string | null): L.DivIcon {
   const c = TYPE_COLOR[type] ?? TYPE_COLOR.attraction;
   const emoji = TYPE_EMOJI[type] ?? "•";
   const label = escapeHtml(truncate(name || ""));
@@ -73,8 +77,9 @@ function pinIcon(type: string, name: string, status: string): L.DivIcon {
         ${statusOverlay}
       </div>
       <div style="margin-top:3px;background:rgba(20,20,20,0.85);color:#fff;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4);max-width:150px;overflow:hidden;text-overflow:ellipsis;opacity:${labelOpacity};text-decoration:${labelDecoration};">${label}</div>
+      ${routeLabel ? `<div style="margin-top:2px;background:#0E9F8E;color:#fff;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(routeLabel)}</div>` : ""}
     </div>`,
-    iconSize: [150, 68],
+    iconSize: routeLabel ? [150, 86] : [150, 68],
     iconAnchor: [75, 19],
   });
 }
@@ -205,7 +210,7 @@ function LegendRow({ color, emoji, label }: { color: string; emoji: string; labe
   );
 }
 
-function Legend() {
+function Legend({ showRoute = false }: { showRoute?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <div
@@ -236,6 +241,7 @@ function Legend() {
           <LegendRow color="#FF6B6B" emoji="🍜" label="אוכל" />
           <LegendRow color="#6C63FF" emoji="⛩" label="אטרקציה" />
           <LegendRow color="#F5B301" emoji="🏨" label="לינה" />
+          {showRoute && <LegendRow color="#0E9F8E" emoji="📍" label="תחנה במסלול" />}
           <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
             <span style={{
@@ -343,7 +349,7 @@ export default function RecsMap({
             <Marker
               key={p.id}
               position={[p.lat, p.lng]}
-              icon={pinIcon(p.type, p.name, p.status)}
+              icon={pinIcon(p.type, p.name, p.status, p.routeLabel)}
               eventHandlers={{ click: () => onAddToDay(p.id) }}
             />
           ))}
@@ -366,7 +372,7 @@ export default function RecsMap({
         <SizeWatcher />
         <LocateButton userPos={userPos} onNoGeo={() => setGeoError(true)} radiusM={radiusMode ? radiusM : undefined} />
       </MapContainer>
-      <Legend />
+      <Legend showRoute={validPins.some((p) => !!p.routeLabel)} />
       {validPins.length === 0 && !radiusMode && (
         <div style={{
           position: "absolute", inset: 0, display: "flex",

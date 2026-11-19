@@ -13,6 +13,9 @@ export type GeoEntry = {
   linked_recommendation_id: string | null;
   display_order: number | null;
   created_at: string | null;
+  /** Read only by the near-me map (route stops); day suggestions use latitude/longitude only. */
+  entry_type?: string | null;
+  google_maps_url?: string | null;
 };
 
 export type SuggestDay = { id: string; day_number: number; date: string };

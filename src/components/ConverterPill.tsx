@@ -20,7 +20,7 @@ export function ConverterPill() {
       >
         ₪ ⇄ ¥
       </button>
-      <BottomSheet open={open} onOpenChange={setOpen} title="ממיר מטבע">
+      <BottomSheet open={open} onOpenChange={setOpen} title="ממיר מטבע" repositionInputs={false}>
         <Converter />
       </BottomSheet>
     </>
@@ -50,7 +50,7 @@ function Converter() {
   async function setPair(f: string, t: string) { setFrom(f); setTo(t); }
 
   return (
-    <div className="space-y-4 pt-2">
+    <div className="space-y-4 pt-2 pb-[env(safe-area-inset-bottom)]">
       <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
         <select value={from} onChange={(e) => setFrom(e.target.value)}
           className="rounded-lg bg-background border border-input px-3">
