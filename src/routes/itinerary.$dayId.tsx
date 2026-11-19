@@ -4,13 +4,16 @@ import { motion } from "framer-motion";
 import { ChevronRight, ExternalLink, Pencil, Trash2, Plus, Check, X, Map as MapIcon, MapPin, Link2, GripVertical, Footprints, Bus, TrainFront, Navigation } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery } from "@/hooks/use-trip";
+import { useDays, useRecs, useTrip, useHotels, dayEntriesQuery, recsQuery } from "@/hooks/use-trip";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { hebDate, hebWeekday, hebWeekdayShort, daysBetween } from "@/lib/format";
 import { ENTRY_TYPES, getActiveTripId } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
-import { saveRecommendation, addRecommendationToDay } from "@/lib/recommendations";
+import { saveRecommendation, addRecommendationToDay, recTypeIcon } from "@/lib/recommendations";
+import { dayHotelAnchors, dayNearbyRecs, DAY_NEARBY_RECS_KM, type NearbyRec } from "@/lib/day-nearby-recs";
+import type { MapNearbyRec } from "@/components/DayMap";
+import type { Tables } from "@/integrations/supabase/types";
 import { findRecByPlaceId, isRecPlaceDuplicateError, recDuplicateMessage } from "@/lib/rec-duplicate";
 import { parseLatLngFromMapsUrl, googleDirectionsUrl, mapsSearchUrl, TYPE_PIN_COLOR } from "@/lib/coords";
 import { resolveDayLocation, dayEndpoint, endpointDirectionsUrl, type DayEndpoint, type StoredLocation } from "@/lib/day-location";
@@ -534,6 +537,66 @@ function DayDetail() {
     return m;
   }, [mapStops]);
 
+  // Optional "nearby saved recommendations" map layer. Off by default; while off nothing is
+  // fetched and DayMap receives no layer props, so the map is the plain stops-only map.
+  const [showNearby, setShowNearby] = useState(false);
+  const [selectedNearbyId, setSelectedNearbyId] = useState<string | null>(null);
+  const [justAddedRecIds, setJustAddedRecIds] = useState<Set<string>>(() => new Set());
+  const { data: allRecs = [] } = useQuery({ ...recsQuery(tripId), enabled: showNearby && !!tripId });
+  const dayLinkedRecIds = useMemo(() => {
+    const ids = new Set(justAddedRecIds);
+    for (const e of rawEntries as EntryRow[]) if (e.linked_recommendation_id) ids.add(e.linked_recommendation_id);
+    return ids;
+  }, [rawEntries, justAddedRecIds]);
+  const nearbyResult = useMemo(() => {
+    if (!showNearby) return null;
+    return dayNearbyRecs(allRecs, {
+      stops: mapStops,
+      hotelAnchors: dayHotelAnchors(locationHotels, day?.date),
+      linkedRecIds: dayLinkedRecIds,
+    });
+  }, [showNearby, allRecs, mapStops, locationHotels, day?.date, dayLinkedRecIds]);
+  const nearbyPins = useMemo<MapNearbyRec[] | null>(
+    () => nearbyResult?.items.map((i) => ({
+      id: i.rec.id, lat: i.point.lat, lng: i.point.lng, type: i.rec.type, title: i.rec.name, emoji: recTypeIcon(i.rec.type),
+    })) ?? null,
+    [nearbyResult],
+  );
+  const selectedNearby = selectedNearbyId
+    ? nearbyResult?.items.find((i) => i.rec.id === selectedNearbyId) ?? null
+    : null;
+  useEffect(() => {
+    setShowNearby(false);
+    setSelectedNearbyId(null);
+    setJustAddedRecIds(new Set());
+  }, [dayId]);
+  useEffect(() => { if (!showNearby) setSelectedNearbyId(null); }, [showNearby]);
+
+  const addingNearbyRef = useRef(false);
+  const addNearby = useMutation({
+    mutationFn: async (rec: Tables<"recommendations">) => addRecommendationToDay(rec, dayId),
+    onSettled: () => { addingNearbyRef.current = false; },
+    onSuccess: (_d, rec) => {
+      setJustAddedRecIds((prev) => new Set(prev).add(rec.id));
+      setSelectedNearbyId(null);
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      qc.invalidateQueries({ queryKey: ["day-entries"] });
+      qc.invalidateQueries({ queryKey: ["linked-recs"] });
+      toast.success("נוסף ליום");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  function addNearbyToDay(rec: Tables<"recommendations">) {
+    if (addingNearbyRef.current) return;
+    if (dayLinkedRecIds.has(rec.id)) {
+      toast.info("כבר ביום הזה");
+      setSelectedNearbyId(null);
+      return;
+    }
+    addingNearbyRef.current = true;
+    addNearby.mutate(rec);
+  }
+
   // ⚠️ route optimization: is the current stop order much longer than a
   // nearest-neighbor order starting from the first stop?
   const [zigzagDismissed, setZigzagDismissed] = useState(false);
@@ -619,7 +682,7 @@ function DayDetail() {
       if (nav) ro.observe(nav);
     }
     return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); ro?.disconnect(); };
-  }, [view, selectedStopId, selectedSegment, entries.length, day?.id]);
+  }, [view, selectedStopId, selectedSegment, selectedNearbyId, entries.length, day?.id]);
 
 
   if (!day) return <div className="pt-6 text-center text-muted-foreground">יום לא נמצא</div>;
@@ -1101,7 +1164,7 @@ function DayDetail() {
             ["--map-card-h" as string]: `${overlayH}px`,
           } as React.CSSProperties}
         >
-          {mapStops.length > 0 ? (
+          {mapStops.length > 0 || nearbyResult?.anchorKind === "hotel" ? (
             <ClientOnly>
             <Suspense fallback={null}>
             <DayMap
@@ -1109,7 +1172,17 @@ function DayDetail() {
               highlightId={selectedStopId}
               segmentIds={selectedSegment}
               bottomPadding={overlayH ? overlayH + 24 : 48}
-              onPinTap={(id) => { setSelectedSegment(null); setSelectedStopId(id); }}
+              onPinTap={(id) => { setSelectedSegment(null); setSelectedNearbyId(null); setSelectedStopId(id); }}
+              {...(nearbyPins
+                ? {
+                    nearby: nearbyPins,
+                    nearbyAnchor: nearbyResult?.anchorKind === "hotel" && nearbyResult.anchors[0]
+                      ? { lat: nearbyResult.anchors[0].lat, lng: nearbyResult.anchors[0].lng, title: nearbyResult.anchors[0].title }
+                      : null,
+                    selectedNearbyId,
+                    onNearbyTap: (id: string) => { setSelectedStopId(null); setSelectedSegment(null); setSelectedNearbyId(id); },
+                  }
+                : {})}
             />
             </Suspense>
             </ClientOnly>
@@ -1121,8 +1194,36 @@ function DayDetail() {
             </div>
           )}
 
+          {/* Nearby saved recommendations — switch + status line */}
+          <div className="absolute left-3 top-3 z-[650] flex flex-col items-start gap-1.5 max-w-[60%]" dir="rtl">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showNearby}
+              onClick={() => setShowNearby((v) => !v)}
+              className="min-h-10 px-3 rounded-full bg-card/95 border border-border shadow-md text-[12px] font-medium inline-flex items-center gap-2"
+            >
+              <span
+                aria-hidden
+                className={`relative w-8 h-[18px] rounded-full transition-colors ${showNearby ? "bg-[color:var(--accent)]" : "bg-muted-foreground/40"}`}
+              >
+                <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all ${showNearby ? "left-[16px]" : "left-[2px]"}`} />
+              </span>
+              הצג המלצות באזור
+            </button>
+            {nearbyResult && (
+              <div className="text-[11px] text-muted-foreground bg-card/95 border border-border rounded-xl px-2.5 py-1 shadow-sm" role="status">
+                {nearbyResult.anchorKind === "none"
+                  ? "אין תחנות עם מיקום ביום הזה"
+                  : nearbyResult.items.length === 0
+                    ? `אין המלצות שמורות עד ${DAY_NEARBY_RECS_KM} ק״מ${nearbyResult.anchorKind === "hotel" ? " מהמלון" : ""}`
+                    : `${nearbyResult.items.length === 1 ? "המלצה אחת" : `${nearbyResult.items.length} המלצות`} עד ${DAY_NEARBY_RECS_KM} ק״מ${nearbyResult.anchorKind === "hotel" ? " מהמלון" : ""}`}
+              </div>
+            )}
+          </div>
+
           {/* The drawn line is a driving estimate — label it plainly. */}
-          {mapStops.length > 1 && !selectedEntry && !selectedSegment && (
+          {mapStops.length > 1 && !selectedEntry && !selectedSegment && !selectedNearby && (
             <div
               className="absolute right-3 z-[500] text-[10px] text-muted-foreground bg-card/90 border border-border rounded-full py-1 px-2.5"
               style={{ bottom: `calc(var(--map-card-h) + 26px)` }}
@@ -1142,6 +1243,17 @@ function DayDetail() {
               onClose={() => setSelectedStopId(null)}
               onEdit={() => setEditEntry(selectedEntry)}
               onMore={() => setDetailsFor(selectedEntry)}
+            />
+          )}
+
+          {/* Selected nearby recommendation card */}
+          {!selectedEntry && !selectedSegment && selectedNearby && (
+            <NearbyRecCard
+              cardRef={overlayRef}
+              item={selectedNearby}
+              adding={addNearby.isPending}
+              onAdd={() => addNearbyToDay(selectedNearby.rec)}
+              onClose={() => setSelectedNearbyId(null)}
             />
           )}
 
@@ -2369,6 +2481,72 @@ function EmptyDay({ onAdd, onPickSaved, onDiscover }: { onAdd: () => void; onPic
 }
 
 /** Bottom card for the stop selected on the map. */
+function NearbyRecCard({
+  item,
+  adding,
+  onAdd,
+  onClose,
+  cardRef,
+}: {
+  item: NearbyRec<Tables<"recommendations">>;
+  adding: boolean;
+  onAdd: () => void;
+  onClose: () => void;
+  cardRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const { rec, point, km, nearest } = item;
+  const typeLabel = rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+  const href = navigationHref({ title: rec.name, latitude: point.lat, longitude: point.lng, google_maps_url: rec.google_maps_url });
+  return (
+    <div
+      ref={cardRef}
+      data-nearby-card
+      className="absolute inset-x-0 bottom-0 z-[600] bg-card border-t border-border rounded-t-2xl px-4 pt-3 shadow-lg"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      dir="rtl"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 rounded-xl border-2 border-dashed border-border bg-[color:var(--surface-2)] flex items-center justify-center text-[22px] shrink-0" aria-hidden>
+          {recTypeIcon(rec.type)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[15px] font-semibold truncate"><bdi>{rec.name}</bdi></div>
+          <div className="text-[12px] text-muted-foreground truncate">המלצה שמורה · {typeLabel}</div>
+          <div className="text-[12px] text-muted-foreground truncate">
+            {fmtDistance(km)} {nearest.kind === "hotel" ? "מהמלון " : "מ־"}<bdi>{nearest.title}</bdi>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="סגור כרטיס"
+          className="w-9 h-9 -mt-1 rounded-full flex items-center justify-center text-muted-foreground shrink-0"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      <div className="flex items-center gap-2 pt-3">
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={adding}
+          className="flex-1 min-h-11 rounded-xl bg-[color:var(--accent)] text-white text-[13px] font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+        >
+          <Plus size={14} /> הוסף ליום הזה
+        </button>
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="min-h-11 px-4 rounded-xl border border-border bg-card text-[13px] inline-flex items-center gap-1.5"
+        >
+          <Navigation size={14} /> נווט
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function MapStopCard({
   entry,
   pinIndex,

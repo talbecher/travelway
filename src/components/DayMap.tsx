@@ -18,6 +18,11 @@ export type MapStop = {
   time?: string | null;
 };
 
+/** A saved recommendation shown in the optional "nearby" layer: no number, never routed. */
+export type MapNearbyRec = { id: string; lat: number; lng: number; type: string; title: string; emoji: string };
+/** Fallback reference point (the night's hotel) when the day has no located stops. */
+export type MapNearbyAnchor = { lat: number; lng: number; title: string };
+
 /**
  * Static, trusted SVG geometry (lucide icon paths, ISC). Kept as constants so
  * nothing user-supplied is ever interpolated into marker markup as HTML.
@@ -135,6 +140,97 @@ function pinIcon(stop: MapStop, state: PinState): L.DivIcon {
     iconSize: [0, 0],
     iconAnchor: [0, 0],
   });
+}
+
+const NEARBY_PIN_COLOR: Record<string, string> = { food: "#FF6B6B", hotel: "#E0B400", attraction: "#6C63FF" };
+
+/** Recommendation pin: rounded square with the type emoji and a dashed ring — visibly not a numbered stop. */
+function nearbyIcon(rec: MapNearbyRec, selected: boolean): L.DivIcon {
+  const color = NEARBY_PIN_COLOR[rec.type] ?? "#6C63FF";
+  const size = selected ? 36 : 28;
+  const half = size / 2;
+  const label = selected
+    ? `<div style="position:absolute;left:50%;transform:translateX(-50%);top:${half + 6}px;` +
+      `max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;` +
+      `background:#fff;color:#1a1a23;border:1px solid rgba(0,0,0,0.12);border-radius:999px;` +
+      `padding:2px 8px;font-size:11px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,0.2);` +
+      `">${esc(rec.title)}</div>`
+    : "";
+  return L.divIcon({
+    className: "day-pin-wrap",
+    html:
+      `<div role="img" aria-label="${esc(`המלצה באזור: ${rec.title}`)}" data-nearby-rec="${esc(rec.id)}" ` +
+      `style="position:relative;width:0;height:0;">` +
+      `<div class="day-nearby-pin" style="position:absolute;left:${-half}px;top:${-half}px;width:${size}px;height:${size}px;` +
+      `border-radius:9px;background:#fff;border:2px dashed ${color};box-shadow:0 1px 5px rgba(0,0,0,0.25);` +
+      `display:flex;align-items:center;justify-content:center;font-size:${selected ? 19 : 15}px;line-height:1;` +
+      (selected ? `outline:3px solid ${SELECT_RING};outline-offset:2px;` : "") +
+      `">${esc(rec.emoji)}</div>${label}</div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
+function anchorIcon(title: string): L.DivIcon {
+  return L.divIcon({
+    className: "day-pin-wrap",
+    html:
+      `<div role="img" aria-label="${esc(`מלון היום: ${title}`)}" style="position:relative;width:0;height:0;">` +
+      `<div style="position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;` +
+      `background:#FFD93D;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);` +
+      `display:flex;align-items:center;justify-content:center;">${iconSvg("hotel", 16, "#1a1a23")}</div></div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
+/** Frames the hotel and its nearby recommendations — only used when the day has no located stops. */
+function FitNearbyFallback({ anchor, nearby, bottomPadding }: { anchor: MapNearbyAnchor; nearby: MapNearbyRec[]; bottomPadding: number }) {
+  const map = useMap();
+  const pts: [number, number][] = [[anchor.lat, anchor.lng], ...nearby.map((r) => [r.lat, r.lng] as [number, number])];
+  const key = pts.map((p) => p.join(",")).join("|");
+  useEffect(() => {
+    const animate = !prefersReducedMotion();
+    const timer = setTimeout(() => {
+      try {
+        if (pts.length === 1) {
+          map.setView(pts[0], 15, { animate });
+          return;
+        }
+        const bounds = L.latLngBounds(pts);
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { paddingTopLeft: [40, 56], paddingBottomRight: [40, bottomPadding], maxZoom: 15, animate });
+        }
+      } catch (e) {
+        console.warn("nearby fit failed", e);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
+  return null;
+}
+
+/** Keeps a selected recommendation pin clear of the bottom card without changing the zoom. */
+function FocusNearby({ rec, bottomPadding }: { rec: MapNearbyRec | null; bottomPadding: number }) {
+  const map = useMap();
+  const key = rec ? `${rec.id}:${rec.lat},${rec.lng}` : "";
+  useEffect(() => {
+    if (!rec) return;
+    const animate = !prefersReducedMotion();
+    const timer = setTimeout(() => {
+      try {
+        const zoom = map.getZoom();
+        const pt = map.project([rec.lat, rec.lng], zoom);
+        map.panTo(map.unproject([pt.x, pt.y + bottomPadding / 2], zoom), { animate });
+      } catch (e) {
+        console.warn("focus nearby failed", e);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
+  return null;
 }
 
 function RoadRoute({ stops }: { stops: MapStop[] }) {
@@ -438,6 +534,10 @@ export default function DayMap({
   onPinTap,
   bottomPadding = 50,
   segmentIds = null,
+  nearby = null,
+  nearbyAnchor = null,
+  selectedNearbyId = null,
+  onNearbyTap,
 }: {
   stops: MapStop[];
   highlightId?: string | null;
@@ -446,6 +546,12 @@ export default function DayMap({
   bottomPadding?: number;
   /** Endpoint ids of a selected segment — both endpoints get highlighted. */
   segmentIds?: { fromId: string; toId: string } | null;
+  /** Optional recommendations layer. Null/undefined renders exactly the stops-only map. */
+  nearby?: MapNearbyRec[] | null;
+  /** Hotel reference point, drawn only when there are no located stops. */
+  nearbyAnchor?: MapNearbyAnchor | null;
+  selectedNearbyId?: string | null;
+  onNearbyTap?: (id: string) => void;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -470,7 +576,11 @@ export default function DayMap({
 
   const center: [number, number] = validStops[0]
     ? [validStops[0].lat, validStops[0].lng]
-    : [35.6812, 139.7671];
+    : nearbyAnchor
+      ? [nearbyAnchor.lat, nearbyAnchor.lng]
+      : [35.6812, 139.7671];
+  const showAnchor = !!nearby && !!nearbyAnchor && validStops.length === 0;
+  const selectedNearby = nearby?.find((r) => r.id === selectedNearbyId) ?? null;
 
   const path = validStops.map((s) => [s.lat, s.lng] as [number, number]);
 
@@ -575,6 +685,27 @@ export default function DayMap({
         <FitBounds stops={validStops} bottomPadding={bottomPadding} paused={!!highlightId || !!segmentIds} />
         <FocusSelection stops={validStops} highlightId={highlightId} segmentIds={segmentIds} bottomPadding={bottomPadding} />
         <FocusRouteButton stops={validStops} bottomOffset={bottomPadding} />
+
+        {/* Optional recommendations layer — separate from the route, numbering and clustering. */}
+        {showAnchor && nearbyAnchor && (
+          <>
+            <Marker position={[nearbyAnchor.lat, nearbyAnchor.lng]} icon={anchorIcon(nearbyAnchor.title)} interactive={false} />
+            <FitNearbyFallback anchor={nearbyAnchor} nearby={nearby ?? []} bottomPadding={bottomPadding} />
+          </>
+        )}
+        {nearby?.map((r) => {
+          const sel = r.id === selectedNearbyId;
+          return (
+            <Marker
+              key={`rec:${r.id}`}
+              position={[r.lat, r.lng]}
+              icon={nearbyIcon(r, sel)}
+              zIndexOffset={sel ? 2000 : -500}
+              eventHandlers={{ click: () => onNearbyTap?.(r.id) }}
+            />
+          );
+        })}
+        {nearby && <FocusNearby rec={selectedNearby} bottomPadding={bottomPadding} />}
 
       </MapContainer>
 
