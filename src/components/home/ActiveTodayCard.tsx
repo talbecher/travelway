@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronDown, ChevronLeft, Clock, MapPin, Navigation, Route } from "lucide-react";
+import { canNavigate, navigationHref } from "@/lib/stop-navigation";
 
 export type ActiveTodayEntry = {
   id: string;
@@ -32,18 +33,6 @@ function iconFor(type: string) {
     note: "📝",
   };
   return icons[type] ?? "•";
-}
-
-function navigationHref(entry: ActiveTodayEntry) {
-  if (entry.latitude != null && entry.longitude != null) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${entry.latitude},${entry.longitude}`;
-  }
-  if (entry.google_maps_url) return entry.google_maps_url;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(entry.title)}`;
-}
-
-function canNavigate(entry: ActiveTodayEntry) {
-  return (entry.latitude != null && entry.longitude != null) || !!entry.google_maps_url;
 }
 
 function EntryImage({ entry }: { entry: ActiveTodayEntry }) {
