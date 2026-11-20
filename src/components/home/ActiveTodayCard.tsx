@@ -51,10 +51,17 @@ function EntryImage({ entry }: { entry: ActiveTodayEntry }) {
   );
 }
 
-function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boolean }) {
+function EntryRow({ item, emphasized, onTap }: { item: DisplayEntry; emphasized?: boolean; onTap?: (entryId: string) => void }) {
   const { entry, originalIndex, label } = item;
+  const Body = onTap ? "button" : "div";
   return (
     <div className="flex min-w-0 items-center gap-2 py-1">
+      <Body
+        {...(onTap
+          ? { type: "button" as const, onClick: () => onTap(entry.id), "aria-label": `${entry.title} · אפשרויות לתחנה`, "data-stop-tap": entry.id }
+          : {})}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
       <span
         className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold tabular-nums ${
           emphasized
@@ -76,6 +83,7 @@ function EntryRow({ item, emphasized }: { item: DisplayEntry; emphasized?: boole
           </div>
         )}
       </div>
+      </Body>
       {canNavigate(entry) && (
         <a
           href={navigationHref(entry)}
@@ -130,7 +138,16 @@ export function ActiveTodayMissingCard() {
   );
 }
 
-export function ActiveTodayCard({ dayId, entries }: { dayId: string; entries: ActiveTodayEntry[] }) {
+export function ActiveTodayCard({
+  dayId,
+  entries,
+  onStopTap,
+}: {
+  dayId: string;
+  entries: ActiveTodayEntry[];
+  /** Tap on a stop row (not its navigation icon). */
+  onStopTap?: (entryId: string) => void;
+}) {
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 60_000);
@@ -180,7 +197,7 @@ export function ActiveTodayCard({ dayId, entries }: { dayId: string; entries: Ac
           const following = displayed[index + 1];
           return (
             <div key={item.entry.id}>
-              <EntryRow item={item} emphasized={item.entry.id === next?.entry.id} />
+              <EntryRow item={item} emphasized={item.entry.id === next?.entry.id} onTap={onStopTap} />
               {following && <SequenceConnector directional={following.originalIndex === item.originalIndex + 1} />}
             </div>
           );
