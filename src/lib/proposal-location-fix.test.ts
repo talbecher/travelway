@@ -104,6 +104,7 @@ describe("autoMatchSaved", () => {
     key: "hotel:1",
     name: "Hotel Resol Kyoto Shijo Muromachi",
     address: null,
+    city: "Kyoto",
     source: "hotel",
     latitude: 35.0,
     longitude: 135.76,
@@ -112,7 +113,7 @@ describe("autoMatchSaved", () => {
     ...place,
     key: "rec:2",
     name: "Kawaguchiko Station",
-    address: null,
+    address: "Fujikawaguchiko, Minamitsuru District, Yamanashi 401-0301",
     latitude: 35.49,
     longitude: 138.76,
   };
@@ -212,6 +213,73 @@ describe("autoMatchSaved", () => {
     const g: SavedPlace = { ...ramen, key: "google:x", source: "google" };
     expect(run([{ title: "x", location_name: "Ichiran" }], [noCoords])).toEqual({});
     expect(run([{ title: "x", location_name: "Ichiran" }], [g])).toEqual({});
+  });
+  describe("suffix after a comma must fit the saved address or city", () => {
+    const tokyo: SavedPlace = {
+      ...place,
+      key: "rec:20",
+      name: "Ichiran Ramen",
+      address: "1-22-7 Jinnan, Shibuya City, Tokyo 150-0041",
+      city: "Tokyo",
+      latitude: 35.6614,
+      longitude: 139.7006,
+    };
+    const osaka: SavedPlace = {
+      ...tokyo,
+      key: "rec:21",
+      address: "7-18 Souemoncho, Chuo Ward, Osaka 542-0084",
+      city: "Osaka",
+      latitude: 34.6687,
+      longitude: 135.5013,
+    };
+    it("Ichiran Ramen, Osaka does not pick the saved Tokyo branch", () => {
+      expect(run([{ title: "ארוחת ערב", location_name: "Ichiran Ramen, Osaka" }], [tokyo])).toEqual(
+        {},
+      );
+    });
+    it("a suffix in the title also cancels the match", () => {
+      expect(
+        run([{ title: "Ichiran Ramen, Osaka", location_name: "Ichiran Ramen" }], [tokyo]),
+      ).toEqual({});
+    });
+    it("without a suffix behaves as before", () => {
+      expect(run([{ title: "ארוחת ערב", location_name: "Ichiran Ramen" }], [tokyo])).toEqual({
+        0: tokyo,
+      });
+      expect(run([{ title: "Ichiran Ramen", location_name: null }], [tokyo])).toEqual({ 0: tokyo });
+      const noAddr: SavedPlace = { ...tokyo, address: null, city: null };
+      expect(run([{ title: "x", location_name: "Ichiran Ramen" }], [noAddr])).toEqual({
+        0: noAddr,
+      });
+    });
+    it("a suffix found in the address or the city keeps the match", () => {
+      expect(run([{ title: "x", location_name: "Ichiran Ramen, Tokyo" }], [tokyo])).toEqual({
+        0: tokyo,
+      });
+      expect(
+        run([{ title: "x", location_name: "Ichiran Ramen, Shibuya, Tokyo" }], [tokyo]),
+      ).toEqual({ 0: tokyo });
+      const cityOnly: SavedPlace = { ...tokyo, address: null };
+      expect(run([{ title: "x", location_name: "Ichiran Ramen, tokyo." }], [cityOnly])).toEqual({
+        0: cityOnly,
+      });
+    });
+    it("every suffix part must fit, as whole words", () => {
+      expect(
+        run([{ title: "x", location_name: "Ichiran Ramen, Shibuya, Osaka" }], [tokyo]),
+      ).toEqual({});
+      expect(run([{ title: "x", location_name: "Ichiran Ramen, Tok" }], [tokyo])).toEqual({});
+    });
+    it("a suffix with no saved address and no city cancels the match", () => {
+      const bare: SavedPlace = { ...tokyo, address: null, city: null };
+      expect(run([{ title: "x", location_name: "Ichiran Ramen, Tokyo" }], [bare])).toEqual({});
+    });
+    it("two saved branches still pick nothing, with or without a suffix", () => {
+      expect(run([{ title: "x", location_name: "Ichiran Ramen" }], [tokyo, osaka])).toEqual({});
+      expect(run([{ title: "x", location_name: "Ichiran Ramen, Osaka" }], [tokyo, osaka])).toEqual(
+        {},
+      );
+    });
   });
   it("feeds buildLocationRevisions only for missing stops without coordinates", () => {
     const es = [

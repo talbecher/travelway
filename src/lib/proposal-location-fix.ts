@@ -6,6 +6,8 @@ export type SavedPlace = {
   key: string;
   name: string;
   address: string | null;
+  /** City of a saved recommendation or hotel; used only to check a ", City" suffix. */
+  city?: string | null;
   latitude: number;
   longitude: number;
   google_maps_url: string | null;
@@ -147,6 +149,33 @@ function distinctiveName(norm: string): boolean {
 }
 
 /**
+ * When `raw` is "<name>, suffix" (its text before some comma normalises to `norm`), the
+ * normalised non-empty comma-separated parts of the suffix; otherwise null.
+ */
+function suffixAfterName(raw: string | null | undefined, norm: string): string[] | null {
+  const text = (raw ?? "").trim();
+  for (let k = text.indexOf(","); k > 0; k = text.indexOf(",", k + 1)) {
+    if (normalizePlaceText(text.slice(0, k)) !== norm) continue;
+    const parts = text
+      .slice(k + 1)
+      .split(",")
+      .map(normalizePlaceText)
+      .filter(Boolean);
+    if (parts.length) return parts;
+  }
+  return null;
+}
+
+/** Every suffix part appears as whole words in the place's address or in its city. */
+function suffixFits(parts: string[], place: SavedPlace): boolean {
+  const fields = [place.address, place.city]
+    .map((f) => normalizePlaceText(f))
+    .filter(Boolean)
+    .map((f) => ` ${f} `);
+  return parts.every((part) => fields.some((f) => f.includes(` ${part} `)));
+}
+
+/**
  * Pre-selects a saved place for stops that are still missing a location, only when the match is
  * unambiguous. A stop matches a saved place when, after normalisation:
  *  (a) its location_name equals the saved name, or its title equals a distinctive saved name; or
@@ -154,6 +183,10 @@ function distinctiveName(norm: string): boolean {
  *      saved name is distinctive (8+ characters or 2+ words).
  * Exactly one saved place (with valid coordinates) must match; saved places with identical
  * coordinates count as one. Otherwise the stop is left alone.
+ * Suffix check (can only cancel a match, never create one): when location_name or title is
+ * "<saved name>, suffix", every comma-separated part of the suffix must appear as whole words in
+ * the saved place's address or city; otherwise the stop is left alone (e.g. "Ichiran, Osaka"
+ * never picks a saved Ichiran whose address is in Tokyo, or one with no address and no city).
  * Stops not in `missing` and stops that already have a pick are never touched.
  * Returns stop index -> saved place. Nothing is written: the caller only shows these as picks.
  */
@@ -187,9 +220,14 @@ export function autoMatchSaved(
     // Saved places at exactly the same coordinates count as one place (e.g. a hotel saved twice,
     // or as both a hotel and a recommendation); a hotel record is preferred as the pick.
     const distinct = new Set(hits.map(({ place: p }) => `${p.latitude},${p.longitude}`));
-    if (distinct.size === 1) {
-      out[i] = (hits.find(({ place: p }) => p.source === "hotel") ?? hits[0]).place;
-    }
+    if (distinct.size !== 1) continue;
+    const fits = hits.some(({ place: p, norm }) =>
+      [suffixAfterName(loc, norm), suffixAfterName(e.title, norm)].every(
+        (parts) => parts === null || suffixFits(parts, p),
+      ),
+    );
+    if (!fits) continue;
+    out[i] = (hits.find(({ place: p }) => p.source === "hotel") ?? hits[0]).place;
   }
   return out;
 }

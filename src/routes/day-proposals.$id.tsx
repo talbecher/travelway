@@ -327,19 +327,19 @@ function MissingLocationsSheet({
     enabled: open,
     queryFn: async (): Promise<SavedPlace[]> => {
       const [recs, hotels] = await Promise.all([
-        supabase.from("recommendations").select("id,name,address,latitude,longitude,google_maps_url,provider_place_id").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(500),
-        supabase.from("hotels").select("id,hotel_name,address,latitude,longitude,google_maps_url,checkin_date,checkout_date").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(100),
+        supabase.from("recommendations").select("id,name,address,city,latitude,longitude,google_maps_url,provider_place_id").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(500),
+        supabase.from("hotels").select("id,hotel_name,address,city,latitude,longitude,google_maps_url,checkin_date,checkout_date").eq("trip_id", view.trip_id).not("latitude", "is", null).limit(100),
       ]);
       if (recs.error) throw recs.error;
       if (hotels.error) throw hotels.error;
       const out: SavedPlace[] = [];
       for (const r of recs.data ?? []) {
         if (r.latitude == null || r.longitude == null) continue;
-        out.push({ key: `rec:${r.id}`, name: r.name, address: r.address, latitude: r.latitude, longitude: r.longitude, google_maps_url: r.google_maps_url, source: "recommendation", provider_place_id: r.provider_place_id });
+        out.push({ key: `rec:${r.id}`, name: r.name, address: r.address, city: r.city, latitude: r.latitude, longitude: r.longitude, google_maps_url: r.google_maps_url, source: "recommendation", provider_place_id: r.provider_place_id });
       }
       for (const h of hotels.data ?? []) {
         if (h.latitude == null || h.longitude == null) continue;
-        out.push({ key: `hotel:${h.id}`, name: h.hotel_name, address: h.address, latitude: h.latitude, longitude: h.longitude, google_maps_url: h.google_maps_url, source: "hotel", checkin_date: h.checkin_date, checkout_date: h.checkout_date });
+        out.push({ key: `hotel:${h.id}`, name: h.hotel_name, address: h.address, city: h.city, latitude: h.latitude, longitude: h.longitude, google_maps_url: h.google_maps_url, source: "hotel", checkin_date: h.checkin_date, checkout_date: h.checkout_date });
       }
       return out;
     },
