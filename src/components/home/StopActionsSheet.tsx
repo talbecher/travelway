@@ -12,6 +12,7 @@ import {
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { MapSkeleton } from "@/components/MapSkeleton";
+import { RecDescription } from "@/components/RecDescription";
 import type { MapNearbyRec } from "@/components/DayMap";
 import { resolveDayLocation } from "@/lib/day-location";
 import { DAY_NEARBY_RECS_KM, stopNearbyRecs, type NearbyRecInput } from "@/lib/day-nearby-recs";
@@ -36,6 +37,7 @@ export type StopActionsEntry = {
 export type StopActionsRec = NearbyRecInput & {
   latitude?: number | string | null;
   longitude?: number | string | null;
+  notes?: string | null;
 };
 
 const optionClass =
@@ -234,6 +236,7 @@ export function StopActionsSheet({
                 <p className="text-[12px] text-muted-foreground">
                   {fmtDistance(selected.km)} מהתחנה
                 </p>
+                <RecDescription key={selected.rec.id} text={selected.rec.notes} />
               </div>
               <a
                 href={navigationHref({

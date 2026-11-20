@@ -21,6 +21,7 @@ import { resolveMapsUrl } from "@/lib/maps-resolver.functions";
 import { navigationHref } from "@/lib/stop-navigation";
 import { useServerFn } from "@tanstack/react-start";
 import { haversine, fmtDistance } from "@/lib/geo";
+import { RecDescription } from "@/components/RecDescription";
 import { computeOptimalOrder } from "@/lib/day-route-order";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { toast } from "sonner";
@@ -2515,6 +2516,7 @@ function NearbyRecCard({
           <div className="text-[12px] text-muted-foreground truncate">
             {fmtDistance(km)} {nearest.kind === "hotel" ? "מהמלון " : "מ־"}<bdi>{nearest.title}</bdi>
           </div>
+          <RecDescription key={rec.id} text={rec.notes} />
         </div>
         <button
           type="button"
