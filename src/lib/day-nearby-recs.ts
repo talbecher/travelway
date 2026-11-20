@@ -104,3 +104,26 @@ export function dayNearbyRecs<R extends NearbyRecInput>(
   );
   return { anchorKind, anchors, items };
 }
+
+/**
+ * Saved recommendations within `maxKm` (inclusive) of a single located stop — the home screen's
+ * "map with recommendations around this stop". A stop without a location yields nothing; the
+ * stop's own linked recommendation (and any other excluded ids) is left out. Same ordering and
+ * location rules as `dayNearbyRecs`. Pure: reads only its arguments.
+ */
+export function stopNearbyRecs<R extends NearbyRecInput>(
+  recs: R[],
+  input: {
+    stop: { id: string; title: string; lat: number; lng: number } | null;
+    excludeRecIds?: Iterable<string>;
+    maxKm?: number;
+  },
+): NearbyRec<R>[] {
+  if (!input.stop) return [];
+  return dayNearbyRecs(recs, {
+    stops: [input.stop],
+    hotelAnchors: [],
+    linkedRecIds: input.excludeRecIds ?? [],
+    maxKm: input.maxKm,
+  }).items;
+}

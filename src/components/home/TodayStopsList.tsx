@@ -44,8 +44,52 @@ function stopHref(entry: TodayStopsEntry) {
   });
 }
 
+function RowTarget({
+  dayId,
+  entryId,
+  onTap,
+  label,
+  className,
+  children,
+}: {
+  dayId: string;
+  entryId: string;
+  onTap?: () => void;
+  label: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (onTap) {
+    return (
+      <button
+        type="button"
+        onClick={onTap}
+        aria-label={label}
+        data-stop-tap={entryId}
+        className={className}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <Link to="/itinerary/$dayId" params={{ dayId }} aria-label={label} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 /** Collapsed list of every stop today, in itinerary order; past stops are dimmed, never hidden. */
-export function TodayStopsList({ dayId, entries }: { dayId: string; entries: TodayStopsEntry[] }) {
+export function TodayStopsList({
+  dayId,
+  entries,
+  onStopTap,
+}: {
+  dayId: string;
+  entries: TodayStopsEntry[];
+  /** When set, tapping a row opens the stop's actions (which include opening the day) instead of the day. */
+  onStopTap?: (entryId: string) => void;
+}) {
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 60_000);
@@ -76,10 +120,11 @@ export function TodayStopsList({ dayId, entries }: { dayId: string; entries: Tod
               data-past={past ? "true" : undefined}
               className={`flex min-w-0 items-center gap-1 rounded-lg ${past ? "opacity-55" : ""}`}
             >
-              <Link
-                to="/itinerary/$dayId"
-                params={{ dayId }}
-                aria-label={`${entry.title}${past ? " (השעה עברה)" : ""} · פתח את היום`}
+              <RowTarget
+                dayId={dayId}
+                onTap={onStopTap ? () => onStopTap(entry.id) : undefined}
+                entryId={entry.id}
+                label={`${entry.title}${past ? " (השעה עברה)" : ""} · ${onStopTap ? "אפשרויות לתחנה" : "פתח את היום"}`}
                 className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-bold tabular-nums">
@@ -101,7 +146,7 @@ export function TodayStopsList({ dayId, entries }: { dayId: string; entries: Tod
                     <Clock size={11} aria-hidden="true" /> {entry.time_of_day.slice(0, 5)}
                   </span>
                 )}
-              </Link>
+              </RowTarget>
               {href ? (
                 <a
                   href={href}

@@ -36,6 +36,7 @@ import { getDestinationTheme } from "@/lib/destination-theme";
 import { ActiveTripHero } from "@/components/home/ActiveTripHero";
 import { NearMeTile } from "@/components/home/NearMeTile";
 import { TodayStopsList } from "@/components/home/TodayStopsList";
+import { StopActionsSheet } from "@/components/home/StopActionsSheet";
 import {
   ActiveTodayCard,
   ActiveTodayErrorCard,
@@ -562,6 +563,8 @@ function Home() {
   // Changes at local midnight (minute tick + visibilitychange) so the memos below roll over to the new day.
   const todayKey = useTodayKey();
   const [hayinuOpen, setHayinuOpen] = useState(false);
+  // Today's stop whose actions sheet is open (home "היום שלכם" card / "כל תחנות היום" rows).
+  const [actionStopId, setActionStopId] = useState<string | null>(null);
   const [planSelection, setPlanSelection] = useState<{ tripId: string; dayId: string | null; manual: boolean }>({
     tripId,
     dayId: null,
@@ -900,11 +903,21 @@ function Home() {
         ) : !todayDay ? (
           <ActiveTodayMissingCard />
         ) : (
-          <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} />
+          <ActiveTodayCard dayId={todayDay.id} entries={todayEntries} onStopTap={setActionStopId} />
         )}
 
         {!todayDataFailed && !todayDataPending && todayDay && todayEntries.length > 0 && (
-          <TodayStopsList dayId={todayDay.id} entries={todayEntries} />
+          <TodayStopsList dayId={todayDay.id} entries={todayEntries} onStopTap={setActionStopId} />
+        )}
+
+        {todayDay && (
+          <StopActionsSheet
+            dayId={todayDay.id}
+            entry={todayEntries.find((entry) => entry.id === actionStopId) ?? null}
+            stopNumber={todayEntries.findIndex((entry) => entry.id === actionStopId) + 1}
+            recs={recs}
+            onClose={() => setActionStopId(null)}
+          />
         )}
 
         <NearMeTile />
