@@ -127,3 +127,30 @@ export function stopNearbyRecs<R extends NearbyRecInput>(
     maxKm: input.maxKm,
   }).items;
 }
+
+/** How many nearby saved recommendations the day screen's stop details sheet lists. */
+export const STOP_DETAILS_NEARBY_LIMIT = 5;
+
+/**
+ * The day screen's "nearby recommendations" list inside a stop's details sheet: the nearest
+ * `limit` results of `stopNearbyRecs` (same radius, location and ordering rules). Notes and stops
+ * without a location yield nothing; the stop's own linked recommendation is left out.
+ * Pure: reads only its arguments.
+ */
+export function stopDetailsNearbyRecs<R extends NearbyRecInput>(
+  recs: R[],
+  input: {
+    stop: { id: string; title: string; entryType: string; lat: number; lng: number } | null;
+    linkedRecId?: string | null;
+    limit?: number;
+  },
+): NearbyRec<R>[] {
+  const { stop } = input;
+  if (!stop || stop.entryType === "note") return [];
+  const limit = input.limit ?? STOP_DETAILS_NEARBY_LIMIT;
+  if (limit <= 0) return [];
+  return stopNearbyRecs(recs, {
+    stop: { id: stop.id, title: stop.title, lat: stop.lat, lng: stop.lng },
+    excludeRecIds: input.linkedRecId ? [input.linkedRecId] : [],
+  }).slice(0, limit);
+}

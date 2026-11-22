@@ -11,7 +11,13 @@ import { ENTRY_TYPES, getActiveTripId } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay, recTypeIcon } from "@/lib/recommendations";
-import { dayHotelAnchors, dayNearbyRecs, DAY_NEARBY_RECS_KM, type NearbyRec } from "@/lib/day-nearby-recs";
+import {
+  dayHotelAnchors,
+  dayNearbyRecs,
+  DAY_NEARBY_RECS_KM,
+  stopDetailsNearbyRecs,
+  type NearbyRec,
+} from "@/lib/day-nearby-recs";
 import type { MapNearbyRec } from "@/components/DayMap";
 import type { Tables } from "@/integrations/supabase/types";
 import { findRecByPlaceId, isRecPlaceDuplicateError, recDuplicateMessage } from "@/lib/rec-duplicate";
@@ -543,7 +549,16 @@ function DayDetail() {
   const [showNearby, setShowNearby] = useState(false);
   const [selectedNearbyId, setSelectedNearbyId] = useState<string | null>(null);
   const [justAddedRecIds, setJustAddedRecIds] = useState<Set<string>>(() => new Set());
-  const { data: allRecs = [] } = useQuery({ ...recsQuery(tripId), enabled: showNearby && !!tripId });
+  // The stop details sheet lists saved recommendations near a located, non-note stop; it reads the
+  // same trip recommendations query (and cache) as the map layer.
+  const detailsPoint = useMemo(
+    () => (detailsFor && detailsFor.entry_type !== "note" ? coordsOf(detailsFor) : null),
+    [detailsFor],
+  );
+  const { data: allRecs = [], isSuccess: allRecsLoaded } = useQuery({
+    ...recsQuery(tripId),
+    enabled: (showNearby || !!detailsPoint) && !!tripId,
+  });
   const dayLinkedRecIds = useMemo(() => {
     const ids = new Set(justAddedRecIds);
     for (const e of rawEntries as EntryRow[]) if (e.linked_recommendation_id) ids.add(e.linked_recommendation_id);
@@ -562,6 +577,22 @@ function DayDetail() {
       id: i.rec.id, lat: i.point.lat, lng: i.point.lng, type: i.rec.type, title: i.rec.name, emoji: recTypeIcon(i.rec.type),
     })) ?? null,
     [nearbyResult],
+  );
+  const detailsNearby = useMemo(
+    () =>
+      detailsFor && detailsPoint
+        ? stopDetailsNearbyRecs(allRecs, {
+            stop: {
+              id: detailsFor.id,
+              title: detailsFor.title,
+              entryType: detailsFor.entry_type,
+              lat: detailsPoint.lat,
+              lng: detailsPoint.lng,
+            },
+            linkedRecId: detailsFor.linked_recommendation_id,
+          })
+        : null,
+    [detailsFor, detailsPoint, allRecs],
   );
   const selectedNearby = selectedNearbyId
     ? nearbyResult?.items.find((i) => i.rec.id === selectedNearbyId) ?? null
@@ -1561,6 +1592,10 @@ function DayDetail() {
             onClose={() => setDetailsFor(null)}
             recById={recById}
             onMarkVisited={handleMarkVisited}
+            nearby={detailsNearby && allRecsLoaded ? detailsNearby : null}
+            nearbyInDay={dayLinkedRecIds}
+            addingNearby={addNearby.isPending}
+            onAddNearby={addNearbyToDay}
           />
         )}
       </BottomSheet>
@@ -2105,6 +2140,7 @@ function SortableEntry({
 
 function EntryDetails({
   entry, dayId, onEdit, onUpdateLocation, onMove, onDelete, onClose, recById, onMarkVisited,
+  nearby, nearbyInDay, addingNearby, onAddNearby,
 }: {
   entry: EntryRow;
   dayId: string;
@@ -2115,6 +2151,11 @@ function EntryDetails({
   onClose: () => void;
   recById?: Record<string, { status: string; rating: number | null; city: string | null; notes: string | null; google_rating: number | null; google_maps_url: string | null; photo_url: string | null }>;
   onMarkVisited?: (entry: EntryRow) => void;
+  /** Saved recommendations near this stop; null hides the section (note, no location, still loading). */
+  nearby?: NearbyRec<Tables<"recommendations">>[] | null;
+  nearbyInDay?: Set<string>;
+  addingNearby?: boolean;
+  onAddNearby?: (rec: Tables<"recommendations">) => void;
 }) {
 
   const qc = useQueryClient();
@@ -2372,7 +2413,111 @@ function EntryDetails({
         </button>
 
       </div>
+
+      {nearby && (
+        <StopNearbyRecsSection
+          items={nearby}
+          inDay={nearbyInDay}
+          adding={!!addingNearby}
+          onAdd={onAddNearby}
+        />
+      )}
     </div>
+  );
+}
+
+/** "Nearby recommendations" inside the stop details sheet: up to five saved recs around the stop. */
+function StopNearbyRecsSection({
+  items,
+  inDay,
+  adding,
+  onAdd,
+}: {
+  items: NearbyRec<Tables<"recommendations">>[];
+  inDay?: Set<string>;
+  adding: boolean;
+  onAdd?: (rec: Tables<"recommendations">) => void;
+}) {
+  return (
+    <section
+      className="pt-3 border-t border-border space-y-2"
+      aria-label="המלצות קרובות"
+      data-stop-nearby-recs
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-[14px] font-semibold">המלצות קרובות</h3>
+        <span className="text-[11px] text-muted-foreground">עד {DAY_NEARBY_RECS_KM} ק״מ</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-[12px] text-muted-foreground" data-stop-nearby-empty>
+          אין המלצות שמורות עד {DAY_NEARBY_RECS_KM} ק״מ מהתחנה
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map(({ rec, point, km }) => {
+            const typeLabel =
+              rec.type === "food" ? "אוכל" : rec.type === "hotel" ? "לינה" : "אטרקציה";
+            const already = inDay?.has(rec.id) ?? false;
+            return (
+              <li
+                key={rec.id}
+                className="rounded-xl border border-border bg-card p-3"
+                data-stop-nearby-item
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="w-10 h-10 rounded-lg border-2 border-dashed border-border bg-[color:var(--surface-2)] flex items-center justify-center text-[19px] shrink-0"
+                    aria-hidden
+                  >
+                    {recTypeIcon(rec.type)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14px] font-semibold truncate">
+                      <bdi>{rec.name}</bdi>
+                    </div>
+                    <div className="text-[12px] text-muted-foreground truncate">
+                      {typeLabel} · {fmtDistance(km)} מהתחנה
+                    </div>
+                    <RecDescription key={rec.id} text={rec.notes} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <a
+                    href={navigationHref({
+                      title: rec.name,
+                      latitude: point.lat,
+                      longitude: point.lng,
+                      google_maps_url: rec.google_maps_url,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 min-h-11 rounded-xl border border-border bg-card text-[13px] inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Navigation size={14} /> נווט
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onAdd?.(rec)}
+                    disabled={adding || already || !onAdd}
+                    className="flex-1 min-h-11 rounded-xl bg-[color:var(--accent)] text-white text-[13px] font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  >
+                    {already ? (
+                      <>
+                        <Check size={14} /> ביום הזה
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={14} /> הוסף ליום
+                      </>
+                    )}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
