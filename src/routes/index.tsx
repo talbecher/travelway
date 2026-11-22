@@ -337,6 +337,7 @@ type EntrySlim = {
   entry_type: string;
   icon_emoji?: string | null;
   title: string;
+  description?: string | null;
   location_name?: string | null;
   time_of_day: string | null;
   display_order?: number | null;
@@ -583,7 +584,7 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("day_entries")
-        .select("id, day_id, entry_type, icon_emoji, title, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations(city), itinerary_days!inner(trip_id, version_id)")
+        .select("id, day_id, entry_type, icon_emoji, title, description, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations(city), itinerary_days!inner(trip_id, version_id)")
         .eq("itinerary_days.trip_id", tripId)
         .eq("itinerary_days.version_id", activeVersion!.id)
         .order("display_order")

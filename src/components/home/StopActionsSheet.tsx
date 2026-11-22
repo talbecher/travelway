@@ -19,6 +19,7 @@ import { DAY_NEARBY_RECS_KM, stopNearbyRecs, type NearbyRecInput } from "@/lib/d
 import { fmtDistance } from "@/lib/geo";
 import { recTypeIcon } from "@/lib/recommendations";
 import { navigationHref } from "@/lib/stop-navigation";
+import { stopDescription } from "@/lib/stop-description";
 
 // Leaflet touches window on import — keep it out of server route evaluation.
 const DayMap = lazy(() => import("@/components/DayMap"));
@@ -27,6 +28,7 @@ export type StopActionsEntry = {
   id: string;
   entry_type: string;
   title: string;
+  description?: string | null;
   location_name?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
@@ -77,6 +79,7 @@ export function StopActionsSheet({
     [recs, shown?.linked_recommendation_id],
   );
   const isNote = shown?.entry_type === "note";
+  const description = stopDescription(shown, linkedRec);
   const point = useMemo(
     () => (shown && !isNote ? resolveDayLocation(shown, linkedRec) : null),
     [shown, isNote, linkedRec],
@@ -124,6 +127,11 @@ export function StopActionsSheet({
     >
       {shown && view === "actions" && (
         <div className="space-y-2 pb-1" data-stop-actions>
+          {description && (
+            <div className="px-0.5 pb-1" data-stop-description>
+              <RecDescription key={shown.id} text={description} />
+            </div>
+          )}
           {navHref && (
             <a
               href={navHref}
