@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Copy, MapPinOff, Pencil, Plus, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Copy, ExternalLink, MapPinOff, Pencil, Plus, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { formatMoney } from "@/lib/currency";
@@ -43,6 +43,30 @@ const EXP_LABEL: Record<string, string> = { expense_date: "תאריך", category
 const showVal = (k: string, v: unknown) =>
   v == null || v === "" ? "—" : k === "entry_type" ? TYPE[String(v)] ?? String(v) : k === "category" ? CAT[String(v)] ?? String(v)
   : k === "expense_date" ? fmtDate(String(v)) : String(v);
+
+/** Display-only: a maps URL becomes a short link; the stored value is never touched. */
+function MapsLink({ url }: { url: unknown }) {
+  const s = url == null ? "" : String(url).trim();
+  if (!s) return <>—</>;
+  if (!/^https?:\/\//i.test(s)) {
+    return (
+      <span dir="ltr" className="inline-block max-w-full truncate align-bottom">
+        {s}
+      </span>
+    );
+  }
+  return (
+    <a
+      href={s}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 font-semibold text-primary underline underline-offset-2"
+    >
+      פתח במפות
+      <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+    </a>
+  );
+}
 
 function Page() {
   const { id } = Route.useParams();
@@ -98,8 +122,9 @@ function Page() {
   const canApply = pending && blocked === 0 && unresolvedDups === 0;
   const base = v.money?.base_currency ?? "ILS";
   const LABEL = isIt ? ENTRY_LABEL : EXP_LABEL;
-  const fmtField = (k: string, val: unknown) =>
-    !isIt && k === "amount_ils" ? (val == null ? "—" : formatMoney(Number(val), base))
+  const fmtField = (k: string, val: unknown): ReactNode =>
+    k === "google_maps_url" ? <MapsLink url={val} />
+    : !isIt && k === "amount_ils" ? (val == null ? "—" : formatMoney(Number(val), base))
     : !isIt && k === "amount_foreign" ? (val == null ? "—" : String(val)) : showVal(k, val);
 
   return (
@@ -142,7 +167,7 @@ function Page() {
         </p>
       )}
 
-      {v.note && <p dir="auto" className="whitespace-pre-wrap rounded-2xl bg-muted p-4 text-start text-sm">{v.note}</p>}
+      {v.note && <p dir="auto" className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-2xl bg-muted p-4 text-start text-sm">{v.note}</p>}
 
       <ul className="space-y-3">
         {v.ops.map((o) => {
@@ -150,7 +175,7 @@ function Page() {
           const day = o.op.day_id ? v.days?.[o.op.day_id] : null;
           const money = o.op.money as J | null;
           return (
-            <li key={o.index} className={`rounded-2xl border bg-card p-3 text-sm ${o.conflict || o.protected ? "border-destructive" : "border-border"}`}>
+            <li key={o.index} className={`min-w-0 overflow-hidden rounded-2xl border bg-card p-3 text-sm ${o.conflict || o.protected ? "border-destructive" : "border-border"}`}>
               <p className="mb-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                 {o.op.op === "add" ? <><Plus className="size-4" />{isIt ? "תחנה חדשה" : "הוצאה חדשה"}</> : <><Pencil className="size-4" />{isIt ? "עדכון תחנה קיימת" : "עדכון הוצאה קיימת"}</>}
                 {day && <span>· יום {day.day_number} ({fmtDate(day.date)})</span>}
@@ -160,27 +185,27 @@ function Page() {
               {o.op.op === "add" ? (
                 <dl className="space-y-0.5 text-xs">
                   {Object.keys(LABEL).filter((k) => fields[k] != null).map((k) => (
-                    <div key={k} className="flex flex-wrap gap-1"><dt className="text-muted-foreground">{LABEL[k]}:</dt><dd dir="auto" className="font-semibold">{fmtField(k, fields[k])}</dd></div>
+                    <div key={k} className="flex min-w-0 flex-wrap gap-1"><dt className="shrink-0 text-muted-foreground">{LABEL[k]}:</dt><dd dir="auto" className="min-w-0 max-w-full break-words font-semibold [overflow-wrap:anywhere]">{fmtField(k, fields[k])}</dd></div>
                   ))}
                 </dl>
               ) : (
                 <>
-                  <p dir="auto" className="text-start font-semibold">{o.current?.title ?? o.current?.description ?? (o.current ? "—" : "פריט שנמחק")}</p>
+                  <p dir="auto" className="break-words text-start font-semibold [overflow-wrap:anywhere]">{o.current?.title ?? o.current?.description ?? (o.current ? "—" : "פריט שנמחק")}</p>
                   <dl className="mt-1 space-y-0.5 text-xs">
                     {Object.keys(LABEL).filter((k) => k in fields).map((k) => (
-                      <div key={k} className="flex flex-wrap gap-1">
-                        <dt className="text-muted-foreground">{LABEL[k]}:</dt>
-                        <dd dir="auto"><span className="text-muted-foreground line-through">{o.current ? fmtField(k, o.current[k]) : "—"}</span> ← <span className="font-semibold">{fmtField(k, fields[k])}</span></dd>
+                      <div key={k} className="flex min-w-0 flex-wrap gap-1">
+                        <dt className="shrink-0 text-muted-foreground">{LABEL[k]}:</dt>
+                        <dd dir="auto" className="min-w-0 max-w-full break-words [overflow-wrap:anywhere]"><span className="text-muted-foreground line-through">{o.current ? fmtField(k, o.current[k]) : "—"}</span> ← <span className="font-semibold">{fmtField(k, fields[k])}</span></dd>
                       </div>
                     ))}
                   </dl>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
                     ללא שינוי: {Object.keys(LABEL).filter((k) => !(k in fields)).map((k) => LABEL[k]).join(", ") || "—"}
                   </p>
                 </>
               )}
               {isIt && (
-                <p className={`mt-1 text-xs ${o.missing_location ? "text-destructive" : "text-muted-foreground"}`}>
+                <p className={`mt-1 break-words text-xs [overflow-wrap:anywhere] ${o.missing_location ? "text-destructive" : "text-muted-foreground"}`}>
                   {LOC[o.op.location?.source] ?? ""}{o.op.location?.source_name ? `: ${o.op.location.source_name}` : ""}
                   {o.missing_location ? " · אין מיקום במפה" : ""}
                 </p>
