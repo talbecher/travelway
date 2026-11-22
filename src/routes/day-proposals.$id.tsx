@@ -477,7 +477,7 @@ function MissingLocationsSheet({
               const e = view.entries[i];
               const pick = picks[i];
               return (
-                <li key={i} className="rounded-2xl border border-border bg-card p-3">
+                <li key={i} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-3">
                   <div className="flex items-center gap-2">
                     <span dir="ltr" className="text-xs font-semibold tabular-nums text-muted-foreground">{e.time_of_day ?? "—"}</span>
                     <p dir="auto" className="min-w-0 flex-1 truncate text-start text-sm font-semibold">{e.title}</p>
@@ -491,7 +491,7 @@ function MissingLocationsSheet({
                       )}
                       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MapPin className="size-3.5 shrink-0" />
-                        <span dir="auto" className="truncate">{pick.name}{pick.address ? ` · ${pick.address}` : ""}</span>
+                        <span dir="auto" className="min-w-0 truncate">{pick.name}{pick.address ? ` · ${pick.address}` : ""}</span>
                         <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5">{pick.source === "hotel" ? "מלון" : pick.source === "google" ? "Google" : "מקום שמור"}</span>
                       </p>
                       <div className="flex gap-2">
@@ -654,9 +654,9 @@ function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
 function NoteBox({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <section className="rounded-2xl bg-muted p-4 text-sm">
+    <section className="min-w-0 overflow-hidden rounded-2xl bg-muted p-4 text-sm">
       <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><MessageSquare className="size-4" />הערה מהצ׳אט</p>
-      <p dir="auto" className={`whitespace-pre-wrap text-start leading-relaxed ${open ? "" : "line-clamp-3"}`}>{text}</p>
+      <p dir="auto" className={`whitespace-pre-wrap break-words text-start leading-relaxed [overflow-wrap:anywhere] ${open ? "" : "line-clamp-3"}`}>{text}</p>
       <button type="button" className="mt-1 min-h-11 text-sm font-semibold text-primary" onClick={() => setOpen((o) => !o)}>{open ? "הצג פחות" : "הצג עוד"}</button>
     </section>
   );
@@ -682,20 +682,20 @@ function Timeline({ rows }: { rows: Row[] }) {
 function RowCard({ r }: { r: Row }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-3">
+    <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card p-3">
       <div className="flex items-start gap-2">
-        <p dir="auto" className="min-w-0 flex-1 text-start font-semibold leading-snug">{r.title}</p>
+        <p dir="auto" className="min-w-0 flex-1 break-words text-start font-semibold leading-snug [overflow-wrap:anywhere]">{r.title}</p>
         {r.is_protected && <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs"><Lock className="size-3" />נשמרת</span>}
       </div>
-      {r.location_name && <p dir="auto" className="mt-1 flex items-center gap-1 text-start text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" /><span className="truncate">{r.location_name}</span></p>}
+      {r.location_name && <p dir="auto" className="mt-1 flex items-center gap-1 text-start text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" /><span className="min-w-0 truncate">{r.location_name}</span></p>}
       {r.location_source && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
           {r.location_source === "existing" ? (r.location_source_name ? <>מיקום מההמלצה: <bdi>{r.location_source_name}</bdi></> : "מיקום שמור בטיול") : r.location_source === "ai" ? (r.latitude != null ? "מיקום מהצ׳אט" : "מיקום מהצ׳אט (קישור מפות)") : "ללא מיקום"}
         </p>
       )}
       {r.description && (
         <>
-          <p dir="auto" className={`mt-2 whitespace-pre-wrap text-start text-sm text-muted-foreground ${open ? "" : "line-clamp-2"}`}>{r.description}</p>
+          <p dir="auto" className={`mt-2 whitespace-pre-wrap break-words text-start text-sm text-muted-foreground [overflow-wrap:anywhere] ${open ? "" : "line-clamp-2"}`}>{r.description}</p>
           {r.description.length > 90 && <button type="button" className="min-h-9 text-xs font-semibold text-primary" onClick={() => setOpen((o) => !o)}>{open ? "פחות" : "עוד"}</button>}
         </>
       )}
