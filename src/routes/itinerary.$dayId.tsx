@@ -77,11 +77,6 @@ function DayWeatherLine({ city, date }: { city: string | null; date: string }) {
   );
 }
 
-/** Pure helper — "HH:MM" → minutes since midnight. */
-function parseTime(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-}
 import {
   DndContext,
   PointerSensor,
@@ -1393,8 +1388,6 @@ function DayDetail() {
                       <div key={e.id} className={"day-stop-group" + (prev && a && b ? " day-stop-with-segment" : "")}>
                         {prev && a && b ? (
                           <SegmentRow
-                            fromTime={prev!.time_of_day}
-                            toTime={e.time_of_day}
                             km={bothCoords && a?.kind === "coords" && b?.kind === "coords" ? haversine({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng }) : null}
                             onOpen={() => setSegmentSheet({ fromId: prev!.id, toId: e.id })}
                             onShowOnMap={bothCoords ? () => {
@@ -1796,22 +1789,15 @@ function DayDetail() {
 function SegmentRow({
   onOpen,
   onShowOnMap,
-  fromTime,
-  toTime,
   km,
 }: {
   onOpen: () => void;
   onShowOnMap?: () => void;
-  fromTime?: string | null;
-  toTime?: string | null;
   km?: number | null;
 }) {
-  const gap = fromTime && toTime ? parseTime(toTime) - parseTime(fromTime) : 0;
-  const label = gap > 0
-    ? <>⏱ <span className="tabular-nums">{gap}</span> דק׳ עד התחנה הבאה</>
-    : km != null
-      ? <>מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span></>
-      : <>אפשרויות הגעה ›</>;
+  const label = km != null
+    ? <>מרחק אווירי <span dir="ltr" className="tabular-nums">{fmtDistance(km)}</span></>
+    : <>אפשרויות הגעה ›</>;
   return (
     <div className="day-segment relative flex items-center" dir="rtl">
       {/* Bridge tie — visually connects the bridge to the timeline rail (display only) */}
