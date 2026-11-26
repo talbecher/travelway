@@ -1,6 +1,11 @@
 // @ts-nocheck -- bun:test types are not installed; no new dependency needed.
 import { describe, expect, test } from "bun:test";
-import { insertIndexByTime, planDayInsert, timeToMinutes } from "./day-insert-order";
+import {
+  insertIndexByTime,
+  planDayInsert,
+  sortByTimeKeepingFixed,
+  timeToMinutes,
+} from "./day-insert-order";
 
 let n = 0;
 const e = (time: string | null, o = {}) => ({
@@ -119,5 +124,40 @@ describe("planDayInsert", () => {
     const plan = planDayInsert(list, { entry_type: "food", time_of_day: "10:00" });
     expect(plan.display_order).toBe(1);
     expect(plan.updates).toEqual([{ id: "b", display_order: 2 }]);
+  });
+});
+
+describe("sortByTimeKeepingFixed", () => {
+  test("sorts timed stops inside their slots; untimed, hotel and booked stay put", () => {
+    const list = [
+      e("15:45", { id: "a" }),
+      e(null, { id: "note", entry_type: "note" }),
+      e("20:00", { id: "b" }),
+      e("11:00", { id: "booked", booking_status: "booked" }),
+      e("09:45", { id: "c" }),
+      e("13:30", { id: "d" }),
+      e("22:00", { id: "hotel", entry_type: "hotel_checkin" }),
+      e("13:15", { id: "e" }),
+    ];
+    expect(ids(sortByTimeKeepingFixed(list))).toEqual([
+      "c",
+      "note",
+      "e",
+      "booked",
+      "d",
+      "a",
+      "hotel",
+      "b",
+    ]);
+  });
+
+  test("already sorted → same array (no-op)", () => {
+    const list = [e("09:00"), e(null), e("10:00"), e("10:00")];
+    expect(sortByTimeKeepingFixed(list)).toBe(list);
+  });
+
+  test("ties keep their current relative order", () => {
+    const list = [e("12:00", { id: "x" }), e("10:00", { id: "y" }), e("10:00", { id: "z" })];
+    expect(ids(sortByTimeKeepingFixed(list))).toEqual(["y", "z", "x"]);
   });
 });

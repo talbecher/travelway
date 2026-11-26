@@ -114,3 +114,28 @@ export function planDayInsert(
   });
   return { display_order: idx, updates };
 }
+
+/**
+ * "Sort by time": timed, non-fixed stops are sorted by time (stable on ties) inside the
+ * slots they already occupy; untimed stops, hotel check-ins and booked stops stay at
+ * their exact positions. Returns the same array when nothing would change.
+ */
+export function sortByTimeKeepingFixed<T extends DayOrderEntry>(
+  entries: readonly T[],
+): readonly T[] {
+  const slots: number[] = [];
+  const movable: { e: T; m: number; i: number }[] = [];
+  entries.forEach((e, i) => {
+    const m = anchorMinutes(e);
+    if (m == null) return;
+    slots.push(i);
+    movable.push({ e, m, i });
+  });
+  const sorted = [...movable].sort((a, b) => a.m - b.m || a.i - b.i);
+  if (sorted.every((s, k) => s === movable[k])) return entries;
+  const out = [...entries];
+  slots.forEach((slot, k) => {
+    out[slot] = sorted[k].e;
+  });
+  return out;
+}

@@ -12,6 +12,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay, recTypeIcon } from "@/lib/recommendations";
 import { insertDayEntry } from "@/lib/day-entry-insert";
+import { renumberUpdates, sortByTimeKeepingFixed } from "@/lib/day-insert-order";
 import {
   dayHotelAnchors,
   dayNearbyRecs,
@@ -45,7 +46,7 @@ import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { useBaseCurrency } from "@/lib/currency";
-import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
+import { Sparkles, Download, History, MoreHorizontal, Compass, Clock } from "lucide-react";
 import { DayShareSheet } from "@/components/itinerary/DayShareSheet";
 import { DiscoverSheet, useDiscoverAccess, type AddToDayResult } from "@/components/discover/DiscoverSheet";
 
@@ -230,7 +231,7 @@ function DayDetail() {
       if (linkedRecIds.length === 0) return [];
       const { data, error } = await supabase
         .from("recommendations")
-        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url, latitude, longitude")
+        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url, latitude, longitude, booking_status")
         .in("id", linkedRecIds);
       if (error) throw error;
       return data ?? [];
@@ -394,6 +395,49 @@ function DayDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["day-entries", dayId] }),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // "Sort by time" (inside sort mode): timed stops reorder by time within their own slots;
+  // untimed, hotel check-in and booked stops keep their exact positions.
+  const timeSorted = useMemo(
+    () =>
+      sortByTimeKeepingFixed(
+        entries.map((e) => ({
+          ...e,
+          booking_status: e.linked_recommendation_id
+            ? ((recById[e.linked_recommendation_id] as { booking_status?: string | null } | undefined)?.booking_status ?? null)
+            : null,
+        })),
+      ),
+    [entries, recById],
+  );
+  const timeSortChanges = timeSorted.some((e, i) => e.id !== entries[i]?.id);
+  const sortByTime = useMutation({
+    mutationFn: async () => {
+      assertOnline();
+      for (const u of renumberUpdates(timeSorted)) {
+        const { error } = await supabase.from("day_entries").update({ display_order: u.display_order }).eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("✅ התחנות מוינו לפי שעה");
+    },
+    onError: (e: Error) => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      toast.error(e.message);
+    },
+  });
+  function confirmSortByTime() {
+    if (sortByTime.isPending) return;
+    if (!timeSortChanges) {
+      toast.info("התחנות כבר מסודרות לפי שעה");
+      return;
+    }
+    if (!confirm("למיין את התחנות לפי שעה?\nתחנות בלי שעה, מלון ותחנות שהוזמנו יישארו במקומן.")) return;
+    sortByTime.mutate();
+  }
 
   const quickAdd = useMutation({
     mutationFn: async (place: SelectedPlace) => {
@@ -1364,6 +1408,20 @@ function DayDetail() {
               </button>
             </div>
           </div>
+
+          {sortMode && (
+            <div className="day-sort-by-time px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
+              <span className="text-[11px] text-muted-foreground min-w-0">גררו תחנות, או מיינו את כולן לפי שעה</span>
+              <button
+                type="button"
+                onClick={confirmSortByTime}
+                disabled={sortByTime.isPending}
+                className="min-h-9 px-3 rounded-full text-[12px] border border-border bg-card text-foreground inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
+              >
+                <Clock size={13} /> {sortByTime.isPending ? "ממיין..." : "מיין לפי שעה"}
+              </button>
+            </div>
+          )}
 
           {/* List pane */}
           <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-2 pb-6 relative">
