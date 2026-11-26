@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { BottomSheet } from "@/components/BottomSheet";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { supabase } from "@/integrations/supabase/client";
+import { insertDayEntry } from "@/lib/day-entry-insert";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useDays, useRecs } from "@/hooks/use-trip";
 import { todayLocal } from "@/lib/format";
@@ -210,16 +211,8 @@ export function HayinuKanSheet({
     if (!todayDay) return;
     setBusy(true);
     try {
-      const { data: existing, error: readErr } = await supabase
-        .from("day_entries")
-        .select("display_order")
-        .eq("day_id", todayDay.id)
-        .order("display_order", { ascending: false })
-        .limit(1);
-      if (readErr) throw readErr;
-      const nextOrder = (existing?.[0]?.display_order ?? -1) + 1;
-
-      const { error } = await supabase.from("day_entries").insert({
+      // Placed by the current time among today's timed stops (insertDayEntry).
+      await insertDayEntry({
         day_id: todayDay.id,
         entry_type: guessEntryType(selectedPlace?.primaryType),
         title: name.trim(),
@@ -229,10 +222,8 @@ export function HayinuKanSheet({
         google_maps_url: selectedPlace?.google_maps_url ?? null,
         photo_url: selectedPlace?.photo_url ?? null,
         time_of_day: getCurrentTime(),
-        display_order: nextOrder,
         linked_recommendation_id: savedRecId,
       });
-      if (error) throw error;
       qc.invalidateQueries({ queryKey: ["day-entries", todayDay.id] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       toast.success("✅ נוסף למסלול!");

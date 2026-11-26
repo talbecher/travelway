@@ -11,6 +11,8 @@ import { ENTRY_TYPES, getActiveTripId } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay, recTypeIcon } from "@/lib/recommendations";
+import { insertDayEntry } from "@/lib/day-entry-insert";
+import { renumberUpdates, sortByTimeKeepingFixed } from "@/lib/day-insert-order";
 import {
   dayHotelAnchors,
   dayNearbyRecs,
@@ -44,7 +46,7 @@ import { DaySnapshotsSheet } from "@/components/DaySnapshotsSheet";
 import { RatingSheet } from "@/components/RatingSheet";
 import { generateDayAIPrompt } from "@/lib/export-to-ai";
 import { useBaseCurrency } from "@/lib/currency";
-import { Sparkles, Download, History, MoreHorizontal, Compass } from "lucide-react";
+import { Sparkles, Download, History, MoreHorizontal, Compass, Clock } from "lucide-react";
 import { DayShareSheet } from "@/components/itinerary/DayShareSheet";
 import { DiscoverSheet, useDiscoverAccess, type AddToDayResult } from "@/components/discover/DiscoverSheet";
 
@@ -229,7 +231,7 @@ function DayDetail() {
       if (linkedRecIds.length === 0) return [];
       const { data, error } = await supabase
         .from("recommendations")
-        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url, latitude, longitude")
+        .select("id, name, status, rating, review, city, notes, google_rating, google_maps_url, photo_url, latitude, longitude, booking_status")
         .in("id", linkedRecIds);
       if (error) throw error;
       return data ?? [];
@@ -394,9 +396,52 @@ function DayDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // "Sort by time" (inside sort mode): timed stops reorder by time within their own slots;
+  // untimed, hotel check-in and booked stops keep their exact positions.
+  const timeSorted = useMemo(
+    () =>
+      sortByTimeKeepingFixed(
+        entries.map((e) => ({
+          ...e,
+          booking_status: e.linked_recommendation_id
+            ? ((recById[e.linked_recommendation_id] as { booking_status?: string | null } | undefined)?.booking_status ?? null)
+            : null,
+        })),
+      ),
+    [entries, recById],
+  );
+  const timeSortChanges = timeSorted.some((e, i) => e.id !== entries[i]?.id);
+  const sortByTime = useMutation({
+    mutationFn: async () => {
+      assertOnline();
+      for (const u of renumberUpdates(timeSorted)) {
+        const { error } = await supabase.from("day_entries").update({ display_order: u.display_order }).eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+      toast.success("✅ התחנות מוינו לפי שעה");
+    },
+    onError: (e: Error) => {
+      qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
+      toast.error(e.message);
+    },
+  });
+  function confirmSortByTime() {
+    if (sortByTime.isPending) return;
+    if (!timeSortChanges) {
+      toast.info("התחנות כבר מסודרות לפי שעה");
+      return;
+    }
+    if (!confirm("למיין את התחנות לפי שעה?\nתחנות בלי שעה, מלון ותחנות שהוזמנו יישארו במקומן.")) return;
+    sortByTime.mutate();
+  }
+
   const quickAdd = useMutation({
     mutationFn: async (place: SelectedPlace) => {
-      const { error } = await supabase.from("day_entries").insert({
+      await insertDayEntry({
         day_id: dayId,
         entry_type: "attraction",
         icon_emoji: TYPE_ICON.attraction,
@@ -406,10 +451,8 @@ function DayDetail() {
         longitude: place.longitude,
         google_maps_url: place.google_maps_url,
         photo_url: place.photo_url,
-        display_order: entries.length,
         time_of_day: null,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
@@ -423,7 +466,7 @@ function DayDetail() {
     mutationFn: async ({ place, note }: { place: SelectedPlace | null; note: string }) => {
       if (!place && !note.trim()) throw new Error("בחר מקום או הוסף טקסט");
       const title = place ? `נווט אל: ${place.name}` : `נווט אל: ${note.trim().slice(0, 60)}`;
-      const { error } = await supabase.from("day_entries").insert({
+      await insertDayEntry({
         day_id: dayId,
         entry_type: "transport",
         icon_emoji: "🧭",
@@ -434,10 +477,8 @@ function DayDetail() {
         longitude: place?.longitude ?? null,
         google_maps_url: place?.google_maps_url ?? null,
         photo_url: place?.photo_url ?? null,
-        display_order: entries.length,
         time_of_day: null,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
@@ -1367,6 +1408,20 @@ function DayDetail() {
               </button>
             </div>
           </div>
+
+          {sortMode && (
+            <div className="day-sort-by-time px-4 pt-2 flex items-center justify-between gap-2" dir="rtl">
+              <span className="text-[11px] text-muted-foreground min-w-0">גררו תחנות, או מיינו את כולן לפי שעה</span>
+              <button
+                type="button"
+                onClick={confirmSortByTime}
+                disabled={sortByTime.isPending}
+                className="min-h-9 px-3 rounded-full text-[12px] border border-border bg-card text-foreground inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
+              >
+                <Clock size={13} /> {sortByTime.isPending ? "ממיין..." : "מיין לפי שעה"}
+              </button>
+            </div>
+          )}
 
           {/* List pane */}
           <div ref={listRef} className="day-list-pane flex-1 overflow-y-auto px-4 pt-2 pb-6 relative">
@@ -2825,8 +2880,9 @@ function useUpsert(dayId: string, existingId?: string) {
         const { error } = await supabase.from("day_entries").update(payload).eq("id", existingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("day_entries").insert({ day_id: dayId, ...payload });
-        if (error) throw error;
+        // New stops are placed by time; the form's display_order is ignored here.
+        const { display_order: _ignored, ...row } = payload;
+        await insertDayEntry({ day_id: dayId, ...row });
       }
     },
     onSuccess: () => {
@@ -3096,11 +3152,7 @@ function HotelEntrySection(props: {
     const f = singleForm;
     setSavingSingle(true);
     try {
-      const { count } = await supabase
-        .from("day_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("day_id", props.dayId);
-      const { error } = await supabase.from("day_entries").insert({
+      await insertDayEntry({
         day_id: props.dayId,
         entry_type: f.type,
         title: f.title.trim() || h.hotel_name,
@@ -3113,9 +3165,7 @@ function HotelEntrySection(props: {
         photo_url: h.photo_url ?? null,
         linked_hotel_id: f.type === "hotel_checkin" ? h.id : null,
         icon_emoji: f.type === "hotel_checkin" ? "🏨" : "📍",
-        display_order: count ?? 0,
       });
-      if (error) throw error;
       qc.invalidateQueries({ queryKey: ["day-entries", props.dayId] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       toast.success(f.type === "hotel_checkin" ? "✅ לינה נוספה ליום" : "✅ נוסף ליום");
