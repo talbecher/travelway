@@ -11,6 +11,7 @@ import { ENTRY_TYPES, getActiveTripId } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
 import { saveRecommendation, addRecommendationToDay, recTypeIcon } from "@/lib/recommendations";
+import { insertDayEntry } from "@/lib/day-entry-insert";
 import {
   dayHotelAnchors,
   dayNearbyRecs,
@@ -396,7 +397,7 @@ function DayDetail() {
 
   const quickAdd = useMutation({
     mutationFn: async (place: SelectedPlace) => {
-      const { error } = await supabase.from("day_entries").insert({
+      await insertDayEntry({
         day_id: dayId,
         entry_type: "attraction",
         icon_emoji: TYPE_ICON.attraction,
@@ -406,10 +407,8 @@ function DayDetail() {
         longitude: place.longitude,
         google_maps_url: place.google_maps_url,
         photo_url: place.photo_url,
-        display_order: entries.length,
         time_of_day: null,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
@@ -423,7 +422,7 @@ function DayDetail() {
     mutationFn: async ({ place, note }: { place: SelectedPlace | null; note: string }) => {
       if (!place && !note.trim()) throw new Error("בחר מקום או הוסף טקסט");
       const title = place ? `נווט אל: ${place.name}` : `נווט אל: ${note.trim().slice(0, 60)}`;
-      const { error } = await supabase.from("day_entries").insert({
+      await insertDayEntry({
         day_id: dayId,
         entry_type: "transport",
         icon_emoji: "🧭",
@@ -434,10 +433,8 @@ function DayDetail() {
         longitude: place?.longitude ?? null,
         google_maps_url: place?.google_maps_url ?? null,
         photo_url: place?.photo_url ?? null,
-        display_order: entries.length,
         time_of_day: null,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["day-entries", dayId] });
@@ -2825,8 +2822,9 @@ function useUpsert(dayId: string, existingId?: string) {
         const { error } = await supabase.from("day_entries").update(payload).eq("id", existingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("day_entries").insert({ day_id: dayId, ...payload });
-        if (error) throw error;
+        // New stops are placed by time; the form's display_order is ignored here.
+        const { display_order: _ignored, ...row } = payload;
+        await insertDayEntry({ day_id: dayId, ...row });
       }
     },
     onSuccess: () => {
@@ -3096,11 +3094,7 @@ function HotelEntrySection(props: {
     const f = singleForm;
     setSavingSingle(true);
     try {
-      const { count } = await supabase
-        .from("day_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("day_id", props.dayId);
-      const { error } = await supabase.from("day_entries").insert({
+      await insertDayEntry({
         day_id: props.dayId,
         entry_type: f.type,
         title: f.title.trim() || h.hotel_name,
@@ -3113,9 +3107,7 @@ function HotelEntrySection(props: {
         photo_url: h.photo_url ?? null,
         linked_hotel_id: f.type === "hotel_checkin" ? h.id : null,
         icon_emoji: f.type === "hotel_checkin" ? "🏨" : "📍",
-        display_order: count ?? 0,
       });
-      if (error) throw error;
       qc.invalidateQueries({ queryKey: ["day-entries", props.dayId] });
       qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
       toast.success(f.type === "hotel_checkin" ? "✅ לינה נוספה ליום" : "✅ נוסף ליום");

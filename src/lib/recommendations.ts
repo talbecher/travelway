@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveTripId } from "@/lib/constants";
 import { resolveDayLocation } from "@/lib/day-location";
+import { insertDayEntry } from "@/lib/day-entry-insert";
 
 export type RecType = "food" | "attraction" | "hotel";
 
@@ -69,12 +70,9 @@ export async function addRecommendationToDay(rec: {
   photo_url?: string | null;
 }, dayId: string): Promise<void> {
   const entryType = recTypeToEntryType(rec.type);
-  const { count } = await supabase
-    .from("day_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("day_id", dayId);
   const coords = resolveDayLocation(rec);
-  const { error } = await supabase.from("day_entries").insert({
+  // No time on a saved recommendation → appended at the end (insertDayEntry's rule).
+  await insertDayEntry({
     day_id: dayId,
     entry_type: entryType,
     title: rec.name,
@@ -82,10 +80,8 @@ export async function addRecommendationToDay(rec: {
     google_maps_url: rec.google_maps_url,
     icon_emoji: recTypeIcon(rec.type),
     linked_recommendation_id: rec.id,
-    display_order: count ?? 0,
     latitude: coords?.lat ?? null,
     longitude: coords?.lng ?? null,
     photo_url: rec.photo_url ?? null,
   });
-  if (error) throw error;
 }
