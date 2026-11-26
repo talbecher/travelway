@@ -37,6 +37,7 @@ import { ActiveTripHero } from "@/components/home/ActiveTripHero";
 import { NearMeTile } from "@/components/home/NearMeTile";
 import { TodayStopsList } from "@/components/home/TodayStopsList";
 import { StopActionsSheet } from "@/components/home/StopActionsSheet";
+import { NearbyPlaceSheet, type NearbyPlaceSelection } from "@/components/home/NearbyPlaceSheet";
 import {
   ActiveTodayCard,
   ActiveTodayErrorCard,
@@ -1589,6 +1590,7 @@ type NearbyRec = {
   longitude: number | string | null;
   google_maps_url: string | null;
   photo_url: string | null;
+  notes: string | null;
 };
 
 function geoErrorText(kind: GeoFailure | null) {
@@ -1619,6 +1621,7 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
   const [filter, setFilter] = useState<"all" | "food" | "attraction">("all");
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<GeoFailure | null>(null);
+  const [selected, setSelected] = useState<NearbyPlaceSelection | null>(null);
   // One request at a time; a retry tap while locating is ignored.
   const locatingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -1741,34 +1744,28 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
             לא נמצאו מקומות שמורים בקטגוריה זו
           </div>
         ) : (
-          nearby.map(({ rec, distance, point }) => {
-            const mapsHref =
-              rec.google_maps_url ||
-              `https://www.google.com/maps/search/?api=1&query=${point.lat},${point.lng}`;
-            return (
-              <div
-                key={rec.id}
-                className="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2"
-              >
-                <NearbyImage rec={rec} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-semibold truncate">{rec.name}</div>
-                  <div className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">
-                    מרחק בקו אווירי · {fmtDistance(distance)}
-                  </div>
+          nearby.map(({ rec, distance, point }) => (
+            <button
+              key={rec.id}
+              type="button"
+              onClick={() => setSelected({ rec, point, distance })}
+              aria-haspopup="dialog"
+              className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-background p-2 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <NearbyImage rec={rec} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-semibold truncate">{rec.name}</div>
+                <div className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">
+                  מרחק בקו אווירי · {fmtDistance(distance)}
                 </div>
-                <a
-                  href={mapsHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="פתח במפה"
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-lg bg-[color:var(--surface-2)] border border-border shrink-0"
-                >
-                  🗺
-                </a>
               </div>
-            );
-          })
+              <ChevronLeft
+                size={18}
+                className="shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+            </button>
+          ))
         )}
       </div>
 
@@ -1779,6 +1776,7 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
       >
         ראו מה קרוב על המפה
       </button>
+      <NearbyPlaceSheet place={selected} onClose={() => setSelected(null)} />
     </section>
   );
 }
