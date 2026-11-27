@@ -15,6 +15,7 @@ import { openQuickExpense } from "@/components/GlobalFab";
 import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
+import { dayWeatherPoint, tripCountryCode } from "@/lib/weather-location";
 import { fmtDistance, geoFailureKind, nearestSavedPlaces, type GeoFailure } from "@/lib/geo";
 import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type DeadlineItem } from "@/lib/deadlines";
 import { NowNextCard } from "@/components/NowNextCard";
@@ -347,7 +348,12 @@ type EntrySlim = {
   longitude?: number | string | null;
   google_maps_url?: string | null;
   linked_recommendation_id?: string | null;
-  recommendations?: { city?: string | null } | null;
+  recommendations?: {
+    city?: string | null;
+    latitude?: number | string | null;
+    longitude?: number | string | null;
+    google_maps_url?: string | null;
+  } | null;
 };
 
 function cleanLocationLabel(value: string | null | undefined): string | null {
@@ -585,7 +591,7 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("day_entries")
-        .select("id, day_id, entry_type, icon_emoji, title, description, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations(city), itinerary_days!inner(trip_id, version_id)")
+        .select("id, day_id, entry_type, icon_emoji, title, description, location_name, time_of_day, display_order, photo_url, latitude, longitude, google_maps_url, linked_recommendation_id, recommendations(city, latitude, longitude, google_maps_url), itinerary_days!inner(trip_id, version_id)")
         .eq("itinerary_days.trip_id", tripId)
         .eq("itinerary_days.version_id", activeVersion!.id)
         .order("display_order")
@@ -859,6 +865,7 @@ function Home() {
       .find((value): value is string => Boolean(value)) ?? null;
     const dayAreaLabel = cleanLocationLabel(todayDay?.city_label) ?? entryCity ?? entryLocation;
     const weatherCity = entryCity ?? firstLocationPart(todayDay?.city_label);
+    const weatherPoint = dayWeatherPoint(todayEntries, tonightHotel, weatherCity);
     const photoLocation = dayAreaLabel ?? weatherCity ?? cleanLocationLabel(trip.destination_country);
     const budgetDefined = Number.isFinite(stats.budget) && stats.budget > 0;
     const overBudget = budgetDefined && stats.remaining < 0;
@@ -872,6 +879,7 @@ function Home() {
           date={todayLocal()}
           city={dayAreaLabel}
           weatherLocation={weatherCity}
+          weatherPoint={weatherPoint}
           photoLocation={photoLocation}
           imageUrls={heroImageCandidates}
           fallbackBackground={destinationTheme.heroGradient}
@@ -1277,8 +1285,9 @@ function HeroCard(props: {
 }) {
   const { title, flag, startDate, endDate, status, daysToStart, daysPassed, daysTotal, tripProgressPct, weatherCity, weatherFallback } = props;
   const today = todayLocal();
-  const forecast = useDayWeather(weatherCity ?? weatherFallback, today);
-  const current = useCurrentWeather(weatherCity, weatherFallback);
+  const weatherPlace = { countryCode: tripCountryCode(weatherFallback) };
+  const forecast = useDayWeather(weatherCity ?? weatherFallback, today, weatherPlace);
+  const current = useCurrentWeather(weatherCity, weatherFallback, weatherPlace);
   const wCondition = forecast?.condition ?? current?.condition ?? null;
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";

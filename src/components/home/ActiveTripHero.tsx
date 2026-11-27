@@ -6,6 +6,8 @@ import { useCurrentWeather, useDayWeather } from "@/hooks/use-weather";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { WEATHER_LABELS_HE, weatherForecastUrl } from "@/lib/weather";
 import { useOnline } from "@/hooks/use-online";
+import type { LatLng } from "@/lib/coords";
+import { tripCountryCode } from "@/lib/weather-location";
 import { getDestinationPhoto } from "@/lib/places.functions";
 import ambienceImage from "@/assets/travel-ambience.jpg";
 import { Info, ExternalLink } from "lucide-react";
@@ -19,6 +21,7 @@ export function ActiveTripHero({
   date,
   city,
   weatherLocation,
+  weatherPoint: storedWeatherPoint = null,
   photoLocation,
   imageUrls,
   fallbackBackground,
@@ -30,6 +33,8 @@ export function ActiveTripHero({
   date: string;
   city: string | null;
   weatherLocation: string | null;
+  /** Coordinates of today's stop / tonight's hotel; preferred over geocoding the label. */
+  weatherPoint?: LatLng | null;
   photoLocation: string | null;
   imageUrls: string[];
   fallbackBackground: string;
@@ -99,8 +104,9 @@ export function ActiveTripHero({
   const attributions = showsPlacesPhoto ? destinationPhoto?.attributions ?? [] : [];
 
   const reliableWeatherLocation = weatherLocation?.trim() || null;
-  const forecast = useDayWeather(reliableWeatherLocation, date);
-  const current = useCurrentWeather(reliableWeatherLocation);
+  const weatherPlace = { point: storedWeatherPoint, countryCode: tripCountryCode(destination) };
+  const forecast = useDayWeather(reliableWeatherLocation, date, weatherPlace);
+  const current = useCurrentWeather(reliableWeatherLocation, null, weatherPlace);
   const condition = forecast?.condition ?? current?.condition ?? null;
   const temperature = forecast?.tempMax ?? current?.temp ?? null;
   const weatherLabel = condition ? WEATHER_LABELS_HE[condition] : null;

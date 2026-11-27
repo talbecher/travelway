@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchCurrentWeather, fetchWeather, geocodeCity, type CurrentWeather, type WeatherDay } from "@/lib/weather";
-
+import {
+  fetchCurrentWeather,
+  fetchWeather,
+  geocodeCity,
+  type CurrentWeather,
+  type WeatherDay,
+} from "@/lib/weather";
+import type { LatLng } from "@/lib/coords";
+import { weatherQueryName } from "@/lib/weather-location";
 
 function isoOffset(days: number): string {
   const d = new Date();
@@ -8,24 +15,48 @@ function isoOffset(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function useWeather(cityLabel: string | null | undefined): {
+/**
+ * Where to fetch weather for. A stored point (today's stop / hotel) wins and
+ * skips geocoding; otherwise the label is shortened and geocoded, restricted to
+ * the trip's country when it is known.
+ */
+export type WeatherPlaceOptions = {
+  point?: LatLng | null;
+  countryCode?: string | null;
+};
+
+function validPoint(point: LatLng | null | undefined): LatLng | null {
+  if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return null;
+  return point;
+}
+
+function geocodeQuery(label: string | null, countryCode: string | null, enabled: boolean) {
+  return {
+    queryKey: ["geocode", label, countryCode] as const,
+    queryFn: () => geocodeCity(label!, countryCode),
+    enabled: enabled && !!label,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
+  };
+}
+
+export function useWeather(
+  cityLabel: string | null | undefined,
+  options?: WeatherPlaceOptions,
+): {
   days: WeatherDay[];
   loading: boolean;
   lat: number | null;
   lng: number | null;
 } {
-  const city = cityLabel?.trim() || null;
+  const point = validPoint(options?.point);
+  const countryCode = options?.countryCode?.toUpperCase() || null;
+  const city = weatherQueryName(cityLabel);
 
-  const geo = useQuery({
-    queryKey: ["geocode", city],
-    queryFn: () => geocodeCity(city!),
-    enabled: !!city,
-    staleTime: Infinity,
-    gcTime: 1000 * 60 * 60 * 24,
-  });
+  const geo = useQuery(geocodeQuery(city, countryCode, !point));
 
-  const lat = geo.data?.lat;
-  const lng = geo.data?.lng;
+  const lat = point?.lat ?? geo.data?.lat;
+  const lng = point?.lng ?? geo.data?.lng;
 
   const forecast = useQuery({
     queryKey: ["weather", lat, lng],
@@ -37,7 +68,7 @@ export function useWeather(cityLabel: string | null | undefined): {
 
   return {
     days: forecast.data ?? [],
-    loading: geo.isLoading || forecast.isLoading,
+    loading: (!point && geo.isLoading) || forecast.isLoading,
     lat: lat ?? null,
     lng: lng ?? null,
   };
@@ -45,9 +76,10 @@ export function useWeather(cityLabel: string | null | undefined): {
 
 export function useDayWeather(
   cityLabel: string | null | undefined,
-  date: string | null | undefined
+  date: string | null | undefined,
+  options?: WeatherPlaceOptions,
 ): (WeatherDay & { lat: number; lng: number }) | null {
-  const { days, lat, lng } = useWeather(cityLabel);
+  const { days, lat, lng } = useWeather(cityLabel, options);
   if (!date || lat == null || lng == null) return null;
   const day = days.find((d) => d.date === date);
   // Carry the coordinates the forecast was fetched for, so links built from
@@ -57,30 +89,21 @@ export function useDayWeather(
 
 export function useCurrentWeather(
   cityLabel: string | null | undefined,
-  fallbackLabel?: string | null | undefined
+  fallbackLabel?: string | null | undefined,
+  options?: WeatherPlaceOptions,
 ): (CurrentWeather & { lat: number; lng: number }) | null {
-  const primary = cityLabel?.trim() || null;
-  const fallback = fallbackLabel?.trim() || null;
+  const point = validPoint(options?.point);
+  const countryCode = options?.countryCode?.toUpperCase() || null;
+  const primary = weatherQueryName(cityLabel);
+  const fallback = weatherQueryName(fallbackLabel);
 
-  const geoPrimary = useQuery({
-    queryKey: ["geocode", primary],
-    queryFn: () => geocodeCity(primary!),
-    enabled: !!primary,
-    staleTime: Infinity,
-    gcTime: 1000 * 60 * 60 * 24,
-  });
+  const geoPrimary = useQuery(geocodeQuery(primary, countryCode, !point));
 
-  const needsFallback = !!fallback && geoPrimary.isFetched && !geoPrimary.data;
+  const needsFallback = !point && !!fallback && geoPrimary.isFetched && !geoPrimary.data;
 
-  const geoFallback = useQuery({
-    queryKey: ["geocode", fallback],
-    queryFn: () => geocodeCity(fallback!),
-    enabled: needsFallback,
-    staleTime: Infinity,
-    gcTime: 1000 * 60 * 60 * 24,
-  });
+  const geoFallback = useQuery(geocodeQuery(fallback, countryCode, needsFallback));
 
-  const geo = geoPrimary.data ?? geoFallback.data ?? null;
+  const geo = point ?? geoPrimary.data ?? geoFallback.data ?? null;
   const lat = geo?.lat;
   const lng = geo?.lng;
 
@@ -95,5 +118,3 @@ export function useCurrentWeather(
   if (!current.data || lat == null || lng == null) return null;
   return { ...current.data, lat, lng };
 }
-
-

@@ -1,4 +1,5 @@
 // Open-Meteo based weather helpers. No API key required.
+import { pickGeocodeResult, type GeocodeResult } from "./weather-location";
 
 export type WeatherCondition =
   | "sunny"
@@ -142,21 +143,22 @@ function normalizePlace(name: string): string {
 }
 
 export async function geocodeCity(
-  name: string
+  name: string,
+  countryCode?: string | null
 ): Promise<{ lat: number; lng: number } | null> {
   try {
     const q = normalizePlace(name);
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-      q
-    )}&count=1&language=en`;
+    const cc = countryCode?.toUpperCase() || null;
+    // With a known trip country, ask Open-Meteo to filter and re-check every hit:
+    // the unfiltered first hit for "Mount Fuji" is an airport in Wisconsin.
+    const url =
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}` +
+      `&count=${cc ? 10 : 1}&language=en` +
+      (cc ? `&countryCode=${encodeURIComponent(cc)}` : "");
     const res = await fetch(url);
     if (!res.ok) return null;
-    const json = (await res.json()) as {
-      results?: Array<{ latitude: number; longitude: number }>;
-    };
-    const first = json.results?.[0];
-    if (!first) return null;
-    return { lat: first.latitude, lng: first.longitude };
+    const json = (await res.json()) as { results?: GeocodeResult[] };
+    return pickGeocodeResult(json.results, cc);
   } catch {
     return null;
   }
