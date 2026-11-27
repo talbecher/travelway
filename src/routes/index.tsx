@@ -1282,7 +1282,9 @@ function HeroCard(props: {
   const wCondition = forecast?.condition ?? current?.condition ?? null;
   const wTemp = forecast ? forecast.tempMax : current?.temp ?? null;
   const wLabel = wCondition ? WEATHER_LABELS_HE[wCondition] : "";
-  const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
+  // Link to the same coordinates as the data actually displayed (forecast first, like wTemp).
+  const weatherPoint = forecast ?? current;
+  const forecastUrl = weatherPoint ? weatherForecastUrl(weatherPoint.lat, weatherPoint.lng) : null;
 
   const ringPct = status === "future" ? 0 : status === "past" ? 100 : tripProgressPct;
   const ringStroke = status === "future" ? "rgba(255,255,255,0.15)" : "var(--accent)";
@@ -1301,9 +1303,9 @@ function HeroCard(props: {
         <div className="flex items-center gap-2">
           {wCondition && wTemp != null && (
             <a
-              href={forecastUrl ?? "#"}
-              target="_blank"
-              rel="noreferrer"
+              href={forecastUrl ?? undefined}
+              target={forecastUrl ? "_blank" : undefined}
+              rel={forecastUrl ? "noreferrer" : undefined}
               title={wLabel ? `${wLabel} · לתחזית מלאה` : "לתחזית מלאה"}
               aria-label={wLabel ? `${wTemp}° ${wLabel}` : `${wTemp}°`}
               className="flex items-center gap-1 px-2 py-1 rounded-full text-white text-[10px]"

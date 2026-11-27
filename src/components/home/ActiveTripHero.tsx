@@ -104,7 +104,9 @@ export function ActiveTripHero({
   const condition = forecast?.condition ?? current?.condition ?? null;
   const temperature = forecast?.tempMax ?? current?.temp ?? null;
   const weatherLabel = condition ? WEATHER_LABELS_HE[condition] : null;
-  const forecastUrl = current ? weatherForecastUrl(current.lat, current.lng) : null;
+  // Link to the same coordinates as the data actually displayed (forecast first, like temperature).
+  const weatherPoint = forecast ?? current;
+  const forecastUrl = weatherPoint ? weatherForecastUrl(weatherPoint.lat, weatherPoint.lng) : null;
   const showWeather = !!reliableWeatherLocation && (temperature != null || !!condition);
 
   return (
