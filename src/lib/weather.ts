@@ -162,8 +162,30 @@ export async function geocodeCity(
   }
 }
 
-export function weatherForecastUrl(lat: number, lng: number): string {
-  return `https://www.windy.com/?${lat},${lng},11`;
+function formatCoord(value: number): string {
+  // Up to 6 decimals (~0.1 m), trailing zeros dropped, never exponent notation or "-0".
+  const fixed = Number(value.toFixed(6));
+  return Object.is(fixed, -0) ? "0" : String(fixed);
+}
+
+/**
+ * Windy link for the exact point the weather was fetched for.
+ * The path segment `/{lat}/{lon}` pins the forecast point and the query
+ * `?{lat},{lon},{zoom}` centres the map on the same point, so Windy never
+ * needs to resolve a place name or fall back to its own last/IP location.
+ * Returns null when the coordinates are missing or out of range.
+ */
+export function weatherForecastUrl(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  zoom = 11,
+): string | null {
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  const la = formatCoord(lat);
+  const lo = formatCoord(lng);
+  return `https://www.windy.com/${la}/${lo}?${la},${lo},${zoom}`;
 }
 
 

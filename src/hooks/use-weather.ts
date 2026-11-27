@@ -11,6 +11,8 @@ function isoOffset(days: number): string {
 export function useWeather(cityLabel: string | null | undefined): {
   days: WeatherDay[];
   loading: boolean;
+  lat: number | null;
+  lng: number | null;
 } {
   const city = cityLabel?.trim() || null;
 
@@ -36,16 +38,21 @@ export function useWeather(cityLabel: string | null | undefined): {
   return {
     days: forecast.data ?? [],
     loading: geo.isLoading || forecast.isLoading,
+    lat: lat ?? null,
+    lng: lng ?? null,
   };
 }
 
 export function useDayWeather(
   cityLabel: string | null | undefined,
   date: string | null | undefined
-): WeatherDay | null {
-  const { days } = useWeather(cityLabel);
-  if (!date) return null;
-  return days.find((d) => d.date === date) ?? null;
+): (WeatherDay & { lat: number; lng: number }) | null {
+  const { days, lat, lng } = useWeather(cityLabel);
+  if (!date || lat == null || lng == null) return null;
+  const day = days.find((d) => d.date === date);
+  // Carry the coordinates the forecast was fetched for, so links built from
+  // this value point at exactly the same place as the numbers shown.
+  return day ? { ...day, lat, lng } : null;
 }
 
 export function useCurrentWeather(
