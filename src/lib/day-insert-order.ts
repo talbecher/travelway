@@ -2,8 +2,14 @@
  * Pure helpers for where a new day stop goes and for the "sort by time" action.
  * No Supabase imports, so this stays unit-testable.
  *
- * Fixed entries (hotel check-in, booked linked recommendation, anything without a
- * valid time) never act as time anchors and are never moved relative to the rest.
+ * Rule: every stop with a valid time is ordered by that time, whatever its type
+ * (hotel/lodging and booked stops included). Only stops without a valid time are
+ * position-fixed: they keep their slot and never act as time anchors.
+ *
+ * There is no lodging exception: a morning check-out or an evening "back to the
+ * hotel" carries its own time and lands where that time says. A hotel stop without
+ * a time stays where it is. (The AI-replace protection rule for hotel/booked rows
+ * in `_day_replace_rows` is about not deleting them, not about ordering.)
  */
 
 export type DayOrderEntry = {
@@ -11,8 +17,6 @@ export type DayOrderEntry = {
   entry_type: string;
   time_of_day: string | null;
   display_order?: number | null;
-  /** booking_status of the linked recommendation, when known. */
-  booking_status?: string | null;
 };
 
 /** "H:MM", "HH:MM" or "HH:MM:SS" → minutes since midnight; anything else → null. */
@@ -26,14 +30,8 @@ export function timeToMinutes(t: string | null | undefined): number | null {
   return h * 60 + min;
 }
 
-/** True for entries that keep their slot: hotel check-in or booked (same rule as the server). */
-export function isFixedEntry(e: Pick<DayOrderEntry, "entry_type" | "booking_status">): boolean {
-  return e.entry_type === "hotel_checkin" || e.booking_status === "booked";
-}
-
-/** Minutes of an entry that takes part in time ordering, else null. */
+/** Minutes of an entry that takes part in time ordering (any type), else null. */
 function anchorMinutes(e: DayOrderEntry): number | null {
-  if (isFixedEntry(e)) return null;
   return timeToMinutes(e.time_of_day);
 }
 
@@ -96,17 +94,14 @@ export type InsertPlan = { display_order: number; updates: OrderUpdate[] };
 /**
  * Plan for inserting one new stop into `existing` (display order). Existing rows keep
  * their relative order; only rows at/after the insertion point (or rows whose stored
- * order was not contiguous) get a new display_order. Hotel check-ins being added keep
- * the old append-at-end behavior.
+ * order was not contiguous) get a new display_order. Same rule for every type: a timed
+ * stop (hotel included) goes by its time, an untimed one is appended.
  */
 export function planDayInsert(
   existing: readonly DayOrderEntry[],
-  newEntry: { entry_type: string; time_of_day?: string | null },
+  newEntry: { time_of_day?: string | null },
 ): InsertPlan {
-  const idx =
-    newEntry.entry_type === "hotel_checkin"
-      ? existing.length
-      : insertIndexByTime(existing, newEntry.time_of_day ?? null);
+  const idx = insertIndexByTime(existing, newEntry.time_of_day ?? null);
   const updates: OrderUpdate[] = [];
   existing.forEach((e, i) => {
     const want = i < idx ? i : i + 1;
@@ -116,9 +111,10 @@ export function planDayInsert(
 }
 
 /**
- * "Sort by time": timed, non-fixed stops are sorted by time (stable on ties) inside the
- * slots they already occupy; untimed stops, hotel check-ins and booked stops stay at
- * their exact positions. Returns the same array when nothing would change.
+ * "Sort by time": every timed stop (any type, lodging and booked included) is sorted by
+ * time (stable on ties) inside the slots the timed stops already occupy; untimed stops
+ * stay at their exact positions. Returns the same array exactly when the sorted order
+ * equals the current order, so callers may treat identity as "already sorted".
  */
 export function sortByTimeKeepingFixed<T extends DayOrderEntry>(
   entries: readonly T[],
