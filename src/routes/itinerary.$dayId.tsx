@@ -10,6 +10,7 @@ import { hebDate, hebWeekday, hebWeekdayShort, daysBetween } from "@/lib/format"
 import { ENTRY_TYPES, getActiveTripId } from "@/lib/constants";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ClientOnly } from "@/components/ClientOnly";
+import { DayDocumentsRow } from "@/components/DayDocuments";
 import { saveRecommendation, addRecommendationToDay, recTypeIcon } from "@/lib/recommendations";
 import { insertDayEntry } from "@/lib/day-entry-insert";
 import { renumberUpdates, sortByTimeKeepingFixed } from "@/lib/day-insert-order";
@@ -1156,6 +1157,8 @@ function DayDetail() {
       </div>
 
       )}
+
+      <DayDocumentsRow date={day.date} className="px-4 pt-1.5" />
 
       {!(view === "list" && !editingCity) && (
       <div className="day-tabs-wrap px-4 pt-1.5" dir="rtl">

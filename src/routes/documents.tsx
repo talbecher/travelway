@@ -26,8 +26,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { getDocumentFileUrl } from "@/lib/document-files.functions";
 import { hebDate, ils } from "@/lib/format";
 import { docMatchesQuery, fileBasename } from "@/lib/doc-search";
+import { filterDocumentsByDate, type DocDateFilter } from "@/lib/documents-by-date";
+import { useTripTodayKey } from "@/hooks/use-trip-today-key";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  /** Preselected date filter ("today" / "tomorrow"), e.g. from the home "today's tickets" card. */
+  when: z.enum(["today", "tomorrow"]).optional().catch(undefined),
+  /** A document to bring into view (and open its barcode, if it has one). */
+  doc: z.string().uuid().optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/documents")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "מסמכים · TravelWay" },
@@ -52,6 +63,12 @@ const FILTER_TYPES: Array<DocumentType | "all"> = [
   "other",
 ];
 
+const DATE_FILTERS: Array<{ key: DocDateFilter; label: string }> = [
+  { key: "today", label: "היום" },
+  { key: "tomorrow", label: "מחר" },
+  { key: "all", label: "הכול" },
+];
+
 /** Searchable synonyms per type, so a singular or English word still finds the plural Hebrew label. */
 const TYPE_TERMS: Record<DocumentType, string> = {
   flight: "טיסה טיסות flight",
@@ -65,8 +82,15 @@ const TYPE_TERMS: Record<DocumentType, string> = {
 
 function DocumentsPage() {
   const tripId = useActiveTripId();
+  const search = Route.useSearch();
   const { data: docs = [], isLoading } = useDocuments(tripId);
   const [filter, setFilter] = useState<DocumentType | "all">("all");
+  const [dateFilter, setDateFilter] = useState<DocDateFilter>(search.when ?? "all");
+  const todayKey = useTripTodayKey();
+  const [focusDocId, setFocusDocId] = useState<string | null>(null);
+  useEffect(() => {
+    if (search.when) setDateFilter(search.when);
+  }, [search.when]);
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TripDocument | null>(null);
@@ -75,12 +99,30 @@ function DocumentsPage() {
 
   const searching = query.trim().length > 0;
   const filtered = useMemo(() => {
-    const byType = filter === "all" ? docs : docs.filter((d: TripDocument) => d.type === filter);
+    const byDate = filterDocumentsByDate(docs, dateFilter, todayKey);
+    const byType = filter === "all" ? byDate : byDate.filter((d: TripDocument) => d.type === filter);
     if (!query.trim()) return byType;
     return byType.filter((d: TripDocument) =>
       docMatchesQuery(d, query, `${DOC_TYPE_META[d.type]?.label ?? ""} ${TYPE_TERMS[d.type] ?? ""}`),
     );
-  }, [docs, filter, query]);
+  }, [docs, filter, query, dateFilter, todayKey]);
+
+  // Deep link (?doc=…): once loaded, bring the card into view and open its barcode, once per link.
+  const handledDocRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = search.doc;
+    if (!id || handledDocRef.current === id || isLoading) return;
+    const target = docs.find((d: TripDocument) => d.id === id);
+    if (!target) return;
+    handledDocRef.current = id;
+    setFocusDocId(id);
+    if (target.barcode_value) setBarcodeDoc(target);
+    const t = setTimeout(() => {
+      document.getElementById(`doc-${id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 150);
+    const clear = setTimeout(() => setFocusDocId(null), 2500);
+    return () => { clearTimeout(t); clearTimeout(clear); };
+  }, [search.doc, docs, isLoading]);
 
   return (
     <div className="documents-wallet pt-4 pb-8 flex flex-col gap-4">
@@ -148,6 +190,27 @@ function DocumentsPage() {
         )}
       </div>
 
+      <div className="flex gap-2" role="group" aria-label="סינון לפי תאריך">
+        {DATE_FILTERS.map((f) => {
+          const active = dateFilter === f.key;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setDateFilter(f.key)}
+              className={`h-8 px-3 inline-flex items-center rounded-full text-xs font-medium border transition-colors ${
+                active
+                  ? "bg-[color:var(--accent)] text-white border-[color:var(--accent)]"
+                  : "bg-card text-muted-foreground border-border"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="-mx-4 px-4 overflow-x-auto">
         <div className="flex gap-2 min-w-max">
           {FILTER_TYPES.map((t) => {
@@ -180,7 +243,11 @@ function DocumentsPage() {
               ? "אין מסמכים עדיין"
               : searching
                 ? "לא נמצאו מסמכים התואמים לחיפוש"
-                : "אין מסמכים בקטגוריה הזו"}
+                : dateFilter === "today"
+                  ? "אין מסמכים להיום"
+                  : dateFilter === "tomorrow"
+                    ? "אין מסמכים למחר"
+                    : "אין מסמכים בקטגוריה הזו"}
           </div>
           {docs.length > 0 && searching && (
             <button
@@ -207,6 +274,8 @@ function DocumentsPage() {
           {filtered.map((d, i) => (
             <motion.div
               key={d.id}
+              id={`doc-${d.id}`}
+              className={focusDocId === d.id ? "rounded-2xl ring-2 ring-[color:var(--accent)] ring-offset-2 ring-offset-background" : undefined}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: i * 0.03 }}

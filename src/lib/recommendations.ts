@@ -85,3 +85,15 @@ export async function addRecommendationToDay(rec: {
     photo_url: rec.photo_url ?? null,
   });
 }
+
+/**
+ * "היינו כאן" on an existing recommendation: status → visited, keeping the first visit time.
+ * Never inserts, so marking a saved place visited cannot create a duplicate.
+ */
+export async function markRecommendationVisited(rec: { id: string; visited_at?: string | null }): Promise<void> {
+  const { error } = await supabase
+    .from("recommendations")
+    .update({ status: "visited", visited_at: rec.visited_at ?? new Date().toISOString() })
+    .eq("id", rec.id);
+  if (error) throw error;
+}
