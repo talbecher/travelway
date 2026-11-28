@@ -13,9 +13,7 @@ export async function insertDayEntry(
 ): Promise<void> {
   const { data, error: readErr } = await supabase
     .from("day_entries")
-    .select(
-      "id, entry_type, time_of_day, display_order, recommendations!day_entries_linked_recommendation_id_fkey(booking_status)",
-    )
+    .select("id, entry_type, time_of_day, display_order")
     .eq("day_id", row.day_id)
     .order("display_order")
     .order("created_at");
@@ -27,15 +25,10 @@ export async function insertDayEntry(
       entry_type: d.entry_type,
       time_of_day: d.time_of_day,
       display_order: d.display_order,
-      booking_status:
-        (d.recommendations as { booking_status?: string | null } | null)?.booking_status ?? null,
     }))
     .sort(compareDayEntryOrder);
 
-  const plan = planDayInsert(existing, {
-    entry_type: row.entry_type,
-    time_of_day: row.time_of_day ?? null,
-  });
+  const plan = planDayInsert(existing, { time_of_day: row.time_of_day ?? null });
 
   // Shift from the end backwards, one row at a time: if a write fails midway the
   // existing rows still keep their relative order (a gap, never a tie).

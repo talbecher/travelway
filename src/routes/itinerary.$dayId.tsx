@@ -396,20 +396,9 @@ function DayDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // "Sort by time" (inside sort mode): timed stops reorder by time within their own slots;
-  // untimed, hotel check-in and booked stops keep their exact positions.
-  const timeSorted = useMemo(
-    () =>
-      sortByTimeKeepingFixed(
-        entries.map((e) => ({
-          ...e,
-          booking_status: e.linked_recommendation_id
-            ? ((recById[e.linked_recommendation_id] as { booking_status?: string | null } | undefined)?.booking_status ?? null)
-            : null,
-        })),
-      ),
-    [entries, recById],
-  );
+  // "Sort by time" (inside sort mode): every timed stop (lodging and booked included)
+  // reorders by time within the timed slots; only untimed stops keep their positions.
+  const timeSorted = useMemo(() => sortByTimeKeepingFixed(entries), [entries]);
   const timeSortChanges = timeSorted.some((e, i) => e.id !== entries[i]?.id);
   const sortByTime = useMutation({
     mutationFn: async () => {
@@ -435,7 +424,7 @@ function DayDetail() {
       toast.info("התחנות כבר מסודרות לפי שעה");
       return;
     }
-    if (!confirm("למיין את התחנות לפי שעה?\nתחנות בלי שעה, מלון ותחנות שהוזמנו יישארו במקומן.")) return;
+    if (!confirm("למיין את התחנות לפי שעה?\nתחנות בלי שעה יישארו במקומן.")) return;
     sortByTime.mutate();
   }
 

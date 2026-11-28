@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   insertIndexByTime,
   planDayInsert,
+  renumberUpdates,
   sortByTimeKeepingFixed,
   timeToMinutes,
 } from "./day-insert-order";
@@ -67,7 +68,7 @@ describe("insertIndexByTime", () => {
     expect(insertIndexByTime(list, "08:00")).toBe(0); // before the first timed stop
   });
 
-  test("hotel check-in and booked stops are ignored as anchors", () => {
+  test("hotel check-in and booked stops are time anchors like any other stop", () => {
     const list = [
       e("09:00", { entry_type: "hotel_checkin" }),
       e("10:00"),
@@ -75,17 +76,33 @@ describe("insertIndexByTime", () => {
       e("12:00"),
       e("20:00", { entry_type: "hotel_checkin" }),
     ];
-    expect(insertIndexByTime(list, "11:30")).toBe(2); // after 10:00, the booked 11:00 does not count
-    expect(insertIndexByTime(list, "21:00")).toBe(4); // after 12:00 → before the 20:00 hotel
-    expect(insertIndexByTime(list, "08:00")).toBe(1); // hotel 09:00 is not an anchor
+    expect(insertIndexByTime(list, "11:30")).toBe(3); // after the booked 11:00
+    expect(insertIndexByTime(list, "21:00")).toBe(5); // after the 20:00 hotel
+    expect(insertIndexByTime(list, "08:00")).toBe(0); // before the 09:00 hotel
   });
 
-  test("00:00 is a real time (not 'no time'); a hotel at 00:00 is ignored", () => {
+  test("day 12: new 23:00 stop goes after the 22:00 return-to-hotel", () => {
+    const list = [
+      e("18:00"),
+      e("19:45"),
+      e("20:15", { entry_type: "food" }),
+      e("22:00", { entry_type: "hotel_checkin" }),
+    ];
+    expect(insertIndexByTime(list, "23:00")).toBe(4);
+    expect(insertIndexByTime(list, "21:00")).toBe(3);
+  });
+
+  test("00:00 is a real time (not 'no time'), for hotels too", () => {
     expect(insertIndexByTime([e("08:00"), e("12:00")], "00:00")).toBe(0);
     expect(insertIndexByTime([e("00:00"), e("08:00")], "00:00")).toBe(1);
     const hotel00 = [e("00:00", { entry_type: "hotel_checkin" }), e("08:00")];
     expect(insertIndexByTime(hotel00, "07:00")).toBe(1);
     expect(insertIndexByTime(hotel00, "00:00")).toBe(1);
+  });
+
+  test("untimed hotel is not an anchor", () => {
+    const list = [e(null, { entry_type: "hotel_checkin" }), e("08:00")];
+    expect(insertIndexByTime(list, "07:00")).toBe(1);
   });
 });
 
@@ -109,10 +126,13 @@ describe("planDayInsert", () => {
     });
   });
 
-  test("new hotel check-in keeps append-at-end", () => {
+  test("new timed hotel check-in goes by its time; untimed one is appended", () => {
     const list = withOrder([e("09:00"), e("12:00")]);
     expect(
       planDayInsert(list, { entry_type: "hotel_checkin", time_of_day: "08:00" }).display_order,
+    ).toBe(0);
+    expect(
+      planDayInsert(list, { entry_type: "hotel_checkin", time_of_day: null }).display_order,
     ).toBe(2);
   });
 
@@ -128,7 +148,28 @@ describe("planDayInsert", () => {
 });
 
 describe("sortByTimeKeepingFixed", () => {
-  test("sorts timed stops inside their slots; untimed, hotel and booked stay put", () => {
+  test("day 12 (28.11) bug: the 22:00 return-to-hotel moves after 19:45 and 20:15", () => {
+    // stops 13–16 as stored; Postgres returns time as HH:MM:SS
+    const list = withOrder([
+      e("18:00:00", { id: "s13" }),
+      e("22:00:00", { id: "s14-hotel", entry_type: "hotel_checkin", title: "חזרה ל-Kyoto Shijo Muromachi" }),
+      e("19:45:00", { id: "s15" }),
+      e("20:15:00", { id: "s16", entry_type: "food" }),
+    ]);
+    const sorted = sortByTimeKeepingFixed(list);
+    expect(sorted).not.toBe(list); // not "already sorted"
+    expect(ids(sorted)).toEqual(["s13", "s15", "s16", "s14-hotel"]);
+    expect(renumberUpdates(sorted)).toEqual([
+      { id: "s15", display_order: 1 },
+      { id: "s16", display_order: 2 },
+      { id: "s14-hotel", display_order: 3 },
+    ]);
+    // a booked stop is sorted by its time as well
+    const booked = [e("22:00", { id: "b", booking_status: "booked" }), e("19:45", { id: "c" })];
+    expect(ids(sortByTimeKeepingFixed(booked))).toEqual(["c", "b"]);
+  });
+
+  test("sorts every timed stop (hotel and booked included); only untimed stay put", () => {
     const list = [
       e("15:45", { id: "a" }),
       e(null, { id: "note", entry_type: "note" }),
@@ -137,18 +178,25 @@ describe("sortByTimeKeepingFixed", () => {
       e("09:45", { id: "c" }),
       e("13:30", { id: "d" }),
       e("22:00", { id: "hotel", entry_type: "hotel_checkin" }),
+      e(null, { id: "hotel-untimed", entry_type: "hotel_checkin" }),
       e("13:15", { id: "e" }),
     ];
     expect(ids(sortByTimeKeepingFixed(list))).toEqual([
       "c",
       "note",
-      "e",
       "booked",
+      "e",
       "d",
       "a",
-      "hotel",
       "b",
+      "hotel-untimed",
+      "hotel",
     ]);
+  });
+
+  test("morning check-out sorts to the morning by its own time", () => {
+    const list = [e("10:00", { id: "x" }), e("08:00", { id: "out", entry_type: "hotel_checkin" })];
+    expect(ids(sortByTimeKeepingFixed(list))).toEqual(["out", "x"]);
   });
 
   test("already sorted → same array (no-op)", () => {
