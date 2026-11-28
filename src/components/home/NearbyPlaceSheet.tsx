@@ -38,10 +38,13 @@ export function NearbyPlaceSheet({
   place,
   onClose,
   today = null,
+  onNavigate,
 }: {
   place: NearbyPlaceSelection | null;
   onClose: () => void;
   today?: NearbyToday | null;
+  /** Called on "נווט" before the link opens; must not block navigation. */
+  onNavigate?: (recId: string) => void;
 }) {
   // Keep the last place while the sheet animates closed.
   const [shown, setShown] = useState(place);
@@ -149,7 +152,10 @@ export function NearbyPlaceSheet({
               target="_blank"
               rel="noreferrer"
               className={primaryClass}
-              onClick={onClose}
+              onClick={() => {
+                onNavigate?.(shown.rec.id);
+                onClose();
+              }}
             >
               <Navigation size={18} aria-hidden="true" />
               <span>נווט</span>
