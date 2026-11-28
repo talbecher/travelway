@@ -97,3 +97,15 @@ export async function markRecommendationVisited(rec: { id: string; visited_at?: 
     .eq("id", rec.id);
   if (error) throw error;
 }
+
+/** Undo for a quick "היינו כאן": puts back the status and visit time the row had before. */
+export async function restoreRecommendationStatus(
+  recId: string,
+  prev: { status: "wishlist" | "visited" | "skipped"; visited_at: string | null },
+): Promise<void> {
+  const { error } = await supabase
+    .from("recommendations")
+    .update({ status: prev.status, visited_at: prev.visited_at })
+    .eq("id", recId);
+  if (error) throw error;
+}

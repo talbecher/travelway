@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
-import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText, Hotel } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Calendar, Wallet, Star, Plus, AlertTriangle, MapPin, ChevronLeft, ChevronDown, MessagesSquare, FileText, ExternalLink, ReceiptText, Hotel, Check } from "lucide-react";
 import { useTrip, useExpenses, useDays, useRecs, useHotels, useTripIsActive } from "@/hooks/use-trip";
 import { HayinuKanSheet } from "@/components/HayinuKanSheet";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { buildDeadlines, URGENCY_COLOR, deadlineLabel, daysLeftLabel, type Deadl
 import { NowNextCard } from "@/components/NowNextCard";
 import { MarkBookedSheet } from "@/components/MarkBookedSheet";
 import { ChecklistCard } from "@/components/ChecklistCard";
-import { useOnline } from "@/hooks/use-online";
+import { assertOnline, useOnline } from "@/hooks/use-online";
 import { toast } from "sonner";
 import { PreTripHero } from "@/components/home/PreTripHero";
 import {
@@ -39,6 +39,9 @@ import { NearMeTile } from "@/components/home/NearMeTile";
 import { TodayStopsList } from "@/components/home/TodayStopsList";
 import { StopActionsSheet } from "@/components/home/StopActionsSheet";
 import { NearbyPlaceSheet, type NearbyPlaceSelection, type NearbyToday } from "@/components/home/NearbyPlaceSheet";
+import { RatingSheet } from "@/components/RatingSheet";
+import { markRecommendationVisited, restoreRecommendationStatus } from "@/lib/recommendations";
+import { clearPendingNav, pendingNavHighlightId, promotePendingNav, readPendingNav, shouldClearPendingNav, writePendingNav, type PendingNav } from "@/lib/nearby-pending-nav";
 import { TodayDocumentsCard } from "@/components/DayDocuments";
 import { useTripTodayKey } from "@/hooks/use-trip-today-key";
 import {
@@ -1616,6 +1619,10 @@ type NearbyRec = {
   google_maps_url: string | null;
   photo_url: string | null;
   notes: string | null;
+  status: "wishlist" | "visited" | "skipped";
+  visited_at: string | null;
+  rating: number | null;
+  review: string | null;
 };
 
 function geoErrorText(kind: GeoFailure | null) {
@@ -1682,10 +1689,91 @@ function NearbyCard({ recs, onSeeAll, variant = "default", today = null }: { rec
     locate();
   }, [locate]);
 
+  // Last "נווט" from this card's sheet, re-read on mount and whenever the home becomes visible again.
+  const [pendingNav, setPendingNav] = useState<PendingNav | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const sync = () => {
+      if (document.visibilityState !== "visible") return;
+      setPendingNav(readPendingNav());
+      setNow(Date.now());
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+  const statusOf = useCallback((id: string) => recs?.find((r) => r.id === id)?.status, [recs]);
+  const highlightId = pendingNavHighlightId(pendingNav, now, statusOf);
+  useEffect(() => {
+    if (!shouldClearPendingNav(pendingNav, now, statusOf)) return;
+    clearPendingNav();
+    setPendingNav(null);
+  }, [pendingNav, now, statusOf]);
+  const recordNavigation = useCallback((recId: string) => {
+    const nav = { recId, ts: Date.now() };
+    writePendingNav(nav);
+    setPendingNav(nav);
+    setNow(nav.ts);
+  }, []);
+
   const nearby = useMemo(
-    () => (userPos && recs ? nearestSavedPlaces(recs, userPos, filter, 3) : []),
-    [recs, userPos, filter],
+    () =>
+      userPos && recs
+        ? promotePendingNav(nearestSavedPlaces(recs, userPos, filter, Infinity), highlightId, 3)
+        : [],
+    [recs, userPos, filter, highlightId],
   );
+
+  // Quick "היינו כאן" (✓ on a row): status only on the existing recommendation, never a day entry.
+  const qc = useQueryClient();
+  const markingRef = useRef(new Set<string>());
+  const [rating, setRating] = useState<{ id: string; name: string; rating?: number; review?: string } | null>(null);
+  const refreshAfterVisit = () => {
+    qc.invalidateQueries({ queryKey: ["day-entries-summary"] });
+    qc.invalidateQueries({ queryKey: ["day-entries"] });
+    qc.invalidateQueries({ queryKey: ["recs"] });
+    qc.invalidateQueries({ queryKey: ["linked-recs"] });
+  };
+  const quickVisit = async (rec: NearbyRec) => {
+    if (rec.status === "visited" || markingRef.current.has(rec.id) || !assertOnline()) return;
+    markingRef.current.add(rec.id);
+    const prev = { status: rec.status, visited_at: rec.visited_at };
+    const clearedNav = pendingNav?.recId === rec.id ? pendingNav : null;
+    try {
+      await markRecommendationVisited(rec);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "שגיאה בשמירה");
+      return;
+    } finally {
+      markingRef.current.delete(rec.id);
+    }
+    if (clearedNav) {
+      clearPendingNav();
+      setPendingNav(null);
+    }
+    refreshAfterVisit();
+    toast.success("✅ סומן שביקרתם", {
+      action: {
+        label: "בטל",
+        onClick: async () => {
+          try {
+            await restoreRecommendationStatus(rec.id, prev);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "שגיאה בביטול");
+            return;
+          }
+          setRating((r) => (r?.id === rec.id ? null : r));
+          // Put the cleared navigation back; the expiry effect drops it if it has aged out.
+          if (clearedNav) {
+            writePendingNav(clearedNav);
+            setPendingNav(clearedNav);
+          }
+          refreshAfterVisit();
+        },
+      },
+    });
+    setRating({ id: rec.id, name: rec.name, rating: rec.rating ?? undefined, review: rec.review ?? undefined });
+  };
 
   const filters: Array<{ key: "food" | "attraction" | "all"; label: string }> = [
     { key: "food", label: "🍜 אוכל" },
@@ -1769,16 +1857,28 @@ function NearbyCard({ recs, onSeeAll, variant = "default", today = null }: { rec
             לא נמצאו מקומות שמורים בקטגוריה זו
           </div>
         ) : (
-          nearby.map(({ rec, distance, point }) => (
-            <button
+          nearby.map(({ rec, distance, point }) => {
+            const navigated = rec.id === highlightId;
+            return (
+            <div
               key={rec.id}
+              data-nearby-navigated={navigated || undefined}
+              className={
+                "flex w-full items-center rounded-lg border bg-background " +
+                (navigated ? "border-[color:var(--accent)] ring-1 ring-[color:var(--accent)]" : "border-border")
+              }
+            >
+            <button
               type="button"
               onClick={() => setSelected({ rec, point, distance })}
               aria-haspopup="dialog"
-              className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-background p-2 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <NearbyImage rec={rec} />
               <div className="flex-1 min-w-0">
+                {navigated && (
+                  <div className="text-[11px] font-semibold text-[color:var(--accent)]">ניווטתם לכאן</div>
+                )}
                 <div className="text-[14px] font-semibold truncate">{rec.name}</div>
                 <div className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">
                   מרחק בקו אווירי · {fmtDistance(distance)}
@@ -1790,7 +1890,30 @@ function NearbyCard({ recs, onSeeAll, variant = "default", today = null }: { rec
                 aria-hidden="true"
               />
             </button>
-          ))
+            {rec.status === "visited" ? (
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-action-visited"
+                data-nearby-row-visited
+                aria-label="ביקרתם"
+                role="img"
+              >
+                <Check size={16} strokeWidth={3} aria-hidden="true" />
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void quickVisit(rec)}
+                aria-label={`היינו ב${rec.name}`}
+                title="היינו כאן"
+                data-nearby-quick-visit
+                className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+              >
+                <Check size={18} aria-hidden="true" />
+              </button>
+            )}
+            </div>
+            );
+          })
         )}
       </div>
 
@@ -1801,7 +1924,16 @@ function NearbyCard({ recs, onSeeAll, variant = "default", today = null }: { rec
       >
         ראו מה קרוב על המפה
       </button>
-      <NearbyPlaceSheet place={selected} onClose={() => setSelected(null)} today={today} />
+      <NearbyPlaceSheet place={selected} onClose={() => setSelected(null)} today={today} onNavigate={recordNavigation} />
+      {rating && (
+        <RatingSheet
+          recId={rating.id}
+          recName={rating.name}
+          initialRating={rating.rating}
+          initialReview={rating.review}
+          onClose={() => setRating(null)}
+        />
+      )}
     </section>
   );
 }
