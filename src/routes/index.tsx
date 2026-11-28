@@ -38,7 +38,9 @@ import { ActiveTripHero } from "@/components/home/ActiveTripHero";
 import { NearMeTile } from "@/components/home/NearMeTile";
 import { TodayStopsList } from "@/components/home/TodayStopsList";
 import { StopActionsSheet } from "@/components/home/StopActionsSheet";
-import { NearbyPlaceSheet, type NearbyPlaceSelection } from "@/components/home/NearbyPlaceSheet";
+import { NearbyPlaceSheet, type NearbyPlaceSelection, type NearbyToday } from "@/components/home/NearbyPlaceSheet";
+import { TodayDocumentsCard } from "@/components/DayDocuments";
+import { useTripTodayKey } from "@/hooks/use-trip-today-key";
 import {
   ActiveTodayCard,
   ActiveTodayErrorCard,
@@ -570,6 +572,8 @@ function Home() {
   const isOnline = useOnline();
   // Changes at local midnight (minute tick + visibilitychange) so the memos below roll over to the new day.
   const todayKey = useTodayKey();
+  // Trip-clock (Asia/Tokyo) date for "today's tickets"; documents are dated on the trip's calendar.
+  const tripTodayKey = useTripTodayKey();
   const [hayinuOpen, setHayinuOpen] = useState(false);
   // Today's stop whose actions sheet is open (home "היום שלכם" card / "כל תחנות היום" rows).
   const [actionStopId, setActionStopId] = useState<string | null>(null);
@@ -632,6 +636,14 @@ function Home() {
   const todayDay = useMemo(() => {
     return days.find((d) => d.date === todayKey) ?? null;
   }, [days, todayKey]);
+
+  // "Near you" sheet: today's day and the recommendations it already links (no duplicate add).
+  const nearbyToday = useMemo<NearbyToday | null>(() => {
+    if (!todayDay) return null;
+    const linkedRecIds = new Set<string>();
+    for (const e of entriesByDay[todayDay.id] ?? []) if (e.linked_recommendation_id) linkedRecIds.add(e.linked_recommendation_id);
+    return { dayId: todayDay.id, dayNumber: todayDay.day_number, linkedRecIds };
+  }, [todayDay, entriesByDay]);
 
   const nextDay = useMemo(() => {
     const t = todayKey;
@@ -930,6 +942,8 @@ function Home() {
           />
         )}
 
+        <TodayDocumentsCard todayKey={tripTodayKey} />
+
         <NearMeTile />
 
         <section className="grid grid-cols-2 gap-3" aria-label="פעולות שימושיות">
@@ -997,7 +1011,7 @@ function Home() {
           )}
         </section>
 
-        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} variant="activeHome" />
+        <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} variant="activeHome" today={nearbyToday} />
 
         <section className="rounded-xl bg-card px-3.5 py-3 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -1239,7 +1253,7 @@ function Home() {
   // 6b. NEARBY (from saved recs)
   sections.push({
     key: "nearby",
-    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} />,
+    node: <NearbyCard recs={recs as NearbyRec[]} onSeeAll={() => { try { sessionStorage.setItem("near-from-home", "1"); } catch { /* ignore */ } navigate({ to: "/recommendations", search: { near: 1 } }); }} today={nearbyToday} />,
   });
 
   // 7. DEADLINES
@@ -1628,7 +1642,7 @@ function NearbyImage({ rec }: { rec: NearbyRec }) {
   return <img src={rec.photo_url} alt="" loading="lazy" onError={() => setFailed(true)} className="h-10 w-10 shrink-0 rounded-lg object-cover" />;
 }
 
-function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]; onSeeAll: () => void; variant?: "default" | "activeHome" }) {
+function NearbyCard({ recs, onSeeAll, variant = "default", today = null }: { recs: NearbyRec[]; onSeeAll: () => void; variant?: "default" | "activeHome"; today?: NearbyToday | null }) {
   const [filter, setFilter] = useState<"all" | "food" | "attraction">("all");
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<GeoFailure | null>(null);
@@ -1787,7 +1801,7 @@ function NearbyCard({ recs, onSeeAll, variant = "default" }: { recs: NearbyRec[]
       >
         ראו מה קרוב על המפה
       </button>
-      <NearbyPlaceSheet place={selected} onClose={() => setSelected(null)} />
+      <NearbyPlaceSheet place={selected} onClose={() => setSelected(null)} today={today} />
     </section>
   );
 }

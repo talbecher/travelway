@@ -4,8 +4,8 @@ import L from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import { Locate } from "lucide-react";
 import { MapSkeleton } from "@/components/MapSkeleton";
+import { GeoErrorBubble, LocateButton, radiusBounds, userLocationIcon } from "@/components/map-user-location";
 
 export type RecPin = {
   id: string;
@@ -84,15 +84,6 @@ function pinIcon(type: string, name: string, status: string, routeLabel?: string
   });
 }
 
-function userIcon(): L.DivIcon {
-  return L.divIcon({
-    className: "",
-    html: `<div style="width:16px;height:16px;border-radius:50%;background:#4A90E2;border:3px solid #fff;box-shadow:0 0 0 4px rgba(74,144,226,0.3);"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-  });
-}
-
 function clusterIcon(cluster: { getChildCount: () => number }): L.DivIcon {
   const count = cluster.getChildCount();
   const size = count < 10 ? 36 : count < 30 ? 42 : 48;
@@ -139,10 +130,6 @@ function FitAll({ pins, user }: { pins: RecPin[]; user: { lat: number; lng: numb
   return null;
 }
 
-function radiusBounds(user: { lat: number; lng: number }, radiusM: number) {
-  return L.latLng(user.lat, user.lng).toBounds(radiusM * 2);
-}
-
 /** Near mode: fit to the radius circle only on first position or radius change. */
 function FitRadius({ user, radiusM }: { user: { lat: number; lng: number }; radiusM: number }) {
   const map = useMap();
@@ -165,34 +152,6 @@ function SizeWatcher() {
     return () => ro.disconnect();
   }, [map]);
   return null;
-}
-
-function LocateButton({ userPos, onNoGeo, radiusM }: { userPos: { lat: number; lng: number } | null; onNoGeo: () => void; radiusM?: number }) {
-  const map = useMap();
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!userPos) { onNoGeo(); return; }
-        if (radiusM) map.fitBounds(radiusBounds(userPos, radiusM), { padding: [24, 24], animate: true });
-        else map.setView([userPos.lat, userPos.lng], 15, { animate: true });
-      }}
-      aria-label={radiusM ? "למיקום שלי" : "התמקד עלי"}
-      style={{
-        position: "absolute", bottom: 16, right: 12, zIndex: 500,
-        width: 40, height: 40, borderRadius: 999,
-        background: "#fff", border: "1px solid rgba(0,0,0,0.15)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        cursor: "pointer",
-        color: userPos ? "#4A90E2" : "#9ca3af",
-      }}
-    >
-      <Locate size={18} />
-    </button>
-  );
 }
 
 function LegendRow({ color, emoji, label }: { color: string; emoji: string; label: string }) {
@@ -364,7 +323,7 @@ export default function RecsMap({
           />
         )}
         {userPos && (
-          <Marker position={[userPos.lat, userPos.lng]} icon={userIcon()} zIndexOffset={1000} />
+          <Marker position={[userPos.lat, userPos.lng]} icon={userLocationIcon()} zIndexOffset={1000} />
         )}
         {radiusMode
           ? userPos && <FitRadius user={userPos} radiusM={radiusM!} />
@@ -400,16 +359,7 @@ export default function RecsMap({
           🔍 לחץ על אשכול להתפזרות · לחץ על פין לפרטים
         </div>
       )}
-      {geoError && (
-        <div style={{
-          position: "absolute", bottom: 64, right: 12, zIndex: 600,
-          background: "rgba(0,0,0,0.8)", color: "#fff",
-          padding: "6px 10px", borderRadius: 8, fontSize: 11,
-          pointerEvents: "none", whiteSpace: "nowrap",
-        }}>
-          אין הרשאת מיקום
-        </div>
-      )}
+      {geoError && <GeoErrorBubble />}
     </div>
   );
 }

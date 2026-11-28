@@ -5,6 +5,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { PlacesSearch, type SelectedPlace } from "@/components/PlacesSearch";
 import { supabase } from "@/integrations/supabase/client";
 import { insertDayEntry } from "@/lib/day-entry-insert";
+import { markRecommendationVisited } from "@/lib/recommendations";
 import { useActiveTripId } from "@/hooks/use-active-trip";
 import { useDays, useRecs } from "@/hooks/use-trip";
 import { todayLocal } from "@/lib/format";
@@ -145,14 +146,7 @@ export function HayinuKanSheet({
       );
       let recId: string;
       if (existing) {
-        const { error } = await supabase
-          .from("recommendations")
-          .update({
-            status: "visited",
-            visited_at: existing.visited_at ?? new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-        if (error) throw error;
+        await markRecommendationVisited(existing);
         recId = existing.id;
         setRating(existing.rating ?? undefined);
         setReview(existing.review ?? "");

@@ -7,6 +7,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { Maximize2, X } from "lucide-react";
 import { TYPE_PIN_COLOR } from "@/lib/coords";
+import { GeoErrorBubble, LocateButton, userLocationIcon, type UserPos } from "@/components/map-user-location";
 
 export type MapStop = {
   id: string;
@@ -528,6 +529,48 @@ const MAP_STYLE = `
 .custom-popup a.leaflet-popup-close-button { color: var(--muted-foreground, #9CA3AF); }
 `;
 
+/**
+ * "My location" on the day map. Permission is asked only when the button is tapped; the dot is
+ * drawn outside FitBounds, so it never changes how the day's stops are framed.
+ */
+function DayLocate({ bottom, onGeoError }: { bottom: number; onGeoError: () => void }) {
+  const map = useMap();
+  const [pos, setPos] = useState<UserPos | null>(null);
+  const locatingRef = useRef(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const request = () => {
+    if (locatingRef.current) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) { onGeoError(); return; }
+    locatingRef.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        locatingRef.current = false;
+        if (!mountedRef.current) return;
+        const next = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setPos(next);
+        map.setView([next.lat, next.lng], 15, { animate: !prefersReducedMotion() });
+      },
+      () => {
+        locatingRef.current = false;
+        if (mountedRef.current) onGeoError();
+      },
+      { timeout: 8000, maximumAge: 60_000 },
+    );
+  };
+
+  return (
+    <>
+      {pos && <Marker position={[pos.lat, pos.lng]} icon={userLocationIcon()} zIndexOffset={1000} interactive={false} />}
+      <LocateButton userPos={pos} bottom={bottom} onNoGeo={request} />
+    </>
+  );
+}
+
 export default function DayMap({
   stops,
   highlightId,
@@ -556,6 +599,12 @@ export default function DayMap({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   const [clusterIds, setClusterIds] = useState<string[] | null>(null);
+  const [geoError, setGeoError] = useState(false);
+  useEffect(() => {
+    if (!geoError) return;
+    const t = setTimeout(() => setGeoError(false), 2500);
+    return () => clearTimeout(t);
+  }, [geoError]);
   const groupRef = useRef<ClusterGroupLike | null>(null);
 
   // Filter to valid coords and keep the numbering supplied by the list —
@@ -641,6 +690,8 @@ export default function DayMap({
 
   if (!mounted) return <MapSkeleton />;
 
+  // Stacked above the "focus route" button, which sits at max(16, bottomPadding + 8).
+  const locateBottom = Math.max(16, bottomPadding + 8) + 48;
   const clusterStops = clusterIds
     ? (clusterIds.map((id) => validStops.find((s) => s.id === id)).filter(Boolean) as MapStop[])
     : [];
@@ -685,6 +736,7 @@ export default function DayMap({
         <FitBounds stops={validStops} bottomPadding={bottomPadding} paused={!!highlightId || !!segmentIds} />
         <FocusSelection stops={validStops} highlightId={highlightId} segmentIds={segmentIds} bottomPadding={bottomPadding} />
         <FocusRouteButton stops={validStops} bottomOffset={bottomPadding} />
+        <DayLocate bottom={locateBottom} onGeoError={() => setGeoError(true)} />
 
         {/* Optional recommendations layer — separate from the route, numbering and clustering. */}
         {showAnchor && nearbyAnchor && (
@@ -708,6 +760,7 @@ export default function DayMap({
         {nearby && <FocusNearby rec={selectedNearby} bottomPadding={bottomPadding} />}
 
       </MapContainer>
+      {geoError && <GeoErrorBubble bottom={locateBottom + 48} />}
 
       {/* Overlapping stops — pick one instead of guessing */}
       {clusterStops.length > 0 && (
